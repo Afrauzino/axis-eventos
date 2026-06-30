@@ -13,6 +13,13 @@ let cachePerms: Perm[] | null = null
 let cacheTeams: Record<string,string[]> = {}  // user_id -> [team_id]
 let cachePersonId: Record<string,string> = {}  // user_id -> people.id
 
+// Limpa o cache de permissões (chamar após mudar permissões no Admin)
+export function limparCachePermissoes() {
+  cachePerms = null
+  cacheTeams = {}
+  cachePersonId = {}
+}
+
 export function usePermissao(profile: Profile | null) {
   const [perms, setPerms]   = useState<Perm[]>(cachePerms ?? [])
   const [myTeams, setMyTeams] = useState<string[]>([])
@@ -39,17 +46,30 @@ export function usePermissao(profile: Profile | null) {
           setMyPersonId(cachePersonId[profile.user_id])
           setMyTeams(cacheTeams[profile.user_id] ?? [])
         } else {
-          // user_id -> people.id -> people_teams.team_id
-          const { data: pessoa } = await supabase.from('people')
-            .select('id').eq('user_id', profile.user_id).maybeSingle()
-          if (pessoa) {
-            cachePersonId[profile.user_id] = pessoa.id
-            setMyPersonId(pessoa.id)
-            const { data: vinculos } = await supabase.from('people_teams')
-              .select('team_id').eq('person_id', pessoa.id)
-            const teamIds = (vinculos ?? []).map(v => v.team_id)
-            cacheTeams[profile.user_id] = teamIds
-            setMyTeams(teamIds)
+          // user_id -> people.id (TODOS os registros desta pessoa, não importa o evento)
+          const { data: pessoas } = await supabase.from('people')
+            .select('id').eq('user_id', profile.user_id)
+          const personIds = (pessoas ?? []).map(p => p.id)
+          if (personIds.length > 0) {
+            // usa o primeiro como "principal", mas considera todos nas buscas
+            cachePersonId[profile.user_id] = personIds[0]
+            setMyPersonId(personIds[0])
+
+            // Equipes: membro (people_teams) OU líder/co-líder (teams)
+            const [vinculos, lideradas] = await Promise.all([
+              supabase.from('people_teams').select('team_id').in('person_id', personIds),
+              supabase.from('teams').select('id').or(
+                personIds.map(id => `leader_id.eq.${id},co_leader_id.eq.${id}`).join(',')
+              ),
+            ])
+            const teamIds = new Set<string>()
+            ;(vinculos.data ?? []).forEach(v => teamIds.add(v.team_id))
+            ;(lideradas.data ?? []).forEach(t => teamIds.add(t.id))
+            const arr = Array.from(teamIds)
+            cacheTeams[profile.user_id] = arr
+            setMyTeams(arr)
+            // guarda todos os personIds para o "pode" considerar permissão individual em qualquer registro
+            ;(cachePersonId as any)[profile.user_id + ':all'] = personIds as any
           }
         }
       }
@@ -63,8 +83,11 @@ export function usePermissao(profile: Profile | null) {
     if (!profile) return false
     if (isAdmin(profile.user_role) || profile.is_admin) return true
 
-    // Permissão individual (autorização explícita extra — só soma, nunca nega)
-    const ind = myPersonId ? perms.some(p => p.person_id === myPersonId && p.modulo === modulo && p.acao === acao && p.permitido) : false
+    // Todos os person_ids desta pessoa (caso haja registro por evento)
+    const allIds: string[] = (cachePersonId as any)[profile.user_id + ':all'] ?? (myPersonId ? [myPersonId] : [])
+
+    // Permissão individual (qualquer registro person_id desta pessoa)
+    const ind = perms.some(p => p.person_id && allIds.includes(p.person_id) && p.modulo === modulo && p.acao === acao && p.permitido)
     if (ind) return true
 
     // Alguma equipe do usuário libera esta ação?
@@ -74,13 +97,11 @@ export function usePermissao(profile: Profile | null) {
     )
     if (equipeLibera) return true
 
-    // "Editar implica visualizar": se pede 'ver' e a equipe tem 'editar', libera ver
+    // "Editar implica visualizar": se pede 'ver' e tem 'editar', libera ver
     if (acao === 'ver') {
-      const temEditar = perms.some(p =>
-        p.team_id && myTeams.includes(p.team_id) &&
-        p.modulo === modulo && p.acao === 'editar' && p.permitido
-      )
-      if (temEditar) return true
+      const temEditarInd = perms.some(p => p.person_id && allIds.includes(p.person_id) && p.modulo === modulo && p.acao === 'editar' && p.permitido)
+      const temEditarEq = perms.some(p => p.team_id && myTeams.includes(p.team_id) && p.modulo === modulo && p.acao === 'editar' && p.permitido)
+      if (temEditarInd || temEditarEq) return true
     }
 
     return false

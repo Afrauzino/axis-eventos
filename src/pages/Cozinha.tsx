@@ -10,9 +10,9 @@ const CORES = ['#00A99D','#6B46C1','#2F855A','#D69E2E','#E53E3E','#3182CE','#DD6
 
 export default function Cozinha({ profile }: { profile?: Profile }) {
   const { evento, loading:evLoading } = useEvento()
+  const [aba, setAba] = useState<'cardapio'|'tipo'>('cardapio')
   const [tipos, setTipos] = useState<RefTipo[]>([])
   const [cardapios, setCardapios] = useState<Cardapio[]>([])
-  const [tipoSel, setTipoSel] = useState<string>('') // filtro horizontal
   const [loading, setLoading] = useState(true)
 
   // modal tipo
@@ -22,7 +22,7 @@ export default function Cozinha({ profile }: { profile?: Profile }) {
   // modal cardapio
   const [modalCard, setModalCard] = useState(false)
   const [editCard, setEditCard] = useState<Cardapio|null>(null)
-  const [formCard, setFormCard] = useState({ refeicao_tipo_id:'', titulo:'', itens:'', data_servir:'' })
+  const [formCard, setFormCard] = useState({ refeicao_tipo_id:'', titulo:'', itens:'' })
 
   useEffect(()=>{ if(!evLoading) carregar() }, [evento, evLoading])
 
@@ -35,7 +35,6 @@ export default function Cozinha({ profile }: { profile?: Profile }) {
     ])
     setTipos(t.data ?? [])
     setCardapios(c.data ?? [])
-    if (!tipoSel && (t.data ?? []).length) setTipoSel('todos')
     setLoading(false)
   }
 
@@ -54,17 +53,17 @@ export default function Cozinha({ profile }: { profile?: Profile }) {
   }
 
   function abrirNovoCardapio() {
-    setEditCard(null); setFormCard({ refeicao_tipo_id: tipos[0]?.id ?? '', titulo:'', itens:'', data_servir:'' }); setModalCard(true)
+    setEditCard(null); setFormCard({ refeicao_tipo_id: tipos[0]?.id ?? '', titulo:'', itens:'' }); setModalCard(true)
   }
   function abrirEditarCardapio(c:Cardapio) {
-    setEditCard(c); setFormCard({ refeicao_tipo_id:c.refeicao_tipo_id??'', titulo:c.titulo??'', itens:c.itens??'', data_servir:(c as any).data_servir??'' }); setModalCard(true)
+    setEditCard(c); setFormCard({ refeicao_tipo_id:c.refeicao_tipo_id??'', titulo:c.titulo??'', itens:c.itens??'' }); setModalCard(true)
   }
   async function salvarCardapio() {
     if (!evento) return
     const tipo = tipos.find(t=>t.id===formCard.refeicao_tipo_id)
     const payload = {
       event_id:evento.id, refeicao_tipo_id:formCard.refeicao_tipo_id||null,
-      tipo_refeicao_nome:tipo?.nome ?? null, titulo:formCard.titulo||null, itens:formCard.itens||null, data_servir:formCard.data_servir||null,
+      tipo_refeicao_nome:tipo?.nome ?? null, titulo:formCard.titulo||null, itens:formCard.itens||null,
     }
     if (editCard) {
       await supabase.from('cozinha_cardapios').update(payload).eq('id',editCard.id)
@@ -84,45 +83,57 @@ export default function Cozinha({ profile }: { profile?: Profile }) {
   if (evLoading||loading) return <div className="page">{[1,2,3].map(i=><div key={i} className="skeleton" style={{height:80,marginBottom:10,borderRadius:14}}/>)}</div>
   if (!evento) return <div className="page"><div className="empty"><p className="empty-title">Nenhum evento ativo</p></div></div>
 
-  const cardapiosFiltrados = tipoSel==='todos'||!tipoSel ? cardapios : cardapios.filter(c=>c.refeicao_tipo_id===tipoSel)
-
   return (
     <div className="page slide-up">
-      {/* Menu horizontal de tipos de refeição */}
-      <div style={{display:'flex',gap:8,overflowX:'auto',paddingBottom:8,marginBottom:14}}>
-        <button onClick={()=>setTipoSel('todos')} className={`chip ${tipoSel==='todos'?'active':''}`}>Todos</button>
-        {tipos.map(t=>(
-          <button key={t.id} onClick={()=>setTipoSel(t.id)} style={{padding:'7px 14px',borderRadius:99,border:tipoSel===t.id?`2px solid ${t.cor}`:'1px solid var(--border)',background:tipoSel===t.id?t.cor:'white',color:tipoSel===t.id?'white':'var(--text)',cursor:'pointer',fontFamily:'inherit',fontSize:13,fontWeight:700,whiteSpace:'nowrap',display:'flex',alignItems:'center',gap:6}}>
-            {t.nome}
-            <span onClick={(e)=>{e.stopPropagation();excluirTipo(t.id)}} style={{fontSize:14,opacity:0.7}}>×</span>
-          </button>
-        ))}
-        <button onClick={()=>setModalTipo(true)} style={{padding:'7px 12px',borderRadius:99,border:'1px dashed var(--primary)',background:'none',color:'var(--primary)',cursor:'pointer',fontFamily:'inherit',fontSize:13,fontWeight:700,whiteSpace:'nowrap'}}>+ Tipo</button>
+      {/* Abas no topo (padrão Admin) */}
+      <div className="tabs mb-4">
+        <button className={`tab ${aba==='cardapio'?'active':''}`} onClick={()=>setAba('cardapio')}>Cardápio</button>
+        <button className={`tab ${aba==='tipo'?'active':''}`} onClick={()=>setAba('tipo')}>Tipo</button>
       </div>
 
-      <button className="btn btn-primary btn-full" onClick={abrirNovoCardapio} style={{marginBottom:14}}><span className="icon icon-sm">add</span> Novo cardápio</button>
-
-      {cardapiosFiltrados.length===0
-        ? <div className="empty"><p className="empty-title">Nenhum cardápio</p><p className="empty-sub">Crie o primeiro cardápio.</p></div>
-        : cardapiosFiltrados.map(c=>{
-          const tipo = tipos.find(t=>t.id===c.refeicao_tipo_id)
-          return (
-            <div key={c.id} style={{background:'white',borderRadius:14,padding:'14px 16px',marginBottom:8,boxShadow:'var(--shadow-sm)',borderLeft:`4px solid ${tipo?.cor??'var(--primary)'}`}}>
-              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:6}}>
-                <div>
-                  {tipo && <span style={{fontSize:10,fontWeight:700,color:'white',background:tipo.cor,padding:'2px 8px',borderRadius:99}}>{tipo.nome}</span>}
-                  <p style={{fontSize:14,fontWeight:700,marginTop:4}}>{c.titulo || 'Cardápio'}</p>
+      {/* ABA CARDÁPIO */}
+      {aba==='cardapio' && (
+        cardapios.length===0
+          ? <div className="empty"><p className="empty-title">Nenhum cardápio</p><p className="empty-sub">Toque no + para criar.</p></div>
+          : cardapios.map(c=>{
+            const tipo = tipos.find(t=>t.id===c.refeicao_tipo_id)
+            return (
+              <div key={c.id} style={{background:'white',borderRadius:14,padding:'14px 16px',marginBottom:8,boxShadow:'var(--shadow-sm)',borderLeft:`4px solid ${tipo?.cor??'var(--primary)'}`}}>
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:6}}>
+                  <div>
+                    {tipo && <span style={{fontSize:10,fontWeight:700,color:'white',background:tipo.cor,padding:'2px 8px',borderRadius:99}}>{tipo.nome}</span>}
+                    <p style={{fontSize:14,fontWeight:700,marginTop:4}}>{c.titulo || 'Cardápio'}</p>
+                  </div>
+                  <div style={{display:'flex',gap:4}}>
+                    <button onClick={()=>abrirEditarCardapio(c)} style={{background:'none',border:'none',cursor:'pointer',padding:4}}><span className="icon icon-sm" style={{color:'var(--primary)'}}>edit</span></button>
+                    <button onClick={()=>excluirCardapio(c.id)} style={{background:'none',border:'none',cursor:'pointer',padding:4}}><span className="icon icon-sm" style={{color:'var(--danger)'}}>delete</span></button>
+                  </div>
                 </div>
-                <div style={{display:'flex',gap:4}}>
-                  <button onClick={()=>abrirEditarCardapio(c)} style={{background:'none',border:'none',cursor:'pointer',padding:4}}><span className="icon icon-sm" style={{color:'var(--primary)'}}>edit</span></button>
-                  <button onClick={()=>excluirCardapio(c.id)} style={{background:'none',border:'none',cursor:'pointer',padding:4}}><span className="icon icon-sm" style={{color:'var(--danger)'}}>delete</span></button>
-                </div>
+                {c.itens && <p style={{fontSize:13,color:'var(--muted)',whiteSpace:'pre-wrap'}}>{c.itens}</p>}
               </div>
-              {c.itens && <p style={{fontSize:13,color:'var(--muted)',whiteSpace:'pre-wrap'}}>{c.itens}</p>}
+            )
+          })
+      )}
+
+      {/* ABA TIPO */}
+      {aba==='tipo' && (
+        tipos.length===0
+          ? <div className="empty"><p className="empty-title">Nenhum tipo</p><p className="empty-sub">Toque no + para criar (Café, Almoço, Janta...).</p></div>
+          : tipos.map(t=>(
+            <div key={t.id} style={{background:'white',borderRadius:14,padding:'14px 16px',marginBottom:8,boxShadow:'var(--shadow-sm)',display:'flex',alignItems:'center',justifyContent:'space-between',borderLeft:`4px solid ${t.cor}`}}>
+              <div style={{display:'flex',alignItems:'center',gap:10}}>
+                <span style={{width:20,height:20,borderRadius:'50%',background:t.cor,display:'inline-block'}}/>
+                <span style={{fontSize:14,fontWeight:700}}>{t.nome}</span>
+              </div>
+              <button onClick={()=>excluirTipo(t.id)} style={{background:'none',border:'none',cursor:'pointer',padding:4}}><span className="icon icon-sm" style={{color:'var(--danger)'}}>delete</span></button>
             </div>
-          )
-        })
-      }
+          ))
+      )}
+
+      {/* FAB - botão redondo de + conforme a aba */}
+      <button className="fab" onClick={()=> aba==='cardapio' ? abrirNovoCardapio() : setModalTipo(true)}>
+        <span className="icon">add</span>
+      </button>
 
       {/* Modal novo tipo */}
       {modalTipo && (
@@ -152,9 +163,6 @@ export default function Cozinha({ profile }: { profile?: Profile }) {
             </select>
             <label className="form-label">Título (opcional)</label>
             <input className="form-input" placeholder="Ex: Almoço de domingo" value={formCard.titulo} onChange={e=>setFormCard(f=>({...f,titulo:e.target.value}))} style={{marginBottom:12}}/>
-            <label className="form-label">Dia em que será servido</label>
-            <input className="form-input" type="date" value={formCard.data_servir} onChange={e=>setFormCard(f=>({...f,data_servir:e.target.value}))}
-              min={(evento as any)?.start_date || undefined} max={(evento as any)?.end_date || undefined} style={{marginBottom:12}}/>
             <label className="form-label">Itens do cardápio</label>
             <textarea className="form-input" placeholder="Arroz, feijão, salada..." rows={6} value={formCard.itens} onChange={e=>setFormCard(f=>({...f,itens:e.target.value}))} style={{resize:'vertical',marginBottom:16}}/>
             <button className="btn btn-primary btn-full" onClick={salvarCardapio} style={{marginBottom:8}}>Salvar</button>

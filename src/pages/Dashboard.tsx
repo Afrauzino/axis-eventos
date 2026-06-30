@@ -3,11 +3,18 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { fmtDataLonga, isAdmin } from '../utils'
 import { useEvento } from '../hooks/useEvento'
+import { usePermissao } from '../hooks/usePermissao'
 import type { Profile } from '../App'
 
 type Stats = { encontristas:number; encontreiros:number; equipes:number; alertas:number }
 
 export default function Dashboard({ profile }: { profile: Profile }) {
+  const { pode } = usePermissao(profile)
+  const admin = isAdmin(profile.user_role) || profile.is_admin
+  // mapa rota -> permissao de menu
+  const PERM_ROTA: Record<string,string> = { '/encontristas':'menu_encontristas','/cadastros':'menu_cadastros','/equipes':'menu_equipes','/alertas':'menu_alertas_lideres','/cronograma':'menu_cronograma','/minhas-atividades':'menu_atividades','/locais':'menu_evento','/financeiro':'menu_financeiro','/admin':'menu_admin','/ranking':'menu_ranking' }
+  const podeIr = (rota:string) => admin || pode(PERM_ROTA[rota] ?? '')
+  const irSe = (rota:string) => { if (podeIr(rota)) navigate(rota) }
   const navigate  = useNavigate()
   const { evento, loading: evLoading } = useEvento()
   const [stats,    setStats]    = useState<Stats|null>(null)
@@ -118,7 +125,7 @@ export default function Dashboard({ profile }: { profile: Profile }) {
                 {label:'Equipes',      value:stats.equipes,       rota:'/equipes',      cor:'#2B6CB0'},
                 {label:'Alertas',      value:stats.alertas,       rota:'/alertas',      cor:stats.alertas>0?'var(--danger)':'var(--muted)'},
               ].map(s=>(
-                <div key={s.label} className="stat-card" onClick={()=>navigate(s.rota)} style={{cursor:'pointer'}}>
+                <div key={s.label} className="stat-card" onClick={()=>irSe(s.rota)} style={{cursor:podeIr(s.rota)?'pointer':'default',opacity:podeIr(s.rota)?1:0.55}}>
                   <div className="stat-label">{s.label}</div>
                   <div className="stat-value" style={{color:s.cor}}>{s.value}</div>
                 </div>
@@ -138,8 +145,8 @@ export default function Dashboard({ profile }: { profile: Profile }) {
               {label:'Locais',       icon:'location_on',           rota:'/locais'},
               ...(isAdmin(profile.user_role)?[{label:'Financeiro',icon:'account_balance_wallet',rota:'/financeiro'}]:[]),
               ...(isAdmin(profile.user_role)?[{label:'Admin',icon:'admin_panel_settings',rota:'/admin'}]:[]),
-            ].map(item=>(
-              <button key={item.rota} onClick={()=>navigate(item.rota)} style={{background:'white',border:'1px solid var(--border)',borderRadius:10,padding:'12px 14px',cursor:'pointer',fontFamily:'inherit',fontSize:13,fontWeight:600,color:'var(--text)',textAlign:'left',display:'flex',alignItems:'center',gap:8,boxShadow:'var(--shadow-sm)'}}>
+            ].filter(item=>podeIr(item.rota)).map(item=>(
+              <button key={item.rota} onClick={()=>irSe(item.rota)} style={{background:'white',border:'1px solid var(--border)',borderRadius:10,padding:'12px 14px',cursor:'pointer',fontFamily:'inherit',fontSize:13,fontWeight:600,color:'var(--text)',textAlign:'left',display:'flex',alignItems:'center',gap:8,boxShadow:'var(--shadow-sm)'}}>
                 <span className="icon icon-sm" style={{color:'var(--primary)'}}>{item.icon}</span>
                 {item.label}
               </button>

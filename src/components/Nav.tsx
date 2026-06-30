@@ -20,7 +20,7 @@ function buildMenu(): Item[] {
     { id:'correio', label:'Correio',              icon:'mail',            rota:'/correio',           perm:'menu_correio' },
     { id:'alertlid',label:'Alertas',                icon:'campaign',       rota:'/alertas-lideres',   perm:'menu_alertas_lideres' },
     { id:'cozinha', label:'Cozinha',              icon:'restaurant',     rota:'/cozinha',           perm:'menu_cozinha' },
-    { id:'equipes', label:'Equipes',             icon:'shield',          perm:'menu_equipes',
+    { id:'equipes', label:'Equipes & Escalas',    icon:'shield',          perm:'menu_equipes',
       sub:[ { label:'Equipes', rota:'/equipes' }, { label:'Escalas', rota:'/escalas' } ] },
     { id:'teatro',  label:'Teatro',               icon:'theater_comedy',  perm:'menu_teatro',
       sub:[ { label:'Teatros', rota:'/teatro' }, { label:'Atores', rota:'/teatro/atores' }, { label:'Personagens', rota:'/teatro/personagens' }, { label:'Objetos', rota:'/teatro/objetos' } ] },

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { formatName, getInitials, isAdmin, canEditPessoas } from '../utils'
 import UploadFoto from '../components/UploadFoto'
+import CardItem from '../components/CardItem'
 import { useEvento } from '../hooks/useEvento'
 import type { Profile } from '../App'
 
@@ -31,7 +32,7 @@ export default function Encontreiros({ profile }: { profile?: Profile }) {
     setLoading(true)
     const [pe, eq, vi] = await Promise.all([
       supabase.from('people').select('*').eq('event_id', evento.id).eq('role_type','worker').order('name'),
-      supabase.from('teams').select('id,name,color').eq('event_id', evento.id).order('name'),
+      supabase.from('teams').select('id,name,color,leader_id,co_leader_id').eq('event_id', evento.id).order('name'),
       supabase.from('people_teams').select('person_id,team_id'),
     ])
     setLista(pe.data ?? [])
@@ -42,7 +43,8 @@ export default function Encontreiros({ profile }: { profile?: Profile }) {
 
   function getEquipes(personId: string) {
     const ids = vinculos.filter(v=>v.person_id===personId).map(v=>v.team_id)
-    return equipes.filter(e=>ids.includes(e.id))
+    // inclui equipes que a pessoa LIDERA (líder ou co-líder), não só onde é membro
+    return equipes.filter(e=>ids.includes(e.id) || (e as any).leader_id===personId || (e as any).co_leader_id===personId)
   }
 
   async function salvar(e: React.FormEvent) {
@@ -91,21 +93,20 @@ export default function Encontreiros({ profile }: { profile?: Profile }) {
         </div>
       ) : filtrados.map(p => {
         const eqs = getEquipes(p.id)
+        const corCard = eqs[0]?.color || 'var(--primary)'
         return (
-          <button key={p.id} className="list-card" onClick={()=>{ if(!canEdit) return; setEditando(p); setForm({name:p.name,phone:p.phone,church:p.church,sexo:p.sexo??'',birth_date:p.birth_date??'',cpf:p.cpf??'',cidade:p.cidade??''}); setErro(''); setModal(true) }}>
-            <div className="list-card-bar"/>
-            <div className="list-card-media">
-              {p.photo_url?<img src={p.photo_url} alt=""/>:<span style={{fontSize:18,fontWeight:700,color:'var(--primary)'}}>{getInitials(p.name)}</span>}
-            </div>
-            <div className="list-card-body">
-              <div className="list-card-title">{p.name}</div>
-              <div className="list-card-desc">
-                {p.church}
-                {eqs.length>0 ? ` · ${eqs.map(e=>e.name).join(', ')}` : ' · Sem equipe'}
-              </div>
-            </div>
-            <div className="list-card-chevron"><span className="icon icon-sm">chevron_right</span></div>
-          </button>
+          <CardItem
+            key={p.id}
+            cor={corCard}
+            fotoUrl={p.photo_url}
+            iniciais={getInitials(p.name)}
+            titulo={p.name}
+            subtitulo={p.church}
+            badges={eqs.length>0
+              ? eqs.map(e=>({ emoji:'👥', texto:e.name, cor:e.color }))
+              : [{ emoji:'⚠️', texto:'Sem equipe' }]}
+            onClick={()=>{ if(!canEdit) return; setEditando(p); setForm({name:p.name,phone:p.phone,church:p.church,sexo:p.sexo??'',birth_date:p.birth_date??'',cpf:p.cpf??'',cidade:p.cidade??''}); setErro(''); setModal(true) }}
+          />
         )
       })}
 

@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import ConfigCor from './ConfigCor'
+import { limparCachePermissoes } from '../hooks/usePermissao'
 import { fmtDataHora, isAdmin } from '../utils'
 import type { Profile } from '../App'
 import EmojiPicker from '../components/EmojiPicker'
@@ -22,7 +24,7 @@ const TIPOS_PADRÃO = [
 const CORES_TIPO = ['#00A99D','#6B46C1','#E8821A','#2F855A','#D53F8C','#2B6CB0','#C53030','#D69E2E','#718096','#1A202C']
 
 export default function Admin({ profile }: { profile?: Profile }) {
-  const [aba, setAba]               = useState<'usuarios'|'cargos'|'equipes_perm'|'eventos'|'tipos'|'backup'>('usuarios')
+  const [aba, setAba]               = useState<'usuarios'|'cargos'|'equipes_perm'|'eventos'|'tipos'|'backup'|'aparencia'>('usuarios')
   // Cargos fixos — não editáveis pelo usuário
   const cargos = [
     {role:'admin',              label:'Administrador',                descricao:'Acesso total ao sistema'},
@@ -149,6 +151,7 @@ export default function Admin({ profile }: { profile?: Profile }) {
     }
   }
   async function togglePermPessoa(p: any, modulo: string, atual: boolean|undefined) {
+    limparCachePermissoes()
     // mantido para compatibilidade — alterna liberado/neutro
     await definirPermPessoa(p, modulo, atual ? null : true)
   }
@@ -191,6 +194,7 @@ export default function Admin({ profile }: { profile?: Profile }) {
     setPermsEquipe(data ?? [])
   }
   async function togglePermEquipe(team_id: string, modulo: string) {
+    limparCachePermissoes()
     const existe = permsEquipe.find(x => x.team_id === team_id && x.modulo === modulo && x.acao === 'ver')
     if (existe) {
       await supabase.from('permissoes').update({ permitido: !existe.permitido }).eq('id', existe.id)
@@ -485,6 +489,7 @@ export default function Admin({ profile }: { profile?: Profile }) {
         <button className={`tab ${aba==='eventos'?'active':''}`}   onClick={()=>setAba('eventos')}>Eventos</button>
         <button className={`tab ${aba==='tipos'?'active':''}`}     onClick={()=>setAba('tipos')}>Tipos</button>
         <button className={`tab ${aba==='backup'?'active':''}`}    onClick={()=>setAba('backup')}>Backup</button>
+        <button className={`tab ${aba==='aparencia'?'active':''}`} onClick={()=>setAba('aparencia')}>Aparência</button>
       </div>
 
       {/* USUÁRIOS */}
@@ -905,6 +910,13 @@ export default function Admin({ profile }: { profile?: Profile }) {
             <span className="icon icon-sm">download</span> Exportar backup completo
           </button>
           <div className="alert-box alert-info">O backup inclui: pessoas, equipes, ministrações, teatros, locais, financeiro e ocorrências. Não inclui logs e histórico de auditorias.</div>
+        </div>
+      )}
+
+      {/* APARÊNCIA — cor principal */}
+      {aba==='aparencia' && (
+        <div>
+          <ConfigCor />
         </div>
       )}
 

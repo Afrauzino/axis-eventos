@@ -1,5 +1,6 @@
 import PersonSelect from '../components/PersonSelect'
 import { useEffect, useState } from 'react'
+import AvatarPicker from '../components/AvatarPicker'
 import { supabase } from '../lib/supabase'
 import { getInitials, isAdmin, formatName } from '../utils'
 import { useEvento } from '../hooks/useEvento'
@@ -22,7 +23,7 @@ export default function Equipes({ profile }: { profile?: Profile }) {
   const [editando, setEditando] = useState<Equipe|null>(null)
   const [salvando, setSalvando] = useState(false)
   const [erro, setErro]         = useState('')
-  const [form, setForm] = useState({ name:'', color:'#00A99D', leader_id:'', co_leader_id:'', equipe_saude:false, equipe_cardapio:false, emoji:'' })
+  const [form, setForm] = useState({ name:'', color:'#00A99D', leader_id:'', co_leader_id:'', equipe_saude:false, equipe_cardapio:false, emoji:'', foto_url:null })
 
   // Modal de adicionar membro — multipla selecao
   const [modalMembro, setModalMembro] = useState<string|null>(null) // team_id
@@ -48,23 +49,39 @@ export default function Equipes({ profile }: { profile?: Profile }) {
   async function salvar(e: React.FormEvent) {
     e.preventDefault(); setErro(''); setSalvando(true)
     if (!evento || !form.name.trim()) { setErro('Nome obrigatorio.'); setSalvando(false); return }
-    const payload = { name:formatName(form.name), color:form.color, leader_id:form.leader_id||null, co_leader_id:form.co_leader_id||null, equipe_saude:form.equipe_saude, equipe_cardapio:form.equipe_cardapio, emoji:form.emoji||null }
+    const payload = { name:formatName(form.name), color:form.color, leader_id:form.leader_id||null, co_leader_id:form.co_leader_id||null, equipe_saude:form.equipe_saude, equipe_cardapio:form.equipe_cardapio, emoji:form.emoji||null, foto_url:(form as any).foto_url||null }
     let err
     if (editando) { const r=await supabase.from('teams').update(payload).eq('id',editando.id); err=r.error }
     else { const r=await supabase.from('teams').insert({...payload,event_id:evento.id}); err=r.error }
     if (err) { setErro('Erro: '+err.message); setSalvando(false); return }
 
-    // Promover lider automaticamente
-    for (const lid of [form.leader_id, form.co_leader_id]) {
-      if (!lid) continue
-      const p = pessoas.find(x=>x.id===lid)
-      if (p?.user_id) {
-        await supabase.from('profiles').update({user_role:'lider'}).eq('user_id',p.user_id).in('user_role',['aprovado','encontreiro'])
+    // Promover lider automaticamente + adicionar como MEMBRO da equipe
+    if (!err && (editando || true)) {
+      // descobrir o id da equipe (recém-criada ou editada)
+      let teamId = editando?.id
+      if (!teamId) {
+        const { data: nova } = await supabase.from('teams')
+          .select('id').eq('name', formatName(form.name)).eq('event_id', evento?.id)
+          .order('created_at',{ascending:false}).limit(1).maybeSingle()
+        teamId = nova?.id
+      }
+      for (const lid of [form.leader_id, form.co_leader_id]) {
+        if (!lid) continue
+        const p = pessoas.find(x=>x.id===lid)
+        if (p?.user_id) {
+          await supabase.from('profiles').update({user_role:'lider'}).eq('user_id',p.user_id).in('user_role',['aprovado','encontreiro'])
+        }
+        // adiciona o líder como membro da equipe (se ainda não for)
+        if (teamId) {
+          const { data: jaTem } = await supabase.from('people_teams')
+            .select('id').eq('person_id', lid).eq('team_id', teamId).maybeSingle()
+          if (!jaTem) await supabase.from('people_teams').insert({ person_id: lid, team_id: teamId })
+        }
       }
     }
 
     setModal(false); setSalvando(false); setEditando(null)
-    setForm({name:'',color:'#00A99D',leader_id:'',co_leader_id:'',equipe_saude:false,equipe_cardapio:false,emoji:''})
+    setForm({name:'',color:'#00A99D',leader_id:'',co_leader_id:'',equipe_saude:false,equipe_cardapio:false,emoji:'',foto_url:null})
     carregar()
   }
 
@@ -141,22 +158,28 @@ export default function Equipes({ profile }: { profile?: Profile }) {
         const aberta   = expandida===eq.id
 
         return (
-          <div key={eq.id} style={{background:'white',borderRadius:14,boxShadow:'var(--shadow-sm)',marginBottom:10,overflow:'hidden'}}>
+          <div key={eq.id} style={{background:'white',borderRadius:12,boxShadow:'0 1px 5px rgba(0,0,0,0.12)',marginBottom:10,overflow:'hidden',display:'flex'}}>
+            <div style={{width:6,alignSelf:'stretch',background:eq.color,flexShrink:0}}/>
+            <div style={{flex:1,minWidth:0}}>
             {/* Cabecalho */}
-            <button style={{width:'100%',display:'flex',alignItems:'center',padding:'13px 14px 13px 0',background:'none',border:'none',cursor:'pointer',fontFamily:'inherit',textAlign:'left'}}
+            <button style={{width:'100%',display:'flex',alignItems:'center',gap:14,padding:'16px 15px',background:'none',border:'none',cursor:'pointer',fontFamily:'inherit',textAlign:'left'}}
               onClick={()=>setExpandida(aberta?null:eq.id)}>
-              <div style={{width:4,alignSelf:'stretch',background:eq.color,borderRadius:'0 2px 2px 0',flexShrink:0,marginRight:14}}/>
+              <div style={{width:58,height:58,borderRadius:'50%',flexShrink:0,display:'flex',alignItems:'center',justifyContent:'center',overflow:'hidden',background:(eq as any).foto_url?'#eee':eq.color+'24'}}>
+                {(eq as any).foto_url
+                  ? <img src={(eq as any).foto_url} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}}/>
+                  : <span style={{fontSize:27}}>{(eq as any).emoji||'👥'}</span>}
+              </div>
               <div style={{flex:1,minWidth:0}}>
-                <p style={{fontWeight:700,fontSize:15,marginBottom:2}}>{eq.name}</p>
+                <p style={{fontWeight:700,fontSize:15,marginBottom:2,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{eq.name}</p>
                 <p style={{fontSize:12,color:'var(--muted)'}}>{membros.length} {membros.length===1?'membro':'membros'}{lider?` · Lider: ${lider.name.split(' ')[0]}`:''}{eq.equipe_saude?' · Saude':''}</p>
               </div>
               {canEdit && (
-                <button onClick={e=>{e.stopPropagation();setEditando(eq);setForm({name:eq.name,color:eq.color,leader_id:eq.leader_id??'',co_leader_id:eq.co_leader_id??'',equipe_saude:eq.equipe_saude,equipe_cardapio:(eq as any).equipe_cardapio??false,emoji:(eq as any).emoji??''});setErro('');setModal(true)}}
-                  style={{background:'var(--bg)',border:'1px solid var(--border)',borderRadius:8,padding:'5px 10px',cursor:'pointer',fontSize:12,fontWeight:600,color:'var(--text2)',fontFamily:'inherit',marginRight:8}}>
-                  Editar
+                <button onClick={e=>{e.stopPropagation();setEditando(eq);setForm({name:eq.name,color:eq.color,leader_id:eq.leader_id??'',co_leader_id:eq.co_leader_id??'',equipe_saude:eq.equipe_saude,equipe_cardapio:(eq as any).equipe_cardapio??false,emoji:(eq as any).emoji??'',foto_url:(eq as any).foto_url??null});setErro('');setModal(true)}}
+                  style={{width:34,height:34,borderRadius:8,background:'var(--bg)',border:'none',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',color:'var(--muted)',fontFamily:'inherit',flexShrink:0}} aria-label="Editar">
+                  <span className="icon icon-sm">edit</span>
                 </button>
               )}
-              <span className="icon icon-sm" style={{color:'var(--muted-light)',marginRight:8,transform:aberta?'rotate(90deg)':'none',transition:'transform 0.2s'}}>chevron_right</span>
+              <span className="icon icon-sm" style={{color:'var(--muted-light)',transform:aberta?'rotate(90deg)':'none',transition:'transform 0.2s',flexShrink:0}}>chevron_right</span>
             </button>
 
             {/* Expandido */}
@@ -219,11 +242,12 @@ export default function Equipes({ profile }: { profile?: Profile }) {
                 )}
               </div>
             )}
+            </div>
           </div>
         )
       })}
 
-      {canEdit && <button className="fab" onClick={()=>{setEditando(null);setForm({name:'',color:'#00A99D',leader_id:'',co_leader_id:'',equipe_saude:false,equipe_cardapio:false,emoji:''});setErro('');setModal(true)}}><span className="icon">add</span></button>}
+      {canEdit && <button className="fab" onClick={()=>{setEditando(null);setForm({name:'',color:'#00A99D',leader_id:'',co_leader_id:'',equipe_saude:false,equipe_cardapio:false,emoji:'',foto_url:null});setErro('');setModal(true)}}><span className="icon">add</span></button>}
 
       {/* Modal criar/editar equipe */}
       {modal && (
@@ -238,6 +262,18 @@ export default function Equipes({ profile }: { profile?: Profile }) {
             <form onSubmit={salvar}>
               <div className="form-group"><label className="form-label">Nome da equipe <span className="req">*</span></label>
                 <input className="form-input" placeholder="Ex: Equipe Cozinha" value={form.name} onChange={e=>setForm(f=>({...f,name:e.target.value}))} required />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Capa da equipe (emoji ou foto)</label>
+                <AvatarPicker
+                  emoji={form.emoji}
+                  fotoUrl={(form as any).foto_url ?? null}
+                  cor={form.color}
+                  bucket="team-photos"
+                  path={'team-'+(editando?.id ?? 'novo')}
+                  onChangeEmoji={(em)=>setForm(f=>({...f,emoji:em, foto_url:null} as any))}
+                  onChangeFoto={(url)=>setForm(f=>({...f,foto_url:url, emoji:url?'':f.emoji} as any))}
+                />
               </div>
               <div className="form-group">
                 <label className="form-label">Cor</label>

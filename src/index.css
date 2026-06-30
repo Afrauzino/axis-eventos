@@ -1044,3 +1044,53 @@ body {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.82; }
 }
+
+/* ===== CARD PADRÃO AXIS (CardItem) — padrão final aprovado ===== */
+.card-item {
+  background: var(--white);
+  border-radius: 12px;
+  box-shadow: 0 1px 5px rgba(0,0,0,0.12);
+  display: flex;
+  overflow: hidden;
+  margin: 0 0 10px 0;
+  cursor: pointer;
+  width: 100%;
+  border: none;
+  text-align: left;
+  font-family: inherit;
+  transition: box-shadow 0.15s;
+}
+.card-item:hover { box-shadow: 0 2px 9px rgba(0,0,0,0.16); }
+.card-item:active { box-shadow: 0 1px 4px rgba(0,0,0,0.12); }
+.card-item-bar { width: 6px; align-self: stretch; flex-shrink: 0; }
+.card-item-wrap { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.card-item-body { padding: 16px 15px; flex: 1; min-width: 0; display: flex; gap: 14px; align-items: center; }
+.card-item-avatar {
+  width: 58px; height: 58px; border-radius: 50%;
+  flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+  overflow: hidden;
+}
+.card-item-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.card-item-main { flex: 1; min-width: 0; }
+.card-item-title { font-size: 15px; font-weight: 700; color: var(--text); line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.card-item-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+.card-item-teams { display: flex; gap: 6px; margin-top: 8px; }
+.card-item-team {
+  width: 30px; height: 30px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 15px; overflow: hidden; flex-shrink: 0;
+}
+.card-item-team img { width: 100%; height: 100%; object-fit: cover; }
+.card-item-edit {
+  width: 34px; height: 34px; border-radius: 8px;
+  background: var(--bg); border: none; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; align-self: flex-start; margin-top: 2px;
+  color: var(--muted); transition: background 0.15s;
+}
+.card-item-edit:hover { background: var(--border); color: var(--primary); }
+.card-item-barra { padding: 0 15px 14px 0; }
+.card-item-progress { height: 8px; background: #eee; border-radius: 99px; overflow: hidden; }
+.card-item-progress > div { height: 100%; border-radius: 99px; transition: width 0.3s; }
+.card-item-progress-label { font-size: 11px; font-weight: 600; margin-top: 5px; }
+.card-item-extra { padding: 0 15px 14px 0; }

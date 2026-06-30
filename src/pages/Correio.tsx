@@ -70,8 +70,8 @@ export default function Correio({ profile }: { profile?: Profile }) {
     let lider = false, correio = false
     if (minha) {
       const { data: teamsCorreio } = await supabase.from('teams')
-        .select('id,name,leader_id,co_leader_id').eq('event_id', eid)
-        .ilike('name', '%correio%')
+        .select('id,name,leader_id,co_leader_id,equipe_correio').eq('event_id', eid)
+        .or('equipe_correio.eq.true,name.ilike.%correio%')
       if (teamsCorreio && teamsCorreio.length) {
         const ids = teamsCorreio.map(t=>t.id)
         lider = teamsCorreio.some(t => t.leader_id === minha!.id || t.co_leader_id === minha!.id)

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { supabase } from './lib/supabase'
+import { carregarCorSalva } from './lib/tema'
 import { formatName } from './utils'
 import Nav from './components/Nav'
 import CriticalAlert from './components/CriticalAlert'
@@ -133,6 +134,7 @@ export default function App() {
   const [alertCount, setAlertCount] = useState(0)
 
   useEffect(() => {
+    carregarCorSalva()
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session)
       if (session) loadProfile(session.user.id)
