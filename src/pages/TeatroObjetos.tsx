@@ -69,8 +69,8 @@ export default function TeatroObjetos({ profile }: { profile?: Profile }) {
     const foto = o.imagem_url ?? (o.icone?.startsWith('http') ? o.icone : null)
     if (foto) return <img src={foto} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}}/>
     // emoji colorido; nome de ícone antigo (ex: "inventory_2") vira o emoji padrão
-    if (o.icone && !/^[a-z0-9_]+$/.test(o.icone)) return <span style={{fontSize:24,lineHeight:1}}>{o.icone}</span>
-    return <span style={{fontSize:24,lineHeight:1}}>📦</span>
+    if (o.icone && !/^[a-z0-9_]+$/.test(o.icone)) return <span style={{fontSize:27,lineHeight:1}}>{o.icone}</span>
+    return <span style={{fontSize:27,lineHeight:1}}>📦</span>
   }
 
   return (
@@ -82,23 +82,29 @@ export default function TeatroObjetos({ profile }: { profile?: Profile }) {
         <input placeholder="Buscar objeto..." value={buscar} onChange={e=>setBuscar(e.target.value)}/>
       </div>
       {loading ? [1,2,3].map(i=><div key={i} className="skeleton" style={{height:60,marginBottom:8,borderRadius:14}}/>) :
-      filtrados.map(o => (
-        <div key={o.id} style={{background:'white',borderRadius:14,boxShadow:'var(--shadow-sm)',marginBottom:8,display:'flex',alignItems:'center',gap:12,padding:'12px 14px'}}>
-          <div style={{width:44,height:44,borderRadius:10,background:'#FFF3E0',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,overflow:'hidden'}}>
-            {renderMedia(o)}
-          </div>
-          <div style={{flex:1}}>
-            <p style={{fontWeight:700,fontSize:14}}>{o.nome}</p>
-            {o.descricao && <p style={{fontSize:12,color:'var(--muted)'}}>{o.descricao}</p>}
-          </div>
-          {canEdit && (
-            <div style={{display:'flex',gap:6}}>
-              <button onClick={()=>abrirEdicao(o)} style={{background:'var(--bg)',border:'1px solid var(--border)',borderRadius:8,padding:'5px 8px',cursor:'pointer',fontSize:12,fontFamily:'inherit'}}>Editar</button>
-              <button onClick={()=>excluir(o.id)} style={{background:'var(--danger-bg)',color:'var(--danger)',border:'none',borderRadius:8,padding:'5px 8px',cursor:'pointer',fontSize:12,fontFamily:'inherit'}}>Excluir</button>
+      filtrados.map(o => {
+        const cor = '#E8821A'
+        return (
+        <div key={o.id} style={{background:'white',borderRadius:12,boxShadow:'0 1px 5px rgba(0,0,0,0.12)',marginBottom:10,overflow:'hidden',display:'flex'}}>
+          <div style={{width:6,alignSelf:'stretch',background:cor,flexShrink:0}}/>
+          <div style={{flex:1,minWidth:0,display:'flex',alignItems:'center',gap:14,padding:'16px 15px'}}>
+            <div style={{width:58,height:58,borderRadius:'50%',background:cor+'24',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,overflow:'hidden'}}>
+              {renderMedia(o)}
             </div>
-          )}
+            <div style={{flex:1,minWidth:0}}>
+              <p style={{fontWeight:700,fontSize:15,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{o.nome}</p>
+              {o.descricao && <p style={{fontSize:12,color:'var(--muted)'}}>{o.descricao}</p>}
+            </div>
+            {canEdit && (
+              <div style={{display:'flex',gap:8,flexShrink:0}}>
+                <button onClick={()=>abrirEdicao(o)} aria-label="Editar" style={{width:34,height:34,borderRadius:8,background:'var(--bg)',border:'none',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',color:'var(--muted)',fontFamily:'inherit'}}><MatIcon name="edit" size={18}/></button>
+                <button onClick={()=>excluir(o.id)} aria-label="Excluir" style={{width:34,height:34,borderRadius:8,background:'var(--danger-bg)',border:'none',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',fontFamily:'inherit'}}><MatIcon name="delete" size={18} color="var(--danger)"/></button>
+              </div>
+            )}
+          </div>
         </div>
-      ))}
+        )
+      })}
 
       {canEdit && <button className="fab" onClick={abrirNovo}><span className="icon">add</span></button>}
 

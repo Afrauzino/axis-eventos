@@ -75,29 +75,33 @@ export default function TeatroPersonagens({ profile }: { profile?: Profile }) {
   function renderIcone(p: Personagem) {
     if (p.icone?.startsWith('http')) return <img src={p.icone} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}}/>
     // emoji colorido; nome de ícone antigo (ex: "person") vira o emoji padrão
-    if (p.icone && !/^[a-z0-9_]+$/.test(p.icone)) return <span style={{fontSize:22,lineHeight:1}}>{p.icone}</span>
-    return <span style={{fontSize:22,lineHeight:1}}>🎭</span>
+    if (p.icone && !/^[a-z0-9_]+$/.test(p.icone)) return <span style={{fontSize:27,lineHeight:1}}>{p.icone}</span>
+    return <span style={{fontSize:27,lineHeight:1}}>🎭</span>
   }
 
   function PersonCard({ p }: { p: Personagem }) {
+    const cor = '#6B46C1'
     return (
-      <div style={{background:'white',borderRadius:14,boxShadow:'var(--shadow-sm)',marginBottom:8,display:'flex',alignItems:'center',gap:12,padding:'12px 14px'}}>
-        <div style={{width:42,height:42,borderRadius:10,background:'#F3F0FF',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,overflow:'hidden'}}>
-          {renderIcone(p)}
-        </div>
-        <div style={{flex:1,minWidth:0}}>
-          <div style={{display:'flex',alignItems:'center',gap:6}}>
-            <p style={{fontWeight:700,fontSize:14}}>{p.nome}</p>
-            {p.multiplo && <span className="badge badge-info" style={{fontSize:9}}>múltiplo</span>}
+      <div style={{background:'white',borderRadius:12,boxShadow:'0 1px 5px rgba(0,0,0,0.12)',marginBottom:10,overflow:'hidden',display:'flex'}}>
+        <div style={{width:6,alignSelf:'stretch',background:cor,flexShrink:0}}/>
+        <div style={{flex:1,minWidth:0,display:'flex',alignItems:'center',gap:14,padding:'16px 15px'}}>
+          <div style={{width:58,height:58,borderRadius:'50%',background:cor+'24',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,overflow:'hidden'}}>
+            {renderIcone(p)}
           </div>
-          {p.descricao && <p style={{fontSize:12,color:'var(--muted)',marginTop:2}}>{p.descricao}</p>}
-        </div>
-        {canEdit && (
-          <div style={{display:'flex',gap:6,flexShrink:0}}>
-            <button onClick={()=>abrirEdicao(p)} style={{background:'var(--bg)',border:'1px solid var(--border)',borderRadius:8,padding:'5px 8px',cursor:'pointer',fontSize:12,fontFamily:'inherit'}}>Editar</button>
-            <button onClick={()=>excluir(p.id)} style={{background:'var(--danger-bg)',color:'var(--danger)',border:'none',borderRadius:8,padding:'5px 8px',cursor:'pointer',fontSize:12,fontFamily:'inherit'}}>Excluir</button>
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{display:'flex',alignItems:'center',gap:6}}>
+              <p style={{fontWeight:700,fontSize:15,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{p.nome}</p>
+              {p.multiplo && <span className="badge badge-info" style={{fontSize:9}}>múltiplo</span>}
+            </div>
+            {p.descricao && <p style={{fontSize:12,color:'var(--muted)',marginTop:2}}>{p.descricao}</p>}
           </div>
-        )}
+          {canEdit && (
+            <div style={{display:'flex',gap:8,flexShrink:0}}>
+              <button onClick={()=>abrirEdicao(p)} aria-label="Editar" style={{width:34,height:34,borderRadius:8,background:'var(--bg)',border:'none',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',color:'var(--muted)',fontFamily:'inherit'}}><MatIcon name="edit" size={18}/></button>
+              <button onClick={()=>excluir(p.id)} aria-label="Excluir" style={{width:34,height:34,borderRadius:8,background:'var(--danger-bg)',border:'none',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',fontFamily:'inherit'}}><MatIcon name="delete" size={18} color="var(--danger)"/></button>
+            </div>
+          )}
+        </div>
       </div>
     )
   }
