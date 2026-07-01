@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase'
 import SubTabs from '../components/SubTabs'
 import { getInitials, isAdmin } from '../utils'
 import UploadFoto from '../components/UploadFoto'
-import EmojiPicker from '../components/EmojiPicker'
+import { EMOJIS_AXIS } from '../components/AvatarPicker'
 import type { Profile } from '../App'
 
 type Personagem = { id:string; nome:string; descricao:string|null; icone:string|null; multiplo:boolean }
@@ -74,8 +74,9 @@ export default function TeatroPersonagens({ profile }: { profile?: Profile }) {
 
   function renderIcone(p: Personagem) {
     if (p.icone?.startsWith('http')) return <img src={p.icone} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}}/>
-    if (p.icone) return <MatIcon name={p.icone} size={20} color="#6B46C1"/>
-    return <MatIcon name="person" size={20} color="#6B46C1"/>
+    // emoji colorido; nome de ícone antigo (ex: "person") vira o emoji padrão
+    if (p.icone && !/^[a-z0-9_]+$/.test(p.icone)) return <span style={{fontSize:22,lineHeight:1}}>{p.icone}</span>
+    return <span style={{fontSize:22,lineHeight:1}}>🎭</span>
   }
 
   function PersonCard({ p }: { p: Personagem }) {
@@ -170,7 +171,15 @@ export default function TeatroPersonagens({ profile }: { profile?: Profile }) {
                 <button type="button" className={`tab ${abaMedia==='foto'?'active':''}`} onClick={()=>setAbaMedia('foto')}>Foto</button>
               </div>
               {abaMedia==='emoji'
-                ? <EmojiPicker value={form.icone} onChange={v=>setForm(f=>({...f,icone:v}))} label="Escolher ícone"/>
+                ? <div className="form-group">
+                    <label className="form-label">Escolher emoji</label>
+                    <div style={{display:'flex',gap:6,flexWrap:'wrap',maxHeight:160,overflowY:'auto',padding:2}}>
+                      {EMOJIS_AXIS.map(em=>(
+                        <button key={em} type="button" onClick={()=>{setForm(f=>({...f,icone:em}));setFotoUrl('')}}
+                          style={{width:38,height:38,borderRadius:9,fontSize:19,cursor:'pointer',fontFamily:'inherit',border:form.icone===em?'2px solid var(--primary)':'1px solid transparent',background:form.icone===em?'var(--primary-light)':'var(--bg)'}}>{em}</button>
+                      ))}
+                    </div>
+                  </div>
                 : <div style={{display:'flex',justifyContent:'center',marginBottom:14}}><UploadFoto bucket="personagens" path={`personagem-${Date.now()}`} currentUrl={fotoUrl} onUpload={url=>{setFotoUrl(url);setForm(f=>({...f,icone:''}))}} label="Enviar foto" size={90} shape="square"/></div>
               }
               <button type="submit" className="btn btn-primary btn-full" disabled={salvando}>
