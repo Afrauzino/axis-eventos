@@ -327,7 +327,8 @@ export default function Correio({ profile }: { profile?: Profile }) {
       {/* ===== MODAL DETALHE DO AFILIADO ===== */}
       {afiliadoAberto && (
         <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.5)',zIndex:300,display:'flex',flexDirection:'column',justifyContent:'flex-end'}} onClick={e=>e.target===e.currentTarget&&setAfiliadoAberto(null)}>
-          <div style={{background:'white',borderRadius:'20px 20px 0 0',padding:'20px',maxHeight:'92vh',overflowY:'auto'}}>
+          <div style={{background:'white',borderRadius:'20px 20px 0 0',padding:'8px 20px 24px',maxHeight:'92vh',overflowY:'auto'}}>
+            <div style={{width:36,height:4,background:'var(--border)',borderRadius:2,margin:'12px auto 16px'}}/>
             <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:16}}>
               <Avatar p={afiliadoAberto} size={52}/>
               <div style={{flex:1}}>
@@ -390,7 +391,8 @@ export default function Correio({ profile }: { profile?: Profile }) {
       {/* ===== MODAL DEFINIR PADRINHOS ===== */}
       {modalPadrinho && (
         <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.5)',zIndex:300,display:'flex',flexDirection:'column',justifyContent:'flex-end'}} onClick={e=>e.target===e.currentTarget&&setModalPadrinho(null)}>
-          <div style={{background:'white',borderRadius:'20px 20px 0 0',padding:'20px',maxHeight:'92vh',overflowY:'auto'}}>
+          <div style={{background:'white',borderRadius:'20px 20px 0 0',padding:'8px 20px 24px',maxHeight:'92vh',overflowY:'auto'}}>
+            <div style={{width:36,height:4,background:'var(--border)',borderRadius:2,margin:'12px auto 16px'}}/>
             <p style={{fontWeight:800,fontSize:16,marginBottom:4}}>Padrinhos de {formatName(modalPadrinho.name)}</p>
             <p style={{fontSize:12,color:'var(--muted)',marginBottom:10}}>Selecione quem acompanha este encontrista (pode marcar vários).</p>
             {(() => {

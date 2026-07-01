@@ -155,7 +155,8 @@ export default function Cozinha({ profile }: { profile?: Profile }) {
       {/* Modal cardápio */}
       {modalCard && (
         <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.5)',zIndex:400,display:'flex',alignItems:'flex-end',justifyContent:'center'}} onClick={e=>e.target===e.currentTarget&&setModalCard(false)}>
-          <div style={{background:'white',borderRadius:'20px 20px 0 0',padding:'22px',width:'100%',maxWidth:480,maxHeight:'88vh',overflowY:'auto'}}>
+          <div style={{background:'white',borderRadius:'20px 20px 0 0',padding:'8px 22px 22px',width:'100%',maxWidth:480,maxHeight:'88vh',overflowY:'auto'}}>
+            <div style={{width:36,height:4,background:'var(--border)',borderRadius:2,margin:'12px auto 16px'}}/>
             <p style={{fontSize:17,fontWeight:800,marginBottom:14}}>{editCard?'Editar cardápio':'Novo cardápio'}</p>
             <label className="form-label">Tipo de refeição</label>
             <select className="form-input" value={formCard.refeicao_tipo_id} onChange={e=>setFormCard(f=>({...f,refeicao_tipo_id:e.target.value}))} style={{marginBottom:12}}>
