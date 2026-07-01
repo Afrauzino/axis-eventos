@@ -20,6 +20,7 @@ import Cozinha from './pages/Cozinha'
 import CriticoWatcher from './components/CriticoWatcher'
 import Ministracoes from './pages/Ministracoes'
 import Logistica from './pages/Logistica'
+import Midia from './pages/Midia'
 import TeatroLista from './pages/TeatroLista'
 import TeatroDetalhe from './pages/TeatroDetalhe'
 import TeatroAtores from './pages/TeatroAtores'
@@ -64,6 +65,7 @@ function AppRoutes({ profile, onProfileUpdate }: { profile: Profile; onProfileUp
       <Route path="/equipes"               element={<Equipes profile={profile} />} />
       <Route path="/correio"               element={<Correio profile={profile} />} />
       <Route path="/logistica"             element={<Logistica profile={profile} />} />
+      <Route path="/midia"                 element={<Midia profile={profile} />} />
       <Route path="/admin/saude-sistema"   element={<SaudeSistema profile={profile} />} />
       <Route path="/alertas-lideres"       element={<AlertasLideres profile={profile} />} />
       <Route path="/cozinha"               element={<Cozinha profile={profile} />} />
@@ -116,6 +118,7 @@ const TITULOS_ROTA: Record<string,string> = {
   '/admin': 'Administração',
   '/correio': 'Correio',
   '/logistica': 'Logística',
+  '/midia': 'Mídia',
   '/admin/saude-sistema': 'Saúde do Sistema',
   '/alertas-lideres': 'Alertas',
   '/cozinha': 'Cardápio',

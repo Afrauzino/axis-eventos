@@ -291,24 +291,6 @@ export default function TeatroDetalhe({ profile }: { profile?: Profile }) {
         </button>
       )}
 
-      {/* Barra de progresso do teatro — cenas com elenco/personagem definido */}
-      {cenas.length > 0 && (() => {
-        const cenasProntas = cenas.filter(c => c.personagem_id || c.person_id).length
-        const pct = Math.round((cenasProntas / cenas.length) * 100)
-        return (
-          <div style={{background:'white',borderRadius:14,padding:'14px 16px',marginBottom:14,boxShadow:'var(--shadow-sm)'}}>
-            <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:8}}>
-              <p style={{fontSize:13,fontWeight:700}}>Montagem do teatro</p>
-              <p style={{fontSize:14,fontWeight:800,color:pct===100?'var(--success)':(cor||'var(--primary)')}}>{pct}%</p>
-            </div>
-            <div style={{height:10,background:'var(--bg)',borderRadius:99,overflow:'hidden',marginBottom:6}}>
-              <div style={{height:'100%',width:`${pct}%`,background:pct===100?'var(--success)':(cor||'var(--primary)'),borderRadius:99,transition:'width 0.5s ease'}}/>
-            </div>
-            <p style={{fontSize:11,color:'var(--muted)'}}>{cenasProntas} de {cenas.length} cenas com elenco definido</p>
-          </div>
-        )
-      })()}
-
       <div className="tabs mb-4">
         <button className={`tab ${aba==='cenas'?'active':''}`} onClick={()=>setAba('cenas')}>Cenas ({cenas.length})</button>
         <button className={`tab ${aba==='elenco'?'active':''}`} onClick={()=>setAba('elenco')}>Elenco ({elenco.length})</button>
