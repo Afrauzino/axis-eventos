@@ -12,7 +12,7 @@ type Ministracao = { id:string; titulo:string }
 
 const CORES = ['#E8821A','#6B46C1','#2F855A','#C53030','#2B6CB0','#D53F8C','#00A99D','#1A202C','#D69E2E','#C05621']
 const STATUS_LABEL: Record<string,string> = { planejamento:'Planejamento', ensaio:'Ensaio', pronto:'Pronto', concluido:'Concluido' }
-const STATUS_BADGE: Record<string,string> = { planejamento:'badge-neutral', ensaio:'badge-info', pronto:'badge-success', concluido:'badge-neutral' }
+const STATUS_BADGE: Record<string,string> = { planejamento:'badge-neutral', ensaio:'badge-info', pronto:'badge-success', concluido:'badge-success' }
 
 export default function TeatroLista({ profile }: { profile?: Profile }) {
   const navigate = useNavigate()

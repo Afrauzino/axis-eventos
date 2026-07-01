@@ -31,6 +31,14 @@ export default function Cadastros({ profile }: { profile: Profile }) {
   const [filtroRole, setFiltroRole] = useState('todos')
   const [form, setForm]       = useState({ name:'', phone:'', church:'', role_type:'encounterer' })
   const [editando, setEditando] = useState<Pessoa|null>(null)
+  const [copiadoId, setCopiadoId] = useState<string|null>(null)
+
+  async function copiarCodigo(p: Pessoa) {
+    if (!p.invite_code) return
+    try { await navigator.clipboard.writeText(p.invite_code) } catch {}
+    setCopiadoId(p.id)
+    setTimeout(() => setCopiadoId(c => c===p.id ? null : c), 1500)
+  }
 
   const canEdit = isAdmin(profile.user_role) || canEditPessoas(profile.user_role)
 
@@ -85,16 +93,10 @@ export default function Cadastros({ profile }: { profile: Profile }) {
   async function compartilharCodigo(p: Pessoa) {
     if (!p.invite_code) return
     const msg = `Olá ${p.name.split(' ')[0]}! Seu código de acesso para o Encontro com Deus é: ${p.invite_code}\n\nAbra o app, toque em "Primeiro acesso" e digite o código para criar sua conta.`
-    if (navigator.share) {
-      try {
-        await navigator.share({ title: 'Código de acesso', text: msg })
-      } catch (err) {
-        // usuário cancelou o compartilhamento — silencioso
-      }
-    } else {
-      // Fallback: WhatsApp Web/App direto
-      window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank')
-    }
+    // copia o código também (garante que a pessoa consiga colar)
+    try { await navigator.clipboard.writeText(p.invite_code) } catch {}
+    // abre o WhatsApp direto com a mensagem (mais confiável que navigator.share no PC)
+    window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank')
   }
 
   async function excluirPessoa(p: Pessoa) {
@@ -124,13 +126,6 @@ export default function Cadastros({ profile }: { profile: Profile }) {
 
   return (
     <div className="page">
-      {/* Stats */}
-      <div style={{display:'flex',gap:8,marginBottom:12,fontSize:13,color:'var(--muted)'}}>
-        <span style={{fontWeight:600,color:'var(--text)'}}>{lista.length}</span> total ·
-        <span style={{fontWeight:600,color:'#6B46C1'}}>{lista.filter(p=>p.role_type==='encounterer').length}</span> encontristas ·
-        <span style={{fontWeight:600,color:'var(--primary)'}}>{lista.filter(p=>p.role_type==='worker').length}</span> encontreiros
-      </div>
-
       {/* Busca */}
       <div className="search-bar mb-3">
         <span className="icon icon-sm" style={{color:'var(--muted-light)'}}>search</span>
@@ -176,10 +171,13 @@ export default function Cadastros({ profile }: { profile: Profile }) {
                   ? <span className="badge badge-success" style={{fontSize:9}}>✓ Conta criada</span>
                   : p.invite_code
                     ? <>
-                        <span style={{fontFamily:'monospace',fontSize:11,fontWeight:800,letterSpacing:'0.08em',color:'var(--primary)',background:'var(--primary-light)',padding:'1px 6px',borderRadius:6}}>{p.invite_code}</span>
+                        <button onClick={()=>copiarCodigo(p)} title="Toque para copiar"
+                          style={{fontFamily:'monospace',fontSize:11,fontWeight:800,letterSpacing:'0.08em',color:copiadoId===p.id?'var(--success)':'var(--primary)',background:copiadoId===p.id?'var(--success-bg)':'var(--primary-light)',padding:'2px 8px',borderRadius:6,border:'none',cursor:'pointer'}}>
+                          {copiadoId===p.id ? '✓ Copiado!' : p.invite_code}
+                        </button>
                         <button onClick={()=>compartilharCodigo(p)}
                           style={{background:'#25D366',border:'none',borderRadius:6,padding:'2px 8px',cursor:'pointer',fontFamily:'inherit',display:'inline-flex',alignItems:'center',gap:3,color:'white',fontSize:10,fontWeight:700}}
-                          title="Compartilhar código">
+                          title="Enviar por WhatsApp (também copia o código)">
                           <span className="icon" style={{fontSize:12,color:'white'}}>share</span>
                           Enviar
                         </button>
