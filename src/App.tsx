@@ -153,8 +153,11 @@ export default function App() {
         // Fallback da foto: se profiles.avatar_url estiver vazio, usa a foto do cadastro (people.photo_url)
         let avatar = data.avatar_url
         if (!avatar) {
-          const { data: pessoa } = await supabase.from('people').select('photo_url').eq('user_id', userId).maybeSingle()
-          if (pessoa?.photo_url) avatar = pessoa.photo_url
+          // A pessoa pode ter vários registros em people (um por evento) — maybeSingle() falharia.
+          // Pegamos o primeiro registro que tenha foto.
+          const { data: pessoas } = await supabase.from('people')
+            .select('photo_url').eq('user_id', userId).not('photo_url','is',null).limit(1)
+          if (pessoas && pessoas[0]?.photo_url) avatar = pessoas[0].photo_url
         }
         setProfile({ ...data, full_name: data.name ?? data.full_name ?? null, avatar_url: avatar })
       }

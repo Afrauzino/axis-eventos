@@ -25,8 +25,19 @@ export default function TeatroLista({ profile }: { profile?: Profile }) {
   const [busca, setBusca]       = useState('')
   const [ministracoes, setMinistracoes] = useState<Ministracao[]>([])
   const [form, setForm] = useState({ nome:'', descricao:'', data_hora:'', local:'', cor:'#E8821A', ministracao_id:'' })
+  const [arqPend, setArqPend] = useState<File[]>([]) // arquivos escolhidos ao criar/editar
 
   const canEdit = profile && isAdmin(profile.user_role)
+
+  // Envia um arquivo para o storage e registra em arquivos_modulo
+  async function uploadArquivo(modulo:string, refId:string, file:File) {
+    const ext = file.name.split('.').pop()
+    const path = `${modulo}/${refId}/${Date.now()}_${Math.random().toString(36).slice(2,6)}.${ext}`
+    const { error } = await supabase.storage.from('arquivos').upload(path, file, { upsert:true })
+    if (error) return
+    const { data:u } = supabase.storage.from('arquivos').getPublicUrl(path)
+    await supabase.from('arquivos_modulo').insert({ event_id: evento!.id, modulo, referencia_id: refId, nome:file.name, url:u.publicUrl, tipo:file.type, tamanho:file.size })
+  }
 
   useEffect(() => { if (evLoading) return; if (!evento) { setLoading(false); return }; carregar() }, [evento, evLoading])
 
@@ -44,8 +55,8 @@ export default function TeatroLista({ profile }: { profile?: Profile }) {
 
   function abrirNovo() {
     setEditando(null)
-    setForm({ nome:'', descricao:'', data_hora:'', local:'', cor:'#E8821A' })
-    setErro(''); setModal(true)
+    setForm({ nome:'', descricao:'', data_hora:'', local:'', cor:'#E8821A', ministracao_id:'' })
+    setArqPend([]); setErro(''); setModal(true)
   }
 
   async function mudarStatusTeatro(id: string, statusAtual: string) {
@@ -59,7 +70,7 @@ export default function TeatroLista({ profile }: { profile?: Profile }) {
   function abrirEdicao(t: Teatro) {
     setEditando(t)
     setForm({ nome:t.nome, descricao:t.descricao??'', data_hora:t.data_hora?new Date(t.data_hora).toISOString().slice(0,16):'', local:t.local??'', cor:t.cor??'#E8821A', ministracao_id:(t as any).ministracao_id??'' })
-    setErro(''); setModal(true)
+    setArqPend([]); setErro(''); setModal(true)
   }
 
   async function salvar(e: React.FormEvent) {
@@ -71,10 +82,12 @@ export default function TeatroLista({ profile }: { profile?: Profile }) {
       local: form.local||null, cor: form.cor,
     }
     let err
+    let teatroId = editando?.id
     if (editando) { const r=await supabase.from('theaters').update(payload).eq('id',editando.id); err=r.error }
-    else { const r=await supabase.from('theaters').insert({...payload,event_id:evento.id,status:'planejamento'}); err=r.error }
+    else { const r=await supabase.from('theaters').insert({...payload,event_id:evento.id,status:'planejamento'}).select('id').single(); err=r.error; teatroId=r.data?.id }
     if (err) { setErro('Erro: '+err.message); setSalvando(false); return }
-    setModal(false); setSalvando(false); setEditando(null); carregar()
+    if (teatroId && arqPend.length) { for (const f of arqPend) await uploadArquivo('teatro', teatroId, f) }
+    setModal(false); setSalvando(false); setEditando(null); setArqPend([]); carregar()
   }
 
   async function excluir(id: string) {
@@ -186,6 +199,27 @@ export default function TeatroLista({ profile }: { profile?: Profile }) {
                   <option value="">Nenhuma</option>
                   {ministracoes.map(m=><option key={m.id} value={m.id}>{m.titulo}</option>)}
                 </select>
+              </div>
+
+              {/* Arquivos (roteiro, trilha, etc.) */}
+              <div className="form-group">
+                <label className="form-label">Arquivos (opcional)</label>
+                <label className="btn btn-ghost btn-full" style={{cursor:'pointer',border:'1px dashed var(--primary)',color:'var(--primary)'}}>
+                  <span className="icon icon-sm">upload_file</span> Escolher arquivo(s)
+                  <input type="file" multiple style={{display:'none'}} onChange={e=>{const fs=Array.from(e.target.files??[]); if(fs.length) setArqPend(prev=>[...prev,...fs]); e.target.value=''}}/>
+                </label>
+                {arqPend.length>0 && (
+                  <div style={{marginTop:8}}>
+                    {arqPend.map((f,i)=>(
+                      <div key={i} style={{display:'flex',alignItems:'center',gap:8,fontSize:12,padding:'6px 10px',background:'var(--bg)',borderRadius:8,marginBottom:4}}>
+                        <span className="icon icon-sm" style={{color:'var(--primary)'}}>description</span>
+                        <span style={{flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{f.name}</span>
+                        <button type="button" onClick={()=>setArqPend(prev=>prev.filter((_,j)=>j!==i))} style={{background:'none',border:'none',cursor:'pointer',color:'var(--danger)',fontFamily:'inherit'}}><span className="icon icon-sm">close</span></button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {editando && <p className="form-hint mt-1">Mais arquivos aparecem também dentro do teatro, na aba Arquivos.</p>}
               </div>
 
               {editando && (

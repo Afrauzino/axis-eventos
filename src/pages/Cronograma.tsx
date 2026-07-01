@@ -294,7 +294,7 @@ export default function Cronograma({ profile }: { profile?: Profile }) {
                 <div className="sched-bar" style={{background: tiposDB.find(t=>t.nome.toLowerCase()===item.tipo.toLowerCase())?.cor ?? TIPO_COR_FALLBACK[item.tipo] ?? 'var(--primary)'}} />
                 <div className="sched-body">
                   <div className="sched-time">{fmtHora(item.hora_inicio)} — {fmtHora(item.hora_fim)}</div>
-                  <div className="sched-title" style={item.status==='concluido'?{textDecoration:'line-through',opacity:0.6}:undefined}>{item.titulo}{item.status==='concluido' && <span style={{marginLeft:6,fontSize:11,color:'var(--success)'}}>✓ concluído</span>}</div>
+                  <div className="sched-title" style={item.status==='concluido'?{textDecoration:'line-through',opacity:0.6}:undefined}>{min?.titulo ?? item.titulo}{item.status==='concluido' && <span style={{marginLeft:6,fontSize:11,color:'var(--success)'}}>✓ concluído</span>}</div>
                   <div className="sched-desc">
                     {tiposDB.find(t=>t.nome.toLowerCase()===item.tipo.toLowerCase())?.nome ?? item.tipo}
                     {item.local ? ` · ${item.local}` : ''}
@@ -457,10 +457,11 @@ export default function Cronograma({ profile }: { profile?: Profile }) {
 
               <div style={{height:1,background:'var(--border)',margin:'4px 0 16px'}}/>
 
-              {/* 3. Título — automático para ministração/refeição */}
+              {/* 3. Título — para ministração/refeição vem preenchido, mas pode editar tudo */}
               <div className="form-group">
                 <label className="form-label">Título <span className="req">*</span></label>
-                <input className="form-input" value={form.titulo} onChange={e=>setForm(f=>({...f,titulo:e.target.value}))} required readOnly={ehTipoChave('ministracao')||ehTipoChave('refeicao')} style={(ehTipoChave('ministracao')||ehTipoChave('refeicao'))?{background:'var(--bg)',color:'var(--muted)'}:undefined} />
+                <input className="form-input" value={form.titulo} onChange={e=>setForm(f=>({...f,titulo:e.target.value}))} required />
+                {(ehTipoChave('ministracao')||ehTipoChave('refeicao')) && <p className="form-hint mt-1">Preenchido automaticamente ao vincular, mas você pode editar.</p>}
               </div>
 
               <div className="form-grid-2">

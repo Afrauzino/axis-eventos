@@ -31,6 +31,13 @@ type Evento  = { id:string; name:string; status:string; location:string|null; va
 const ROLES = ['visitante','aprovado','encontreiro','lider','financeiro','secretaria','coordenador','pastor','admin']
 const ROLE_LABEL: Record<string,string> = { visitante:'Visitante', aprovado:'Aprovado', encontreiro:'Encontreiro', lider:'Líder', financeiro:'Financeiro', secretaria:'Secretaria', coordenador:'Coordenador', pastor:'Pastor', admin:'Admin' }
 
+// Cargos oferecidos na aprovação/definição de acesso (o resto do controle é por permissões de equipe/individuais)
+const CARGOS_APROVACAO = [
+  { role:'visitante',   label:'Visitante' },
+  { role:'encontreiro', label:'Encontreiro' },
+  { role:'admin',       label:'Administrador' },
+]
+
 const TIPOS_PADRÃO = [
   {nome:'Ministração', cor:'#6B46C1', ordem:1},
   {nome:'Teatro',      cor:'#E8821A', ordem:2},
@@ -795,7 +802,7 @@ export default function Admin({ profile }: { profile?: Profile }) {
                         onChange={e=>{e.stopPropagation();alterarRole(p.user_id!,e.target.value)}}
                         style={{fontSize:11,padding:'2px 6px',borderRadius:6,border:`1px solid ${p.role_status==='pending'?'var(--warning)':'var(--border)'}`,background:p.role_status==='pending'?'var(--warning-bg)':'var(--bg)',cursor:'pointer',fontFamily:'inherit',maxWidth:130,fontWeight:p.role_status==='pending'?700:400}}
                       >
-                        {cargos.map(cg=><option key={cg.role} value={cg.role}>{cg.label}</option>)}
+                        {CARGOS_APROVACAO.map(cg=><option key={cg.role} value={cg.role}>{cg.label}</option>)}
                       </select>
                     </>
                   ) : p.invite_code ? (
@@ -934,7 +941,7 @@ export default function Admin({ profile }: { profile?: Profile }) {
                       value={pessoaDetalhe.user_role??'visitante'}
                       onChange={e=>{alterarRole(pessoaDetalhe.user_id!,e.target.value);setPessoaDetalhe(prev=>prev?{...prev,user_role:e.target.value,role_status:e.target.value==='visitante'?'pending':'approved'}:null)}}
                     >
-                      {cargos.map(cg=><option key={cg.role} value={cg.role}>{cg.label}</option>)}
+                      {CARGOS_APROVACAO.map(cg=><option key={cg.role} value={cg.role}>{cg.label}</option>)}
                     </select>
                   </div>
                   {pessoaDetalhe.role_status==='pending' && (

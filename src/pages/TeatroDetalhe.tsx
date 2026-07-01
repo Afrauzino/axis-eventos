@@ -57,8 +57,19 @@ export default function TeatroDetalhe({ profile }: { profile?: Profile }) {
   const [cenaPersonagens, setCenaPersonagens] = useState<CenaPersonagem[]>([])
   // Objetos da cena: lista de objeto_ids
   const [cenaObjetos, setCenaObjetos] = useState<string[]>([])
+  const [cenaArq, setCenaArq] = useState<File[]>([]) // arquivos da cena
 
   const canEdit = profile && isAdmin(profile.user_role)
+
+  // Envia um arquivo para o storage e registra em arquivos_modulo
+  async function uploadArquivoCena(refId:string, file:File) {
+    const ext = file.name.split('.').pop()
+    const path = `teatro_cena/${refId}/${Date.now()}_${Math.random().toString(36).slice(2,6)}.${ext}`
+    const { error } = await supabase.storage.from('arquivos').upload(path, file, { upsert:true })
+    if (error) return
+    const { data:u } = supabase.storage.from('arquivos').getPublicUrl(path)
+    await supabase.from('arquivos_modulo').insert({ event_id: eventId, modulo:'teatro_cena', referencia_id: refId, nome:file.name, url:u.publicUrl, tipo:file.type, tamanho:file.size })
+  }
 
   useEffect(() => { if (id) carregar() }, [id])
 
@@ -106,6 +117,7 @@ export default function TeatroDetalhe({ profile }: { profile?: Profile }) {
     setFormCena({ titulo:'', deixa:'', acao:'', fala:'', trilha_sonora:'' })
     setCenaPersonagens([])
     setCenaObjetos([])
+    setCenaArq([])
     setModalCena(true)
   }
 
@@ -115,6 +127,7 @@ export default function TeatroDetalhe({ profile }: { profile?: Profile }) {
     // Load existing personagens/objetos from elenco for this cena
     setCenaPersonagens(c.personagem_id ? [{ personagem_id:c.personagem_id, person_ids: c.person_id ? [c.person_id] : [] }] : [])
     setCenaObjetos(c.objeto_id ? [c.objeto_id] : [])
+    setCenaArq([])
     setModalCena(true)
   }
 
@@ -159,7 +172,10 @@ export default function TeatroDetalhe({ profile }: { profile?: Profile }) {
       }
     }
 
-    setModalCena(false); setSalvandoCena(false); setEditandoCena(null); carregar()
+    // Arquivos da cena
+    if (cenaId && cenaArq.length) { for (const f of cenaArq) await uploadArquivoCena(cenaId, f) }
+
+    setModalCena(false); setSalvandoCena(false); setEditandoCena(null); setCenaArq([]); carregar()
   }
 
   async function excluirCena(cenaId: string) {
@@ -584,6 +600,22 @@ export default function TeatroDetalhe({ profile }: { profile?: Profile }) {
                   })}
                 </div>
               )}
+
+              {/* Arquivos da cena */}
+              <div style={{marginTop:4,marginBottom:12}}>
+                <label className="form-label" style={{marginBottom:6}}>Arquivos da cena (opcional)</label>
+                <label className="btn btn-ghost btn-full" style={{cursor:'pointer',border:'1px dashed var(--accent)',color:'var(--accent)'}}>
+                  <MatIcon name="upload_file" size={16} color="var(--accent)"/> Escolher arquivo(s)
+                  <input type="file" multiple style={{display:'none'}} onChange={e=>{const fs=Array.from(e.target.files??[]); if(fs.length) setCenaArq(prev=>[...prev,...fs]); e.target.value=''}}/>
+                </label>
+                {cenaArq.map((f,i)=>(
+                  <div key={i} style={{display:'flex',alignItems:'center',gap:8,fontSize:12,padding:'6px 10px',background:'var(--bg)',borderRadius:8,marginTop:6}}>
+                    <MatIcon name="description" size={16} color="var(--accent)"/>
+                    <span style={{flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{f.name}</span>
+                    <button type="button" onClick={()=>setCenaArq(prev=>prev.filter((_,j)=>j!==i))} style={{background:'none',border:'none',cursor:'pointer',color:'var(--danger)',fontFamily:'inherit'}}><MatIcon name="close" size={16} color="var(--danger)"/></button>
+                  </div>
+                ))}
+              </div>
 
               <button type="submit" className="btn btn-primary btn-full" disabled={salvandoCena}>
                 {salvandoCena?'Salvando...':editandoCena?'Salvar cena':'Adicionar cena'}
