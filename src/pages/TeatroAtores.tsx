@@ -77,16 +77,22 @@ export default function TeatroAtores({ profile }: { profile?: Profile }) {
         const t = getTeatro(e.theater_id)
         const pg = getPersonagem(e.personagem_id)
         return (
-          <div key={e.id} className="list-card" style={{cursor:canEdit?'pointer':'default'}} onClick={()=>canEdit&&remover(e.id)}>
-            <div className="list-card-bar" style={{background:'var(--accent)'}}/>
-            <div className="list-card-media">
-              {p?.photo_url?<img src={p.photo_url} alt=""/>:<span style={{fontSize:18,fontWeight:700,color:'var(--primary)'}}>{getInitials(p?.name??'?')}</span>}
+          <div key={e.id} style={{background:'white',borderRadius:12,boxShadow:'0 1px 5px rgba(0,0,0,0.12)',marginBottom:10,overflow:'hidden',display:'flex'}}>
+            <div style={{width:6,alignSelf:'stretch',background:'var(--primary)',flexShrink:0}}/>
+            <div style={{flex:1,minWidth:0,display:'flex',alignItems:'center',gap:14,padding:'16px 15px'}}>
+              <div style={{width:58,height:58,borderRadius:'50%',background:'var(--primary-light)',display:'flex',alignItems:'center',justifyContent:'center',overflow:'hidden',flexShrink:0}}>
+                {p?.photo_url?<img src={p.photo_url} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}}/>:<span style={{fontSize:20,fontWeight:700,color:'var(--primary)'}}>{getInitials(p?.name??'?')}</span>}
+              </div>
+              <div style={{flex:1,minWidth:0}}>
+                <p style={{fontWeight:700,fontSize:15,marginBottom:2,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{p?.name}</p>
+                <p style={{fontSize:12,color:'var(--muted)',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{t?.nome}{pg?` · ${pg.nome}`:''}{e.observacoes?` · ${e.observacoes}`:''}</p>
+              </div>
+              {canEdit && (
+                <button onClick={()=>remover(e.id)} aria-label="Remover" title="Remover ator" style={{width:34,height:34,borderRadius:8,background:'var(--danger-bg)',border:'none',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,fontFamily:'inherit'}}>
+                  <span className="icon icon-sm" style={{color:'var(--danger)'}}>delete</span>
+                </button>
+              )}
             </div>
-            <div className="list-card-body">
-              <div className="list-card-title">{p?.name}</div>
-              <div className="list-card-desc">{t?.nome}{pg?` · ${pg.nome}`:''}{e.observacoes?` · ${e.observacoes}`:''}</div>
-            </div>
-            {canEdit && <div className="list-card-chevron"><span className="icon icon-sm" style={{color:'var(--danger)'}}>remove_circle</span></div>}
           </div>
         )
       })}
