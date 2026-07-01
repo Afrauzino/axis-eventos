@@ -349,19 +349,22 @@ export default function TeatroDetalhe({ profile }: { profile?: Profile }) {
             const pg = getPersonagem(el.personagem_id)
             if (!p) return null
             return (
-              <div key={el.id} style={{background:'white',borderRadius:12,boxShadow:'0 1px 5px rgba(0,0,0,0.12)',marginBottom:8,display:'flex',alignItems:'center',gap:12,padding:'12px 14px'}}>
-                <div style={{width:44,height:44,borderRadius:'50%',background:'var(--primary-light)',display:'flex',alignItems:'center',justifyContent:'center',overflow:'hidden',flexShrink:0}}>
-                  {p.photo_url?<img src={p.photo_url} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}}/>:<span style={{fontSize:14,fontWeight:700,color:'var(--primary)'}}>{getInitials(p.name)}</span>}
+              <div key={el.id} style={{background:'white',borderRadius:12,boxShadow:'0 1px 5px rgba(0,0,0,0.12)',marginBottom:10,overflow:'hidden',display:'flex'}}>
+                <div style={{width:6,alignSelf:'stretch',background:cor,flexShrink:0}}/>
+                <div style={{flex:1,minWidth:0,display:'flex',alignItems:'center',gap:14,padding:'16px 15px'}}>
+                  <div style={{width:58,height:58,borderRadius:'50%',background:'var(--primary-light)',display:'flex',alignItems:'center',justifyContent:'center',overflow:'hidden',flexShrink:0}}>
+                    {p.photo_url?<img src={p.photo_url} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}}/>:<span style={{fontSize:20,fontWeight:700,color:'var(--primary)'}}>{getInitials(p.name)}</span>}
+                  </div>
+                  <div style={{flex:1,minWidth:0}}>
+                    <p style={{fontWeight:700,fontSize:15,marginBottom:2,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{p.name}</p>
+                    {pg && <p style={{fontSize:12,color:cor,fontWeight:600}}>{pg.nome}</p>}
+                  </div>
+                  {canEdit && (
+                    <button onClick={()=>removerDoElenco(el.id)} aria-label="Remover" title="Remover do elenco" style={{width:34,height:34,borderRadius:8,background:'var(--danger-bg)',border:'none',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,fontFamily:'inherit'}}>
+                      <MatIcon name="delete" size={18} color="var(--danger)"/>
+                    </button>
+                  )}
                 </div>
-                <div style={{flex:1,minWidth:0}}>
-                  <p style={{fontWeight:700,fontSize:14,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{p.name}</p>
-                  {pg && <p style={{fontSize:12,color:cor,fontWeight:600}}>{pg.nome}</p>}
-                </div>
-                {canEdit && (
-                  <button onClick={()=>removerDoElenco(el.id)} style={{background:'var(--danger-bg)',color:'var(--danger)',border:'none',borderRadius:8,padding:'6px 12px',cursor:'pointer',fontSize:12,fontWeight:600,fontFamily:'inherit',flexShrink:0}}>
-                    Remover
-                  </button>
-                )}
               </div>
             )
           })}
