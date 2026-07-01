@@ -116,32 +116,24 @@ export default function TeatroLista({ profile }: { profile?: Profile }) {
       ) : filtrados.map(t => {
         const cor = t.cor ?? 'var(--accent)'
         return (
-          <div key={t.id} style={{background:'white',borderRadius:14,boxShadow:'var(--shadow-sm)',marginBottom:8,overflow:'hidden'}}>
-            <button style={{width:'100%',display:'flex',alignItems:'center',gap:0,background:'none',border:'none',cursor:'pointer',fontFamily:'inherit',textAlign:'left',padding:0}} onClick={()=>navigate('/teatro/'+t.id)}>
-              <div style={{width:4,background:cor,alignSelf:'stretch',flexShrink:0}}/>
-              <div style={{width:52,height:52,borderRadius:12,background:cor+'22',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,margin:'13px 12px',fontSize:28,lineHeight:1}}>
-                🎭
-              </div>
-              <div style={{flex:1,minWidth:0,padding:'13px 0'}}>
+          <div key={t.id} style={{background:'white',borderRadius:14,boxShadow:'var(--shadow-sm)',marginBottom:8,overflow:'hidden',display:'flex',alignItems:'center'}}>
+            <div style={{width:4,alignSelf:'stretch',background:cor,flexShrink:0}}/>
+            <button style={{flex:1,minWidth:0,display:'flex',alignItems:'center',gap:12,background:'none',border:'none',cursor:'pointer',fontFamily:'inherit',textAlign:'left',padding:'12px 0 12px 12px'}} onClick={()=>navigate('/teatro/'+t.id)}>
+              <div style={{width:46,height:46,borderRadius:12,background:cor+'22',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,fontSize:26,lineHeight:1}}>🎭</div>
+              <div style={{flex:1,minWidth:0}}>
                 {t.data_hora && <p style={{fontSize:12,fontWeight:700,color:cor,marginBottom:2}}>{fmtHora(t.data_hora)}</p>}
-                <p style={{fontWeight:700,fontSize:15,marginBottom:2}}>{t.nome}</p>
-                <p style={{fontSize:12,color:'var(--muted)'}}>{t.local ?? 'Local nao definido'}</p>
+                <p style={{fontWeight:700,fontSize:15,marginBottom:2,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{t.nome}</p>
+                <p style={{fontSize:12,color:'var(--muted)'}}>{t.local ?? 'Local não definido'}</p>
               </div>
-              <button
-                onClick={e=>{e.stopPropagation();mudarStatusTeatro(t.id,t.status)}}
-                className={`badge ${STATUS_BADGE[t.status]??'badge-neutral'}`}
-                style={{flexShrink:0,fontSize:10,marginRight:4,border:'none',cursor:'pointer',fontFamily:'inherit'}}
-                title="Clique para avançar status"
-              >{STATUS_LABEL[t.status]??t.status}</button>
-              <span className="icon icon-sm" style={{color:'var(--muted-light)',marginRight:12}}>chevron_right</span>
             </button>
-            {canEdit && (
-              <div style={{borderTop:'1px solid var(--border)',padding:'8px 14px',display:'flex',gap:6}}>
-                <button className="btn btn-ghost btn-sm" onClick={()=>abrirEdicao(t)}>
-                  <span className="icon icon-sm">edit</span> Editar
-                </button>
-              </div>
-            )}
+            <button
+              onClick={e=>{e.stopPropagation();mudarStatusTeatro(t.id,t.status)}}
+              className={`badge ${STATUS_BADGE[t.status]??'badge-neutral'}`}
+              style={{flexShrink:0,fontSize:10,border:'none',cursor:'pointer',fontFamily:'inherit'}}
+              title="Clique para avançar status"
+            >{STATUS_LABEL[t.status]??t.status}</button>
+            {canEdit && <button onClick={()=>abrirEdicao(t)} title="Editar" style={{background:'none',border:'none',cursor:'pointer',padding:6,marginLeft:2,display:'flex'}}><span className="icon icon-sm" style={{color:'var(--primary)'}}>edit</span></button>}
+            <span className="icon icon-sm" style={{color:'var(--muted-light)',margin:'0 12px 0 4px'}}>chevron_right</span>
           </div>
         )
       })}

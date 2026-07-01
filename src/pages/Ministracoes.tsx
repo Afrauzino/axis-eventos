@@ -6,7 +6,7 @@ import { useEvento } from '../hooks/useEvento'
 import PersonSelect from '../components/PersonSelect'
 import RichEditor from '../components/RichEditor'
 import ArquivosModulo from '../components/ArquivosModulo'
-import { EMOJIS_AXIS } from '../components/AvatarPicker'
+import EmojiGrid from '../components/EmojiGrid'
 import type { Profile } from '../App'
 
 type Ministracao = {
@@ -340,12 +340,7 @@ export default function Ministracoes({ profile }: { profile?: Profile }) {
                       </div>
                       <div className="form-group">
                         <label className="form-label">Emoji da ministração</label>
-                        <div style={{display:'flex',gap:6,flexWrap:'wrap',maxHeight:120,overflowY:'auto',padding:2}}>
-                          {EMOJIS_AXIS.map(em=>(
-                            <button key={em} type="button" onClick={()=>setForm(f=>({...f,emoji:em}))}
-                              style={{width:38,height:38,borderRadius:9,fontSize:19,cursor:'pointer',fontFamily:'inherit',border:form.emoji===em?'2px solid var(--primary)':'1px solid transparent',background:form.emoji===em?'var(--primary-light)':'var(--bg)'}}>{em}</button>
-                          ))}
-                        </div>
+                        <EmojiGrid value={form.emoji} onChange={em=>setForm(f=>({...f,emoji:em}))}/>
                       </div>
                     </div>
                     <div className="form-group">

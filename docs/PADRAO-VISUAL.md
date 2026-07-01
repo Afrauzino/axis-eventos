@@ -3,12 +3,19 @@
 > Regra definida pelo Anderson na conversa original do projeto. Vale para TODAS as telas.
 > Ao mexer em qualquer tela, deixá-la nesse padrão. Nunca introduzir estilo fora daqui.
 
+## 0. REGRA-MÃE
+- **Sempre que criar/mexer numa tela, já corrigir e deixar no padrão.** Nada sai da tela fora do padrão.
+- **Exatamente iguais**: mesmo componente, mesmos tamanhos, mesmo espaçamento. Não "parecido" — igual.
+- Reutilizar componentes únicos (`EmojiGrid`, `SubTabs`, `CardItem`) em vez de recriar à mão.
+
 ## 1. Emojis — SEMPRE coloridos
 - Usar **emojis coloridos** (🎭 🍴 🎤 📅 👥 ⭐), NUNCA ícones de linha (Material Symbols) como "emoji".
-- Seletor de emoji = **grade `EMOJIS_AXIS`** (de `components/AvatarPicker`), botões ~38×38,
-  selecionado com `border:2px solid var(--primary)` + `background:var(--primary-light)`.
+- Seletor de emoji = **componente único `components/EmojiGrid`** (92 emojis, grade 40×40, gap 7,
+  maxHeight 200, selecionado com `border:2px solid var(--primary)` + `background:var(--primary-light)`).
+  Usar SEMPRE esse componente — não recriar a grade à mão em cada tela.
 - ❌ NÃO usar o componente antigo `EmojiPicker` (ícones de linha) para escolher emoji.
-- Material Symbols (`.icon`) só para ícones de UI (chevron, close, add, delete…), não como emoji de conteúdo.
+- Card com emoji: avatar arredondado (raio 12) com o emoji colorido; nome de ícone antigo cai no emoji padrão.
+- Material Symbols (`.icon`) só para ícones de UI (chevron, close, add, delete, edit…), não como emoji de conteúdo.
 
 ## 2. Menu lateral (gaveta) — "Opção B"
 - Fundo **branco**, cada item com um **emoji colorido**.

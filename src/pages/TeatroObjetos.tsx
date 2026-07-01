@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase'
 import SubTabs from '../components/SubTabs'
 import { isAdmin } from '../utils'
 import UploadFoto from '../components/UploadFoto'
-import { EMOJIS_AXIS } from '../components/AvatarPicker'
+import EmojiGrid from '../components/EmojiGrid'
 import type { Profile } from '../App'
 
 function MatIcon({ name, size=22, color='var(--accent)' }: {name:string;size?:number;color?:string}) {
@@ -124,12 +124,7 @@ export default function TeatroObjetos({ profile }: { profile?: Profile }) {
               {abaMedia==='emoji' ? (
                 <div className="form-group">
                   <label className="form-label">Escolher emoji</label>
-                  <div style={{display:'flex',gap:6,flexWrap:'wrap',maxHeight:160,overflowY:'auto',padding:2}}>
-                    {EMOJIS_AXIS.map(em=>(
-                      <button key={em} type="button" onClick={()=>{setForm(f=>({...f,icone:em}));setFotoUrl('')}}
-                        style={{width:38,height:38,borderRadius:9,fontSize:19,cursor:'pointer',fontFamily:'inherit',border:form.icone===em?'2px solid var(--primary)':'1px solid transparent',background:form.icone===em?'var(--primary-light)':'var(--bg)'}}>{em}</button>
-                    ))}
-                  </div>
+                  <EmojiGrid value={form.icone} onChange={em=>{setForm(f=>({...f,icone:em}));setFotoUrl('')}}/>
                 </div>
               ) : (
                 <div style={{display:'flex',justifyContent:'center',marginBottom:14}}>
