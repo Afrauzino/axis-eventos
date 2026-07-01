@@ -2,11 +2,12 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import SubTabs from '../components/SubTabs'
-import { fmtHora, isAdmin } from '../utils'
+import EmojiGrid from '../components/EmojiGrid'
+import { isAdmin } from '../utils'
 import { useEvento } from '../hooks/useEvento'
 import type { Profile } from '../App'
 
-type Teatro     = { id:string; nome:string; descricao:string|null; data_hora:string|null; local:string|null; status:string; cor:string|null; ministracao_id:string|null }
+type Teatro     = { id:string; nome:string; descricao:string|null; data_hora:string|null; local:string|null; status:string; cor:string|null; ministracao_id:string|null; emoji?:string|null }
 type Ministracao = { id:string; titulo:string }
 
 const CORES = ['#E8821A','#6B46C1','#2F855A','#C53030','#2B6CB0','#D53F8C','#00A99D','#1A202C','#D69E2E','#C05621']
@@ -24,7 +25,7 @@ export default function TeatroLista({ profile }: { profile?: Profile }) {
   const [erro, setErro]         = useState('')
   const [busca, setBusca]       = useState('')
   const [ministracoes, setMinistracoes] = useState<Ministracao[]>([])
-  const [form, setForm] = useState({ nome:'', descricao:'', data_hora:'', local:'', cor:'#E8821A', ministracao_id:'' })
+  const [form, setForm] = useState({ nome:'', descricao:'', cor:'#E8821A', ministracao_id:'', emoji:'🎭' })
   const [arqPend, setArqPend] = useState<File[]>([]) // arquivos escolhidos ao criar/editar
 
   const canEdit = profile && isAdmin(profile.user_role)
@@ -55,7 +56,7 @@ export default function TeatroLista({ profile }: { profile?: Profile }) {
 
   function abrirNovo() {
     setEditando(null)
-    setForm({ nome:'', descricao:'', data_hora:'', local:'', cor:'#E8821A', ministracao_id:'' })
+    setForm({ nome:'', descricao:'', cor:'#E8821A', ministracao_id:'', emoji:'🎭' })
     setArqPend([]); setErro(''); setModal(true)
   }
 
@@ -69,23 +70,21 @@ export default function TeatroLista({ profile }: { profile?: Profile }) {
 
   function abrirEdicao(t: Teatro) {
     setEditando(t)
-    setForm({ nome:t.nome, descricao:t.descricao??'', data_hora:t.data_hora?new Date(t.data_hora).toISOString().slice(0,16):'', local:t.local??'', cor:t.cor??'#E8821A', ministracao_id:(t as any).ministracao_id??'' })
+    setForm({ nome:t.nome, descricao:t.descricao??'', cor:t.cor??'#E8821A', ministracao_id:(t as any).ministracao_id??'', emoji:t.emoji??'🎭' })
     setArqPend([]); setErro(''); setModal(true)
   }
 
   async function salvar(e: React.FormEvent) {
     e.preventDefault(); setErro(''); setSalvando(true)
     if (!evento || !form.nome.trim()) { setErro('Nome obrigatorio.'); setSalvando(false); return }
-    const payload = {
-      nome: form.nome, descricao: form.descricao||null,
-      data_hora: form.data_hora ? new Date(form.data_hora).toISOString() : null,
-      local: form.local||null, cor: form.cor,
-    }
+    const payload = { nome: form.nome, descricao: form.descricao||null, cor: form.cor }
     let err
     let teatroId = editando?.id
     if (editando) { const r=await supabase.from('theaters').update(payload).eq('id',editando.id); err=r.error }
     else { const r=await supabase.from('theaters').insert({...payload,event_id:evento.id,status:'planejamento'}).select('id').single(); err=r.error; teatroId=r.data?.id }
     if (err) { setErro('Erro: '+err.message); setSalvando(false); return }
+    // emoji separado (resiliente — funciona mesmo antes de rodar o SQL da coluna)
+    if (teatroId) await supabase.from('theaters').update({ emoji: form.emoji||null }).eq('id', teatroId)
     if (teatroId && arqPend.length) { for (const f of arqPend) await uploadArquivo('teatro', teatroId, f) }
     setModal(false); setSalvando(false); setEditando(null); setArqPend([]); carregar()
   }
@@ -120,11 +119,11 @@ export default function TeatroLista({ profile }: { profile?: Profile }) {
             <div style={{width:6,alignSelf:'stretch',background:cor,flexShrink:0}}/>
             <button style={{flex:1,minWidth:0,display:'flex',alignItems:'center',gap:14,padding:'16px 15px',background:'none',border:'none',cursor:'pointer',fontFamily:'inherit',textAlign:'left'}} onClick={()=>navigate('/teatro/'+t.id)}>
               <div style={{width:58,height:58,borderRadius:'50%',flexShrink:0,display:'flex',alignItems:'center',justifyContent:'center',background:cor+'24'}}>
-                <span style={{fontSize:27}}>🎭</span>
+                <span style={{fontSize:27}}>{t.emoji || '🎭'}</span>
               </div>
               <div style={{flex:1,minWidth:0}}>
                 <p style={{fontWeight:700,fontSize:15,marginBottom:2,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{t.nome}</p>
-                <p style={{fontSize:12,color:'var(--muted)'}}>{t.data_hora?`${fmtHora(t.data_hora)} · `:''}{t.local ?? 'Local não definido'}</p>
+                {t.descricao && <p style={{fontSize:12,color:'var(--muted)',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{t.descricao}</p>}
               </div>
             </button>
             <div style={{display:'flex',alignItems:'center',gap:8,paddingRight:14}}>
@@ -158,13 +157,10 @@ export default function TeatroLista({ profile }: { profile?: Profile }) {
               <div className="form-group"><label className="form-label">Descricao</label>
                 <textarea className="form-textarea" value={form.descricao} onChange={e=>setForm(f=>({...f,descricao:e.target.value}))} style={{minHeight:70}}/>
               </div>
-              <div className="form-grid-2">
-                <div className="form-group"><label className="form-label">Data e hora</label>
-                  <input className="form-input" type="datetime-local" value={form.data_hora} onChange={e=>setForm(f=>({...f,data_hora:e.target.value}))} min={(evento as any)?.start_date ? `${(evento as any).start_date}T00:00` : undefined} max={(evento as any)?.end_date ? `${(evento as any).end_date}T23:59` : undefined}/>
-                </div>
-                <div className="form-group"><label className="form-label">Local</label>
-                  <input className="form-input" value={form.local} onChange={e=>setForm(f=>({...f,local:e.target.value}))}/>
-                </div>
+              {/* Emoji do teatro */}
+              <div className="form-group">
+                <label className="form-label">Emoji do teatro</label>
+                <EmojiGrid value={form.emoji} onChange={em=>setForm(f=>({...f,emoji:em}))}/>
               </div>
 
               {/* Cor do teatro */}
@@ -179,8 +175,8 @@ export default function TeatroLista({ profile }: { profile?: Profile }) {
                 <div style={{display:'flex',alignItems:'center',gap:10}}>
                   <span style={{fontSize:13,color:'var(--text2)'}}>Ou escolha:</span>
                   <input type="color" value={form.cor} onChange={e=>setForm(f=>({...f,cor:e.target.value}))} style={{width:40,height:36,borderRadius:8,border:'1px solid var(--border)',cursor:'pointer',padding:2}}/>
-                  <div style={{width:36,height:36,borderRadius:8,background:form.cor,display:'flex',alignItems:'center',justifyContent:'center'}}>
-                    <span className="icon" style={{color:'white',fontSize:18}}>theater_comedy</span>
+                  <div style={{width:36,height:36,borderRadius:8,background:form.cor,display:'flex',alignItems:'center',justifyContent:'center',fontSize:20}}>
+                    {form.emoji || '🎭'}
                   </div>
                 </div>
               </div>
