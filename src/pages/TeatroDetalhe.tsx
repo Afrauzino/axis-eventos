@@ -248,18 +248,6 @@ export default function TeatroDetalhe({ profile }: { profile?: Profile }) {
   function getPersonagem(pgid:string|null) { return pgid ? personagens.find(p=>p.id===pgid) : null }
   function getObjeto(oid:string|null) { return oid ? objetos.find(o=>o.id===oid) : null }
 
-  // Group elenco by personagem
-  const elencoAgrupado = (() => {
-    const grupos: Record<string,{pg:Personagem|null;atores:Pessoa[]}> = {}
-    for (const e of elenco) {
-      const key = e.personagem_id ?? 'sem'
-      if (!grupos[key]) grupos[key] = { pg: getPersonagem(e.personagem_id), atores:[] }
-      const p = getPessoa(e.person_id)
-      if (p) grupos[key].atores.push(p)
-    }
-    return Object.values(grupos)
-  })()
-
   if (loading) return <div className="page"><div className="skeleton" style={{height:120,borderRadius:14}}/></div>
   if (!teatro) return <div className="page"><div className="alert-box alert-error">Teatro não encontrado.</div></div>
 
@@ -270,7 +258,7 @@ export default function TeatroDetalhe({ profile }: { profile?: Profile }) {
       {/* Header */}
       <div style={{background:cor,borderRadius:14,padding:'16px 20px',marginBottom:16,color:'white'}}>
         <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:teatro.descricao?8:0}}>
-          <MatIcon name="theater_comedy" size={32} color="white"/>
+          <div style={{width:48,height:48,borderRadius:'50%',background:'rgba(255,255,255,0.2)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,fontSize:26}}>🎭</div>
           <div>
             <p style={{fontSize:18,fontWeight:800}}>{teatro.nome}</p>
             {teatro.local && <p style={{fontSize:13,opacity:0.85}}>{teatro.local}</p>}
@@ -350,34 +338,33 @@ export default function TeatroDetalhe({ profile }: { profile?: Profile }) {
       {/* ELENCO */}
       {aba==='elenco' && (
         <>
-          {elencoAgrupado.length===0 ? (
+          {elenco.length===0 ? (
             <div className="empty">
               <div className="empty-icon"><MatIcon name="group" size={28} color="var(--muted-light)"/></div>
               <p className="empty-title">Nenhum ator</p>
               <p className="empty-desc">Vincule pessoas ao criar ou editar cenas.</p>
             </div>
-          ) : elencoAgrupado.map((grupo,gi) => (
-            <div key={gi} style={{background:'white',borderRadius:14,boxShadow:'var(--shadow-sm)',marginBottom:8,overflow:'hidden'}}>
-              {grupo.pg && (
-                <div style={{background:cor+'22',padding:'8px 14px',borderBottom:'1px solid var(--border)'}}>
-                  <p style={{fontWeight:700,fontSize:13,color:cor}}>{grupo.pg.nome}</p>
+          ) : elenco.map(el => {
+            const p  = getPessoa(el.person_id)
+            const pg = getPersonagem(el.personagem_id)
+            if (!p) return null
+            return (
+              <div key={el.id} style={{background:'white',borderRadius:12,boxShadow:'0 1px 5px rgba(0,0,0,0.12)',marginBottom:8,display:'flex',alignItems:'center',gap:12,padding:'12px 14px'}}>
+                <div style={{width:44,height:44,borderRadius:'50%',background:'var(--primary-light)',display:'flex',alignItems:'center',justifyContent:'center',overflow:'hidden',flexShrink:0}}>
+                  {p.photo_url?<img src={p.photo_url} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}}/>:<span style={{fontSize:14,fontWeight:700,color:'var(--primary)'}}>{getInitials(p.name)}</span>}
                 </div>
-              )}
-              {grupo.atores.map(a=>(
-                <div key={a.id} style={{display:'flex',alignItems:'center',gap:12,padding:'10px 14px',borderBottom:'1px solid var(--border)'}}>
-                  <div style={{width:36,height:36,borderRadius:'50%',background:'var(--primary)',display:'flex',alignItems:'center',justifyContent:'center',overflow:'hidden',flexShrink:0}}>
-                    {a.photo_url?<img src={a.photo_url} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}}/>:<span style={{fontSize:13,fontWeight:700,color:'white'}}>{getInitials(a.name)}</span>}
-                  </div>
-                  <p style={{flex:1,fontWeight:600,fontSize:14}}>{a.name}</p>
-                  {canEdit && (
-                    <button onClick={()=>{ const el=elenco.find(e=>e.person_id===a.id); if(el) removerDoElenco(el.id) }} style={{background:'var(--danger-bg)',color:'var(--danger)',border:'none',borderRadius:6,padding:'4px 8px',cursor:'pointer',fontSize:11,fontWeight:600,fontFamily:'inherit'}}>
-                      Remover
-                    </button>
-                  )}
+                <div style={{flex:1,minWidth:0}}>
+                  <p style={{fontWeight:700,fontSize:14,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{p.name}</p>
+                  {pg && <p style={{fontSize:12,color:cor,fontWeight:600}}>{pg.nome}</p>}
                 </div>
-              ))}
-            </div>
-          ))}
+                {canEdit && (
+                  <button onClick={()=>removerDoElenco(el.id)} style={{background:'var(--danger-bg)',color:'var(--danger)',border:'none',borderRadius:8,padding:'6px 12px',cursor:'pointer',fontSize:12,fontWeight:600,fontFamily:'inherit',flexShrink:0}}>
+                    Remover
+                  </button>
+                )}
+              </div>
+            )
+          })}
         </>
       )}
 
