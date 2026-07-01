@@ -348,10 +348,6 @@ export default function Login() {
               showTeam={true}
               showReferencia={form.role_type==='encounterer'}
               fotoObrigatoria={true}
-              usaMed={usaMed}
-              onUsaMedChange={setUsaMed}
-              meds={meds}
-              onMedsChange={setMeds}
               onSaudeVisit={()=>setSaudeOk(true)}
             />
 

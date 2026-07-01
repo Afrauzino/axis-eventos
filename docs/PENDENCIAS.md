@@ -122,7 +122,11 @@ Ocorrências · Financeiro · Escalas (com checagem de conflito) · Cozinha/Card
 
 ---
 
-## 7. LOTE NOVO DE PEDIDOS (a fazer) — WhatsApp/sessão atual
+## 7. LOTE NOVO DE PEDIDOS — WhatsApp/sessão atual
+
+> PROGRESSO: [x] item 1 (foto admin + 3 cargos) · [x] item 2 (cronograma) · [x] item 3 (upload teatro/cena)
+> · item 4 (Logística) PARCIAL: [x] menu Logística + checklist + med contínuo + tirar meds do cadastro;
+>   FALTA refazer ficha médica · item 5 (Crachá) A FAZER · Ranking geral: a conferir.
 
 ### Correções ao que foi feito
 - [x] Auto-seed: **não** criar mais o checklist do Correio automaticamente (feito).
