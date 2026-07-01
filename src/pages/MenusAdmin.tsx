@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import SubTabs from '../components/SubTabs'
-import EmojiPicker from '../components/EmojiPicker'
 import type { Profile } from '../App'
 
 type MenuItem = { id:string; key:string; label:string; icon:string; rota:string|null; parent_id:string|null; ordem:number; visivel:boolean; roles:string[] }

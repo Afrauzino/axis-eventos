@@ -137,8 +137,9 @@ export default function Cozinha({ profile }: { profile?: Profile }) {
 
       {/* Modal novo tipo */}
       {modalTipo && (
-        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.5)',zIndex:400,display:'flex',alignItems:'center',justifyContent:'center',padding:18}} onClick={e=>e.target===e.currentTarget&&setModalTipo(false)}>
-          <div style={{background:'white',borderRadius:18,padding:'22px',width:'100%',maxWidth:380}}>
+        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.5)',zIndex:400,display:'flex',flexDirection:'column',justifyContent:'flex-end'}} onClick={e=>e.target===e.currentTarget&&setModalTipo(false)}>
+          <div style={{background:'white',borderRadius:'20px 20px 0 0',padding:'8px 22px 28px',width:'100%',maxWidth:480,margin:'0 auto',maxHeight:'88vh',overflowY:'auto'}}>
+            <div style={{width:36,height:4,background:'var(--border)',borderRadius:2,margin:'12px auto 16px'}}/>
             <p style={{fontSize:16,fontWeight:800,marginBottom:14}}>Novo tipo de refeição</p>
             <input className="form-input" placeholder="Ex: Café da manhã, Almoço..." value={novoTipo.nome} onChange={e=>setNovoTipo(f=>({...f,nome:e.target.value}))} style={{marginBottom:12}}/>
             <p style={{fontSize:12,fontWeight:700,color:'var(--muted)',marginBottom:8}}>Cor</p>

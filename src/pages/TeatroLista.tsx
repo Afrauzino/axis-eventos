@@ -119,8 +119,8 @@ export default function TeatroLista({ profile }: { profile?: Profile }) {
           <div key={t.id} style={{background:'white',borderRadius:14,boxShadow:'var(--shadow-sm)',marginBottom:8,overflow:'hidden'}}>
             <button style={{width:'100%',display:'flex',alignItems:'center',gap:0,background:'none',border:'none',cursor:'pointer',fontFamily:'inherit',textAlign:'left',padding:0}} onClick={()=>navigate('/teatro/'+t.id)}>
               <div style={{width:4,background:cor,alignSelf:'stretch',flexShrink:0}}/>
-              <div style={{width:52,height:52,background:cor+'22',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,margin:'13px 12px'}}>
-                <span className="icon" style={{color:cor,fontSize:26}}>theater_comedy</span>
+              <div style={{width:52,height:52,borderRadius:12,background:cor+'22',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,margin:'13px 12px',fontSize:28,lineHeight:1}}>
+                🎭
               </div>
               <div style={{flex:1,minWidth:0,padding:'13px 0'}}>
                 {t.data_hora && <p style={{fontSize:12,fontWeight:700,color:cor,marginBottom:2}}>{fmtHora(t.data_hora)}</p>}
