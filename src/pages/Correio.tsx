@@ -311,14 +311,17 @@ export default function Correio({ profile }: { profile?: Profile }) {
           {encontristas.map(af => {
             const qtd = padrinhos.filter(p=>p.afiliado_id===af.id).length
             return (
-              <button key={af.id} onClick={()=>{setBuscaPadrinho('');setModalPadrinho(af)}} style={{width:'100%',display:'flex',alignItems:'center',gap:12,padding:'14px 15px',background:'white',border:'none',borderRadius:12,marginBottom:10,boxShadow:'0 1px 5px rgba(0,0,0,0.12)',cursor:'pointer',fontFamily:'inherit',textAlign:'left'}}>
-                <Avatar p={af}/>
-                <div style={{flex:1,minWidth:0}}>
-                  <p style={{fontWeight:700,fontSize:15}}>{formatName(af.name)}</p>
-                  <p style={{fontSize:12,color:qtd>0?'var(--success)':'var(--muted)'}}>{qtd>0?`${qtd} padrinho(s)`:'Sem padrinho'}</p>
-                </div>
-                <span className="icon" style={{color:'var(--muted)'}}>chevron_right</span>
-              </button>
+              <div key={af.id} style={{background:'white',borderRadius:12,boxShadow:'0 1px 5px rgba(0,0,0,0.12)',marginBottom:10,overflow:'hidden',display:'flex'}}>
+                <div style={{width:6,alignSelf:'stretch',background:'var(--primary)',flexShrink:0}}/>
+                <button onClick={()=>{setBuscaPadrinho('');setModalPadrinho(af)}} style={{flex:1,minWidth:0,display:'flex',alignItems:'center',gap:14,padding:'16px 15px',background:'none',border:'none',cursor:'pointer',fontFamily:'inherit',textAlign:'left'}}>
+                  <Avatar p={af} size={52}/>
+                  <div style={{flex:1,minWidth:0}}>
+                    <p style={{fontWeight:700,fontSize:15,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{formatName(af.name)}</p>
+                    <p style={{fontSize:12,color:qtd>0?'var(--success)':'var(--muted)'}}>{qtd>0?`${qtd} padrinho(s)`:'Sem padrinho'}</p>
+                  </div>
+                  <span className="icon" style={{color:'var(--muted)'}}>chevron_right</span>
+                </button>
+              </div>
             )
           })}
         </>
@@ -444,17 +447,20 @@ function Avatar({ p, size=40 }: { p:{name:string;photo_url:string|null}; size?:n
 function CardAfiliado({ af, pct, status, onClick }: { af:any; pct:number; status:string; onClick:()=>void }) {
   const st = STATUS_LABEL[status] ?? STATUS_LABEL.em_processo
   return (
-    <div onClick={onClick} style={{background:'white',borderRadius:14,boxShadow:'var(--shadow-sm)',marginBottom:8,padding:'12px 14px',cursor:'pointer'}}>
-      <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:8}}>
-        <Avatar p={af}/>
-        <div style={{flex:1}}>
-          <p style={{fontWeight:700,fontSize:14}}>{formatName(af.name)}</p>
-          <span style={{fontSize:10,fontWeight:700,color:'white',background:st.cor,padding:'2px 8px',borderRadius:99}}>{st.label}</span>
+    <div style={{background:'white',borderRadius:12,boxShadow:'0 1px 5px rgba(0,0,0,0.12)',marginBottom:10,overflow:'hidden',display:'flex'}}>
+      <div style={{width:6,alignSelf:'stretch',background:'var(--primary)',flexShrink:0}}/>
+      <div onClick={onClick} style={{flex:1,minWidth:0,padding:'14px 15px',cursor:'pointer'}}>
+        <div style={{display:'flex',alignItems:'center',gap:14,marginBottom:10}}>
+          <Avatar p={af} size={52}/>
+          <div style={{flex:1,minWidth:0}}>
+            <p style={{fontWeight:700,fontSize:15,marginBottom:3,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{formatName(af.name)}</p>
+            <span style={{fontSize:10,fontWeight:700,color:'white',background:st.cor,padding:'2px 8px',borderRadius:99}}>{st.label}</span>
+          </div>
+          <span style={{fontSize:15,fontWeight:800,color:'var(--primary)',flexShrink:0}}>{pct}%</span>
         </div>
-        <span style={{fontSize:15,fontWeight:800,color:'var(--primary)'}}>{pct}%</span>
-      </div>
-      <div style={{height:6,background:'var(--bg)',borderRadius:99,overflow:'hidden'}}>
-        <div style={{height:'100%',width:`${pct}%`,background:'var(--primary)',borderRadius:99,transition:'width 0.3s'}}/>
+        <div style={{height:6,background:'var(--bg)',borderRadius:99,overflow:'hidden'}}>
+          <div style={{height:'100%',width:`${pct}%`,background:'var(--primary)',borderRadius:99,transition:'width 0.3s'}}/>
+        </div>
       </div>
     </div>
   )
