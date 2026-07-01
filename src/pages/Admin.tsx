@@ -3,8 +3,27 @@ import { supabase } from '../lib/supabase'
 import ConfigCor from './ConfigCor'
 import { limparCachePermissoes } from '../hooks/usePermissao'
 import { fmtDataHora, isAdmin } from '../utils'
+import { invalidarEventoAtivo } from '../hooks/useEvento'
+import { registrarLog } from '../lib/audit'
 import type { Profile } from '../App'
 import EmojiPicker from '../components/EmojiPicker'
+
+type LogRow = { id:string; actor_name:string|null; action:string; entity:string; description:string|null; created_at:string }
+const ACAO_LABEL: Record<string,string> = { create:'Criou', update:'Editou', delete:'Excluiu', approve:'Aprovou', reject:'Rejeitou', payment:'Pagamento', medication:'Medicação', login:'Login', export:'Exportou', other:'Ação' }
+
+// Seções selecionáveis para exportar/importar backup
+const SECOES_BACKUP: { key:string; label:string }[] = [
+  { key:'pessoas',      label:'Pessoas' },
+  { key:'equipes',      label:'Equipes' },
+  { key:'ministracoes', label:'Ministrações' },
+  { key:'teatros',      label:'Teatros' },
+  { key:'locais',       label:'Locais' },
+  { key:'financeiro',   label:'Financeiro' },
+  { key:'ocorrencias',  label:'Ocorrências' },
+  { key:'cronograma',   label:'Cronograma' },
+  { key:'ranking',      label:'Ranking' },
+]
+const TODAS_SECOES = () => Object.fromEntries(SECOES_BACKUP.map(s => [s.key, true])) as Record<string,boolean>
 
 type Usuario = { id:string; user_id:string; name:string|null; full_name?:string|null; user_role:string; email?:string }
 type Evento  = { id:string; name:string; status:string; location:string|null; valor_encontrista:number|null; valor_encontreiro:number|null; created_at:string }
@@ -24,7 +43,14 @@ const TIPOS_PADRÃO = [
 const CORES_TIPO = ['#00A99D','#6B46C1','#E8821A','#2F855A','#D53F8C','#2B6CB0','#C53030','#D69E2E','#718096','#1A202C']
 
 export default function Admin({ profile }: { profile?: Profile }) {
-  const [aba, setAba]               = useState<'usuarios'|'cargos'|'equipes_perm'|'eventos'|'tipos'|'backup'|'aparencia'>('usuarios')
+  const [aba, setAba]               = useState<'usuarios'|'cargos'|'equipes_perm'|'eventos'|'tipos'|'backup'|'logs'|'aparencia'>('usuarios')
+  const [logs, setLogs]             = useState<LogRow[]>([])
+  const [logsLoading, setLogsLoading] = useState(false)
+  const [logsErro, setLogsErro]     = useState('')
+  const [secoesExport, setSecoesExport] = useState<Record<string,boolean>>(TODAS_SECOES())
+  const [importArquivo, setImportArquivo] = useState<any|null>(null)   // conteúdo do JSON carregado
+  const [secoesImport, setSecoesImport] = useState<Record<string,boolean>>({})
+  const [importando, setImportando] = useState(false)
   // Cargos fixos — não editáveis pelo usuário
   const cargos = [
     {role:'admin',              label:'Administrador',                descricao:'Acesso total ao sistema'},
@@ -116,7 +142,6 @@ export default function Admin({ profile }: { profile?: Profile }) {
     { modulo:'menu_teatro',       label:'Teatro' },
     { modulo:'menu_evento',       label:'Evento / Alertas' },
     { modulo:'menu_alertas_lideres', label:'Alertas entre Líderes' },
-    { modulo:'menu_cozinha',      label:'Cozinha / Cardápio' },
     { modulo:'menu_cozinha',      label:'Cozinha / Cardápio' },
     { modulo:'menu_saude',        label:'Saúde' },
     { modulo:'menu_financeiro',   label:'Financeiro' },
@@ -275,12 +300,29 @@ export default function Admin({ profile }: { profile?: Profile }) {
   }
 
   // Aprovar com 1 clique — mantém o cargo atual ou usa encontreiro como padrão
+  const eventoAtivoId = () => eventos.find(e => e.status === 'active')?.id ?? null
+
+  async function carregarLogs() {
+    setLogsLoading(true); setLogsErro('')
+    const { data, error } = await supabase.from('audit_logs')
+      .select('id,actor_name,action,entity,description,created_at')
+      .order('created_at', { ascending: false }).limit(300)
+    if (error) {
+      const code = (error as any).code ?? ''
+      if (code === '42P01' || error.message?.includes('does not exist'))
+        setLogsErro('Tabela de logs não existe. Rode o SQL sql/05_audit_logs.sql no Supabase.')
+      else setLogsErro('Erro ao carregar logs: ' + error.message)
+    } else setLogs(data ?? [])
+    setLogsLoading(false)
+  }
+
   async function aprovarPessoa(p: typeof pessoas[0]) {
     if (!p.user_id) return
     const cargo = (p.user_role && p.user_role !== 'visitante') ? p.user_role : 'encontreiro'
     await supabase.from('profiles').update({ user_role: cargo, role_status: 'approved' }).eq('user_id', p.user_id)
     setPessoas(prev => prev.map(x => x.user_id === p.user_id ? { ...x, user_role: cargo, role_status: 'approved' } : x))
     setPessoaDetalhe(prev => prev && prev.user_id === p.user_id ? { ...prev, user_role: cargo, role_status: 'approved' } : prev)
+    registrarLog({ action:'approve', entity:'profiles', entityId:p.id, description:`Aprovou o usuário ${p.name} como ${cargo}`, eventId:eventoAtivoId() })
   }
 
   // Gerar (ou regenerar) código de acesso
@@ -331,22 +373,88 @@ export default function Admin({ profile }: { profile?: Profile }) {
     }
 
     await supabase.from('people').delete().eq('id', pid)
+    registrarLog({ action:'delete', entity:'people', entityId:pid, description:`Excluiu completamente o cadastro de ${p.name}`, eventId:eventoAtivoId() })
     setPessoaDetalhe(null)
     setPessoas(prev => prev.filter(x => x.id !== pid))
+  }
+
+  // Cria a estrutura obrigatória de um evento novo (o que o sistema precisa pra funcionar).
+  async function seedNovoEvento(eventId: string) {
+    // Equipes padrão (Correio e Saúde marcadas para os módulos correspondentes)
+    const equipesPadrao = [
+      { name:'Cozinha',     color:'#2F855A' },
+      { name:'Intercessão', color:'#6B46C1' },
+      { name:'Louvor',      color:'#D53F8C' },
+      { name:'Recepção',    color:'#2B6CB0' },
+      { name:'Limpeza',     color:'#718096' },
+      { name:'Teatro',      color:'#E8821A' },
+      { name:'Correio',     color:'#00A99D', equipe_correio:true },
+      { name:'Saúde',       color:'#C53030', equipe_saude:true },
+    ]
+    // Categorias de ranking padrão
+    const rankingPadrao = [
+      {nome:'Quem mais conversou',                   descricao:'O encontrista mais comunicativo', icone:'chat',          cor:'#48BB78',ordem:1},
+      {nome:'O que mais dormiu nas ministrações',     descricao:'Especialista em cochilos',         icone:'bedtime',       cor:'#667EEA',ordem:2},
+      {nome:'O que mais resistiu... mas se entregou', descricao:'Teimoso mas abençoado',            icone:'change_circle', cor:'#F6AD55',ordem:3},
+      {nome:'O que mais se entregou',                 descricao:'Coração aberto desde o início',    icone:'favorite',      cor:'#FC8181',ordem:4},
+      {nome:'O mais quebrado',                        descricao:'Passagem de lágrimas',             icone:'water_drop',    cor:'#63B3ED',ordem:5},
+    ]
+    // Locais padrão
+    const locaisPadrao = [
+      {nome:'Cozinha',              tipo:'trabalho'},
+      {nome:'Sala de Oração',       tipo:'trabalho'},
+      {nome:'Sala de Ministração',  tipo:'trabalho'},
+      {nome:'Refeitório',           tipo:'refeicao'},
+      {nome:'Banheiro Masculino',   tipo:'sanitario'},
+      {nome:'Banheiro Feminino',    tipo:'sanitario'},
+      {nome:'Alojamento Masculino', tipo:'alojamento'},
+      {nome:'Alojamento Feminino',  tipo:'alojamento'},
+    ]
+    // Obs: o checklist do Correio NÃO é criado automaticamente — é configurado pelo líder do Correio.
+    // cada insert é independente; um erro num módulo não impede os outros
+    await Promise.allSettled([
+      supabase.from('teams').insert(equipesPadrao.map(t => ({ ...t, event_id:eventId }))),
+      supabase.from('ranking_categorias').insert(rankingPadrao.map(c => ({ ...c, event_id:eventId }))),
+      supabase.from('locais').insert(locaisPadrao.map(l => ({ ...l, event_id:eventId }))),
+    ])
   }
 
   async function salvarEvento(e:React.FormEvent) {
     e.preventDefault(); setSalvando(true)
     const payload = { name:formEvento.name, location:formEvento.location||null, valor_encontrista:parseFloat(formEvento.valor_encontrista)||0, valor_encontreiro:parseFloat(formEvento.valor_encontreiro)||0, start_date:formEvento.start_date||null, end_date:formEvento.end_date||null }
-    if (editandoEvento) await supabase.from('events').update(payload).eq('id',editandoEvento.id)
-    else await supabase.from('events').insert({...payload,status:'active'})
+    if (editandoEvento) {
+      await supabase.from('events').update(payload).eq('id',editandoEvento.id)
+    } else {
+      // Novo evento vira o ativo; os outros ativos passam a inativos (só um ativo por vez)
+      await supabase.from('events').update({ status:'inactive' }).eq('status','active')
+      const { data: novo } = await supabase.from('events').insert({...payload,status:'active'}).select('id,name').single()
+      if (novo) {
+        await seedNovoEvento(novo.id)
+        registrarLog({ action:'create', entity:'events', entityId:novo.id, description:`Criou o evento ${novo.name} (com estrutura padrão)`, eventId:novo.id })
+      }
+      invalidarEventoAtivo()
+    }
     setModalEvento(false); setSalvando(false); setEditandoEvento(null)
     setFormEvento({name:'',location:'',valor_encontrista:'',valor_encontreiro:'',start_date:'',end_date:''}); carregar()
+  }
+
+  // Troca qual evento é o ativo (navegação entre eventos — só em Administração)
+  async function tornarEventoAtivo(id:string, nome:string) {
+    if (!confirm(`Tornar "${nome}" o evento ativo? Todos passarão a ver este evento.`)) return
+    await supabase.from('events').update({ status:'inactive' }).eq('status','active')
+    await supabase.from('events').update({ status:'active' }).eq('id', id)
+    registrarLog({ action:'update', entity:'events', entityId:id, description:`Tornou "${nome}" o evento ativo`, eventId:id })
+    invalidarEventoAtivo()
+    carregar()
+    alert(`"${nome}" agora é o evento ativo. Recarregue as outras telas para ver.`)
   }
 
   async function finalizarEvento(id:string) {
     if (!confirm('Finalizar este evento? Ele ficará como encerrado.')) return
     await supabase.from('events').update({status:'finished'}).eq('id',id)
+    const nome = eventos.find(e=>e.id===id)?.name ?? ''
+    registrarLog({ action:'update', entity:'events', entityId:id, description:`Finalizou o evento ${nome}`, eventId:id })
+    invalidarEventoAtivo()
     carregar()
   }
 
@@ -367,7 +475,10 @@ export default function Admin({ profile }: { profile?: Profile }) {
     await supabase.from('locais').delete().eq('event_id',id)
     await supabase.from('alertas').delete().eq('event_id',id).catch(()=>{})
     await supabase.from('occurrences').delete().eq('event_id',id)
+    const nome = eventos.find(e=>e.id===id)?.name ?? ''
     await supabase.from('events').delete().eq('id',id)
+    registrarLog({ action:'delete', entity:'events', entityId:id, description:`Excluiu o evento ${nome} e todos os seus dados` })
+    invalidarEventoAtivo()
     carregar()
   }
 
@@ -454,19 +565,131 @@ export default function Admin({ profile }: { profile?: Profile }) {
   async function exportarBackup() {
     const evento = eventos.find(e=>e.status==='active')
     if (!evento) return
-    const [pe, eq, mi, te, lo, pa, oc] = await Promise.all([
-      supabase.from('people').select('*').eq('event_id',evento.id),
-      supabase.from('teams').select('*').eq('event_id',evento.id),
-      supabase.from('ministrações').select('*').eq('event_id',evento.id),
-      supabase.from('theaters').select('*').eq('event_id',evento.id),
-      supabase.from('locais').select('*').eq('event_id',evento.id),
-      supabase.from('financeiro').select('*').eq('event_id',evento.id),
-      supabase.from('occurrences').select('*').eq('event_id',evento.id),
-    ])
-    const backup = { evento, pessoas:pe.data, equipes:eq.data, ministracoes:mi.data, teatros:te.data, locais:lo.data, financeiro:pa.data, ocorrencias:oc.data, exportado_em:new Date().toISOString() }
+    const eid = evento.id
+    const sel = secoesExport
+    const q = (t:string) => supabase.from(t).select('*').eq('event_id',eid)
+    const backup: any = { evento, exportado_em:new Date().toISOString(), secoes:Object.keys(sel).filter(k=>sel[k]) }
+
+    if (sel.pessoas)      backup.pessoas      = (await q('people')).data
+    if (sel.equipes) {
+      backup.equipes = (await q('teams')).data
+      const ids = (backup.equipes ?? []).map((x:any)=>x.id)
+      backup.people_teams = ids.length ? (await supabase.from('people_teams').select('*').in('team_id',ids)).data : []
+    }
+    if (sel.ministracoes) backup.ministracoes = (await q('ministrações')).data
+    if (sel.teatros)      backup.teatros      = (await q('theaters')).data
+    if (sel.locais)       backup.locais       = (await q('locais')).data
+    if (sel.financeiro)   backup.financeiro   = (await q('financeiro')).data
+    if (sel.ocorrencias)  backup.ocorrencias  = (await q('occurrences')).data
+    if (sel.cronograma)   backup.cronograma   = (await q('cronograma_eventos')).data
+    if (sel.ranking) {
+      backup.ranking_categorias = (await q('ranking_categorias')).data
+      backup.ranking_votos      = (await q('ranking_votos')).data
+    }
+
     const blob = new Blob([JSON.stringify(backup,null,2)],{type:'application/json'})
     const url  = URL.createObjectURL(blob)
     const a    = document.createElement('a'); a.href=url; a.download=`backup-${evento.name}-${new Date().toISOString().slice(0,10)}.json`; a.click()
+    URL.revokeObjectURL(url)
+    registrarLog({ action:'export', entity:'backup', description:`Exportou backup do evento ${evento.name} (${backup.secoes.join(', ')})`, eventId:evento.id })
+  }
+
+  // Lê o arquivo JSON escolhido e pré-seleciona as seções que existem nele
+  function carregarArquivoImport(file: File) {
+    const reader = new FileReader()
+    reader.onload = () => {
+      try {
+        const data = JSON.parse(String(reader.result))
+        setImportArquivo(data)
+        const disponiveis: Record<string,boolean> = {}
+        SECOES_BACKUP.forEach(s => {
+          const tem = s.key==='ranking' ? (data.ranking_categorias?.length || data.ranking_votos?.length)
+                    : s.key==='equipes' ? (data.equipes?.length)
+                    : (data[s.key]?.length)
+          if (tem) disponiveis[s.key] = true
+        })
+        setSecoesImport(disponiveis)
+      } catch { alert('Arquivo inválido: não é um backup JSON válido.') }
+    }
+    reader.readAsText(file)
+  }
+
+  // Importa as seções escolhidas criando um NOVO evento (remapeia os ids antigos → novos)
+  async function importarBackup() {
+    if (!importArquivo) return
+    const nome = prompt('Nome do novo evento que receberá esta importação:', (importArquivo.evento?.name ?? 'Importado') + ' (importado)')
+    if (!nome) return
+    setImportando(true)
+    const sel = secoesImport
+    const src = importArquivo
+
+    // 1) cria o evento (inativo, pra não trocar o ativo sem querer)
+    const ev = src.evento ?? {}
+    const { data: novo, error: eErr } = await supabase.from('events').insert({
+      name:nome, location:ev.location??null, valor_encontrista:ev.valor_encontrista??0,
+      valor_encontreiro:ev.valor_encontreiro??0, start_date:ev.start_date??null, end_date:ev.end_date??null, status:'inactive',
+    }).select('id').single()
+    if (eErr || !novo) { setImportando(false); alert('Erro ao criar evento: '+(eErr?.message??'')); return }
+    const nid = novo.id
+
+    // remapa id antigo → novo por tabela
+    const mapPessoa: Record<string,string> = {}
+    const mapEquipe: Record<string,string> = {}
+    const mapMin: Record<string,string> = {}
+
+    // helper: insere linhas limpando id/created_at e trocando event_id
+    const limpa = (row:any, extra:any={}) => { const { id, created_at, updated_at, ...rest } = row; return { ...rest, event_id:nid, ...extra } }
+
+    try {
+      if (sel.pessoas && src.pessoas?.length) {
+        for (const p of src.pessoas) {
+          const { data } = await supabase.from('people').insert(limpa(p, { user_id:null, invite_code:null, referencia_id:null })).select('id').single()
+          if (data) mapPessoa[p.id] = data.id
+        }
+      }
+      if (sel.equipes && src.equipes?.length) {
+        for (const t of src.equipes) {
+          const { data } = await supabase.from('teams').insert(limpa(t, {
+            leader_id: t.leader_id ? mapPessoa[t.leader_id] ?? null : null,
+            co_leader_id: t.co_leader_id ? mapPessoa[t.co_leader_id] ?? null : null,
+          })).select('id').single()
+          if (data) mapEquipe[t.id] = data.id
+        }
+        // vínculos pessoa-equipe
+        for (const v of src.people_teams ?? []) {
+          if (mapPessoa[v.person_id] && mapEquipe[v.team_id])
+            await supabase.from('people_teams').insert({ person_id:mapPessoa[v.person_id], team_id:mapEquipe[v.team_id] })
+        }
+      }
+      if (sel.locais && src.locais?.length)
+        for (const l of src.locais) await supabase.from('locais').insert(limpa(l))
+      if (sel.ministracoes && src.ministracoes?.length) {
+        for (const m of src.ministracoes) {
+          const { data } = await supabase.from('ministrações').insert(limpa(m, { ministrante_id: m.ministrante_id ? mapPessoa[m.ministrante_id] ?? null : null })).select('id').single()
+          if (data) mapMin[m.id] = data.id
+        }
+      }
+      if (sel.teatros && src.teatros?.length)
+        for (const t of src.teatros) await supabase.from('theaters').insert(limpa(t, { ministracao_id: t.ministracao_id ? mapMin[t.ministracao_id] ?? null : null }))
+      if (sel.financeiro && src.financeiro?.length)
+        for (const f of src.financeiro) if (mapPessoa[f.person_id]) await supabase.from('financeiro').insert(limpa(f, { person_id:mapPessoa[f.person_id] }))
+      if (sel.ocorrencias && src.ocorrencias?.length)
+        for (const o of src.ocorrencias) await supabase.from('occurrences').insert(limpa(o, { created_by:null, resolved_by:null }))
+      if (sel.cronograma && src.cronograma?.length)
+        for (const c of src.cronograma) await supabase.from('cronograma_eventos').insert(limpa(c, { ministracao_id: c.ministracao_id ? mapMin[c.ministracao_id] ?? null : null }))
+      if (sel.ranking) {
+        for (const rc of src.ranking_categorias ?? []) await supabase.from('ranking_categorias').insert(limpa(rc))
+        // votos dependem de pessoa; só importa se a pessoa veio junto
+      }
+    } catch (err:any) {
+      setImportando(false); alert('Importação parcial — erro: '+(err?.message??err)); carregar(); return
+    }
+
+    registrarLog({ action:'create', entity:'events', entityId:nid, description:`Importou o evento "${nome}" de um backup`, eventId:nid })
+    invalidarEventoAtivo()
+    setImportando(false); setImportArquivo(null); setSecoesImport({})
+    alert(`Evento "${nome}" importado! Ele está como Inativo — use "Tornar ativo" na aba Eventos para acessá-lo.`)
+    setAba('eventos'); carregar()
   }
 
   async function gerarCodigos() {
@@ -489,6 +712,7 @@ export default function Admin({ profile }: { profile?: Profile }) {
         <button className={`tab ${aba==='eventos'?'active':''}`}   onClick={()=>setAba('eventos')}>Eventos</button>
         <button className={`tab ${aba==='tipos'?'active':''}`}     onClick={()=>setAba('tipos')}>Tipos</button>
         <button className={`tab ${aba==='backup'?'active':''}`}    onClick={()=>setAba('backup')}>Backup</button>
+        <button className={`tab ${aba==='logs'?'active':''}`}      onClick={()=>{setAba('logs');carregarLogs()}}>Logs</button>
         <button className={`tab ${aba==='aparencia'?'active':''}`} onClick={()=>setAba('aparencia')}>Aparência</button>
       </div>
 
@@ -567,6 +791,7 @@ export default function Admin({ profile }: { profile?: Profile }) {
                       </button>
                       <select
                         value={p.user_role??'visitante'}
+                        onClick={e=>e.stopPropagation()}
                         onChange={e=>{e.stopPropagation();alterarRole(p.user_id!,e.target.value)}}
                         style={{fontSize:11,padding:'2px 6px',borderRadius:6,border:`1px solid ${p.role_status==='pending'?'var(--warning)':'var(--border)'}`,background:p.role_status==='pending'?'var(--warning-bg)':'var(--bg)',cursor:'pointer',fontFamily:'inherit',maxWidth:130,fontWeight:p.role_status==='pending'?700:400}}
                       >
@@ -855,7 +1080,7 @@ export default function Admin({ profile }: { profile?: Profile }) {
             <div key={ev.id} style={{background:'white',borderRadius:14,boxShadow:'var(--shadow-sm)',marginBottom:8,padding:'14px 16px'}}>
               <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:8}}>
                 <p style={{fontWeight:700,fontSize:15}}>{ev.name}</p>
-                <span className={`badge ${ev.status==='active'?'badge-success':'badge-neutral'}`} style={{fontSize:10}}>{ev.status==='active'?'Ativo':'Encerrado'}</span>
+                <span className={`badge ${ev.status==='active'?'badge-success':'badge-neutral'}`} style={{fontSize:10}}>{ev.status==='active'?'Ativo':ev.status==='finished'?'Encerrado':'Inativo'}</span>
               </div>
               {ev.location && <p style={{fontSize:12,color:'var(--muted)',marginBottom:8}}>{ev.location}</p>}
               <p style={{fontSize:12,color:'var(--muted)',marginBottom:10}}>Encontrista: R$ {ev.valor_encontrista??0} · Encontreiro: R$ {ev.valor_encontreiro??0}</p>
@@ -866,6 +1091,11 @@ export default function Admin({ profile }: { profile?: Profile }) {
                 <button className="btn btn-sm" style={{background:'#EBF8FF',color:'#2B6CB0',border:'none'}} onClick={()=>{setModalDuplicar(ev);setNomeDuplicar(ev.name+' (cópia)')}}>
                   <span className="icon icon-sm">content_copy</span> Duplicar
                 </button>
+                {ev.status!=='active' && (
+                  <button className="btn btn-sm" style={{background:'var(--success-bg)',color:'var(--success)',border:'none'}} onClick={()=>tornarEventoAtivo(ev.id, ev.name)}>
+                    <span className="icon icon-sm">play_circle</span> Tornar ativo
+                  </button>
+                )}
                 {ev.status==='active' && (
                   <button className="btn btn-sm" style={{background:'var(--warning-bg)',color:'var(--warning)',border:'none'}} onClick={()=>finalizarEvento(ev.id)}>
                     <span className="icon icon-sm">check_circle</span> Finalizar
@@ -902,14 +1132,84 @@ export default function Admin({ profile }: { profile?: Profile }) {
         </>
       )}
 
-      {/* BACKUP */}
+      {/* LOGS / AUDITORIA */}
+      {aba==='logs' && (
+        <div>
+          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:12}}>
+            <p style={{fontSize:13,color:'var(--text2)',lineHeight:1.6}}>Histórico das ações realizadas no sistema (últimas 300).</p>
+            <button className="btn btn-outline btn-sm" onClick={carregarLogs}><span className="icon icon-sm">refresh</span> Atualizar</button>
+          </div>
+          {logsErro && <div className="alert-box alert-error mb-3">{logsErro}</div>}
+          {logsLoading ? [1,2,3,4].map(i=><div key={i} className="skeleton" style={{height:56,marginBottom:8,borderRadius:12}}/>) :
+           (!logsErro && logs.length===0) ? <div className="empty"><p className="empty-desc">Nenhuma ação registrada ainda.</p></div> :
+           logs.map(l => (
+            <div key={l.id} style={{background:'white',borderRadius:12,boxShadow:'var(--shadow-sm)',marginBottom:8,padding:'11px 14px'}}>
+              <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:3}}>
+                <span style={{fontSize:11,fontWeight:800,color:'var(--primary)',textTransform:'uppercase'}}>{ACAO_LABEL[l.action]??l.action}</span>
+                <span style={{fontSize:11,color:'var(--muted)'}}>· {l.entity}</span>
+                <span style={{flex:1}}/>
+                <span style={{fontSize:11,color:'var(--muted)'}}>{fmtDataHora(l.created_at)}</span>
+              </div>
+              <p style={{fontSize:13,color:'var(--text)'}}>{l.description || '—'}</p>
+              {l.actor_name && <p style={{fontSize:11,color:'var(--muted)',marginTop:2}}>por {l.actor_name}</p>}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* BACKUP — exportar/importar seletivo */}
       {aba==='backup' && (
         <div>
-          <p style={{fontSize:13,color:'var(--text2)',marginBottom:20,lineHeight:1.6}}>Exporte todos os dados do evento ativo em formato JSON para backup ou importação futura.</p>
-          <button className="btn btn-primary btn-full mb-3" onClick={exportarBackup}>
-            <span className="icon icon-sm">download</span> Exportar backup completo
+          {/* EXPORTAR */}
+          <div className="section-label mb-2">Exportar backup</div>
+          <p style={{fontSize:12,color:'var(--muted)',marginBottom:10}}>Escolha o que exportar do evento ativo. Gera um arquivo JSON.</p>
+          <div style={{display:'flex',flexWrap:'wrap',gap:8,marginBottom:12}}>
+            {SECOES_BACKUP.map(s => {
+              const on = secoesExport[s.key]
+              return (
+                <button key={s.key} onClick={()=>setSecoesExport(p=>({...p,[s.key]:!p[s.key]}))}
+                  style={{padding:'7px 12px',borderRadius:20,cursor:'pointer',fontFamily:'inherit',fontSize:12,fontWeight:600,
+                    border:on?'2px solid var(--primary)':'1px solid var(--border)',background:on?'var(--primary-light)':'white',color:on?'var(--primary)':'var(--text2)',display:'flex',alignItems:'center',gap:5}}>
+                  <span className="icon" style={{fontSize:15}}>{on?'check_box':'check_box_outline_blank'}</span>{s.label}
+                </button>
+              )
+            })}
+          </div>
+          <button className="btn btn-primary btn-full mb-2" onClick={exportarBackup} disabled={!Object.values(secoesExport).some(Boolean)}>
+            <span className="icon icon-sm">download</span> Exportar selecionados
           </button>
-          <div className="alert-box alert-info">O backup inclui: pessoas, equipes, ministrações, teatros, locais, financeiro e ocorrências. Não inclui logs e histórico de auditorias.</div>
+          <div className="alert-box alert-info mb-4" style={{fontSize:12}}>Não inclui logs/auditoria (histórico é imutável e separado).</div>
+
+          {/* IMPORTAR */}
+          <div className="section-label mb-2">Importar backup</div>
+          <p style={{fontSize:12,color:'var(--muted)',marginBottom:10}}>Carregue um arquivo de backup. Ele cria um <strong>novo evento (inativo)</strong> com o que você escolher — sem tocar nos eventos atuais.</p>
+          <label className="btn btn-outline btn-full mb-3" style={{cursor:'pointer'}}>
+            <span className="icon icon-sm">upload_file</span> {importArquivo ? 'Trocar arquivo' : 'Escolher arquivo JSON'}
+            <input type="file" accept="application/json,.json" style={{display:'none'}} onChange={e=>{const f=e.target.files?.[0]; if(f) carregarArquivoImport(f); e.target.value=''}}/>
+          </label>
+          {importArquivo && (
+            <>
+              <p style={{fontSize:12,color:'var(--muted)',marginBottom:8}}>Backup de <strong>{importArquivo.evento?.name ?? '—'}</strong>. Selecione o que importar:</p>
+              <div style={{display:'flex',flexWrap:'wrap',gap:8,marginBottom:12}}>
+                {SECOES_BACKUP.filter(s => {
+                  return s.key==='ranking' ? (importArquivo.ranking_categorias?.length || importArquivo.ranking_votos?.length)
+                       : (importArquivo[s.key]?.length)
+                }).map(s => {
+                  const on = secoesImport[s.key]
+                  return (
+                    <button key={s.key} onClick={()=>setSecoesImport(p=>({...p,[s.key]:!p[s.key]}))}
+                      style={{padding:'7px 12px',borderRadius:20,cursor:'pointer',fontFamily:'inherit',fontSize:12,fontWeight:600,
+                        border:on?'2px solid var(--primary)':'1px solid var(--border)',background:on?'var(--primary-light)':'white',color:on?'var(--primary)':'var(--text2)',display:'flex',alignItems:'center',gap:5}}>
+                      <span className="icon" style={{fontSize:15}}>{on?'check_box':'check_box_outline_blank'}</span>{s.label}
+                    </button>
+                  )
+                })}
+              </div>
+              <button className="btn btn-primary btn-full" onClick={importarBackup} disabled={importando || !Object.values(secoesImport).some(Boolean)}>
+                {importando ? 'Importando...' : 'Importar como novo evento'}
+              </button>
+            </>
+          )}
         </div>
       )}
 

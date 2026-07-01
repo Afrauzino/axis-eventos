@@ -52,3 +52,9 @@ export function useEvento() {
 
   return { evento, loading, invalidateCache }
 }
+
+// Invalida o cache do evento ativo a partir de qualquer lugar (ex: ao trocar de evento no Admin)
+export function invalidarEventoAtivo() {
+  cachedEvento = null
+  cachedAt = 0
+}

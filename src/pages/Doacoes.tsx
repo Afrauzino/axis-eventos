@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import SubTabs from '../components/SubTabs'
 import { getInitials, isAdmin, fmtData, fmtDataHora, fmtBRL } from '../utils'
 import { useEvento } from '../hooks/useEvento'
 import PersonSelect from '../components/PersonSelect'
@@ -61,6 +62,7 @@ export default function Doacoes({ profile }: { profile?: Profile }) {
 
   return (
     <div className="page">
+      <SubTabs group="financeiro"/>
       <div className="alert-box alert-info mb-3">
         Doações são registros separados e <strong>nunca alteram o saldo da inscrição</strong>.
       </div>

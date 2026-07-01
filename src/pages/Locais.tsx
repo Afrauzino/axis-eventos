@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import SubTabs from '../components/SubTabs'
 import { isAdmin } from '../utils'
 import UploadFoto from '../components/UploadFoto'
 import EmojiPicker from '../components/EmojiPicker'
@@ -87,6 +88,7 @@ export default function Locais({ profile }: { profile?: Profile }) {
 
   return (
     <div className="page">
+      <SubTabs group="evento"/>
       <div className="filter-bar">
         {[['todos','Todos'],...TIPOS].map(([v,l])=>(
           <button key={v} className={`chip ${filtro===v?'active':''}`} onClick={()=>setFiltro(v)}>{l}</button>

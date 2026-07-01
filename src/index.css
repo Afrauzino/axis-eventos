@@ -367,13 +367,13 @@ body {
 /* ── CARDS ──────────────────────────────────────── */
 .list-card {
   background: white;
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-sm);
+  border-radius: 12px;
+  box-shadow: 0 1px 5px rgba(0,0,0,0.12);
   margin-bottom: 10px;
   display: flex;
   align-items: center;
   gap: 14px;
-  padding: 13px 14px 13px 0;
+  padding: 0 14px 0 0;
   cursor: pointer;
   transition: box-shadow 0.15s;
   overflow: hidden;
@@ -383,23 +383,23 @@ body {
   width: 100%;
   font-family: inherit;
   text-align: left;
+  min-height: 78px;
 }
 
-.list-card:hover { box-shadow: var(--shadow); }
-.list-card:active { box-shadow: var(--shadow-xs); }
+.list-card:hover { box-shadow: 0 2px 9px rgba(0,0,0,0.16); }
+.list-card:active { box-shadow: 0 1px 3px rgba(0,0,0,0.10); }
 
 .list-card-bar {
-  width: 4px;
+  width: 6px;
   align-self: stretch;
   background: var(--primary);
   flex-shrink: 0;
-  border-radius: 0 2px 2px 0;
 }
 
 .list-card-bar.leader { background: var(--leader-color); }
 
 .list-card-media {
-  width: 48px; height: 48px;
+  width: 50px; height: 50px;
   border-radius: 50%;
   flex-shrink: 0;
   background: var(--primary-light);
@@ -407,6 +407,7 @@ body {
   align-items: center;
   justify-content: center;
   overflow: hidden;
+  margin-left: 15px;
 }
 
 .list-card-media img {
@@ -945,19 +946,19 @@ body {
 /* ── SCHEDULE CARD ──────────────────────────────── */
 .sched-card {
   background: white;
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-sm);
-  margin-bottom: 8px;
+  border-radius: 12px;
+  box-shadow: 0 1px 5px rgba(0,0,0,0.12);
+  margin-bottom: 10px;
   display: flex;
   align-items: stretch;
   overflow: hidden;
   cursor: pointer;
-  transition: box-shadow 0.12s;
+  transition: box-shadow 0.15s;
 }
 
-.sched-card:hover { box-shadow: var(--shadow); }
+.sched-card:hover { box-shadow: 0 2px 9px rgba(0,0,0,0.16); }
 
-.sched-bar { width: 4px; flex-shrink: 0; }
+.sched-bar { width: 6px; flex-shrink: 0; align-self: stretch; }
 .sched-bar.ministracao { background: #6B46C1; }
 .sched-bar.teatro { background: var(--accent); }
 .sched-bar.pausa { background: var(--muted); }
@@ -965,9 +966,9 @@ body {
 .sched-bar.louvor { background: #D53F8C; }
 .sched-bar.atividade { background: var(--primary); }
 
-.sched-body { flex: 1; padding: 12px 14px; }
+.sched-body { flex: 1; padding: 14px 15px; }
 .sched-time { font-size: 12px; font-weight: 700; color: var(--primary); margin-bottom: 2px; }
-.sched-title { font-size: 14px; font-weight: 700; color: var(--text); margin-bottom: 2px; }
+.sched-title { font-size: 15px; font-weight: 700; color: var(--text); margin-bottom: 2px; }
 .sched-desc { font-size: 12px; color: var(--muted); }
 .sched-chevron { display: flex; align-items: center; padding-right: 12px; color: var(--muted-light); }
 

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import SubTabs from '../components/SubTabs'
 import { isAdmin } from '../utils'
 import UploadFoto from '../components/UploadFoto'
 import EmojiPicker from '../components/EmojiPicker'
@@ -73,6 +74,7 @@ export default function TeatroObjetos({ profile }: { profile?: Profile }) {
 
   return (
     <div className="page">
+      <SubTabs group="teatro"/>
       <div className="alert-box alert-info mb-3">Biblioteca global — disponiveis para todos os teatros.</div>
       <div className="search-bar mb-3">
         <span className="icon icon-sm" style={{color:'var(--muted-light)'}}>search</span>

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import SubTabs from '../components/SubTabs'
 import { getInitials, isAdmin, fmtData, fmtBRL } from '../utils'
 import { useEvento } from '../hooks/useEvento'
 import PersonSelect from '../components/PersonSelect'
@@ -90,6 +91,7 @@ export default function Financeiro({ profile }: { profile?: Profile }) {
 
   return (
     <div className="page">
+      <SubTabs group="financeiro"/>
       {/* Contadores de status - sem valores monetários */}
       {(() => {
         const inscritos   = pessoas.filter(p=>getSituacao(p)==='inscrito').length

@@ -471,8 +471,20 @@ export default function Cronograma({ profile }: { profile?: Profile }) {
                     max={(evento as any)?.end_date ? `${(evento as any).end_date}T23:59` : undefined} />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">Duração (minutos) <span className="req">*</span></label>
-                  <input className="form-input" type="number" min="1" placeholder="Ex: 90" value={form.duracao_minutos} onChange={e=>setForm(f=>({...f,duracao_minutos:e.target.value}))} required />
+                  <label className="form-label">Duração <span className="req">*</span></label>
+                  <div style={{display:'flex',gap:10,alignItems:'center'}}>
+                    <div style={{flex:1}}>
+                      <input className="form-input" type="number" min="0" placeholder="0" value={Math.floor((Number(form.duracao_minutos)||0)/60)}
+                        onChange={e=>{const h=Number(e.target.value)||0;const m=(Number(form.duracao_minutos)||0)%60;setForm(f=>({...f,duracao_minutos:String(h*60+m)}))}} />
+                      <span style={{fontSize:11,color:'var(--muted)',marginTop:4,display:'block',textAlign:'center'}}>horas</span>
+                    </div>
+                    <span style={{fontSize:20,fontWeight:800,color:'var(--muted)',marginTop:-14}}>:</span>
+                    <div style={{flex:1}}>
+                      <input className="form-input" type="number" min="0" max="59" placeholder="00" value={(Number(form.duracao_minutos)||0)%60}
+                        onChange={e=>{const m=Math.min(59,Number(e.target.value)||0);const h=Math.floor((Number(form.duracao_minutos)||0)/60);setForm(f=>({...f,duracao_minutos:String(h*60+m)}))}} />
+                      <span style={{fontSize:11,color:'var(--muted)',marginTop:4,display:'block',textAlign:'center'}}>minutos</span>
+                    </div>
+                  </div>
                 </div>
               </div>
 

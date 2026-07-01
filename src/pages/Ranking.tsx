@@ -33,9 +33,7 @@ export default function Ranking({ profile }: { profile?: Profile }) {
   const [loading,    setLoading]    = useState(true)
   const [erro,       setErro]       = useState<string|null>(null)
   const [catSel,     setCatSel]     = useState<Categoria|null>(null)
-  const [votando,    setVotando]    = useState<{pessoa:Pessoa;cat:Categoria}|null>(null)
-  const [estrelas,   setEstrelas]   = useState(0)
-  const [salvando,   setSalvando]   = useState(false)
+  const [pessoaAberta, setPessoaAberta] = useState<Pessoa|null>(null)
   const [myPersonId, setMyPersonId] = useState<string|null>(null)
   const canAdmin = profile && ['admin','coordenador'].includes(profile.user_role)
 
@@ -117,23 +115,22 @@ export default function Ranking({ profile }: { profile?: Profile }) {
       .sort((a,b)=>b.nota-a.nota)
   }
 
-  async function votar() {
-    if (!votando || !myPersonId || !evento || !estrelas) return
-    setSalvando(true)
-    const { error } = await supabase.from('ranking_votos').upsert({
-      event_id: evento.id,
-      categoria_id: votando.cat.id,
-      votante_id: myPersonId,
-      votado_id: votando.pessoa.id,
-      estrelas,
+  // Vota (ou altera o voto) direto ao clicar na estrela — sem botão "votar"
+  async function votarInline(catId:string, personId:string, novasEstrelas:number) {
+    if (!myPersonId || !evento) return
+    // atualiza a tela na hora (otimista)
+    setVotos(prev=>[
+      ...prev.filter(v=>!(v.categoria_id===catId && v.votante_id===myPersonId && v.votado_id===personId)),
+      {categoria_id:catId, votante_id:myPersonId, votado_id:personId, estrelas:novasEstrelas}
+    ])
+    await supabase.from('ranking_votos').upsert({
+      event_id: evento.id, categoria_id: catId, votante_id: myPersonId, votado_id: personId, estrelas: novasEstrelas,
     }, { onConflict:'categoria_id,votante_id,votado_id' })
-    if (!error) {
-      setVotos(prev=>[
-        ...prev.filter(v=>!(v.categoria_id===votando.cat.id && v.votante_id===myPersonId && v.votado_id===votando.pessoa.id)),
-        {categoria_id:votando.cat.id,votante_id:myPersonId,votado_id:votando.pessoa.id,estrelas}
-      ])
-    }
-    setSalvando(false); setVotando(null); setEstrelas(0)
+  }
+
+  // Quantos votos essa pessoa recebeu numa categoria
+  function totalVotos(catId:string, personId:string) {
+    return votos.filter(v=>v.categoria_id===catId && v.votado_id===personId).length
   }
 
   if (loading) return <div className="page">{[1,2,3].map(i=><div key={i} className="skeleton" style={{height:80,marginBottom:8,borderRadius:14}}/>)}</div>
@@ -211,67 +208,81 @@ export default function Ranking({ profile }: { profile?: Profile }) {
             </>
           )}
 
-          {/* Lista para votar */}
+          {/* Lista de pessoas — clique abre todas as categorias para votar */}
           <p className="section-label mb-2">
-            {poderes ? 'Clique para votar' : 'Classificação'} — {pessoas.length} encontristas
+            {poderes ? 'Toque numa pessoa para ver e votar em todas as categorias' : 'Classificação'} — {pessoas.length} encontristas
           </p>
           {pessoas.length === 0 ? (
             <div className="empty"><p className="empty-desc">Nenhum encontrista cadastrado.</p></div>
           ) : lista.map((p,i)=>(
-            <div key={p.id} style={{background:'white',borderRadius:14,boxShadow:'var(--shadow-sm)',marginBottom:8,display:'flex',alignItems:'center',gap:12,padding:'12px 14px'}}>
-              <span style={{fontSize:12,fontWeight:700,color:'var(--muted)',width:20,textAlign:'center',flexShrink:0}}>{i+1}</span>
-              <div style={{width:40,height:40,borderRadius:'50%',background:'var(--primary-light)',overflow:'hidden',flexShrink:0,display:'flex',alignItems:'center',justifyContent:'center'}}>
+            <button key={p.id} onClick={()=>setPessoaAberta(p)}
+              style={{width:'100%',textAlign:'left',fontFamily:'inherit',background:'white',borderRadius:12,border:'none',boxShadow:'0 1px 5px rgba(0,0,0,0.12)',marginBottom:10,display:'flex',alignItems:'center',gap:12,padding:'14px 15px',cursor:'pointer'}}>
+              <span style={{fontSize:13,fontWeight:800,color:'var(--muted)',width:22,textAlign:'center',flexShrink:0}}>{i+1}</span>
+              <div style={{width:50,height:50,borderRadius:'50%',background:'var(--primary-light)',overflow:'hidden',flexShrink:0,display:'flex',alignItems:'center',justifyContent:'center'}}>
                 {p.photo_url?<img src={p.photo_url} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}}/>
-                  :<span style={{fontWeight:700,fontSize:13,color:'var(--primary)'}}>{getInitials(p.name)}</span>}
+                  :<span style={{fontWeight:700,fontSize:16,color:'var(--primary)'}}>{getInitials(p.name)}</span>}
               </div>
               <div style={{flex:1,minWidth:0}}>
                 <p style={{fontWeight:700,fontSize:14,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{p.name}</p>
                 {p.mv>0 && <p style={{fontSize:11,color:catSel.cor,fontWeight:600}}>Meu voto: {p.mv}★</p>}
               </div>
-              <div style={{display:'flex',flexDirection:'column',alignItems:'flex-end',gap:4}}>
+              <div style={{display:'flex',alignItems:'center',gap:6}}>
                 {p.nota>0 && <Estrelas valor={Math.round(p.nota)} size={16}/>}
-                {poderes && (
-                  <button onClick={()=>{setVotando({pessoa:p,cat:catSel});setEstrelas(p.mv)}}
-                    style={{background:catSel.cor,color:'white',border:'none',borderRadius:8,padding:'5px 12px',cursor:'pointer',fontSize:12,fontWeight:700,fontFamily:'inherit',display:'flex',alignItems:'center',gap:4}}>
-                    <MatIcon name="how_to_vote" size={13} color="white"/>
-                    {p.mv>0?'Alterar':'Votar'}
-                  </button>
-                )}
+                <MatIcon name="chevron_right" size={20} color="var(--muted)"/>
               </div>
-            </div>
+            </button>
           ))}
         </>
       )}
 
-      {/* Modal votar */}
-      {votando && (
+      {/* Modal da pessoa — todas as categorias, votos recebidos e votação inline */}
+      {pessoaAberta && (
         <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.5)',zIndex:300,display:'flex',flexDirection:'column',justifyContent:'flex-end'}}
-          onClick={e=>e.target===e.currentTarget&&setVotando(null)}>
-          <div style={{background:'white',borderRadius:'20px 20px 0 0',padding:'8px 20px 32px'}}>
-            <div style={{width:36,height:4,background:'var(--border)',borderRadius:2,margin:'12px auto 20px'}}/>
-            <div style={{textAlign:'center'}}>
-              <div style={{width:72,height:72,borderRadius:'50%',background:votando.cat.cor+'33',margin:'0 auto 12px',overflow:'hidden',display:'flex',alignItems:'center',justifyContent:'center'}}>
-                {votando.pessoa.photo_url
-                  ?<img src={votando.pessoa.photo_url} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}}/>
-                  :<span style={{fontWeight:700,fontSize:24,color:votando.cat.cor}}>{getInitials(votando.pessoa.name)}</span>}
+          onClick={e=>e.target===e.currentTarget&&setPessoaAberta(null)}>
+          <div style={{background:'white',borderRadius:'20px 20px 0 0',maxHeight:'90vh',overflowY:'auto'}}>
+            <div style={{width:36,height:4,background:'var(--border)',borderRadius:2,margin:'12px auto 0'}}/>
+
+            {/* Cabeçalho da pessoa */}
+            <div style={{display:'flex',alignItems:'center',gap:12,padding:'14px 20px'}}>
+              <div style={{width:56,height:56,borderRadius:'50%',background:'var(--primary-light)',overflow:'hidden',flexShrink:0,display:'flex',alignItems:'center',justifyContent:'center'}}>
+                {pessoaAberta.photo_url
+                  ?<img src={pessoaAberta.photo_url} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}}/>
+                  :<span style={{fontWeight:700,fontSize:20,color:'var(--primary)'}}>{getInitials(pessoaAberta.name)}</span>}
               </div>
-              <p style={{fontWeight:800,fontSize:18,marginBottom:4}}>{votando.pessoa.name}</p>
-              <div style={{display:'flex',alignItems:'center',gap:6,justifyContent:'center',marginBottom:16}}>
-                <MatIcon name={votando.cat.icone||'star'} size={16} color={votando.cat.cor}/>
-                <p style={{fontSize:13,color:votando.cat.cor,fontWeight:700}}>{votando.cat.nome}</p>
+              <div style={{flex:1,minWidth:0}}>
+                <p style={{fontWeight:800,fontSize:18}}>{pessoaAberta.name}</p>
+                <p style={{fontSize:12,color:'var(--muted)'}}>{poderes?'Toque nas estrelas para votar em cada categoria':'Votos recebidos'}</p>
               </div>
-              <div style={{display:'flex',justifyContent:'center',gap:8,marginBottom:24}}>
-                {[1,2,3,4,5].map(n=>(
-                  <button key={n} type="button" onClick={()=>setEstrelas(n)}
-                    style={{background:'none',border:'none',cursor:'pointer',padding:'4px',transform:estrelas>=n?'scale(1.25)':'scale(1)',transition:'transform 0.1s'}}>
-                    <MatIcon name="star" size={42} color={estrelas>=n?'#F6AD55':'var(--border)'}/>
-                  </button>
-                ))}
-              </div>
-              <button className="btn btn-primary btn-full" disabled={!estrelas||salvando} onClick={votar}>
-                {salvando?'Salvando...':estrelas?`Votar com ${estrelas} estrela${estrelas>1?'s':''}`:'Selecione as estrelas'}
-              </button>
-              <button className="btn btn-ghost btn-full" style={{marginTop:8}} onClick={()=>setVotando(null)}>Cancelar</button>
+            </div>
+
+            {/* Lista de categorias */}
+            <div style={{padding:'4px 16px 28px'}}>
+              {categorias.map(cat=>{
+                const media = notaMedia(cat.id, pessoaAberta!.id)
+                const qtd   = totalVotos(cat.id, pessoaAberta!.id)
+                const meu   = meuVoto(cat.id, pessoaAberta!.id)
+                return (
+                  <div key={cat.id} style={{border:`1px solid ${cat.cor}33`,borderRadius:12,padding:'12px 14px',marginBottom:10}}>
+                    <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:8}}>
+                      <MatIcon name={cat.icone||'star'} size={18} color={cat.cor}/>
+                      <p style={{flex:1,fontSize:13,fontWeight:700,color:cat.cor}}>{cat.nome}</p>
+                      <span style={{fontSize:12,fontWeight:700,color:'var(--muted)'}}>
+                        {media>0?`${media.toFixed(1)}★`:'—'} · {qtd} voto{qtd===1?'':'s'}
+                      </span>
+                    </div>
+                    <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+                      <span style={{fontSize:11,color:'var(--muted)'}}>{poderes?'Meu voto':'Média'}</span>
+                      {poderes
+                        ? <Estrelas valor={meu} size={26} onChange={v=>votarInline(cat.id, pessoaAberta!.id, v)}/>
+                        : <Estrelas valor={Math.round(media)} size={22}/>}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+
+            <div style={{padding:'0 20px 28px'}}>
+              <button className="btn btn-ghost btn-full" onClick={()=>setPessoaAberta(null)}>Fechar</button>
             </div>
           </div>
         </div>

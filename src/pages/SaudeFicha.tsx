@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import SubTabs from '../components/SubTabs'
 import { getInitials } from '../utils'
 import { useEvento } from '../hooks/useEvento'
 import PersonSelect from '../components/PersonSelect'
@@ -131,6 +132,7 @@ export default function SaudeFicha({ profile }: { profile?: Profile }) {
 
   return (
     <div className="page">
+      <SubTabs group="saude"/>
       {semFicha.length>0 && (
         <div className="alert-box alert-warning mb-3" style={{cursor:'pointer'}} onClick={()=>setFiltro('sem')}>
           <strong>{semFicha.length}</strong> sem ficha

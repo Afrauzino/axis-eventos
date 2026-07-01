@@ -2,6 +2,7 @@ import PersonSelect from '../components/PersonSelect'
 import { useEffect, useState } from 'react'
 import AvatarPicker from '../components/AvatarPicker'
 import { supabase } from '../lib/supabase'
+import SubTabs from '../components/SubTabs'
 import { getInitials, isAdmin, formatName } from '../utils'
 import { useEvento } from '../hooks/useEvento'
 import type { Profile } from '../App'
@@ -133,6 +134,7 @@ export default function Equipes({ profile }: { profile?: Profile }) {
 
   return (
     <div className="page">
+      <SubTabs group="equipes"/>
       <div className="stats-grid mb-4">
         <div className="stat-card"><div className="stat-label">Equipes</div><div className="stat-value">{equipes.length}</div></div>
         <div className="stat-card">

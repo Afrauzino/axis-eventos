@@ -6,7 +6,7 @@ import { useEvento } from '../hooks/useEvento'
 import PersonSelect from '../components/PersonSelect'
 import RichEditor from '../components/RichEditor'
 import ArquivosModulo from '../components/ArquivosModulo'
-import EmojiPicker from '../components/EmojiPicker'
+import { EMOJIS_AXIS } from '../components/AvatarPicker'
 import type { Profile } from '../App'
 
 type Ministracao = {
@@ -18,7 +18,7 @@ type Ministracao = {
   continuacao_sermao:string|null     // continuação do sermão
   anotacoes_pessoais:string|null     // só o ministrante vê
 }
-type Pessoa = { id:string; name:string; photo_url:string|null }
+type Pessoa = { id:string; name:string; photo_url:string|null; user_id?:string|null }
 
 const STATUS_BADGE: Record<string,string> = { planejado:'badge-neutral', em_andamento:'badge-warning', concluido:'badge-success', cancelado:'badge-danger' }
 const FORM_VAZIO = { titulo:'', ministrante_id:'', hora_inicio:'', hora_fim:'', local:'', conteudo_sermao:'', continuacao_sermao:'', anotacoes_pessoais:'', teatro_id:'', emoji:'', cor:'#6B46C1' }
@@ -64,7 +64,7 @@ export default function Ministracoes({ profile }: { profile?: Profile }) {
     setLoading(true)
     const [mi, pe, lo, te] = await Promise.all([
       supabase.from('ministrações').select('*').eq('event_id',evento.id).order('hora_inicio'),
-      supabase.from('people').select('id,name,photo_url').eq('event_id',evento.id).order('name'),
+      supabase.from('people').select('id,name,photo_url,user_id').eq('event_id',evento.id).order('name'),
       supabase.from('locais').select('id,nome').eq('event_id',evento.id).order('nome'),
       supabase.from('theaters').select('id,nome,ministracao_id,cor').eq('event_id',evento.id).order('nome'),
     ])
@@ -120,22 +120,29 @@ export default function Ministracoes({ profile }: { profile?: Profile }) {
       continuacao_sermao: blocos.find(b=>b.tipo==='Continuação')?.conteudo||null,
     }
     let err
+    let minId = editando?.id
     if (editando) { const r=await supabase.from('ministrações').update(payload).eq('id',editando.id); err=r.error }
-    else { const r=await supabase.from('ministrações').insert({...payload,event_id:evento.id}); err=r.error }
+    else { const r=await supabase.from('ministrações').insert({...payload,event_id:evento.id}).select('id').single(); err=r.error; minId=r.data?.id }
     if (err) { setErro('Erro: '+err.message); setSalvando(false); return }
-    // Sync teatro link
-    if (form.teatro_id) {
-      const minId = editando?.id ?? (await supabase.from('ministrações').select('id').eq('event_id',evento.id).eq('titulo',form.titulo).order('created_at',{ascending:false}).limit(1).single()).data?.id
-      if (minId) await supabase.from('theaters').update({ ministracao_id: minId }).eq('id', form.teatro_id)
-    } else if (editando) {
-      await supabase.from('theaters').update({ ministracao_id: null }).eq('ministracao_id', editando.id)
+    // Sync teatro link — garante que só UM teatro fica vinculado
+    if (minId) {
+      // primeiro desvincula QUALQUER teatro que esteja nesta ministração
+      await supabase.from('theaters').update({ ministracao_id: null }).eq('ministracao_id', minId)
+      // depois vincula só o escolhido (se houver)
+      if (form.teatro_id) {
+        await supabase.from('theaters').update({ ministracao_id: minId }).eq('id', form.teatro_id)
+      }
     }
     setModal(false); setSalvando(false); setEditando(null); carregar()
   }
 
   async function excluir(id:string) {
-    if (!confirm('Excluir esta ministração?')) return
-    await supabase.from('ministrações').delete().eq('id',id)
+    if (!confirm('Excluir esta ministração? Os teatros e itens do cronograma ligados a ela serão desvinculados.')) return
+    // Remove os vínculos ANTES do delete — senão a chave estrangeira bloqueia a exclusão
+    await supabase.from('theaters').update({ ministracao_id: null }).eq('ministracao_id', id)
+    await supabase.from('cronograma_eventos').update({ ministracao_id: null }).eq('ministracao_id', id)
+    const { error } = await supabase.from('ministrações').delete().eq('id', id)
+    if (error) { alert('Não foi possível excluir: ' + error.message); return }
     setDetalhe(null); carregar()
   }
 
@@ -159,10 +166,10 @@ export default function Ministracoes({ profile }: { profile?: Profile }) {
         return (
           <button key={m.id} className="list-card" onClick={()=>{setDetalhe(m);setAbaDetalhe('info')}}>
             <div className="list-card-bar" style={{background:(m as any).cor??'#6B46C1'}}/>
-            <div className="list-card-media" style={{background:(m as any).cor??'#6B46C1'}}>
-              {(m as any).emoji
-                ? <span style={{fontFamily:"'Material Symbols Outlined'",fontSize:22,color:'white',fontWeight:'normal',fontStyle:'normal',lineHeight:1,letterSpacing:'normal',textTransform:'none',display:'inline-block',whiteSpace:'nowrap',userSelect:'none'}}>{(m as any).emoji}</span>
-                : min?.photo_url?<img src={min.photo_url} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}}/>:<span className="icon" style={{color:'#6B46C1'}}>church</span>}
+            <div className="list-card-media" style={{background:min?.photo_url?'#eee':((m as any).cor??'#6B46C1')+'24'}}>
+              {min?.photo_url
+                ? <img src={min.photo_url} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}}/>
+                : <span style={{fontSize:26}}>{(m as any).emoji || '🎤'}</span>}
             </div>
             <div className="list-card-body">
               <div className="list-card-time" style={{color:'#6B46C1'}}>{fmtData(m.hora_inicio)} · {fmtHora(m.hora_inicio)}</div>
@@ -185,7 +192,7 @@ export default function Ministracoes({ profile }: { profile?: Profile }) {
       {/* ===== DETALHE ===== */}
       {detalhe && (() => {
         const min = getPessoa(detalhe.ministrante_id)
-        const isEuMinistrant = min?.id && pessoas.find(p=>p.id===min.id)?.id === userId
+        const isEuMinistrant = !!min?.user_id && min.user_id === userId
         const canSeeConteudo = isLiderPlus
 
         return (
@@ -240,23 +247,6 @@ export default function Ministracoes({ profile }: { profile?: Profile }) {
                       const teatroLink = teatros.find(t=>t.ministracao_id===detalhe.id)
                       return teatroLink ? (
                         <button onClick={()=>{ setDetalhe(null); navigate('/teatro/'+teatroLink.id) }} style={{width:'100%',background:teatroLink.cor?teatroLink.cor+'22':'#FFF3E0',border:`1px solid ${teatroLink.cor??'var(--accent)'}`,borderRadius:12,padding:'12px 14px',marginBottom:12,cursor:'pointer',fontFamily:'inherit',textAlign:'left',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
-                          <div>
-                            <p style={{fontSize:10,fontWeight:700,color:teatroLink.cor??'var(--accent)',textTransform:'uppercase',letterSpacing:'0.06em',marginBottom:3}}>Teatro vinculado</p>
-                            <p style={{fontWeight:700,fontSize:14}}>{teatroLink.nome}</p>
-                          </div>
-                          <span className="icon icon-sm" style={{color:teatroLink.cor??'var(--accent)'}}>chevron_right</span>
-                        </button>
-                      ) : null
-                    })()}
-
-                    {/* Teatro vinculado - clicável na aba info */}
-                    {(() => {
-                      const teatroLink = teatros.find(t=>t.ministracao_id===detalhe.id)
-                      return teatroLink ? (
-                        <button
-                          onClick={()=>{ setDetalhe(null); navigate('/teatro/'+teatroLink.id) }}
-                          style={{width:'100%',background:teatroLink.cor?teatroLink.cor+'22':'#FFF3E0',border:`1.5px solid ${teatroLink.cor??'var(--accent)'}`,borderRadius:12,padding:'12px 14px',marginBottom:12,cursor:'pointer',fontFamily:'inherit',textAlign:'left',display:'flex',alignItems:'center',justifyContent:'space-between'}}
-                        >
                           <div>
                             <p style={{fontSize:10,fontWeight:700,color:teatroLink.cor??'var(--accent)',textTransform:'uppercase',letterSpacing:'0.06em',marginBottom:3}}>Teatro vinculado</p>
                             <p style={{fontWeight:700,fontSize:14}}>{teatroLink.nome}</p>
@@ -349,7 +339,13 @@ export default function Ministracoes({ profile }: { profile?: Profile }) {
                         <input type="color" value={form.cor} onChange={e=>setForm(f=>({...f,cor:e.target.value}))} style={{width:40,height:32,borderRadius:6,border:'1px solid var(--border)',cursor:'pointer',padding:2}}/>
                       </div>
                       <div className="form-group">
-                        <EmojiPicker label="Emoji / Ícone" value={form.emoji} onChange={v=>setForm(f=>({...f,emoji:v}))}/>
+                        <label className="form-label">Emoji da ministração</label>
+                        <div style={{display:'flex',gap:6,flexWrap:'wrap',maxHeight:120,overflowY:'auto',padding:2}}>
+                          {EMOJIS_AXIS.map(em=>(
+                            <button key={em} type="button" onClick={()=>setForm(f=>({...f,emoji:em}))}
+                              style={{width:38,height:38,borderRadius:9,fontSize:19,cursor:'pointer',fontFamily:'inherit',border:form.emoji===em?'2px solid var(--primary)':'1px solid transparent',background:form.emoji===em?'var(--primary-light)':'var(--bg)'}}>{em}</button>
+                          ))}
+                        </div>
                       </div>
                     </div>
                     <div className="form-group">

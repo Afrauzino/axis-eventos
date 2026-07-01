@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import SubTabs from '../components/SubTabs'
 import { getInitials, fmtDataHora } from '../utils'
 import { useEvento } from '../hooks/useEvento'
 import PersonSelect from '../components/PersonSelect'
@@ -53,6 +54,7 @@ export default function Saude({ profile }: { profile?: Profile }) {
 
   return (
     <div className="page">
+      <SubTabs group="saude"/>
       {/* Atalhos */}
       <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,marginBottom:16}}>
         <button className="btn btn-outline" onClick={()=>navigate('/saude/ficha')} style={{display:'flex',alignItems:'center',justifyContent:'center',gap:8,padding:'12px'}}>

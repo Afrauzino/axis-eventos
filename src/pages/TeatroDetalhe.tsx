@@ -13,6 +13,13 @@ type Pessoa     = { id:string; name:string; photo_url:string|null }
 type Personagem = { id:string; nome:string; icone:string|null; multiplo:boolean }
 type Objeto     = { id:string; nome:string; icone:string|null }
 type Ministracao = { id:string; titulo:string; ministrante_id:string|null; tema:string|null }
+type Midia       = { id:string; tipo:'foto'|'audio'|'video'; titulo:string|null; url:string }
+
+const MIDIA_INFO: Record<string,{icone:string;label:string}> = {
+  foto:  { icone:'photo',       label:'Foto' },
+  audio: { icone:'music_note',  label:'Áudio' },
+  video: { icone:'movie',       label:'Vídeo' },
+}
 
 // Elenco de uma cena: múltiplos atores por personagem, múltiplos objetos
 type CenaPersonagem = { personagem_id:string; person_ids:string[] }
@@ -34,7 +41,11 @@ export default function TeatroDetalhe({ profile }: { profile?: Profile }) {
   const [objetos, setObjetos]   = useState<Objeto[]>([])
   const [ministracao, setMinistracao] = useState<Ministracao|null>(null)
   const [ministrante, setMinistrante] = useState<Pessoa|null>(null)
-  const [aba, setAba]           = useState<'cenas'|'elenco'|'arquivos'>('cenas')
+  const [midias, setMidias]     = useState<Midia[]>([])
+  const [aba, setAba]           = useState<'cenas'|'elenco'|'midia'|'arquivos'>('cenas')
+  const [modalMidia, setModalMidia] = useState(false)
+  const [formMidia, setFormMidia]   = useState<{tipo:'foto'|'audio'|'video';titulo:string;url:string}>({ tipo:'foto', titulo:'', url:'' })
+  const [salvandoMidia, setSalvandoMidia] = useState(false)
   const [loading, setLoading]   = useState(true)
   const [modalCena, setModalCena] = useState(false)
   const [editandoCena, setEditandoCena] = useState<Cena|null>(null)
@@ -53,18 +64,20 @@ export default function TeatroDetalhe({ profile }: { profile?: Profile }) {
 
   async function carregar() {
     setLoading(true)
-    const [te, ce, el, pg, ob] = await Promise.all([
+    const [te, ce, el, pg, ob, mi] = await Promise.all([
       supabase.from('theaters').select('*').eq('id', id).single(),
       supabase.from('teatro_cenas').select('*').eq('theater_id', id).order('ordem'),
       supabase.from('teatro_elenco').select('*').eq('theater_id', id),
       supabase.from('personagens_globais').select('id,nome,icone,multiplo').order('nome'),
       supabase.from('objetos_globais').select('id,nome,icone').order('nome'),
+      supabase.from('teatro_midias').select('id,tipo,titulo,url').eq('theater_id', id).order('created_at'),
     ])
     setTeatro(te.data)
     setCenas(ce.data ?? [])
     setElenco(el.data ?? [])
     setPersonagens(pg.data ?? [])
     setObjetos(ob.data ?? [])
+    setMidias((mi.data as Midia[]) ?? [])
 
     if (te.data) {
       const { data: ev } = await supabase.from('theaters').select('event_id').eq('id', id).single()
@@ -173,6 +186,25 @@ export default function TeatroDetalhe({ profile }: { profile?: Profile }) {
     carregar()
   }
 
+  async function salvarMidia(e: React.FormEvent) {
+    e.preventDefault()
+    const url = formMidia.url.trim()
+    if (!url) return
+    setSalvandoMidia(true)
+    const { error } = await supabase.from('teatro_midias').insert({
+      theater_id: id, tipo: formMidia.tipo, titulo: formMidia.titulo.trim() || null, url,
+    })
+    setSalvandoMidia(false)
+    if (error) { alert('Erro ao salvar: ' + error.message); return }
+    setModalMidia(false); setFormMidia({ tipo:'foto', titulo:'', url:'' }); carregar()
+  }
+
+  async function excluirMidia(midiaId: string) {
+    if (!confirm('Excluir esta mídia? (o arquivo na nuvem não é afetado)')) return
+    await supabase.from('teatro_midias').delete().eq('id', midiaId)
+    setMidias(prev => prev.filter(m => m.id !== midiaId))
+  }
+
   // --- Helpers para cenaPersonagens ---
   function addPersonagem() {
     setCenaPersonagens(prev => [...prev, { personagem_id:'', person_ids:[] }])
@@ -264,6 +296,7 @@ export default function TeatroDetalhe({ profile }: { profile?: Profile }) {
       <div className="tabs mb-4">
         <button className={`tab ${aba==='cenas'?'active':''}`} onClick={()=>setAba('cenas')}>Cenas ({cenas.length})</button>
         <button className={`tab ${aba==='elenco'?'active':''}`} onClick={()=>setAba('elenco')}>Elenco ({elenco.length})</button>
+        <button className={`tab ${aba==='midia'?'active':''}`} onClick={()=>setAba('midia')}>Mídia ({midias.length})</button>
         <button className={`tab ${aba==='arquivos'?'active':''}`} onClick={()=>setAba('arquivos')}>Arquivos</button>
       </div>
 
@@ -350,9 +383,93 @@ export default function TeatroDetalhe({ profile }: { profile?: Profile }) {
         </>
       )}
 
+      {/* MÍDIA — fotos, áudios e vídeos por link de nuvem */}
+      {aba==='midia' && (
+        <>
+          <div className="alert-box alert-info mb-3" style={{fontSize:12}}>
+            As mídias ficam na sua nuvem (Google Drive, Mega, YouTube…). Aqui guardamos só o link — não ocupa espaço do sistema.
+          </div>
+          {midias.length===0 ? (
+            <div className="empty">
+              <div className="empty-icon"><MatIcon name="perm_media" size={28} color="var(--muted-light)"/></div>
+              <p className="empty-title">Nenhuma mídia</p>
+              <p className="empty-desc">Adicione fotos, áudios e vídeos por link.</p>
+            </div>
+          ) : midias.map(m => {
+            const info = MIDIA_INFO[m.tipo]
+            return (
+              <div key={m.id} style={{background:'white',borderRadius:14,boxShadow:'var(--shadow-sm)',marginBottom:8,overflow:'hidden'}}>
+                {m.tipo==='foto' && (
+                  <img src={m.url} alt={m.titulo??''} style={{width:'100%',maxHeight:220,objectFit:'cover',display:'block'}}
+                    onError={e=>{(e.currentTarget as HTMLImageElement).style.display='none'}}/>
+                )}
+                <div style={{display:'flex',alignItems:'center',gap:10,padding:'10px 14px'}}>
+                  <div style={{width:36,height:36,borderRadius:9,background:cor+'22',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+                    <MatIcon name={info.icone} size={20} color={cor}/>
+                  </div>
+                  <div style={{flex:1,minWidth:0}}>
+                    <p style={{fontWeight:700,fontSize:14,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{m.titulo || info.label}</p>
+                    <p style={{fontSize:11,color:'var(--muted)'}}>{info.label}</p>
+                  </div>
+                  <a href={m.url} target="_blank" rel="noreferrer" className="btn btn-ghost btn-sm" style={{textDecoration:'none'}}>
+                    <MatIcon name="open_in_new" size={15}/> Abrir
+                  </a>
+                  {canEdit && (
+                    <button onClick={()=>excluirMidia(m.id)} style={{background:'var(--danger-bg)',border:'none',borderRadius:6,width:30,height:30,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',fontFamily:'inherit'}}>
+                      <MatIcon name="delete" size={15} color="var(--danger)"/>
+                    </button>
+                  )}
+                </div>
+              </div>
+            )
+          })}
+          {canEdit && <button className="fab" onClick={()=>{setFormMidia({tipo:'foto',titulo:'',url:''});setModalMidia(true)}}><span className="icon">add</span></button>}
+        </>
+      )}
+
       {/* ARQUIVOS */}
       {aba==='arquivos' && eventId && id && (
         <ArquivosModulo eventId={eventId} modulo="teatro" referenciaId={id} pessoaId={null} titulo="Arquivos do teatro" />
+      )}
+
+      {/* MODAL MÍDIA */}
+      {modalMidia && canEdit && (
+        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.5)',zIndex:300,display:'flex',flexDirection:'column',justifyContent:'flex-end'}} onClick={e=>e.target===e.currentTarget&&setModalMidia(false)}>
+          <div style={{background:'white',borderRadius:'20px 20px 0 0',padding:'8px 20px 32px',maxHeight:'90vh',overflowY:'auto'}}>
+            <div style={{width:36,height:4,background:'var(--border)',borderRadius:2,margin:'12px auto 0'}}/>
+            <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'16px 0 14px',borderBottom:'1px solid var(--border)',marginBottom:20}}>
+              <span style={{fontSize:17,fontWeight:700}}>Adicionar mídia</span>
+              <button onClick={()=>setModalMidia(false)} style={{background:'var(--bg)',border:'1px solid var(--border)',borderRadius:'50%',width:32,height:32,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',fontFamily:'inherit'}}><span className="icon icon-sm">close</span></button>
+            </div>
+            <form onSubmit={salvarMidia}>
+              <div className="form-group">
+                <label className="form-label">Tipo</label>
+                <div style={{display:'flex',gap:8}}>
+                  {(['foto','audio','video'] as const).map(t => {
+                    const on = formMidia.tipo===t
+                    return (
+                      <button key={t} type="button" onClick={()=>setFormMidia(f=>({...f,tipo:t}))}
+                        style={{flex:1,padding:'10px',borderRadius:10,cursor:'pointer',fontFamily:'inherit',fontSize:12,fontWeight:700,
+                          border:on?`2px solid ${cor}`:'1px solid var(--border)',background:on?cor+'18':'white',color:on?cor:'var(--text2)',display:'flex',flexDirection:'column',alignItems:'center',gap:4}}>
+                        <MatIcon name={MIDIA_INFO[t].icone} size={20} color={on?cor:'var(--muted)'}/>{MIDIA_INFO[t].label}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+              <div className="form-group"><label className="form-label">Título (opcional)</label>
+                <input className="form-input" value={formMidia.titulo} onChange={e=>setFormMidia(f=>({...f,titulo:e.target.value}))} placeholder="Ex: Trilha da cena final"/>
+              </div>
+              <div className="form-group"><label className="form-label">Link da nuvem <span className="req">*</span></label>
+                <p className="form-hint mb-2">Cole o link do Google Drive, Mega, YouTube, Dropbox, etc.</p>
+                <input className="form-input" value={formMidia.url} onChange={e=>setFormMidia(f=>({...f,url:e.target.value}))} placeholder="https://..." required/>
+              </div>
+              <button type="submit" className="btn btn-primary btn-full" disabled={salvandoMidia}>
+                {salvandoMidia?'Salvando...':'Adicionar'}
+              </button>
+            </form>
+          </div>
+        </div>
       )}
 
       {/* MODAL CENA */}

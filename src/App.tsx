@@ -65,7 +65,6 @@ function AppRoutes({ profile, onProfileUpdate }: { profile: Profile; onProfileUp
       <Route path="/admin/saude-sistema"   element={<SaudeSistema profile={profile} />} />
       <Route path="/alertas-lideres"       element={<AlertasLideres profile={profile} />} />
       <Route path="/cozinha"               element={<Cozinha profile={profile} />} />
-      <Route path="/cozinha"               element={<Cozinha profile={profile} />} />
       <Route path="/escalas"               element={<Escalas profile={profile} />} />
       <Route path="/ministracoes"          element={<Ministracoes profile={profile} />} />
       <Route path="/ministracoes/:id"       element={<Ministracoes profile={profile} />} />
@@ -117,7 +116,6 @@ const TITULOS_ROTA: Record<string,string> = {
   '/admin/saude-sistema': 'Saúde do Sistema',
   '/alertas-lideres': 'Alertas',
   '/cozinha': 'Cardápio',
-  '/cozinha': 'Cozinha',
 }
 function HeaderTitle() {
   const loc = useLocation()

@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { getInitials, isAdmin } from '../utils'
 import { usePermissao } from '../hooks/usePermissao'
@@ -6,31 +5,31 @@ import { supabase } from '../lib/supabase'
 import type { Profile } from '../App'
 
 type Sub = { label:string; rota:string }
-type Item = { id:string; label:string; icon:string; rota?:string; sub?:Sub[]; perm:string }
+type Item = { id:string; label:string; icon:string; emoji?:string; rota?:string; sub?:Sub[]; perm:string }
 
 function buildMenu(): Item[] {
   return [
-    { id:'dash',    label:'Início',             icon:'home',            rota:'/',                  perm:'menu_inicio'},
-    { id:'ativ',    label:'Minhas Atividades',   icon:'checklist',       rota:'/minhas-atividades', perm:'menu_atividades'},
-    { id:'cron',    label:'Cronograma',           icon:'calendar_month',  rota:'/cronograma',        perm:'menu_cronograma'},
-    { id:'enc',     label:'Encontristas',         icon:'groups',          rota:'/encontristas',      perm:'menu_encontristas' },
-    { id:'cad',     label:'Cadastros',            icon:'manage_accounts', rota:'/cadastros',         perm:'menu_cadastros' },
-    { id:'min',     label:'Ministrações',         icon:'church',          rota:'/ministracoes',      perm:'menu_ministracoes' },
-    { id:'ranking', label:'Ranking',              icon:'leaderboard',     rota:'/ranking',           perm:'menu_ranking' },
-    { id:'correio', label:'Correio',              icon:'mail',            rota:'/correio',           perm:'menu_correio' },
-    { id:'alertlid',label:'Alertas',                icon:'campaign',       rota:'/alertas-lideres',   perm:'menu_alertas_lideres' },
-    { id:'cozinha', label:'Cozinha',              icon:'restaurant',     rota:'/cozinha',           perm:'menu_cozinha' },
-    { id:'equipes', label:'Equipes & Escalas',    icon:'shield',          perm:'menu_equipes',
+    { id:'dash',    label:'Início',             icon:'home',            emoji:'🏠', rota:'/',                  perm:'menu_inicio'},
+    { id:'ativ',    label:'Minhas Atividades',   icon:'checklist',       emoji:'✅', rota:'/minhas-atividades', perm:'menu_atividades'},
+    { id:'cron',    label:'Cronograma',           icon:'calendar_month',  emoji:'📅', rota:'/cronograma',        perm:'menu_cronograma'},
+    { id:'enc',     label:'Encontristas',         icon:'groups',          emoji:'👥', rota:'/encontristas',      perm:'menu_encontristas' },
+    { id:'cad',     label:'Cadastros',            icon:'manage_accounts', emoji:'📝', rota:'/cadastros',         perm:'menu_cadastros' },
+    { id:'min',     label:'Ministrações',         icon:'church',          emoji:'🎤', rota:'/ministracoes',      perm:'menu_ministracoes' },
+    { id:'ranking', label:'Ranking',              icon:'leaderboard',     emoji:'🏆', rota:'/ranking',           perm:'menu_ranking' },
+    { id:'correio', label:'Correio',              icon:'mail',            emoji:'📬', rota:'/correio',           perm:'menu_correio' },
+    { id:'alertlid',label:'Alertas',                icon:'campaign',       emoji:'📢', rota:'/alertas-lideres',   perm:'menu_alertas_lideres' },
+    { id:'cozinha', label:'Cozinha',              icon:'restaurant',     emoji:'🍴', rota:'/cozinha',           perm:'menu_cozinha' },
+    { id:'equipes', label:'Equipes & Escalas',    icon:'shield',          emoji:'🛡️', perm:'menu_equipes',
       sub:[ { label:'Equipes', rota:'/equipes' }, { label:'Escalas', rota:'/escalas' } ] },
-    { id:'teatro',  label:'Teatro',               icon:'theater_comedy',  perm:'menu_teatro',
+    { id:'teatro',  label:'Teatro',               icon:'theater_comedy',  emoji:'🎭', perm:'menu_teatro',
       sub:[ { label:'Teatros', rota:'/teatro' }, { label:'Atores', rota:'/teatro/atores' }, { label:'Personagens', rota:'/teatro/personagens' }, { label:'Objetos', rota:'/teatro/objetos' } ] },
-    { id:'evento',  label:'Evento',               icon:'event',           perm:'menu_evento',
+    { id:'evento',  label:'Evento',               icon:'event',           emoji:'📍', perm:'menu_evento',
       sub:[ { label:'Locais', rota:'/locais' }, { label:'Ocorrências', rota:'/ocorrencias' } ] },
-    { id:'saude',   label:'Saúde',                icon:'medical_services', perm:'menu_saude',
+    { id:'saude',   label:'Saúde',                icon:'medical_services', emoji:'⛑️', perm:'menu_saude',
       sub:[ { label:'Atendimentos', rota:'/saude' }, { label:'Fichas Médicas', rota:'/saude/ficha' }, { label:'Medicamentos', rota:'/saude/medicamentos' } ] },
-    { id:'fin',     label:'Financeiro',           icon:'account_balance_wallet', perm:'menu_financeiro',
+    { id:'fin',     label:'Financeiro',           icon:'account_balance_wallet', emoji:'💰', perm:'menu_financeiro',
       sub:[ { label:'Pagamentos', rota:'/financeiro' }, { label:'Doações', rota:'/doacoes' } ] },
-    { id:'admin',   label:'Administração',        icon:'admin_panel_settings', perm:'menu_admin',
+    { id:'admin',   label:'Administração',        icon:'admin_panel_settings', emoji:'⚙️', perm:'menu_admin',
       sub:[ { label:'Usuários', rota:'/admin' }, { label:'Menus', rota:'/admin/menus' }, { label:'Saúde do Sistema', rota:'/admin/saude-sistema' }, { label:'Relatórios', rota:'/relatorios' } ] },
   ]
 }
@@ -38,7 +37,6 @@ function buildMenu(): Item[] {
 export default function Nav({ profile, onClose }: { profile: Profile; onClose: () => void }) {
   const navigate  = useNavigate()
   const location  = useLocation()
-  const [aberto, setAberto]   = useState<string|null>(null)
   const { pode, carregado } = usePermissao(profile)
   const admin = isAdmin(profile.user_role) || profile.is_admin
   // Opção B: cada menu só aparece se admin OU se a permissão (equipe/individual) liberar
@@ -60,9 +58,9 @@ export default function Nav({ profile, onClose }: { profile: Profile; onClose: (
   }
 
   return (
-    <div style={{display:'flex',flexDirection:'column',height:'100%',background:'#00635C'}}>
+    <div style={{display:'flex',flexDirection:'column',height:'100%',background:'white'}}>
       {/* Header do menu */}
-      <div style={{padding:'24px 20px 16px',borderBottom:'1px solid rgba(255,255,255,0.1)'}}>
+      <div style={{padding:'24px 20px 16px',background:'var(--primary-dark)'}}>
         <div style={{display:'flex',alignItems:'center',gap:12}}>
           <div style={{width:44,height:44,borderRadius:'50%',background:'rgba(255,255,255,0.15)',border:'2px solid rgba(255,255,255,0.3)',display:'flex',alignItems:'center',justifyContent:'center',overflow:'hidden',flexShrink:0}}>
             {profile.avatar_url
@@ -72,63 +70,39 @@ export default function Nav({ profile, onClose }: { profile: Profile; onClose: (
           </div>
           <div>
             <p style={{fontSize:14,fontWeight:700,color:'white',lineHeight:1.2}}>{profile.full_name?.split(' ').slice(0,2).join(' ')}</p>
-            <p style={{fontSize:11,color:'rgba(255,255,255,0.65)',marginTop:2,textTransform:'capitalize'}}>{profile.user_role}</p>
+            <p style={{fontSize:11,color:'rgba(255,255,255,0.75)',marginTop:2,textTransform:'capitalize'}}>{profile.user_role}</p>
           </div>
         </div>
       </div>
 
       {/* Menu items */}
-      <div style={{flex:1,overflowY:'auto',padding:'8px 0'}}>
-        {menu.map(item => (
+      <div style={{flex:1,overflowY:'auto',padding:'8px 0',background:'white'}}>
+        {menu.map(item => {
+          const at = ativo(item)
+          return (
           <div key={item.id}>
-            {item.rota ? (
-              <button
-                onClick={()=>navegar(item.rota!)}
-                style={{width:'100%',display:'flex',alignItems:'center',gap:12,padding:'12px 20px',background:ativo(item)?'rgba(255,255,255,0.15)':'none',border:'none',cursor:'pointer',fontFamily:'inherit',textAlign:'left',borderLeft:ativo(item)?'3px solid white':'3px solid transparent',transition:'all 0.15s'}}
-              >
-                <span style={{fontFamily:"'Material Symbols Outlined'",fontSize:20,color:'rgba(255,255,255,0.85)',fontVariationSettings:"'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24",fontWeight:'normal',fontStyle:'normal',lineHeight:1,letterSpacing:'normal',textTransform:'none',display:'inline-block',whiteSpace:'nowrap',direction:'ltr',userSelect:'none'}}>
-                  {item.icon}
-                </span>
-                <span style={{fontSize:14,fontWeight:ativo(item)?700:400,color:'white'}}>{item.label}</span>
-              </button>
-            ) : (
-              <>
-                <button
-                  onClick={()=>setAberto(aberto===item.id?null:item.id)}
-                  style={{width:'100%',display:'flex',alignItems:'center',gap:12,padding:'12px 20px',background:ativo(item)?'rgba(255,255,255,0.1)':'none',border:'none',cursor:'pointer',fontFamily:'inherit',textAlign:'left',borderLeft:ativo(item)?'3px solid rgba(255,255,255,0.5)':'3px solid transparent'}}
-                >
-                  <span style={{fontFamily:"'Material Symbols Outlined'",fontSize:20,color:'rgba(255,255,255,0.85)',fontVariationSettings:"'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24",fontWeight:'normal',fontStyle:'normal',lineHeight:1,letterSpacing:'normal',textTransform:'none',display:'inline-block',whiteSpace:'nowrap',direction:'ltr',userSelect:'none'}}>
-                    {item.icon}
-                  </span>
-                  <span style={{flex:1,fontSize:14,fontWeight:ativo(item)?700:400,color:'white'}}>{item.label}</span>
-                  <span style={{fontFamily:"'Material Symbols Outlined'",fontSize:16,color:'rgba(255,255,255,0.5)',transform:aberto===item.id?'rotate(180deg)':'none',transition:'transform 0.2s',fontVariationSettings:"'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24",fontWeight:'normal',fontStyle:'normal',lineHeight:1,letterSpacing:'normal',textTransform:'none',display:'inline-block',whiteSpace:'nowrap',userSelect:'none'}}>
-                    expand_more
-                  </span>
-                </button>
-                {aberto===item.id && (
-                  <div style={{background:'rgba(0,0,0,0.15)'}}>
-                    {item.sub?.map(s=>(
-                      <button key={s.rota} onClick={()=>navegar(s.rota)} style={{width:'100%',display:'flex',alignItems:'center',gap:8,padding:'10px 20px 10px 52px',background:location.pathname===s.rota?'rgba(255,255,255,0.12)':'none',border:'none',cursor:'pointer',fontFamily:'inherit',textAlign:'left',borderLeft:location.pathname===s.rota?'3px solid white':'3px solid transparent'}}>
-                        <span style={{fontSize:13,color:location.pathname===s.rota?'white':'rgba(255,255,255,0.7)',fontWeight:location.pathname===s.rota?700:400}}>{s.label}</span>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </>
-            )}
+            <button
+              onClick={()=>navegar(item.rota ?? item.sub![0].rota)}
+              style={{width:'100%',display:'flex',alignItems:'center',gap:12,padding:'12px 20px',background:at?'var(--primary-light)':'none',border:'none',cursor:'pointer',fontFamily:'inherit',textAlign:'left',borderLeft:at?'3px solid var(--primary)':'3px solid transparent',transition:'all 0.15s'}}
+            >
+              <span style={{fontSize:20,width:24,textAlign:'center',flexShrink:0}}>{item.emoji}</span>
+              <span style={{flex:1,fontSize:14,fontWeight:at?700:500,color:at?'var(--primary-dark)':'var(--text)'}}>{item.label}</span>
+              {item.sub && <span style={{fontFamily:"'Material Symbols Outlined'",fontSize:18,color:'var(--muted)',fontVariationSettings:"'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24",lineHeight:1,display:'inline-block',userSelect:'none'}}>chevron_right</span>}
+            </button>
           </div>
-        ))}
+          )
+        })}
       </div>
 
       {/* Perfil e logout */}
-      <div style={{borderTop:'1px solid rgba(255,255,255,0.1)',padding:'8px 0'}}>
+      <div style={{borderTop:'1px solid var(--border)',padding:'8px 0',background:'white'}}>
         <button onClick={()=>navegar('/perfil')} style={{width:'100%',display:'flex',alignItems:'center',gap:12,padding:'12px 20px',background:'none',border:'none',cursor:'pointer',fontFamily:'inherit',textAlign:'left'}}>
-          <span style={{fontFamily:"'Material Symbols Outlined'",fontSize:20,color:'rgba(255,255,255,0.7)',fontVariationSettings:"'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24",fontWeight:'normal',fontStyle:'normal',lineHeight:1,letterSpacing:'normal',textTransform:'none',display:'inline-block',whiteSpace:'nowrap',userSelect:'none'}}>account_circle</span>
-          <span style={{fontSize:14,color:'rgba(255,255,255,0.7)'}}>Meu Perfil</span>
+          <span style={{fontSize:20,width:24,textAlign:'center'}}>👤</span>
+          <span style={{fontSize:14,color:'var(--text)',fontWeight:500}}>Meu Perfil</span>
         </button>
         <button onClick={logout} style={{width:'100%',display:'flex',alignItems:'center',gap:12,padding:'10px 20px',background:'none',border:'none',cursor:'pointer',fontFamily:'inherit',textAlign:'left'}}>
-          <span style={{fontFamily:"'Material Symbols Outlined'",fontSize:20,color:'rgba(255,100,100,0.8)',fontVariationSettings:"'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24",fontWeight:'normal',fontStyle:'normal',lineHeight:1,letterSpacing:'normal',textTransform:'none',display:'inline-block',whiteSpace:'nowrap',userSelect:'none'}}>logout</span>
-          <span style={{fontSize:14,color:'rgba(255,100,100,0.8)',fontWeight:600}}>Sair</span>
+          <span style={{fontSize:20,width:24,textAlign:'center'}}>🚪</span>
+          <span style={{fontSize:14,color:'var(--danger)',fontWeight:600}}>Sair</span>
         </button>
       </div>
     </div>

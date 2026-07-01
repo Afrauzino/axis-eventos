@@ -12,6 +12,9 @@ dist
 dist-ssr
 *.local
 
+# Export de conversas do Claude (grande, pessoal)
+data-*.zip
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

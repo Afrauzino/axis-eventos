@@ -22,6 +22,7 @@ export default function MinhasAtividades({ profile }: { profile: Profile }) {
   const [filtro, setFiltro]     = useState<'todas'|'pendentes'|'concluidas'>('todas')
   const [myPersonId, setMyPersonId] = useState<string|null>(null)
   const [cardapios, setCardapios] = useState<{id:string;tipo_refeicao_nome:string|null;titulo:string|null;itens:string|null;data_servir:string|null}[]>([])
+  const [cardapioDetalhe, setCardapioDetalhe] = useState<{id:string;tipo_refeicao_nome:string|null;titulo:string|null;itens:string|null;data_servir:string|null}|null>(null)
   const [meusAfilhados, setMeusAfilhados] = useState<{id:string;name:string;photo_url:string|null;pct:number;status:string}[]>([])
 
   useEffect(() => {
@@ -161,12 +162,13 @@ export default function MinhasAtividades({ profile }: { profile: Profile }) {
         <div style={{marginBottom:14}}>
           <p style={{fontSize:13,fontWeight:700,color:'var(--muted)',textTransform:'uppercase',letterSpacing:'0.06em',marginBottom:8}}>🍽️ Cardápios a preparar</p>
           {cardapios.map(c => (
-            <div key={c.id} style={{background:'white',borderRadius:14,padding:'14px 16px',marginBottom:8,boxShadow:'var(--shadow-sm)',borderLeft:'4px solid #2F855A'}}>
+            <div key={c.id} onClick={()=>setCardapioDetalhe(c)} style={{background:'white',borderRadius:14,padding:'14px 16px',marginBottom:8,boxShadow:'var(--shadow-sm)',borderLeft:'4px solid #2F855A',cursor:'pointer'}}>
               <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:4}}>
-                <span style={{fontSize:14,fontWeight:700}}>{c.tipo_refeicao_nome ?? 'Refeição'}{c.titulo?` — ${c.titulo}`:''}</span>
+                <span style={{fontSize:14,fontWeight:700}}>🍽️ {c.tipo_refeicao_nome ?? 'Refeição'}{c.titulo?` — ${c.titulo}`:''}</span>
                 {c.data_servir && <span style={{fontSize:11,color:'var(--muted)',fontWeight:600}}>{new Date(c.data_servir+'T00:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})}</span>}
               </div>
-              {c.itens && <p style={{fontSize:13,color:'var(--muted)',whiteSpace:'pre-wrap'}}>{c.itens}</p>}
+              {c.itens && <p style={{fontSize:13,color:'var(--muted)',whiteSpace:'pre-wrap',overflow:'hidden',textOverflow:'ellipsis',display:'-webkit-box',WebkitLineClamp:2,WebkitBoxOrient:'vertical'}}>{c.itens}</p>}
+              <p style={{fontSize:11,color:'#2F855A',fontWeight:600,marginTop:4}}>Toque para ver completo →</p>
             </div>
           ))}
         </div>
@@ -307,6 +309,27 @@ export default function MinhasAtividades({ profile }: { profile: Profile }) {
               </div>
             )}
             <button className="btn btn-ghost btn-full" onClick={()=>setDetalhe(null)}>Fechar</button>
+          </div>
+        </div>
+      )}
+
+      {/* Detalhe do cardápio (abre de baixo) */}
+      {cardapioDetalhe && (
+        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.5)',zIndex:300,display:'flex',flexDirection:'column',justifyContent:'flex-end'}}
+          onClick={e=>e.target===e.currentTarget&&setCardapioDetalhe(null)}>
+          <div style={{background:'white',borderRadius:'20px 20px 0 0',padding:'8px 20px 28px',maxHeight:'80vh',overflowY:'auto'}}>
+            <div style={{width:36,height:4,background:'var(--border)',borderRadius:2,margin:'12px auto 18px'}}/>
+            <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:16}}>
+              <div style={{width:54,height:54,borderRadius:'50%',background:'rgba(47,133,90,0.14)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:26,flexShrink:0}}>🍽️</div>
+              <div>
+                <p style={{fontSize:18,fontWeight:800}}>{cardapioDetalhe.tipo_refeicao_nome ?? 'Refeição'}</p>
+                {cardapioDetalhe.titulo && <p style={{fontSize:13,color:'var(--muted)'}}>{cardapioDetalhe.titulo}</p>}
+                {cardapioDetalhe.data_servir && <p style={{fontSize:12,color:'#2F855A',fontWeight:600}}>{new Date(cardapioDetalhe.data_servir+'T00:00').toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'long'})}</p>}
+              </div>
+            </div>
+            <p style={{fontSize:12,fontWeight:700,color:'var(--muted)',textTransform:'uppercase',letterSpacing:'0.06em',marginBottom:8}}>Itens do cardápio</p>
+            <div style={{background:'var(--bg)',borderRadius:12,padding:16,marginBottom:16,fontSize:15,lineHeight:1.7,whiteSpace:'pre-wrap'}}>{cardapioDetalhe.itens || 'Sem itens cadastrados.'}</div>
+            <button className="btn btn-ghost btn-full" onClick={()=>setCardapioDetalhe(null)}>Fechar</button>
           </div>
         </div>
       )}

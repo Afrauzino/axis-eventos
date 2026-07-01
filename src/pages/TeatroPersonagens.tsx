@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import SubTabs from '../components/SubTabs'
 import { getInitials, isAdmin } from '../utils'
 import UploadFoto from '../components/UploadFoto'
 import EmojiPicker from '../components/EmojiPicker'
@@ -102,6 +103,7 @@ export default function TeatroPersonagens({ profile }: { profile?: Profile }) {
 
   return (
     <div className="page">
+      <SubTabs group="teatro"/>
       <div className="alert-box alert-info mb-3">Biblioteca global — disponíveis para todos os teatros. Personagens múltiplos permitem vários atores simultâneos (ex: Demônios, Multidão).</div>
 
       <div className="search-bar mb-3">

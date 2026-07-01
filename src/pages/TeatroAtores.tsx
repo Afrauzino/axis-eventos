@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import SubTabs from '../components/SubTabs'
 import { getInitials, isAdmin } from '../utils'
 import { useEvento } from '../hooks/useEvento'
 import PersonSelect from '../components/PersonSelect'
@@ -63,6 +64,7 @@ export default function TeatroAtores({ profile }: { profile?: Profile }) {
 
   return (
     <div className="page">
+      <SubTabs group="teatro"/>
       {loading ? [1,2,3].map(i=><div key={i} className="skeleton" style={{height:68,marginBottom:8,borderRadius:14}}/>) :
       elenco.length===0 ? (
         <div className="empty">

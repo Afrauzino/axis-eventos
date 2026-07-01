@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import SubTabs from '../components/SubTabs'
 import { getInitials, fmtHora, fmtDataHora } from '../utils'
 import { useEvento } from '../hooks/useEvento'
 import PersonSelect from '../components/PersonSelect'
@@ -119,6 +120,7 @@ export default function Medicamentos({ profile }: { profile?: Profile }) {
 
   return (
     <div className="page">
+      <SubTabs group="saude"/>
       <div className="tabs mb-4">
         <button className={`tab ${aba==='agenda'?'active':''}`} onClick={()=>setAba('agenda')}>
           Agenda {totalPendentes > 0 && <span className="badge badge-warning" style={{marginLeft:4,fontSize:9}}>{totalPendentes}</span>}

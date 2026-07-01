@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import SubTabs from '../components/SubTabs'
 import { fmtHora, isAdmin } from '../utils'
 import { useEvento } from '../hooks/useEvento'
 import type { Profile } from '../App'
@@ -86,6 +87,7 @@ export default function TeatroLista({ profile }: { profile?: Profile }) {
 
   return (
     <div className="page">
+      <SubTabs group="teatro"/>
       <div className="search-bar mb-3">
         <span className="icon icon-sm" style={{color:'var(--muted-light)'}}>search</span>
         <input placeholder="Buscar teatro..." value={busca} onChange={e=>setBusca(e.target.value)}/>

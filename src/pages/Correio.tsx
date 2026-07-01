@@ -31,6 +31,7 @@ export default function Correio({ profile }: { profile?: Profile }) {
   const [statusChk, setStatusChk]   = useState<StatusChk[]>([])
   const [arquivos, setArquivos]     = useState<Arquivo[]>([])
   const [afStatus, setAfStatus]     = useState<AfStatus[]>([])
+  const [correioIds, setCorreioIds] = useState<string[]>([]) // person_ids da equipe Correio (só eles podem ser padrinho)
 
   // aba: 'meus' (padrinho) | 'todos' (líder) | 'config' (líder de correio)
   const [aba, setAba] = useState<'meus'|'todos'|'config'>('meus')
@@ -41,6 +42,7 @@ export default function Correio({ profile }: { profile?: Profile }) {
   // config do líder de correio
   const [novoItem, setNovoItem] = useState('')
   const [modalPadrinho, setModalPadrinho] = useState<Pessoa|null>(null) // afiliado a quem atribuir padrinhos
+  const [buscaPadrinho, setBuscaPadrinho] = useState('') // filtro de nome no modal de padrinhos
 
   // Admin e Líder veem tudo. Membro da equipe Correio vê só "Meus Afilhados".
   const podeVerTudo = isAdmin(profile?.user_role) || souLider
@@ -66,20 +68,26 @@ export default function Correio({ profile }: { profile?: Profile }) {
       setMinhaPessoa(data)
     }
 
-    // Verificar se faço parte da equipe Correio ou sou líder dela
+    // Equipe(s) Correio do evento + todos os seus integrantes (líder, co-líder e membros).
+    // SÓ quem está na equipe Correio pode ser padrinho.
     let lider = false, correio = false
-    if (minha) {
-      const { data: teamsCorreio } = await supabase.from('teams')
-        .select('id,name,leader_id,co_leader_id,equipe_correio').eq('event_id', eid)
-        .or('equipe_correio.eq.true,name.ilike.%correio%')
-      if (teamsCorreio && teamsCorreio.length) {
-        const ids = teamsCorreio.map(t=>t.id)
-        lider = teamsCorreio.some(t => t.leader_id === minha!.id || t.co_leader_id === minha!.id)
-        const { data: vinc } = await supabase.from('people_teams')
-          .select('team_id').eq('person_id', minha.id).in('team_id', ids)
-        correio = (vinc ?? []).length > 0
+    const idsCorreio = new Set<string>()
+    const { data: teamsCorreio } = await supabase.from('teams')
+      .select('id,name,leader_id,co_leader_id,equipe_correio').eq('event_id', eid)
+      .or('equipe_correio.eq.true,name.ilike.%correio%')
+    if (teamsCorreio && teamsCorreio.length) {
+      const ids = teamsCorreio.map(t=>t.id)
+      // líderes e co-líderes já contam como integrantes da equipe
+      teamsCorreio.forEach(t => { if (t.leader_id) idsCorreio.add(t.leader_id); if (t.co_leader_id) idsCorreio.add(t.co_leader_id) })
+      const { data: membros } = await supabase.from('people_teams')
+        .select('person_id').in('team_id', ids)
+      ;(membros ?? []).forEach(m => idsCorreio.add(m.person_id))
+      if (minha) {
+        lider   = teamsCorreio.some(t => t.leader_id === minha!.id || t.co_leader_id === minha!.id)
+        correio = idsCorreio.has(minha.id)
       }
     }
+    setCorreioIds([...idsCorreio])
     setSouLider(lider)
     setSouCorreio(correio)
 
@@ -228,8 +236,8 @@ export default function Correio({ profile }: { profile?: Profile }) {
 
   const arquivosDe = (afId:string) => arquivos.filter(a => a.afiliado_id === afId)
 
-  // Quem pode ser padrinho: Correio, Líder ou Admin (workers)
-  const possiveisPadrinhos = todasPessoas.filter(p => p.role_type === 'worker' && p.user_id)
+  // Quem pode ser padrinho: SOMENTE integrantes da equipe Correio (líder, co-líder e membros).
+  const possiveisPadrinhos = todasPessoas.filter(p => correioIds.includes(p.id))
 
   return (
     <div className="page slide-up">
@@ -303,11 +311,11 @@ export default function Correio({ profile }: { profile?: Profile }) {
           {encontristas.map(af => {
             const qtd = padrinhos.filter(p=>p.afiliado_id===af.id).length
             return (
-              <button key={af.id} onClick={()=>setModalPadrinho(af)} style={{width:'100%',display:'flex',alignItems:'center',gap:12,padding:'12px 14px',background:'white',border:'none',borderRadius:12,marginBottom:8,boxShadow:'var(--shadow-sm)',cursor:'pointer',fontFamily:'inherit',textAlign:'left'}}>
+              <button key={af.id} onClick={()=>{setBuscaPadrinho('');setModalPadrinho(af)}} style={{width:'100%',display:'flex',alignItems:'center',gap:12,padding:'14px 15px',background:'white',border:'none',borderRadius:12,marginBottom:10,boxShadow:'0 1px 5px rgba(0,0,0,0.12)',cursor:'pointer',fontFamily:'inherit',textAlign:'left'}}>
                 <Avatar p={af}/>
-                <div style={{flex:1}}>
-                  <p style={{fontWeight:700,fontSize:14}}>{formatName(af.name)}</p>
-                  <p style={{fontSize:11,color:qtd>0?'var(--success)':'var(--muted)'}}>{qtd>0?`${qtd} padrinho(s)`:'Sem padrinho'}</p>
+                <div style={{flex:1,minWidth:0}}>
+                  <p style={{fontWeight:700,fontSize:15}}>{formatName(af.name)}</p>
+                  <p style={{fontSize:12,color:qtd>0?'var(--success)':'var(--muted)'}}>{qtd>0?`${qtd} padrinho(s)`:'Sem padrinho'}</p>
                 </div>
                 <span className="icon" style={{color:'var(--muted)'}}>chevron_right</span>
               </button>
@@ -384,9 +392,25 @@ export default function Correio({ profile }: { profile?: Profile }) {
         <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.5)',zIndex:300,display:'flex',flexDirection:'column',justifyContent:'flex-end'}} onClick={e=>e.target===e.currentTarget&&setModalPadrinho(null)}>
           <div style={{background:'white',borderRadius:'20px 20px 0 0',padding:'20px',maxHeight:'92vh',overflowY:'auto'}}>
             <p style={{fontWeight:800,fontSize:16,marginBottom:4}}>Padrinhos de {formatName(modalPadrinho.name)}</p>
-            <p style={{fontSize:12,color:'var(--muted)',marginBottom:14}}>Selecione quem acompanha este encontrista.</p>
-            <div style={{maxHeight:360,overflowY:'auto'}}>
-              {possiveisPadrinhos.map(pad => {
+            <p style={{fontSize:12,color:'var(--muted)',marginBottom:10}}>Selecione quem acompanha este encontrista (pode marcar vários).</p>
+            {(() => {
+              const selecionados = padrinhos.filter(p=>p.afiliado_id===modalPadrinho.id).length
+              const busca = buscaPadrinho.trim().toLowerCase()
+              const filtrados = busca
+                ? possiveisPadrinhos.filter(p => formatName(p.name).toLowerCase().includes(busca) || p.name.toLowerCase().includes(busca))
+                : possiveisPadrinhos
+              return (
+            <>
+            <div style={{position:'relative',marginBottom:10}}>
+              <span className="icon" style={{position:'absolute',left:10,top:'50%',transform:'translateY(-50%)',fontSize:18,color:'var(--muted)'}}>search</span>
+              <input className="form-input" value={buscaPadrinho} onChange={e=>setBuscaPadrinho(e.target.value)} placeholder="Pesquisar nome..." style={{paddingLeft:36,width:'100%'}} autoFocus/>
+            </div>
+            <p style={{fontSize:11,color:'var(--muted)',marginBottom:8}}>{selecionados} selecionado(s) · {filtrados.length} de {possiveisPadrinhos.length} na equipe Correio</p>
+            <div style={{maxHeight:340,overflowY:'auto'}}>
+              {possiveisPadrinhos.length===0
+                ? <p style={{textAlign:'center',fontSize:13,color:'var(--muted)',padding:'16px 0'}}>Ninguém na equipe Correio ainda. Adicione integrantes à equipe Correio (em Equipes) para poder defini-los como padrinhos.</p>
+                : filtrados.length===0 && <p style={{textAlign:'center',fontSize:13,color:'var(--muted)',padding:'16px 0'}}>Nenhum integrante encontrado com esse nome.</p>}
+              {filtrados.map(pad => {
                 const ativo = padrinhos.some(p=>p.afiliado_id===modalPadrinho.id && p.padrinho_id===pad.id)
                 return (
                   <div key={pad.id} onClick={()=>togglePadrinho(modalPadrinho.id,pad.id)} style={{display:'flex',alignItems:'center',gap:10,padding:'10px 12px',borderRadius:10,marginBottom:6,background:ativo?'var(--primary-light)':'white',border:ativo?'1px solid var(--primary)':'1px solid var(--border)',cursor:'pointer'}}>
@@ -397,6 +421,9 @@ export default function Correio({ profile }: { profile?: Profile }) {
                 )
               })}
             </div>
+            </>
+              )
+            })()}
             <button className="btn btn-primary btn-full" onClick={()=>setModalPadrinho(null)} style={{marginTop:12}}>Concluir</button>
           </div>
         </div>

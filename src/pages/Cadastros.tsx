@@ -155,18 +155,18 @@ export default function Cadastros({ profile }: { profile: Profile }) {
       ) : filtrados.map(p => {
         const role = ROLES.find(r=>r.value===p.role_type)
         return (
-          <div key={p.id} style={{background:'white',borderRadius:14,boxShadow:'var(--shadow-sm)',marginBottom:8,display:'flex',alignItems:'center',overflow:'hidden'}}>
-            <div style={{width:4,background:role?.cor??'var(--primary)',alignSelf:'stretch',flexShrink:0}}/>
+          <div key={p.id} style={{background:'white',borderRadius:12,boxShadow:'0 1px 5px rgba(0,0,0,0.12)',marginBottom:10,display:'flex',alignItems:'center',overflow:'hidden'}}>
+            <div style={{width:6,background:role?.cor??'var(--primary)',alignSelf:'stretch',flexShrink:0}}/>
             {/* Avatar */}
-            <div style={{width:42,height:42,borderRadius:'50%',background:role?.bg??'var(--primary-light)',margin:'0 12px',flexShrink:0,overflow:'hidden',display:'flex',alignItems:'center',justifyContent:'center'}}>
+            <div style={{width:50,height:50,borderRadius:'50%',background:role?.bg??'var(--primary-light)',margin:'0 12px 0 14px',flexShrink:0,overflow:'hidden',display:'flex',alignItems:'center',justifyContent:'center'}}>
               {p.photo_url
                 ? <img src={p.photo_url} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}}/>
-                : <span style={{fontWeight:700,fontSize:14,color:role?.cor}}>{getInitials(p.name)}</span>
+                : <span style={{fontWeight:700,fontSize:16,color:role?.cor}}>{getInitials(p.name)}</span>
               }
             </div>
             {/* Info */}
-            <div style={{flex:1,minWidth:0,padding:'10px 0'}}>
-              <p style={{fontWeight:700,fontSize:14,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{p.name}</p>
+            <div style={{flex:1,minWidth:0,padding:'12px 0'}}>
+              <p style={{fontWeight:700,fontSize:15,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{p.name}</p>
               <p style={{fontSize:11,color:'var(--muted)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
                 {role?.label} {p.church ? `· ${p.church}` : ''}
               </p>

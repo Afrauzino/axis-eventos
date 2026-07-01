@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { getInitials } from '../utils'
+import CardItem from '../components/CardItem'
 import { useEvento } from '../hooks/useEvento'
 import type { Profile } from '../App'
 
@@ -92,25 +93,17 @@ export default function Encontristas({ profile }: { profile: Profile }) {
       ) : filtrados.map(p => {
         const ref = getReferencia(p.referencia_id)
         return (
-          <button key={p.id} className="list-card" onClick={() => setSelecionado(p)}>
-            <div className="list-card-bar" />
-            <div className="list-card-media">
-              {p.photo_url
-                ? <img src={p.photo_url} alt="" />
-                : <span style={{ fontSize: 18, fontWeight: 700, color: 'var(--primary)' }}>{getInitials(p.name)}</span>
-              }
-            </div>
-            <div className="list-card-body">
-              <div className="list-card-title">{p.name}</div>
-              <div className="list-card-desc">
-                {p.church}
-                {ref ? ` · Ref: ${ref.name.split(' ')[0]}` : ''}
-              </div>
-            </div>
-            <div className="list-card-chevron">
-              <span className="icon icon-sm">chevron_right</span>
-            </div>
-          </button>
+          <CardItem
+            key={p.id}
+            cor="var(--primary)"
+            fotoUrl={p.photo_url}
+            iniciais={getInitials(p.name)}
+            ehPessoa={true}
+            titulo={p.name}
+            subtitulo={p.church + (ref ? ` · Ref: ${ref.name.split(' ')[0]}` : '')}
+            onVer={() => setSelecionado(p)}
+            onFoto={() => p.photo_url && setFotoAmpliada(p.photo_url)}
+          />
         )
       })}
 
