@@ -83,12 +83,11 @@ export default function TeatroObjetos({ profile }: { profile?: Profile }) {
       </div>
       {loading ? [1,2,3].map(i=><div key={i} className="skeleton" style={{height:60,marginBottom:8,borderRadius:14}}/>) :
       filtrados.map(o => {
-        const cor = '#E8821A'
         return (
         <div key={o.id} style={{background:'white',borderRadius:12,boxShadow:'0 1px 5px rgba(0,0,0,0.12)',marginBottom:10,overflow:'hidden',display:'flex'}}>
-          <div style={{width:6,alignSelf:'stretch',background:cor,flexShrink:0}}/>
+          <div style={{width:6,alignSelf:'stretch',background:'var(--primary)',flexShrink:0}}/>
           <div style={{flex:1,minWidth:0,display:'flex',alignItems:'center',gap:14,padding:'16px 15px'}}>
-            <div style={{width:58,height:58,borderRadius:'50%',background:cor+'24',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,overflow:'hidden'}}>
+            <div style={{width:58,height:58,borderRadius:'50%',background:'var(--primary-light)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,overflow:'hidden'}}>
               {renderMedia(o)}
             </div>
             <div style={{flex:1,minWidth:0}}>

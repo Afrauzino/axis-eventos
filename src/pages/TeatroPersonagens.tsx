@@ -80,12 +80,12 @@ export default function TeatroPersonagens({ profile }: { profile?: Profile }) {
   }
 
   function PersonCard({ p }: { p: Personagem }) {
-    const cor = '#6B46C1'
+    // Sem cor própria → usa a cor do sistema (muda junto com Administração → Aparência)
     return (
       <div style={{background:'white',borderRadius:12,boxShadow:'0 1px 5px rgba(0,0,0,0.12)',marginBottom:10,overflow:'hidden',display:'flex'}}>
-        <div style={{width:6,alignSelf:'stretch',background:cor,flexShrink:0}}/>
+        <div style={{width:6,alignSelf:'stretch',background:'var(--primary)',flexShrink:0}}/>
         <div style={{flex:1,minWidth:0,display:'flex',alignItems:'center',gap:14,padding:'16px 15px'}}>
-          <div style={{width:58,height:58,borderRadius:'50%',background:cor+'24',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,overflow:'hidden'}}>
+          <div style={{width:58,height:58,borderRadius:'50%',background:'var(--primary-light)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,overflow:'hidden'}}>
             {renderIcone(p)}
           </div>
           <div style={{flex:1,minWidth:0}}>

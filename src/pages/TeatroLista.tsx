@@ -113,12 +113,13 @@ export default function TeatroLista({ profile }: { profile?: Profile }) {
           <p className="empty-desc">Cadastre os teatros deste evento.</p>
         </div>
       ) : filtrados.map(t => {
-        const cor = t.cor ?? 'var(--accent)'
+        const cor = t.cor || 'var(--primary)'
+        const corBg = t.cor ? t.cor+'24' : 'var(--primary-light)'
         return (
           <div key={t.id} style={{background:'white',borderRadius:12,boxShadow:'0 1px 5px rgba(0,0,0,0.12)',marginBottom:10,overflow:'hidden',display:'flex'}}>
             <div style={{width:6,alignSelf:'stretch',background:cor,flexShrink:0}}/>
             <button style={{flex:1,minWidth:0,display:'flex',alignItems:'center',gap:14,padding:'16px 15px',background:'none',border:'none',cursor:'pointer',fontFamily:'inherit',textAlign:'left'}} onClick={()=>navigate('/teatro/'+t.id)}>
-              <div style={{width:58,height:58,borderRadius:'50%',flexShrink:0,display:'flex',alignItems:'center',justifyContent:'center',background:cor+'24'}}>
+              <div style={{width:58,height:58,borderRadius:'50%',flexShrink:0,display:'flex',alignItems:'center',justifyContent:'center',background:corBg}}>
                 <span style={{fontSize:27}}>{t.emoji || '🎭'}</span>
               </div>
               <div style={{flex:1,minWidth:0}}>

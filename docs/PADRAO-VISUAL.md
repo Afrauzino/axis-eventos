@@ -23,9 +23,13 @@
   Nunca fixar verde/turquesa no código.
 - Submenus viram **abas no topo da página** (componente `SubTabs`), padrão de Administração.
 
-## 3. Card de lista — `.list-card` / `CardItem`
-- Largura cheia, cantos arredondados (raio 12–14), sombra `var(--shadow-sm)`.
-- Barra de cor à esquerda (cor da equipe/tipo), foto da pessoa OU emoji colorido no avatar.
+## 3. Card de lista — padrão da Equipe
+- Card branco raio 12, sombra; **barra de cor à esquerda 6px**; avatar **circular** (foto ou emoji colorido);
+  nome (700/15) + subtítulo (12/muted); ações à direita como **ícones** em caixa 34 (lápis = editar, lixeira = excluir).
+- **REGRA da barra lateral:** usa a cor da fonte específica (equipe/teatro/tipo) **se existir**;
+  quando NÃO houver cor de onde vir, usa a **cor do sistema** `var(--primary)` (muda junto com Aparência).
+  Fundo claro do avatar: `cor+'24'` quando a cor é hex; `var(--primary-light)` quando é a cor do sistema
+  (não dá pra concatenar alpha em `var(--primary)`).
 - Equipe aparece como **emoji + cor** (identidade visual), não o nome escrito.
 - Clique no corpo/nome abre ver/editar; controles internos usam `e.stopPropagation()`.
 

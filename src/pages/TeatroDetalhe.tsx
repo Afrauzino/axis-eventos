@@ -251,7 +251,7 @@ export default function TeatroDetalhe({ profile }: { profile?: Profile }) {
   if (loading) return <div className="page"><div className="skeleton" style={{height:120,borderRadius:14}}/></div>
   if (!teatro) return <div className="page"><div className="alert-box alert-error">Teatro não encontrado.</div></div>
 
-  const cor = teatro.cor ?? 'var(--accent)'
+  const cor = teatro.cor || 'var(--primary)'
 
   return (
     <div className="page">
