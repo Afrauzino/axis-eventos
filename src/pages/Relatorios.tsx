@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import SubTabs from '../components/SubTabs'
 import { useEvento } from '../hooks/useEvento'
 import type { Profile } from '../App'
 
@@ -60,6 +61,7 @@ export default function Relatorios({ profile }: { profile?: Profile }) {
 
   return (
     <div className="page">
+      <SubTabs group="admin"/>
       <div className="stats-grid mb-4">
         <div className="stat-card"><div className="stat-label">Encontristas</div><div className="stat-value">{stats.enc.length}</div></div>
         <div className="stat-card"><div className="stat-label">Encontreiros</div><div className="stat-value">{stats.trb.length}</div></div>

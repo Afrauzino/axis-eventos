@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import SubTabs from '../components/SubTabs'
 import PersonSelect from '../components/PersonSelect'
 import { useEvento } from '../hooks/useEvento'
 import type { Profile } from '../App'
@@ -137,6 +138,7 @@ export default function PermissoesAdmin({ profile }: { profile?: Profile }) {
 
   return (
     <div className="page">
+      <SubTabs group="admin"/>
       <div className="alert-box alert-info mb-3" style={{fontSize:12}}>
         <strong>✓</strong> Permitido &nbsp;·&nbsp; <strong>✗</strong> Bloqueado &nbsp;·&nbsp; <strong>—</strong> Herda padrão do cargo<br/>
         Permissão individual sempre sobrescreve a do cargo.

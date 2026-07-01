@@ -5,6 +5,7 @@ import { limparCachePermissoes } from '../hooks/usePermissao'
 import { fmtDataHora, isAdmin } from '../utils'
 import { invalidarEventoAtivo } from '../hooks/useEvento'
 import { registrarLog } from '../lib/audit'
+import SubTabs from '../components/SubTabs'
 import type { Profile } from '../App'
 import EmojiPicker from '../components/EmojiPicker'
 
@@ -713,6 +714,7 @@ export default function Admin({ profile }: { profile?: Profile }) {
 
   return (
     <div className="page">
+      <SubTabs group="admin"/>
       <div className="tabs">
         <button className={`tab ${aba==='usuarios'?'active':''}`}  onClick={()=>setAba('usuarios')}>Usuários</button>
         <button className={`tab ${aba==='equipes_perm'?'active':''}`} onClick={()=>{setAba('equipes_perm');carregarEquipesPerm()}}>Equipes</button>

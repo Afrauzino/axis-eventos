@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import SubTabs from '../components/SubTabs'
 import EmojiPicker from '../components/EmojiPicker'
 import type { Profile } from '../App'
 
@@ -73,6 +74,7 @@ export default function MenusAdmin({ profile }: { profile?: Profile }) {
 
   return (
     <div className="page">
+      <SubTabs group="admin"/>
       <div className="alert-box alert-info mb-3">
         Configure os menus do sistema. Alterações refletem imediatamente para todos os usuários. As rotas internas não podem ser alteradas.
       </div>
