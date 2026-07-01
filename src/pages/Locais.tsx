@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase'
 import SubTabs from '../components/SubTabs'
 import { isAdmin } from '../utils'
 import UploadFoto from '../components/UploadFoto'
-import EmojiPicker from '../components/EmojiPicker'
+import { EMOJIS_AXIS } from '../components/AvatarPicker'
 import { useEvento } from '../hooks/useEvento'
 import type { Profile } from '../App'
 
@@ -17,6 +17,7 @@ type Equipe = { id:string; name:string; color:string }
 const TIPOS = [['trabalho','Trabalho'],['alojamento','Alojamento'],['sanitario','Sanitario'],['refeicao','Refeicao'],['outro','Outro']]
 const TIPO_COR: Record<string,string> = { trabalho:'var(--primary)', alojamento:'#2B6CB0', sanitario:'#718096', refeicao:'var(--success)', outro:'var(--muted)' }
 const TIPO_ICONE_PADRAO: Record<string,string> = { trabalho:'meeting_room', alojamento:'bed', sanitario:'wc', refeicao:'restaurant', outro:'location_on' }
+const TIPO_EMOJI_PADRAO: Record<string,string> = { trabalho:'🏢', alojamento:'🛏️', sanitario:'🚻', refeicao:'🍽️', outro:'📍' }
 
 export default function Locais({ profile }: { profile?: Profile }) {
   const { evento, loading: evLoading } = useEvento()
@@ -79,9 +80,9 @@ export default function Locais({ profile }: { profile?: Profile }) {
 
   function renderMedia(l: Local) {
     if (l.foto_url) return <img src={l.foto_url} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}}/>
-    const cor = TIPO_COR[l.tipo]??'var(--primary)'
-    const iconeName = l.icone || TIPO_ICONE_PADRAO[l.tipo] || 'location_on'
-    return <MatIcon name={iconeName} size={22} color={cor}/>
+    // emoji colorido escolhido; nome de ícone antigo (ex: "bed") cai no emoji padrão do tipo
+    if (l.icone && !/^[a-z0-9_]+$/.test(l.icone)) return <span style={{fontSize:24,lineHeight:1}}>{l.icone}</span>
+    return <span style={{fontSize:24,lineHeight:1}}>{TIPO_EMOJI_PADRAO[l.tipo] ?? '📍'}</span>
   }
 
   const filtrados = filtro==='todos' ? lista : lista.filter(l=>l.tipo===filtro)
@@ -180,7 +181,15 @@ export default function Locais({ profile }: { profile?: Profile }) {
                 <button type="button" className={`tab ${abaMedia==='foto'?'active':''}`} onClick={()=>setAbaMedia('foto')}>Foto do local</button>
               </div>
               {abaMedia==='emoji' ? (
-                <EmojiPicker value={form.icone} onChange={v=>setForm(f=>({...f,icone:v}))} label="Escolher icone"/>
+                <div className="form-group">
+                  <label className="form-label">Escolher emoji</label>
+                  <div style={{display:'flex',gap:6,flexWrap:'wrap',maxHeight:160,overflowY:'auto',padding:2}}>
+                    {EMOJIS_AXIS.map(em=>(
+                      <button key={em} type="button" onClick={()=>setForm(f=>({...f,icone:em}))}
+                        style={{width:38,height:38,borderRadius:9,fontSize:19,cursor:'pointer',fontFamily:'inherit',border:form.icone===em?'2px solid var(--primary)':'1px solid transparent',background:form.icone===em?'var(--primary-light)':'var(--bg)'}}>{em}</button>
+                    ))}
+                  </div>
+                </div>
               ) : (
                 <div style={{display:'flex',justifyContent:'center',marginBottom:14}}>
                   <UploadFoto bucket="locais" path={`local-${editando?.id??Date.now()}`} currentUrl={fotoUrl} onUpload={url=>setFotoUrl(url)} label="Enviar foto" size={120} shape="square"/>
