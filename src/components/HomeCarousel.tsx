@@ -14,6 +14,7 @@ export default function HomeCarousel({ admin }: { admin: boolean }) {
   const [itens, setItens] = useState<Item[]>([])
   const [idx, setIdx] = useState(0)
   const [carregado, setCarregado] = useState(false)
+  const [erro, setErro] = useState(false)
   const [modal, setModal] = useState(false)
   const [link, setLink] = useState('')
   const [subindo, setSubindo] = useState(false)
@@ -30,7 +31,8 @@ export default function HomeCarousel({ admin }: { admin: boolean }) {
   }, [itens, idx])
 
   async function carregar() {
-    const { data } = await supabase.from('home_midias').select('*').order('ordem')
+    const { data, error } = await supabase.from('home_midias').select('*').order('ordem')
+    setErro(!!error)
     setItens(data ?? []); setCarregado(true)
     setIdx(i => (data && i >= data.length ? 0 : i))
   }
@@ -64,6 +66,11 @@ export default function HomeCarousel({ admin }: { admin: boolean }) {
     if (!admin) return null
     return (
       <>
+        {erro && (
+          <div className="alert-box alert-warning mb-2" style={{fontSize:12}}>
+            A tabela do carrossel não existe ainda. Rode <b>sql/18_home_carousel.sql</b> no Supabase para poder adicionar imagens/vídeos.
+          </div>
+        )}
         <button onClick={()=>setModal(true)} style={{width:'100%',border:'2px dashed var(--border)',background:'var(--bg)',borderRadius:14,padding:'18px',cursor:'pointer',fontFamily:'inherit',color:'var(--muted)',fontSize:13,fontWeight:600,marginBottom:16,display:'flex',alignItems:'center',justifyContent:'center',gap:8}}>
           <span className="icon icon-sm">add_photo_alternate</span> Adicionar banner na Início
         </button>

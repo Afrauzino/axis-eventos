@@ -10,8 +10,6 @@ function MatIcon({ name, size=20, color='var(--text2)' }: {name:string;size?:num
   return <span style={{fontFamily:"'Material Symbols Outlined'",fontWeight:'normal',fontStyle:'normal',fontSize:size,lineHeight:1,letterSpacing:'normal',textTransform:'none',display:'inline-block',whiteSpace:'nowrap',direction:'ltr',WebkitFontSmoothing:'antialiased',fontVariationSettings:"'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24",color,userSelect:'none'}}>{name}</span>
 }
 
-const ROLES_DISP = ['visitante','aprovado','encontreiro','lider','financeiro','secretaria','coordenador','pastor','admin']
-
 export default function MenusAdmin({ profile }: { profile?: Profile }) {
   const [menus, setMenus]       = useState<MenuItem[]>([])
   const [loading, setLoading]   = useState(true)
@@ -65,13 +63,6 @@ export default function MenusAdmin({ profile }: { profile?: Profile }) {
   const principais = menus.filter(m=>!m.parent_id).sort((a,b)=>a.ordem-b.ordem)
   function getFilhos(parentId: string) { return menus.filter(m=>m.parent_id===parentId).sort((a,b)=>a.ordem-b.ordem) }
 
-  function toggleRole(role: string) {
-    setForm(f => ({
-      ...f,
-      roles: f.roles.includes(role) ? f.roles.filter(r=>r!==role) : [...f.roles, role]
-    }))
-  }
-
   return (
     <div className="page">
       <SubTabs group="admin"/>
@@ -90,7 +81,6 @@ export default function MenusAdmin({ profile }: { profile?: Profile }) {
             <div style={{flex:1,minWidth:0}}>
               <p style={{fontWeight:700,fontSize:14,color:item.visivel?'var(--text)':'var(--muted)'}}>{item.label}</p>
               {item.rota && <p style={{fontSize:11,color:'var(--muted)'}}>{item.rota}</p>}
-              {item.roles?.length>0 && <p style={{fontSize:10,color:'var(--primary)'}}>Restrito: {item.roles.join(', ')}</p>}
             </div>
             <div style={{display:'flex',gap:4,flexShrink:0}}>
               {pi>0 && <button onClick={()=>moverOrdem(item.id,'up')} style={{background:'var(--bg)',border:'1px solid var(--border)',borderRadius:6,width:26,height:26,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',fontFamily:'inherit'}}><MatIcon name="arrow_upward" size={13}/></button>}
@@ -136,21 +126,7 @@ export default function MenusAdmin({ profile }: { profile?: Profile }) {
               <div className="form-group"><label className="form-label">Emoji do menu</label>
                 <EmojiGrid value={form.emoji} onChange={em=>setForm(f=>({...f,emoji:em}))}/>
               </div>
-              <div className="form-group"><label className="form-label">Rota interna</label>
-                <input className="form-input" value={form.rota} onChange={e=>setForm(f=>({...f,rota:e.target.value}))} placeholder="Ex: /cronograma"/>
-                <p className="form-hint mt-1">Deixe vazio para menus que são apenas agrupadores.</p>
-              </div>
-              <div className="form-group">
-                <label className="form-label">Visibilidade por cargo</label>
-                <p className="form-hint mb-2">Vazio = visível para todos os aprovados. Selecione para restringir.</p>
-                <div style={{display:'flex',flexWrap:'wrap',gap:8}}>
-                  {ROLES_DISP.map(role=>(
-                    <button key={role} type="button" onClick={()=>toggleRole(role)} style={{padding:'6px 12px',borderRadius:20,cursor:'pointer',fontFamily:'inherit',fontSize:12,fontWeight:600,border:`2px solid ${form.roles.includes(role)?'var(--primary)':'var(--border)'}`,background:form.roles.includes(role)?'var(--primary-light)':'white',color:form.roles.includes(role)?'var(--primary-dark)':'var(--text2)'}}>
-                      {role}
-                    </button>
-                  ))}
-                </div>
-              </div>
+              <p className="form-hint mb-3">As permissões (quem vê) são definidas em <b>Usuários</b> e <b>Equipes</b>. Aqui é só o visual: emoji, nome, ordem e visibilidade geral.</p>
               <div className="form-group">
                 <label className="form-label">Visível</label>
                 <button type="button" onClick={()=>setForm(f=>({...f,visivel:!f.visivel}))} style={{display:'flex',alignItems:'center',gap:10,padding:'10px 14px',borderRadius:10,cursor:'pointer',fontFamily:'inherit',width:'100%',border:`2px solid ${form.visivel?'var(--success)':'var(--border)'}`,background:form.visivel?'var(--success-bg)':'white'}}>
