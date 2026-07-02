@@ -123,7 +123,7 @@ const TITULOS_ROTA: Record<string,string> = {
   '/ocorrencias': 'Ocorrências',
   '/financeiro': 'Financeiro',
   '/doacoes': 'Doações',
-  '/relatorios': 'Relatórios',
+  '/relatorios': 'Comparativo',
   '/locais': 'Locais',
   '/admin': 'Administração',
   '/admin/menus': 'Administração',

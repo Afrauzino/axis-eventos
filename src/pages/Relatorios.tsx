@@ -1,98 +1,149 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import SubTabs from '../components/SubTabs'
-import { useEvento } from '../hooks/useEvento'
+import { fmtBRL } from '../utils'
 import type { Profile } from '../App'
 
+type Evento = { id:string; name:string; status:string }
+type Metricas = {
+  totalPessoas:number; encontristas:number; encontreiros:number; equipes:number
+  arrecadado:number; doacoes:number; ocorrencias:number; ministracoes:number; teatros:number
+}
+
+const LINHAS: { key:keyof Metricas; label:string; money?:boolean }[] = [
+  { key:'totalPessoas', label:'Total de pessoas' },
+  { key:'encontristas', label:'Encontristas' },
+  { key:'encontreiros', label:'Encontreiros' },
+  { key:'equipes',      label:'Equipes' },
+  { key:'ministracoes', label:'Ministrações' },
+  { key:'teatros',      label:'Teatros' },
+  { key:'arrecadado',   label:'Arrecadado', money:true },
+  { key:'doacoes',      label:'Doações', money:true },
+  { key:'ocorrencias',  label:'Ocorrências' },
+]
+
+const STATUS_LABEL: Record<string,string> = { active:'Ativo', finished:'Encerrado', inactive:'Inativo' }
+
 export default function Relatorios({ profile }: { profile?: Profile }) {
-  const { evento, loading: evLoading } = useEvento()
-  const [stats, setStats]   = useState<any>(null)
-  const [loading, setLoading] = useState(true)
-  const [exportando, setExportando] = useState('')
+  const [eventos, setEventos] = useState<Evento[]>([])
+  const [sel, setSel] = useState<string[]>([])
+  const [metricas, setMetricas] = useState<Record<string, Metricas>>({})
+  const [carregando, setCarregando] = useState(false)
 
-  useEffect(() => { if (evLoading) return; if (!evento) { setLoading(false); return }; carregar() }, [evento, evLoading])
+  useEffect(() => { carregarEventos() }, [])
 
-  async function carregar() {
-    if (!evento) return
-    setLoading(true)
-    const [enc, trb, eq, al, oc, pa, te] = await Promise.all([
-      supabase.from('people').select('id,name,church,sexo,status,birth_date,cidade').eq('event_id',evento.id).eq('role_type','encounterer').order('name'),
-      supabase.from('people').select('id,name,church,sexo').eq('event_id',evento.id).eq('role_type','worker').order('name'),
-      supabase.from('teams').select('id,name').eq('event_id',evento.id).order('name'),
-      supabase.from('alerts').select('id',{count:'exact',head:true}).eq('event_id',evento.id),
-      supabase.from('occurrences').select('id',{count:'exact',head:true}).eq('event_id',evento.id),
-      supabase.from('financeiro').select('valor,status').eq('event_id',evento.id),
-      supabase.from('theaters').select('id,nome').eq('event_id',evento.id),
-    ])
-    setStats({ enc:enc.data??[], trb:trb.data??[], eq:eq.data??[], oc:oc.count??0, pa:pa.data??[], te:te.data??[] })
-    setLoading(false)
+  async function carregarEventos() {
+    const { data } = await supabase.from('events').select('id,name,status').order('created_at', { ascending:false })
+    const evs = data ?? []
+    setEventos(evs)
+    // pré-seleciona o ativo (ou o primeiro)
+    const ativo = evs.find(e=>e.status==='active') ?? evs[0]
+    if (ativo) { setSel([ativo.id]); carregarMetricas([ativo.id]) }
   }
 
-  function exportarCSV(data: any[], nome: string) {
-    if (!data.length) return
-    const keys = Object.keys(data[0])
-    const csv  = [keys.join(','), ...data.map(r=>keys.map(k=>JSON.stringify(r[k]??'')).join(','))].join('\n')
-    const blob = new Blob([csv],{type:'text/csv;charset=utf-8;'})
-    const url  = URL.createObjectURL(blob)
-    const a    = document.createElement('a'); a.href=url; a.download=`${nome}-${new Date().toISOString().slice(0,10)}.csv`; a.click()
-    URL.revokeObjectURL(url)
+  async function carregarMetricas(ids: string[]) {
+    const faltam = ids.filter(id => !metricas[id])
+    if (!faltam.length) return
+    setCarregando(true)
+    const novos: Record<string, Metricas> = {}
+    await Promise.all(faltam.map(async id => {
+      const q = (t:string, extra?:(qb:any)=>any) => {
+        let qb:any = supabase.from(t).select('id', { count:'exact', head:true }).eq('event_id', id)
+        if (extra) qb = extra(qb)
+        return qb
+      }
+      const [enc, trb, eq, oc, mi, te, fin, doa] = await Promise.all([
+        q('people', (qb:any)=>qb.eq('role_type','encounterer')),
+        q('people', (qb:any)=>qb.eq('role_type','worker')),
+        q('teams'),
+        q('occurrences'),
+        q('ministrações'),
+        q('theaters'),
+        supabase.from('financeiro').select('valor,status').eq('event_id', id),
+        supabase.from('doacoes').select('valor').eq('event_id', id),
+      ])
+      const arrecadado = (fin.data ?? []).filter((p:any)=>p.status==='pago').reduce((s:number,p:any)=>s+(p.valor||0),0)
+      const doacoes    = (doa.data ?? []).reduce((s:number,d:any)=>s+(d.valor||0),0)
+      novos[id] = {
+        encontristas: enc.count ?? 0, encontreiros: trb.count ?? 0,
+        totalPessoas: (enc.count ?? 0) + (trb.count ?? 0),
+        equipes: eq.count ?? 0, ocorrencias: oc.count ?? 0,
+        ministracoes: mi.count ?? 0, teatros: te.count ?? 0,
+        arrecadado, doacoes,
+      }
+    }))
+    setMetricas(m => ({ ...m, ...novos }))
+    setCarregando(false)
   }
 
-  function exportarJSON(data: any, nome: string) {
-    const blob = new Blob([JSON.stringify(data,null,2)],{type:'application/json'})
-    const url  = URL.createObjectURL(blob)
-    const a    = document.createElement('a'); a.href=url; a.download=`${nome}-${new Date().toISOString().slice(0,10)}.json`; a.click()
-    URL.revokeObjectURL(url)
+  function toggle(id: string) {
+    setSel(prev => {
+      const novo = prev.includes(id) ? prev.filter(x=>x!==id) : [...prev, id]
+      carregarMetricas(novo)
+      return novo
+    })
   }
 
-  if (loading) return <div className="page">{[1,2,3].map(i=><div key={i} className="skeleton" style={{height:70,marginBottom:10,borderRadius:14}}/>)}</div>
-  if (!stats) return null
-
-  const totalPago    = stats.pa.filter((p:any)=>p.status==='pago').reduce((s:number,p:any)=>s+p.valor,0)
-  const totalPendente= stats.pa.filter((p:any)=>p.status==='pendente').reduce((s:number,p:any)=>s+p.valor,0)
-
-  const relatorios = [
-    { label:'Lista de Encontristas', desc:`${stats.enc.length} registros`, emoji:'🙋', data:stats.enc, nome:'encontristas' },
-    { label:'Lista de Encontreiros', desc:`${stats.trb.length} registros`, emoji:'🤝', data:stats.trb, nome:'encontreiros' },
-    { label:'Lista de Equipes',      desc:`${stats.eq.length} equipes`,    emoji:'🛡️', data:stats.eq, nome:'equipes' },
-    { label:'Teatros',               desc:`${stats.te.length} teatros`,    emoji:'🎭', data:stats.te, nome:'teatros' },
-    { label:'Relatorio Financeiro',  desc:`R$ ${totalPago.toFixed(2)} pagos · R$ ${totalPendente.toFixed(2)} pendentes`, emoji:'💰', data:stats.pa, nome:'financeiro' },
-  ]
+  const selecionados = eventos.filter(e => sel.includes(e.id))
+  const fmt = (v:number, money?:boolean) => money ? fmtBRL(v) : String(v)
 
   return (
     <div className="page">
       <SubTabs group="admin"/>
-      <div className="stats-grid mb-4">
-        <div className="stat-card"><div className="stat-label">Encontristas</div><div className="stat-value">{stats.enc.length}</div></div>
-        <div className="stat-card"><div className="stat-label">Encontreiros</div><div className="stat-value">{stats.trb.length}</div></div>
-        <div className="stat-card"><div className="stat-label">Ocorrencias</div><div className="stat-value" style={{color:'var(--danger)'}}>{stats.oc}</div></div>
-        <div className="stat-card"><div className="stat-label">Arrecadado</div><div className="stat-value" style={{fontSize:18,color:'var(--success)'}}>R$ {totalPago.toFixed(0)}</div></div>
+      <h1 style={{fontSize:20,fontWeight:800,marginBottom:4}}>📊 Comparativo entre eventos</h1>
+      <p style={{fontSize:13,color:'var(--muted)',marginBottom:14}}>Selecione os eventos (inclusive inativos) para comparar números lado a lado.</p>
+
+      {/* Seleção de eventos */}
+      <div className="section-label mb-2">Eventos</div>
+      <div style={{display:'flex',flexWrap:'wrap',gap:8,marginBottom:16}}>
+        {eventos.length===0 ? <p style={{fontSize:13,color:'var(--muted)'}}>Nenhum evento.</p> :
+         eventos.map(e => {
+          const on = sel.includes(e.id)
+          return (
+            <button key={e.id} onClick={()=>toggle(e.id)}
+              style={{padding:'8px 12px',borderRadius:20,cursor:'pointer',fontFamily:'inherit',fontSize:12,fontWeight:600,
+                border:on?'2px solid var(--primary)':'1px solid var(--border)',background:on?'var(--primary-light)':'white',
+                color:on?'var(--primary)':'var(--text2)',display:'flex',alignItems:'center',gap:6}}>
+              <span className="icon" style={{fontSize:15}}>{on?'check_box':'check_box_outline_blank'}</span>
+              {e.name}
+              <span style={{fontSize:10,opacity:0.7}}>· {STATUS_LABEL[e.status]??e.status}</span>
+            </button>
+          )
+        })}
       </div>
 
-      <div className="section-label mb-3">Exportar relatorios</div>
-
-      {relatorios.map(r=>(
-        <div key={r.nome} style={{background:'white',borderRadius:14,boxShadow:'var(--shadow-sm)',marginBottom:8,padding:'14px 16px',display:'flex',alignItems:'center',gap:12}}>
-          <div style={{width:44,height:44,borderRadius:12,background:'var(--primary-light)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,fontSize:22,lineHeight:1}}>
-            {r.emoji}
-          </div>
-          <div style={{flex:1}}>
-            <p style={{fontWeight:700,fontSize:14,marginBottom:2}}>{r.label}</p>
-            <p style={{fontSize:12,color:'var(--muted)'}}>{r.desc}</p>
-          </div>
-          <div style={{display:'flex',gap:6}}>
-            <button className="btn btn-sm btn-outline" onClick={()=>exportarCSV(r.data,r.nome)}>CSV</button>
-            <button className="btn btn-sm btn-ghost" onClick={()=>exportarJSON(r.data,r.nome)}>JSON</button>
-          </div>
+      {/* Tabela comparativa */}
+      {selecionados.length===0 ? (
+        <div className="empty"><p className="empty-desc">Selecione ao menos um evento.</p></div>
+      ) : (
+        <div style={{overflowX:'auto',border:'1px solid var(--border)',borderRadius:12,background:'white'}}>
+          <table style={{borderCollapse:'collapse',width:'100%',minWidth:selecionados.length>1?420:280}}>
+            <thead>
+              <tr>
+                <th style={{textAlign:'left',padding:'10px 12px',fontSize:12,color:'var(--muted)',position:'sticky',left:0,background:'white',borderBottom:'2px solid var(--border)'}}>Métrica</th>
+                {selecionados.map(e => (
+                  <th key={e.id} style={{textAlign:'right',padding:'10px 12px',fontSize:13,fontWeight:800,borderBottom:'2px solid var(--border)',whiteSpace:'nowrap'}}>{e.name}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {LINHAS.map((ln,i) => (
+                <tr key={ln.key} style={{background:i%2?'var(--bg)':'white'}}>
+                  <td style={{padding:'10px 12px',fontSize:13,fontWeight:600,position:'sticky',left:0,background:i%2?'var(--bg)':'white'}}>{ln.label}</td>
+                  {selecionados.map(e => {
+                    const m = metricas[e.id]
+                    return (
+                      <td key={e.id} style={{padding:'10px 12px',fontSize:13,textAlign:'right',color:ln.money?'var(--success)':'var(--text)',fontWeight:ln.money?700:500}}>
+                        {m ? fmt(m[ln.key] as number, ln.money) : (carregando?'...':'—')}
+                      </td>
+                    )
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
-      ))}
-
-      <div style={{marginTop:20}}>
-        <div className="section-label mb-3">Exportar tudo</div>
-        <button className="btn btn-primary btn-full" onClick={()=>exportarJSON({evento,encontristas:stats.enc,encontreiros:stats.trb,equipes:stats.eq,financeiro:stats.pa,teatros:stats.te,exportado_em:new Date().toISOString()},'backup-completo')}>
-          <span className="icon icon-sm">download</span> Exportar backup completo (JSON)
-        </button>
-      </div>
+      )}
     </div>
   )
 }

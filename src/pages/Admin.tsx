@@ -1413,14 +1413,16 @@ export default function Admin({ profile }: { profile?: Profile }) {
                 <EmojiGrid value={formTipo.icone} onChange={v=>setFormTipo(f=>({...f,icone:v}))}/>
               </div>
               <div className="form-group"><label className="form-label">Cor</label>
+                <p className="form-hint mb-2">Atalhos abaixo, ou escolha <strong>qualquer cor</strong> no seletor / digitando o código.</p>
                 <div style={{display:'flex',gap:8,flexWrap:'wrap',paddingTop:4,marginBottom:8}}>
                   {CORES_TIPO.map(c=>(
                     <button key={c} type="button" onClick={()=>setFormTipo(f=>({...f,cor:c}))} style={{width:36,height:36,borderRadius:9,background:c,border:'none',cursor:'pointer',boxShadow:formTipo.cor===c?`0 0 0 3px white, 0 0 0 5px ${c}`:'none',transition:'box-shadow 0.15s'}}/>
                   ))}
                 </div>
-                <div style={{display:'flex',alignItems:'center',gap:10}}>
-                  <input type="color" value={formTipo.cor} onChange={e=>setFormTipo(f=>({...f,cor:e.target.value}))} style={{width:40,height:36,borderRadius:8,border:'1px solid var(--border)',cursor:'pointer',padding:2}}/>
-                  <div style={{height:36,flex:1,borderRadius:9,background:formTipo.cor,display:'flex',alignItems:'center',justifyContent:'center'}}>
+                <div style={{display:'flex',alignItems:'center',gap:8}}>
+                  <input type="color" value={formTipo.cor} onChange={e=>setFormTipo(f=>({...f,cor:e.target.value}))} style={{width:44,height:38,borderRadius:8,border:'1px solid var(--border)',cursor:'pointer',padding:2}}/>
+                  <input type="text" value={formTipo.cor.toUpperCase()} onChange={e=>{const v=e.target.value; if(/^#[0-9a-fA-F]{0,6}$/.test(v)) setFormTipo(f=>({...f,cor:v}))}} maxLength={7} className="form-input" style={{width:110,fontFamily:'monospace'}} placeholder="#RRGGBB"/>
+                  <div style={{height:38,flex:1,borderRadius:9,background:formTipo.cor,display:'flex',alignItems:'center',justifyContent:'center'}}>
                     <span style={{color:'white',fontWeight:700,fontSize:13}}>{formTipo.nome||'Prévia'}</span>
                   </div>
                 </div>
