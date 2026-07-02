@@ -24,8 +24,15 @@ _Detalhes e "onde mexer" em `docs/HANDOFF.md`._
 - 2026-07-02 — [x] **Escala**: impressão do dia no padrão (PrintOverlay, com foto). [feito]
 - 2026-07-02 — [x] **Cronograma "com detalhes"**: sem duplicidade; 🎭 na frente do teatro; FOTO do
   ministrante + fotos dos atores com seus personagens. [feito]
-- 2026-07-02 — [~] **Ministração impressão**: cabeçalho colorido no estilo do app + cara do ministrante
-  (1ª versão feita). AGUARDANDO foto de referência do Anderson pra afinar o layout exato.
+- 2026-07-02 — [x] **Ministração impressão**: cabeçalho colorido igual ao app (sem cara dentro) + linha
+  "Ministrante" com a foto abaixo (conforme foto de referência). [feito]
+- 2026-07-02 — [x] **Crachá**: removido "Quem entra" (só filtro de equipes, e só no modelo Encontreiros);
+  botão "Restaurar padrão deste modelo" (vale p/ os 3). [feito]
+- 2026-07-02 — [x] **Cozinha impressão**: reflete o card do app (barra colorida, emoji, título, tipo, itens). [feito]
+- 2026-07-02 — [x] **Equipes impressão**: igual ao card expandido do app (header + Liderança + Membros com
+  foto e "Também em"). [feito]
+- 2026-07-02 — [x] **Teatro impressão**: estilo app sem menus; aviso de mídia/arquivo antes das cenas;
+  elenco com foto+nome+personagem; cenas no estilo dos cards. [feito]
 - 2026-07-02 — [x] Correio impressão: mostrar a bolinha com a foto da pessoa. [feito]
 - 2026-07-02 — [x] Cronograma impressão: refletir exatamente o que está na tela (mesmos grupos/filtro,
   visual de card); "com detalhes" só estende o card com ministração/teatro (coloca os teatros). [feito]

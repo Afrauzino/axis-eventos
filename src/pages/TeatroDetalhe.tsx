@@ -43,6 +43,7 @@ export default function TeatroDetalhe({ profile }: { profile?: Profile }) {
   const [ministracao, setMinistracao] = useState<Ministracao|null>(null)
   const [ministrante, setMinistrante] = useState<Pessoa|null>(null)
   const [midias, setMidias]     = useState<Midia[]>([])
+  const [arquivosCount, setArquivosCount] = useState(0)
   const [aba, setAba]           = useState<'cenas'|'elenco'|'midia'|'arquivos'>('cenas')
   const [imprimir, setImprimir] = useState(false)
   const [modalMidia, setModalMidia] = useState(false)
@@ -91,6 +92,9 @@ export default function TeatroDetalhe({ profile }: { profile?: Profile }) {
     setPersonagens(pg.data ?? [])
     setObjetos(ob.data ?? [])
     setMidias((mi.data as Midia[]) ?? [])
+    // conta arquivos (para "informar que tem arquivo" na impressão)
+    const { count: arqN } = await supabase.from('arquivos_modulo').select('id',{count:'exact',head:true}).eq('modulo','teatro').eq('referencia_id', id)
+    setArquivosCount(arqN ?? 0)
 
     if (te.data) {
       const { data: ev } = await supabase.from('theaters').select('event_id').eq('id', id).single()
@@ -602,33 +606,83 @@ export default function TeatroDetalhe({ profile }: { profile?: Profile }) {
         </div>
       )}
 
-      {imprimir && teatro && (
+      {imprimir && teatro && (() => {
+        const corHex = teatro.cor || '#6B46C1'
+        return (
         <PrintOverlay titulo={`Teatro — ${teatro.nome}`} onClose={()=>setImprimir(false)}>
-          <h1 style={{fontSize:22,fontWeight:800,marginBottom:4}}>{teatro.nome}</h1>
-          {teatro.local && <p style={{fontSize:13,color:'#374151',marginBottom:2}}>Local: {teatro.local}</p>}
-          {ministracao && <p style={{fontSize:13,color:'#374151',marginBottom:2}}>Ministração: {ministracao.titulo}{ministrante?` · ${ministrante.name}`:''}</p>}
-          {teatro.descricao && <p style={{fontSize:13,marginTop:6,marginBottom:12}}>{teatro.descricao}</p>}
+          {/* Cabeçalho estilo app (sem menus) */}
+          <div style={{background:corHex,borderRadius:14,padding:'16px 20px',color:'white',marginBottom:14,display:'flex',alignItems:'center',gap:12,WebkitPrintColorAdjust:'exact',printColorAdjust:'exact'} as any}>
+            <div style={{width:48,height:48,borderRadius:'50%',background:'rgba(255,255,255,0.2)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,fontSize:26}}>🎭</div>
+            <div style={{flex:1,minWidth:0}}>
+              <p style={{fontSize:19,fontWeight:800,lineHeight:1.15}}>{teatro.nome}</p>
+              {teatro.local && <p style={{fontSize:13,opacity:0.85}}>{teatro.local}</p>}
+            </div>
+          </div>
+          {teatro.descricao && <p style={{fontSize:13,marginBottom:12,color:'#374151'}}>{teatro.descricao}</p>}
+          {ministracao && (
+            <div style={{background:'#F3F0FF',border:'1px solid #D6BCFA',borderRadius:12,padding:'10px 14px',marginBottom:12}}>
+              <p style={{fontSize:10,fontWeight:700,color:'#6B46C1',textTransform:'uppercase',letterSpacing:'0.06em'}}>Ministração vinculada</p>
+              <p style={{fontWeight:700,fontSize:14,color:'#44337A'}}>{ministracao.titulo}{ministrante?` · ${ministrante.name}`:''}</p>
+            </div>
+          )}
 
-          <h2 style={{fontSize:15,fontWeight:800,textTransform:'uppercase',color:'#374151',margin:'14px 0 8px',borderBottom:'2px solid #111827',paddingBottom:4}}>Cenas ({cenas.length})</h2>
-          {cenas.map((c,i)=>{
+          {/* Aviso de mídia/arquivo antes das cenas */}
+          {(midias.length>0 || arquivosCount>0) && (
+            <p style={{fontSize:12,color:'#374151',background:'#f3f4f6',borderRadius:8,padding:'8px 12px',marginBottom:14}}>
+              {midias.length>0 && <>📷 {midias.length} mídia(s) no app</>}
+              {midias.length>0 && arquivosCount>0 && ' · '}
+              {arquivosCount>0 && <>📎 {arquivosCount} arquivo(s) no app</>}
+            </p>
+          )}
+
+          {/* Elenco com foto + nome + personagem */}
+          {elenco.length>0 && (
+            <>
+              <h2 style={{fontSize:14,fontWeight:800,textTransform:'uppercase',color:'#374151',margin:'8px 0 8px',borderBottom:'2px solid #111827',paddingBottom:4}}>Elenco ({elenco.length})</h2>
+              <div style={{display:'flex',flexWrap:'wrap',gap:12,marginBottom:16}}>
+                {elenco.map(el=>{
+                  const p=getPessoa(el.person_id); const pg=getPersonagem(el.personagem_id)
+                  if(!p) return null
+                  return (
+                    <div key={el.id} style={{width:88,textAlign:'center'}}>
+                      <div style={{width:64,height:64,borderRadius:'50%',margin:'0 auto 4px',overflow:'hidden',background:'#f3f4f6',display:'flex',alignItems:'center',justifyContent:'center',border:'1px solid #e5e7eb'}}>
+                        {p.photo_url?<img src={p.photo_url} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}}/>:<span style={{fontWeight:700,color:'#6b7280',fontSize:18}}>{getInitials(p.name)}</span>}
+                      </div>
+                      {pg && <p style={{fontSize:11,fontWeight:700,lineHeight:1.15}}>{pg.nome}</p>}
+                      <p style={{fontSize:11,color:'#6b7280',lineHeight:1.15}}>{p.name}</p>
+                    </div>
+                  )
+                })}
+              </div>
+            </>
+          )}
+
+          {/* Cenas — estilo dos cards do app */}
+          <h2 style={{fontSize:14,fontWeight:800,textTransform:'uppercase',color:'#374151',margin:'8px 0 8px',borderBottom:'2px solid #111827',paddingBottom:4}}>Cenas ({cenas.length})</h2>
+          {cenas.map(c=>{
             const pg=getPersonagem(c.personagem_id); const pe=getPessoa(c.person_id); const obj=getObjeto(c.objeto_id)
             return (
-              <div key={c.id} style={{marginBottom:12,paddingBottom:10,borderBottom:'1px solid #e5e7eb'}}>
-                <p style={{fontWeight:800,fontSize:14}}>{c.ordem}. {c.titulo || `Cena ${c.ordem}`}</p>
-                {c.deixa && <p style={{fontSize:13,margin:'2px 0'}}><strong>Deixa:</strong> {c.deixa}</p>}
-                {c.acao && <p style={{fontSize:13,margin:'2px 0'}}><strong>Ação:</strong> {c.acao}</p>}
-                {c.fala && <p style={{fontSize:13,margin:'2px 0',fontStyle:'italic'}}>"{c.fala}"</p>}
-                {pg && <p style={{fontSize:13,margin:'2px 0'}}><strong>Personagem:</strong> {pg.nome}{pe?` — ${pe.name}`:''}</p>}
-                {obj && <p style={{fontSize:13,margin:'2px 0'}}><strong>Objeto:</strong> {obj.nome}</p>}
-                {c.trilha_sonora && <p style={{fontSize:13,margin:'2px 0'}}><strong>Som:</strong> {c.trilha_sonora}</p>}
+              <div key={c.id} style={{border:'1px solid #e5e7eb',borderRadius:10,overflow:'hidden',marginBottom:10,breakInside:'avoid'}}>
+                <div style={{display:'flex',alignItems:'center',gap:10,padding:'10px 14px',borderBottom:(c.deixa||c.acao||c.fala||pg||obj||c.trilha_sonora)?'1px solid #eee':'none'}}>
+                  <div style={{width:30,height:30,borderRadius:8,background:corHex,display:'flex',alignItems:'center',justifyContent:'center',fontSize:13,fontWeight:800,color:'white',flexShrink:0,WebkitPrintColorAdjust:'exact',printColorAdjust:'exact'} as any}>{c.ordem}</div>
+                  <p style={{fontWeight:700,fontSize:14}}>{c.titulo ?? `Cena ${c.ordem}`}</p>
+                </div>
+                {(c.deixa||c.acao||c.fala||pg||obj||c.trilha_sonora) && (
+                  <div style={{padding:'10px 14px',display:'flex',flexDirection:'column',gap:7}}>
+                    {c.deixa && <div style={{background:'#FFF3E0',borderRadius:8,padding:'8px 12px',borderLeft:`3px solid ${corHex}`}}><p style={{fontSize:10,fontWeight:700,color:corHex,textTransform:'uppercase'}}>Deixa</p><p style={{fontSize:13}}>{c.deixa}</p></div>}
+                    {c.acao && <p style={{fontSize:13}}><strong style={{color:'#6b7280'}}>AÇÃO </strong>{c.acao}</p>}
+                    {c.fala && <p style={{fontSize:13,fontStyle:'italic'}}>"{c.fala}"</p>}
+                    {pg && <p style={{fontSize:13,color:'#6B46C1',fontWeight:600}}>🎭 {pg.nome}{pe?` — ${pe.name}`:''}</p>}
+                    {obj && <p style={{fontSize:13,color:'#6b7280'}}>📦 {obj.nome}</p>}
+                    {c.trilha_sonora && <p style={{fontSize:13,color:'#6b7280'}}>🎵 {c.trilha_sonora}</p>}
+                  </div>
+                )}
               </div>
             )
           })}
-
-          <h2 style={{fontSize:15,fontWeight:800,textTransform:'uppercase',color:'#374151',margin:'14px 0 8px',borderBottom:'2px solid #111827',paddingBottom:4}}>Elenco ({elenco.length})</h2>
-          {elenco.map(el=>{ const p=getPessoa(el.person_id); const pg=getPersonagem(el.personagem_id); return p ? <p key={el.id} style={{fontSize:13,margin:'2px 0'}}>{p.name}{pg?` — ${pg.nome}`:''}</p> : null })}
         </PrintOverlay>
-      )}
+        )
+      })()}
     </div>
   )
 }

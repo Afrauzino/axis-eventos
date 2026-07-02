@@ -211,23 +211,26 @@ export default function Cozinha({ profile }: { profile?: Profile }) {
       )}
 
       {imprimir && (
-        <PrintOverlay titulo="Cardápios da cozinha" onClose={()=>setImprimir(false)}>
-          {(() => {
-            const grupos = tipos.map(t => ({ tipo:t, cards:cardapios.filter(c=>c.refeicao_tipo_id===t.id) }))
-            const semTipo = cardapios.filter(c=>!c.refeicao_tipo_id || !tipos.some(t=>t.id===c.refeicao_tipo_id))
-            if (semTipo.length) grupos.push({ tipo:{ id:'_', nome:'Sem tipo', cor:'#6b7280', ordem:99, emoji:'🍽️' }, cards:semTipo })
-            return grupos.filter(g=>g.cards.length).map(g => (
-              <div key={g.tipo.id} style={{marginBottom:22}}>
-                <h2 style={{fontSize:17,fontWeight:800,marginBottom:10,borderBottom:`2px solid ${g.tipo.cor}`,paddingBottom:4}}>{g.tipo.emoji||'🍽️'} {g.tipo.nome}</h2>
-                {g.cards.map(c => (
-                  <div key={c.id} style={{border:'1px solid #e5e7eb',borderRadius:8,padding:'10px 12px',marginBottom:8,breakInside:'avoid'}}>
-                    <p style={{fontWeight:700,fontSize:14}}>{c.titulo || 'Cardápio'}</p>
-                    {c.itens && <p style={{fontSize:13,color:'#374151',whiteSpace:'pre-wrap',marginTop:4}}>{c.itens}</p>}
+        <PrintOverlay titulo="Cardápios" onClose={()=>setImprimir(false)}>
+          {cardapios.map(c => {
+            const tipo = tipos.find(t=>t.id===c.refeicao_tipo_id)
+            const cor  = tipo?.cor ?? '#00A99D'
+            return (
+              <div key={c.id} style={{display:'flex',border:'1px solid #e5e7eb',borderRadius:12,overflow:'hidden',marginBottom:10,breakInside:'avoid'}}>
+                <div style={{width:6,background:cor,flexShrink:0,WebkitPrintColorAdjust:'exact',printColorAdjust:'exact'} as any}/>
+                <div style={{flex:1,minWidth:0,padding:'14px 15px'}}>
+                  <div style={{display:'flex',alignItems:'center',gap:14}}>
+                    <div style={{width:52,height:52,borderRadius:'50%',background:cor+'24',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,fontSize:24,lineHeight:1,WebkitPrintColorAdjust:'exact',printColorAdjust:'exact'} as any}>{tipo?.emoji || '🍽️'}</div>
+                    <div style={{flex:1,minWidth:0}}>
+                      <p style={{fontWeight:700,fontSize:15}}>{c.titulo || 'Cardápio'}</p>
+                      {tipo && <p style={{fontSize:12,color:'#6b7280'}}>{tipo.nome}</p>}
+                    </div>
                   </div>
-                ))}
+                  {c.itens && <p style={{fontSize:13,color:'#374151',whiteSpace:'pre-wrap',marginTop:10}}>{c.itens}</p>}
+                </div>
               </div>
-            ))
-          })()}
+            )
+          })}
         </PrintOverlay>
       )}
     </div>

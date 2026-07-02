@@ -429,22 +429,29 @@ export default function Ministracoes({ profile }: { profile?: Profile }) {
 
       {imprimir && (() => {
         const min = getPessoa(imprimir.ministrante_id)
+        const cor = (imprimir as any).cor ?? '#6B46C1'
         let blocos: {tipo:string;conteudo:string}[] = []
         if (imprimir.conteudo_sermao) { try { blocos = JSON.parse(imprimir.conteudo_sermao) } catch { blocos = [{tipo:'Esboço',conteudo:imprimir.conteudo_sermao}] } }
         return (
           <PrintOverlay titulo={`Ministração — ${imprimir.titulo}`} onClose={()=>setImprimir(null)}>
-            {/* Cabeçalho no estilo do app (header colorido) + cara do ministrante */}
-            <div style={{background:(imprimir as any).cor ?? '#6B46C1',borderRadius:14,padding:'16px 20px',color:'white',marginBottom:16,display:'flex',alignItems:'center',gap:14,WebkitPrintColorAdjust:'exact',printColorAdjust:'exact'} as any}>
-              <div style={{width:66,height:66,borderRadius:'50%',overflow:'hidden',flexShrink:0,background:'rgba(255,255,255,0.25)',border:'2px solid rgba(255,255,255,0.6)',display:'flex',alignItems:'center',justifyContent:'center'}}>
-                {min?.photo_url ? <img src={min.photo_url} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}}/> : <span style={{fontSize:30}}>{(imprimir as any).emoji || '🎤'}</span>}
-              </div>
-              <div style={{flex:1,minWidth:0}}>
-                <p style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.06em',opacity:0.8,marginBottom:3}}>Ministração</p>
-                <p style={{fontSize:20,fontWeight:800,lineHeight:1.15}}>{imprimir.titulo}</p>
-                <p style={{fontSize:13,opacity:0.9,marginTop:3}}>{fmtData(imprimir.hora_inicio)} · {fmtHora(imprimir.hora_inicio)} — {fmtHora(imprimir.hora_fim)}{imprimir.local?` · ${imprimir.local}`:''}</p>
-                {min && <p style={{fontSize:13,opacity:0.95,marginTop:2,fontWeight:600}}>Ministrante: {min.name}</p>}
-              </div>
+            {/* Cabeçalho colorido igual ao app (sem a cara dentro) */}
+            <div style={{background:cor,borderRadius:14,padding:'16px 20px',color:'white',marginBottom:14,WebkitPrintColorAdjust:'exact',printColorAdjust:'exact'} as any}>
+              <p style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.06em',opacity:0.8,marginBottom:4}}>Ministração</p>
+              <p style={{fontSize:20,fontWeight:800,lineHeight:1.15}}>{imprimir.titulo}</p>
+              <p style={{fontSize:13,opacity:0.9,marginTop:3}}>{fmtData(imprimir.hora_inicio)} · {fmtHora(imprimir.hora_inicio)} — {fmtHora(imprimir.hora_fim)}{imprimir.local?` · ${imprimir.local}`:''}</p>
             </div>
+            {/* Linha "Ministrante" com a cara (igual à aba Info) */}
+            {min && (
+              <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',border:'1px solid #e5e7eb',borderRadius:10,padding:'12px 14px',marginBottom:16}}>
+                <span style={{fontSize:13,color:'#6b7280',fontWeight:600}}>Ministrante</span>
+                <div style={{display:'flex',alignItems:'center',gap:10}}>
+                  <div style={{width:40,height:40,borderRadius:'50%',overflow:'hidden',flexShrink:0,background:cor,display:'flex',alignItems:'center',justifyContent:'center',WebkitPrintColorAdjust:'exact',printColorAdjust:'exact'} as any}>
+                    {min.photo_url ? <img src={min.photo_url} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}}/> : <span style={{fontSize:14,fontWeight:700,color:'white'}}>{getInitials(min.name)}</span>}
+                  </div>
+                  <span style={{fontSize:15,fontWeight:700}}>{min.name}</span>
+                </div>
+              </div>
+            )}
             {blocos.length===0 ? <p style={{fontSize:13,color:'#6b7280',marginTop:12}}>Sem conteúdo cadastrado.</p> :
             blocos.map((bl,i)=>(
               <div key={i} style={{marginBottom:16}}>

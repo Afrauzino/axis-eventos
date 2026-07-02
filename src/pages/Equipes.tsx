@@ -396,40 +396,66 @@ export default function Equipes({ profile }: { profile?: Profile }) {
         </div>
       )}
 
-      {/* Overlay de impressão das equipes */}
+      {/* Overlay de impressão das equipes — igual ao card do app */}
       {imprimir && (
         <PrintOverlay titulo="Equipes" onClose={()=>setImprimir(false)}>
           {equipes.filter(eq=>printSel.includes(eq.id)).map(eq=>{
             const membros = getMembros(eq.id)
             const lider   = pessoas.find(p=>p.id===eq.leader_id)
             const colider = pessoas.find(p=>p.id===eq.co_leader_id)
-            const soMembros = membros.filter(m=>m.id!==eq.leader_id && m.id!==eq.co_leader_id)
-            const foto = (p:Pessoa,size:number,destaque?:string)=>(
-              <div style={{textAlign:'center'}}>
-                <div style={{width:size,height:size,borderRadius:'50%',margin:'0 auto 4px',overflow:'hidden',background:'#f3f4f6',display:'flex',alignItems:'center',justifyContent:'center',border:destaque?`2px solid ${destaque}`:'1px solid #e5e7eb'}}>
-                  {p.photo_url?<img src={p.photo_url} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}}/>:<span style={{fontWeight:700,color:'#6b7280',fontSize:size*0.34}}>{getInitials(p.name)}</span>}
-                </div>
-                <p style={{fontSize:11,fontWeight:600,lineHeight:1.2}}>{formatName(p.name)}</p>
+            const av = (p:Pessoa,size:number)=>(
+              <div style={{width:size,height:size,borderRadius:'50%',overflow:'hidden',flexShrink:0,background:eq.color+'24',display:'flex',alignItems:'center',justifyContent:'center',WebkitPrintColorAdjust:'exact',printColorAdjust:'exact'} as any}>
+                {p.photo_url?<img src={p.photo_url} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}}/>:<span style={{fontWeight:700,color:eq.color,fontSize:size*0.38}}>{getInitials(p.name)}</span>}
               </div>
             )
             return (
-              <div key={eq.id} className="print-break" style={{marginBottom:24}}>
-                <h2 style={{fontSize:19,fontWeight:800,marginBottom:2,borderBottom:`3px solid ${eq.color}`,paddingBottom:6}}>{(eq as any).emoji||'👥'} {eq.name}</h2>
-                <p style={{fontSize:12,color:'#6b7280',margin:'6px 0 12px'}}>{membros.length} integrante(s){lider?` · Líder: ${formatName(lider.name)}`:''}{colider?` · Co-líder: ${formatName(colider.name)}`:''}</p>
-                {(lider||colider) && (
-                  <div style={{display:'flex',gap:16,marginBottom:14}}>
-                    {lider && foto(lider,72,eq.color)}
-                    {colider && foto(colider,72,'#9ca3af')}
-                  </div>
-                )}
-                {soMembros.length>0 && (
-                  <>
-                    <p style={{fontSize:12,fontWeight:700,color:'#374151',marginBottom:8}}>Liderados</p>
-                    <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(90px,1fr))',gap:10}}>
-                      {soMembros.map(m=><div key={m.id}>{foto(m,64)}</div>)}
+              <div key={eq.id} className="print-break" style={{border:'1px solid #e5e7eb',borderRadius:12,overflow:'hidden',marginBottom:18}}>
+                {/* Cabeçalho (igual ao card do app) */}
+                <div style={{display:'flex',alignItems:'stretch'}}>
+                  <div style={{width:6,background:eq.color,flexShrink:0,WebkitPrintColorAdjust:'exact',printColorAdjust:'exact'} as any}/>
+                  <div style={{display:'flex',alignItems:'center',gap:14,padding:'14px 15px',flex:1,minWidth:0}}>
+                    <div style={{width:58,height:58,borderRadius:'50%',flexShrink:0,display:'flex',alignItems:'center',justifyContent:'center',overflow:'hidden',background:(eq as any).foto_url?'#eee':eq.color+'24',WebkitPrintColorAdjust:'exact',printColorAdjust:'exact'} as any}>
+                      {(eq as any).foto_url?<img src={(eq as any).foto_url} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}}/>:<span style={{fontSize:27}}>{(eq as any).emoji||'👥'}</span>}
                     </div>
-                  </>
-                )}
+                    <div style={{flex:1,minWidth:0}}>
+                      <p style={{fontWeight:700,fontSize:16}}>{eq.name}</p>
+                      <p style={{fontSize:12,color:'#6b7280'}}>{membros.length} {membros.length===1?'membro':'membros'}{lider?` · Líder: ${formatName(lider.name)}`:''}</p>
+                    </div>
+                  </div>
+                </div>
+                {/* Corpo */}
+                <div style={{padding:'12px 16px',borderTop:'1px solid #eee'}}>
+                  {(lider||colider) && (
+                    <>
+                      <p style={{fontSize:11,fontWeight:700,color:'#6b7280',textTransform:'uppercase',letterSpacing:'0.05em',marginBottom:8}}>Liderança</p>
+                      <div style={{display:'flex',gap:20,marginBottom:14,flexWrap:'wrap'}}>
+                        {[{p:lider,l:'Líder'},{p:colider,l:'Co-líder'}].filter(x=>x.p).map(({p,l})=>p&&(
+                          <div key={p.id} style={{display:'flex',alignItems:'center',gap:8}}>
+                            {av(p,42)}
+                            <div><p style={{fontSize:13,fontWeight:700}}>{formatName(p.name)}</p><p style={{fontSize:11,color:'#6b7280'}}>{l}</p></div>
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                  <p style={{fontSize:11,fontWeight:700,color:'#6b7280',textTransform:'uppercase',letterSpacing:'0.05em',marginBottom:8}}>Membros ({membros.length})</p>
+                  {membros.length===0
+                    ? <p style={{fontSize:12,color:'#9ca3af'}}>Nenhum membro.</p>
+                    : <div style={{display:'flex',flexDirection:'column',gap:8}}>
+                        {membros.map(m=>{
+                          const outras = getEquipesDaPessoa(m.id).filter(e=>e.id!==eq.id)
+                          return (
+                            <div key={m.id} style={{display:'flex',alignItems:'center',gap:10,breakInside:'avoid'}}>
+                              {av(m,38)}
+                              <div style={{minWidth:0}}>
+                                <p style={{fontSize:13,fontWeight:600}}>{formatName(m.name)}</p>
+                                {outras.length>0 && <p style={{fontSize:11,color:'#6b7280'}}>Também em: {outras.map(e=>e.name).join(', ')}</p>}
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>}
+                </div>
               </div>
             )
           })}

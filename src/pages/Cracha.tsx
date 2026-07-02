@@ -158,9 +158,13 @@ export default function Cracha({ profile }: { profile?: Profile }) {
 
   // Troca de modelo: ajusta o filtro de quem entra
   function trocarModelo(key:string) {
-    setModeloAtivo(key); setSel('')
+    setModeloAtivo(key); setSel(''); setFiltroEquipe('')
     const rt = MODELOS.find(x=>x.key===key)?.rt
     setFiltroTipo(rt==='todos' ? 'todos' : (rt as any) ?? 'todos')
+  }
+  function restaurarPadrao() {
+    if (!confirm('Restaurar este modelo para o padrão? Apaga fundo, PNGs e posições deste modelo.')) return
+    setModelos(ms=>({...ms,[modeloAtivo]:modeloPadrao()})); setSel('')
   }
 
   async function salvar() {
@@ -362,19 +366,18 @@ export default function Cracha({ profile }: { profile?: Profile }) {
         )}
       </div>
 
-      <div className="section-label mb-2">Quem entra</div>
-      <div className="filter-bar mb-2">
-        {([['todos','Todos'],['encounterer','Encontristas'],['worker','Encontreiros']] as const).map(([v,l])=>(
-          <button key={v} className={`chip ${filtroTipo===v?'active':''}`} onClick={()=>setFiltroTipo(v)}>{l}</button>
-        ))}
-      </div>
-      <div className="form-group">
-        <select className="form-select" value={filtroEquipe} onChange={e=>setFiltroEquipe(e.target.value)}>
-          <option value="">Todas as equipes</option>
-          {equipes.map(eq=><option key={eq.id} value={eq.id}>{eq.name}</option>)}
-        </select>
-      </div>
+      {/* Filtro de equipes — só faz sentido para Encontreiros */}
+      {filtroTipo==='worker' && (
+        <div className="form-group">
+          <label className="form-label">Filtrar por equipe</label>
+          <select className="form-select" value={filtroEquipe} onChange={e=>setFiltroEquipe(e.target.value)}>
+            <option value="">Todas as equipes</option>
+            {equipes.map(eq=><option key={eq.id} value={eq.id}>{eq.name}</option>)}
+          </select>
+        </div>
+      )}
 
+      {canEdit && <button className="btn btn-ghost btn-full btn-sm mb-2" onClick={restaurarPadrao} style={{color:'var(--danger)'}}><span className="icon icon-sm">restart_alt</span> Restaurar padrão deste modelo</button>}
       {canEdit && <button className="btn btn-primary btn-full" onClick={salvar} disabled={salvando}>{salvando?'Salvando...':'Salvar configuração'}</button>}
       {msg && <p style={{fontSize:12,textAlign:'center',marginTop:8,color:msg.startsWith('Erro')?'var(--danger)':'var(--success)'}}>{msg}</p>}
       <button className="btn btn-outline btn-full" onClick={()=>setImprimir(true)} disabled={pessoasFiltradas.length===0} style={{marginTop:10}}>
