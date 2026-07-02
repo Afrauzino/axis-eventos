@@ -215,30 +215,7 @@ export default function Logistica({ profile }: { profile?: Profile }) {
               })}
             </div>
 
-            {/* Medicamento controlado / contínuo */}
-            <div className="section-label mb-2">Medicamento contínuo</div>
-            <div style={{background:'var(--bg)',borderRadius:12,padding:'12px 14px',marginBottom:16}}>
-              <p style={{fontSize:13,fontWeight:600,marginBottom:8}}>Toma remédio controlado (contínuo)?</p>
-              <div style={{display:'flex',gap:8,marginBottom:inf.toma_controlado?12:0}}>
-                {['Sim','Não'].map(l=>{
-                  const val = l==='Sim'
-                  const on = inf.toma_controlado===val
-                  return (
-                    <button key={l} onClick={()=>salvarInfo(aberto.id,{toma_controlado:val})} style={{flex:1,padding:'9px',borderRadius:8,cursor:'pointer',fontFamily:'inherit',fontSize:13,fontWeight:700,border:on?'2px solid var(--primary)':'1px solid var(--border)',background:on?'var(--primary-light)':'white',color:on?'var(--primary)':'var(--text2)'}}>{l}</button>
-                  )
-                })}
-              </div>
-              {inf.toma_controlado && (
-                <>
-                  <label className="form-label" style={{marginTop:6}}>Última vez que tomou o remédio</label>
-                  <input className="form-input" type="datetime-local"
-                    value={inf.ultima_dose ? new Date(inf.ultima_dose).toISOString().slice(0,16) : ''}
-                    onChange={e=>salvarInfo(aberto.id,{ultima_dose: e.target.value ? new Date(e.target.value).toISOString() : null})}/>
-                </>
-              )}
-            </div>
-
-            {/* Ficha Médica (mesmo componente da Saúde — fonte única; ao salvar/fechar continua aqui) */}
+            {/* Ficha Médica (mesmo componente da Saúde — fonte única; inclui o medicamento contínuo) */}
             {evento && <FichaMedica personId={aberto.id} eventId={evento.id} />}
 
             {/* Concluir */}

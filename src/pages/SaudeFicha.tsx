@@ -74,18 +74,6 @@ export default function SaudeFicha({ profile }: { profile?: Profile }) {
   return (
     <div className="page">
       <SubTabs group="saude"/>
-      {semFicha.length>0 && (
-        <div className="alert-box alert-warning mb-3" style={{cursor:'pointer'}} onClick={()=>setFiltro('sem')}>
-          <strong>{semFicha.length}</strong> sem ficha
-        </div>
-      )}
-
-      <div className="stats-grid mb-3">
-        <div className="stat-card"><div className="stat-label">Com ficha</div><div className="stat-value" style={{color:'var(--success)'}}>{fichas.length}</div></div>
-        <div className="stat-card"><div className="stat-label">Sem ficha</div><div className="stat-value" style={{color:'var(--warning)'}}>{semFicha.length}</div></div>
-        <div className="stat-card"><div className="stat-label">Com alerta</div><div className="stat-value" style={{color:'var(--danger)'}}>{fichas.filter(f=>flagsFicha(f).length>0).length}</div></div>
-      </div>
-
       <div className="search-bar mb-2">
         <span className="icon icon-sm" style={{color:'var(--muted-light)'}}>search</span>
         <input placeholder="Buscar pessoa..." value={busca} onChange={e=>setBusca(e.target.value)}/>
@@ -131,7 +119,7 @@ export default function SaudeFicha({ profile }: { profile?: Profile }) {
               <p style={{flex:1,fontSize:17,fontWeight:700}}>{aberta.name}</p>
               <button onClick={()=>setAberta(null)} style={{background:'var(--bg)',border:'1px solid var(--border)',borderRadius:'50%',width:32,height:32,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',fontFamily:'inherit'}}><span className="icon icon-sm">close</span></button>
             </div>
-            <FichaMedica personId={aberta.id} eventId={evento.id} startOpen onSaved={carregar}/>
+            <FichaMedica personId={aberta.id} eventId={evento.id} startOpen onSaved={()=>{ carregar(); setAberta(null) }}/>
             <button className="btn btn-ghost btn-full" onClick={()=>setAberta(null)}>Fechar</button>
           </div>
         </div>

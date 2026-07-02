@@ -134,7 +134,7 @@ export default function FichaMedica({ personId, eventId, readOnly=false, startOp
     }
 
     setSalvando(false)
-    setMsg('✓ Salvo!'); setTimeout(()=>setMsg(m=>m==='✓ Salvo!'?'':m), 1500)
+    setAberto(false) // fecha o accordion sozinho ao salvar
     onSaved?.()
   }
 
