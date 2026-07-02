@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import AvatarPicker from '../components/AvatarPicker'
 import { supabase } from '../lib/supabase'
 import SubTabs from '../components/SubTabs'
+import PrintOverlay from '../components/PrintOverlay'
 import { getInitials, isAdmin, formatName } from '../utils'
 import { useEvento } from '../hooks/useEvento'
 import type { Profile } from '../App'
@@ -29,6 +30,12 @@ export default function Equipes({ profile }: { profile?: Profile }) {
   // Modal de adicionar membro — multipla selecao
   const [modalMembro, setModalMembro] = useState<string|null>(null) // team_id
   const [pessoasSel, setPessoasSel]   = useState<string[]>([])
+
+  // Impressão modular
+  const [modalPrint, setModalPrint] = useState(false)
+  const [printSel, setPrintSel]     = useState<string[]>([])
+  const [imprimir, setImprimir]     = useState(false)
+  function togglePrint(id:string){ setPrintSel(prev=>prev.includes(id)?prev.filter(x=>x!==id):[...prev,id]) }
 
   const canEdit = profile && isAdmin(profile.user_role)
 
@@ -144,6 +151,12 @@ export default function Equipes({ profile }: { profile?: Profile }) {
       </div>
 
       {semEquipe.length>0 && <div className="alert-box alert-warning mb-3">{semEquipe.length} encontreiro(s) sem equipe.</div>}
+
+      {equipes.length>0 && (
+        <button className="btn btn-outline btn-full btn-sm mb-3" onClick={()=>{setPrintSel(equipes.map(e=>e.id));setModalPrint(true)}}>
+          <span className="icon icon-sm">print</span> Imprimir equipes (com fotos)
+        </button>
+      )}
 
       {loading ? [1,2,3].map(i=><div key={i} className="skeleton" style={{height:72,marginBottom:8,borderRadius:14}}/>) :
       equipes.length===0 ? (
@@ -348,6 +361,79 @@ export default function Equipes({ profile }: { profile?: Profile }) {
             </button>
           </div>
         </div>
+      )}
+
+      {/* Modal: escolher quais equipes imprimir */}
+      {modalPrint && (
+        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.5)',zIndex:300,display:'flex',flexDirection:'column',justifyContent:'flex-end'}} onClick={e=>e.target===e.currentTarget&&setModalPrint(false)}>
+          <div style={{background:'white',borderRadius:'20px 20px 0 0',padding:'8px 20px 24px',maxHeight:'85vh',overflowY:'auto'}}>
+            <div style={{width:36,height:4,background:'var(--border)',borderRadius:2,margin:'12px auto 16px'}}/>
+            <p style={{fontSize:16,fontWeight:800,marginBottom:4}}>Imprimir equipes</p>
+            <p style={{fontSize:12,color:'var(--muted)',marginBottom:12}}>Marque quais equipes entram na impressão.</p>
+            <div style={{display:'flex',gap:8,marginBottom:12}}>
+              <button className="btn btn-ghost btn-sm" onClick={()=>setPrintSel(equipes.map(e=>e.id))}>Todas</button>
+              <button className="btn btn-ghost btn-sm" onClick={()=>setPrintSel([])}>Nenhuma</button>
+            </div>
+            <div style={{display:'flex',flexDirection:'column',gap:6,marginBottom:16}}>
+              {equipes.map(eq=>{
+                const on = printSel.includes(eq.id)
+                return (
+                  <button key={eq.id} onClick={()=>togglePrint(eq.id)} style={{display:'flex',alignItems:'center',gap:12,padding:'10px 12px',borderRadius:10,border:`2px solid ${on?eq.color:'var(--border)'}`,background:on?eq.color+'14':'white',cursor:'pointer',fontFamily:'inherit',textAlign:'left'}}>
+                    <div style={{width:34,height:34,borderRadius:'50%',flexShrink:0,display:'flex',alignItems:'center',justifyContent:'center',overflow:'hidden',background:(eq as any).foto_url?'#eee':eq.color+'24'}}>
+                      {(eq as any).foto_url?<img src={(eq as any).foto_url} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}}/>:<span style={{fontSize:18}}>{(eq as any).emoji||'👥'}</span>}
+                    </div>
+                    <span style={{flex:1,fontSize:14,fontWeight:600}}>{eq.name}</span>
+                    <span style={{fontSize:11,color:'var(--muted)'}}>{getMembros(eq.id).length}</span>
+                    {on && <span className="icon icon-sm" style={{color:eq.color}}>check_circle</span>}
+                  </button>
+                )
+              })}
+            </div>
+            <button className="btn btn-primary btn-full" disabled={!printSel.length} onClick={()=>{setModalPrint(false);setImprimir(true)}}>
+              <span className="icon icon-sm">print</span> {printSel.length>0?`Imprimir ${printSel.length} equipe(s)`:'Selecione equipes'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Overlay de impressão das equipes */}
+      {imprimir && (
+        <PrintOverlay titulo="Equipes" onClose={()=>setImprimir(false)}>
+          {equipes.filter(eq=>printSel.includes(eq.id)).map(eq=>{
+            const membros = getMembros(eq.id)
+            const lider   = pessoas.find(p=>p.id===eq.leader_id)
+            const colider = pessoas.find(p=>p.id===eq.co_leader_id)
+            const soMembros = membros.filter(m=>m.id!==eq.leader_id && m.id!==eq.co_leader_id)
+            const foto = (p:Pessoa,size:number,destaque?:string)=>(
+              <div style={{textAlign:'center'}}>
+                <div style={{width:size,height:size,borderRadius:'50%',margin:'0 auto 4px',overflow:'hidden',background:'#f3f4f6',display:'flex',alignItems:'center',justifyContent:'center',border:destaque?`2px solid ${destaque}`:'1px solid #e5e7eb'}}>
+                  {p.photo_url?<img src={p.photo_url} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}}/>:<span style={{fontWeight:700,color:'#6b7280',fontSize:size*0.34}}>{getInitials(p.name)}</span>}
+                </div>
+                <p style={{fontSize:11,fontWeight:600,lineHeight:1.2}}>{formatName(p.name)}</p>
+              </div>
+            )
+            return (
+              <div key={eq.id} className="print-break" style={{marginBottom:24}}>
+                <h2 style={{fontSize:19,fontWeight:800,marginBottom:2,borderBottom:`3px solid ${eq.color}`,paddingBottom:6}}>{(eq as any).emoji||'👥'} {eq.name}</h2>
+                <p style={{fontSize:12,color:'#6b7280',margin:'6px 0 12px'}}>{membros.length} integrante(s){lider?` · Líder: ${formatName(lider.name)}`:''}{colider?` · Co-líder: ${formatName(colider.name)}`:''}</p>
+                {(lider||colider) && (
+                  <div style={{display:'flex',gap:16,marginBottom:14}}>
+                    {lider && foto(lider,72,eq.color)}
+                    {colider && foto(colider,72,'#9ca3af')}
+                  </div>
+                )}
+                {soMembros.length>0 && (
+                  <>
+                    <p style={{fontSize:12,fontWeight:700,color:'#374151',marginBottom:8}}>Liderados</p>
+                    <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(90px,1fr))',gap:10}}>
+                      {soMembros.map(m=><div key={m.id}>{foto(m,64)}</div>)}
+                    </div>
+                  </>
+                )}
+              </div>
+            )
+          })}
+        </PrintOverlay>
       )}
     </div>
   )
