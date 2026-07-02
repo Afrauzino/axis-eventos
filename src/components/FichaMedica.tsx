@@ -116,19 +116,22 @@ export default function FichaMedica({ personId, eventId, readOnly=false, startOp
     if (f.toma_controlado) {
       for (const med of meds.filter(m=>m.nome.trim())) {
         const iv = parseInt(med.intervalo_h) || 8
-        const payload = {
-          person_id:personId, event_id:eventId, nome:med.nome.trim(), tipo:'continuo',
-          dosagem:med.dosagem||null, horario_ini:'08:00', intervalo_h:iv,
-          vezes_dia:Math.max(1,Math.round(24/iv)),
-          ultima_dose: med.ultima_dose ? new Date(med.ultima_dose).toISOString() : null,
-        }
+        // colunas-base (não inclui ultima_dose — pode não existir se o SQL 12 não rodou)
+        const base = { person_id:personId, event_id:eventId, nome:med.nome.trim(), dosagem:med.dosagem||null, horario_ini:'08:00', intervalo_h:iv, vezes_dia:Math.max(1,Math.round(24/iv)) }
         let medId = med.id
-        if (medId) await supabase.from('med_controlados').update(payload).eq('id',medId)
-        else { const { data } = await supabase.from('med_controlados').insert(payload).select('id').single(); medId = data?.id }
+        let errMed
+        if (medId) { const r = await supabase.from('med_controlados').update(base).eq('id',medId); errMed=r.error }
+        else { const r = await supabase.from('med_controlados').insert(base).select('id').single(); errMed=r.error; medId=r.data?.id }
+        if (errMed) { setSalvando(false); setMsg('Erro ao salvar o medicamento: ' + errMed.message); return }
+        // ultima_dose separado (resiliente): se a coluna não existir, ignora sem quebrar
+        if (medId && med.ultima_dose) await supabase.from('med_controlados').update({ ultima_dose:new Date(med.ultima_dose).toISOString() }).eq('id',medId)
         if (medId) {
           await supabase.from('med_agenda').delete().eq('med_ctrl_id',medId).eq('entregue',false)
           const doses = gerarDoses(med, personId, eventId, medId)
-          if (doses.length) await supabase.from('med_agenda').insert(doses)
+          if (doses.length) {
+            const r = await supabase.from('med_agenda').insert(doses)
+            if (r.error) { setSalvando(false); setMsg('Erro ao gerar as doses: ' + r.error.message); return }
+          }
         }
       }
     }
@@ -207,11 +210,10 @@ export default function FichaMedica({ personId, eventId, readOnly=false, startOp
 
               {!readOnly && (
                 <button type="button" className="btn btn-primary btn-full" onClick={salvar} disabled={salvando}>
-                  {salvando ? 'Salvando...' : (msg || 'Salvar ficha')}
+                  {salvando ? 'Salvando...' : 'Salvar ficha'}
                 </button>
               )}
-              {readOnly && msg && <p style={{fontSize:12,color:'var(--muted)',textAlign:'center'}}>{msg}</p>}
-              {!salvando && msg && msg!=='✓ Salvo!' && <p style={{fontSize:12,color:'var(--danger)',textAlign:'center',marginTop:6}}>{msg}</p>}
+              {msg && <p style={{fontSize:12,color:'var(--danger)',textAlign:'center',marginTop:8}}>{msg}</p>}
             </>
           )}
         </div>
