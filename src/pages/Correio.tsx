@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from 'react'
 import { supabase } from '../lib/supabase'
+import PrintOverlay from '../components/PrintOverlay'
 import { getInitials, isAdmin, formatName } from '../utils'
 import { useEvento } from '../hooks/useEvento'
 import type { Profile } from '../App'
@@ -38,6 +39,7 @@ export default function Correio({ profile }: { profile?: Profile }) {
   const [afiliadoAberto, setAfiliadoAberto] = useState<Pessoa|null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
   const [uploadando, setUploadando] = useState(false)
+  const [imprimir, setImprimir] = useState(false)
 
   // config do líder de correio
   const [novoItem, setNovoItem] = useState('')
@@ -274,6 +276,11 @@ export default function Correio({ profile }: { profile?: Profile }) {
       {aba==='todos' && (
         <>
           <BarraProgresso titulo="Conclusão de todos os encontristas" pct={progressoConjunto(encontristas)} />
+          {encontristas.length>0 && (
+            <button className="btn btn-outline btn-full btn-sm mb-3" onClick={()=>setImprimir(true)}>
+              <span className="icon icon-sm">print</span> Imprimir com checklist
+            </button>
+          )}
           {encontristas.length === 0
             ? <div className="empty"><p className="empty-title">Nenhum encontrista cadastrado</p></div>
             : ordenarPorStatus(encontristas).map(af => (
@@ -432,6 +439,33 @@ export default function Correio({ profile }: { profile?: Profile }) {
             <button className="btn btn-primary btn-full" onClick={()=>setModalPadrinho(null)} style={{marginTop:12}}>Concluir</button>
           </div>
         </div>
+      )}
+
+      {/* ===== IMPRESSÃO — CHECKLIST DE CADA ENCONTRISTA ===== */}
+      {imprimir && (
+        <PrintOverlay titulo="Correio — checklist por encontrista" onClose={()=>setImprimir(false)}>
+          {ordenarPorStatus(encontristas).map(af => {
+            const st = STATUS_LABEL[statusDe(af.id)] ?? STATUS_LABEL.em_processo
+            const temArquivo = arquivos.some(a => a.afiliado_id === af.id)
+            const padris = padrinhos.filter(p=>p.afiliado_id===af.id).map(p=>todasPessoas.find(t=>t.id===p.padrinho_id)).filter(Boolean) as Pessoa[]
+            return (
+              <div key={af.id} style={{border:'1px solid #e5e7eb',borderRadius:8,padding:'12px 14px',marginBottom:12,breakInside:'avoid'}}>
+                <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:6}}>
+                  <p style={{fontWeight:800,fontSize:15,flex:1}}>{formatName(af.name)}</p>
+                  <span style={{fontSize:10,fontWeight:700,color:'white',background:st.cor,padding:'2px 8px',borderRadius:99}}>{st.label}</span>
+                </div>
+                {padris.length>0 && <p style={{fontSize:11,color:'#6b7280',marginBottom:6}}>Padrinho(s): {padris.map(p=>formatName(p.name)).join(', ')}</p>}
+                {temArquivo && <p style={{fontSize:11,fontWeight:700,color:'#2563eb',marginBottom:6}}>📎 Tem arquivo no app</p>}
+                {checklist.length===0
+                  ? <p style={{fontSize:12,color:'#9ca3af'}}>Sem checklist configurado.</p>
+                  : checklist.map(it => {
+                      const feito = statusChk.find(s=>s.afiliado_id===af.id && s.item_id===it.id)?.concluido ?? false
+                      return <p key={it.id} style={{fontSize:13,margin:'3px 0'}}>{feito?'☑':'☐'} {it.texto}</p>
+                    })}
+              </div>
+            )
+          })}
+        </PrintOverlay>
       )}
     </div>
   )

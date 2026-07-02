@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { fmtHora, isAdmin, nowLocalInput } from '../utils'
 import { useEvento } from '../hooks/useEvento'
+import PrintOverlay from '../components/PrintOverlay'
 import CronometroPopup from '../components/CronometroPopup'
 import CronometroDisplay from '../components/CronometroDisplay'
 import type { Profile } from '../App'
@@ -50,6 +51,7 @@ export default function Cronograma({ profile }: { profile?: Profile }) {
   const [podeCronometro, setPodeCronometro] = useState(false)
   const [cronometro, setCronometro]   = useState<Item|null>(null)
   const [modal, setModal]             = useState(false)
+  const [imprimir, setImprimir]       = useState<null|'inteiro'|'detalhado'>(null)
   const [editando, setEditando]       = useState<Item|null>(null)
   const [salvando, setSalvando]       = useState(false)
   const [erro, setErro]               = useState('')
@@ -275,6 +277,17 @@ export default function Cronograma({ profile }: { profile?: Profile }) {
           <button key={v} className={`chip ${filtro===v?'active':''}`} onClick={()=>setFiltro(v)}>{l}</button>
         ))}
       </div>
+
+      {itens.length>0 && (
+        <div style={{display:'flex',gap:8,marginBottom:12}}>
+          <button className="btn btn-outline btn-sm" style={{flex:1}} onClick={()=>setImprimir('inteiro')}>
+            <span className="icon icon-sm">print</span> Imprimir inteiro
+          </button>
+          <button className="btn btn-outline btn-sm" style={{flex:1}} onClick={()=>setImprimir('detalhado')}>
+            <span className="icon icon-sm">print</span> Com detalhes
+          </button>
+        </div>
+      )}
 
       {/* Lista */}
       {loading ? [1,2,3].map(i=><div key={i} className="skeleton" style={{height:80,marginBottom:8,borderRadius:14}}/>) :
@@ -512,6 +525,52 @@ export default function Cronograma({ profile }: { profile?: Profile }) {
       {cronometro && (
         <CronometroPopup item={cronometro} podeControlar={podeCronometro} onClose={()=>{setCronometro(null);carregar()}} onUpdate={carregar} />
       )}
+
+      {/* ===== IMPRESSÃO ===== */}
+      {imprimir && (() => {
+        const ordenados = [...itens].sort((a,b)=>a.hora_inicio.localeCompare(b.hora_inicio))
+        const porDia: Record<string,Item[]> = {}
+        ordenados.forEach(it=>{ const k=new Date(it.hora_inicio).toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'long'}); (porDia[k]=porDia[k]||[]).push(it) })
+        const nomeTipo = (it:Item)=> tiposDB.find(t=>t.nome.toLowerCase()===it.tipo.toLowerCase())?.nome ?? it.tipo
+        return (
+          <PrintOverlay titulo={imprimir==='inteiro'?'Cronograma completo':'Cronograma detalhado'} onClose={()=>setImprimir(null)}>
+            {Object.entries(porDia).map(([dia,items])=>(
+              <div key={dia} style={{marginBottom:20}}>
+                <h2 style={{fontSize:17,fontWeight:800,marginBottom:10,borderBottom:'2px solid #111827',paddingBottom:4,textTransform:'capitalize'}}>{dia}</h2>
+                {items.map(it=>{
+                  const { min, tea, ministrante } = getInfo(it)
+                  return (
+                    <div key={it.id} style={{borderLeft:'3px solid #d1d5db',paddingLeft:10,marginBottom:imprimir==='detalhado'?12:6,breakInside:'avoid'}}>
+                      <p style={{fontSize:13}}>
+                        <strong>{fmtHora(it.hora_inicio)}–{fmtHora(it.hora_fim)}</strong> · {min?.titulo ?? it.titulo}
+                        <span style={{color:'#6b7280'}}> ({nomeTipo(it)})</span>
+                      </p>
+                      {imprimir==='inteiro' ? (
+                        <p style={{fontSize:12,color:'#6b7280'}}>
+                          {it.local?`Local: ${it.local}`:''}{it.local?' · ':''}{STATUS_CFG[it.status]?.label ?? it.status}
+                        </p>
+                      ) : (
+                        <div style={{fontSize:12,color:'#374151',marginTop:2}}>
+                          {min && <>
+                            {ministrante && <p>Ministrante: {ministrante.name}</p>}
+                            {min.tema && <p>Tema: {min.tema}</p>}
+                            {min.descricao && <p style={{whiteSpace:'pre-wrap'}}>{min.descricao}</p>}
+                          </>}
+                          {tea && <>
+                            <p>Teatro: {tea.nome}</p>
+                            {tea.descricao && <p style={{whiteSpace:'pre-wrap'}}>{tea.descricao}</p>}
+                          </>}
+                          {!min && !tea && it.descricao && <p style={{whiteSpace:'pre-wrap'}}>{it.descricao}</p>}
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            ))}
+          </PrintOverlay>
+        )
+      })()}
     </div>
   )
 }
