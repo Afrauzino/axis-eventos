@@ -40,6 +40,14 @@
 - **Alcinha** no topo: `width:36; height:4; background:var(--border); border-radius:2; margin:12px auto 0;`
 - Cabeçalho com título (fontWeight 700) + botão fechar redondo (32×32).
 
+## 4b. Retorno de contexto (REGRA GLOBAL)
+- **Tudo que fecha volta EXATAMENTE para a tela/estado de onde foi aberto.**
+- Modal/overlay/accordion: ao fechar (X, "Fechar", tocar fora, ou após salvar) → volta para a tela
+  atual, sem navegar para outro lugar. Nunca usar `navigate()` num botão de fechar.
+- Fluxo contextual (ex: ficha médica aberta pela Logística) → ao salvar/sair, permanecer no contexto
+  de origem (a mesma pessoa/aba), não pular para outro módulo.
+- `navigate()` só é permitido quando o usuário clica num **link para ir** a outra tela (não ao fechar).
+
 ## 5. Campos / caixas de texto
 - Sempre `.form-group` > `.form-label` + `.form-input` (ou `.form-textarea`).
 - Dica: `.form-hint`. Obrigatório: `<span className="req">*</span>`.
