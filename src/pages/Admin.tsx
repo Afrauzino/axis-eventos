@@ -128,6 +128,13 @@ export default function Admin({ profile }: { profile?: Profile }) {
     { modulo:'medicamentos', label:'Medicamentos' },
     { modulo:'financeiro',   label:'Financeiro' },
     { modulo:'doacoes',      label:'Doações' },
+    { modulo:'correio',      label:'Correio' },
+    { modulo:'cozinha',      label:'Cozinha' },
+    { modulo:'logistica',    label:'Logística' },
+    { modulo:'midia',        label:'Mídia' },
+    { modulo:'cracha',       label:'Crachá' },
+    { modulo:'locais',       label:'Locais' },
+    { modulo:'ocorrencias',  label:'Ocorrências' },
     { modulo:'relatorios',   label:'Relatórios' },
   ]
   // Menus visíveis (o que aparece no menu lateral)
@@ -140,17 +147,18 @@ export default function Admin({ profile }: { profile?: Profile }) {
     { modulo:'menu_ministracoes', label:'Ministrações' },
     { modulo:'menu_ranking',      label:'Ranking' },
     { modulo:'menu_correio',      label:'Correio' },
-    { modulo:'menu_equipes',      label:'Equipes' },
+    { modulo:'menu_logistica',    label:'Logística' },
+    { modulo:'menu_midia',        label:'Mídia' },
+    { modulo:'menu_cracha',       label:'Crachá' },
+    { modulo:'menu_equipes',      label:'Equipes & Escalas' },
     { modulo:'menu_teatro',       label:'Teatro' },
-    { modulo:'menu_evento',       label:'Evento / Alertas' },
+    { modulo:'menu_evento',       label:'Evento (Locais/Ocorrências)' },
     { modulo:'menu_alertas_lideres', label:'Alertas entre Líderes' },
     { modulo:'menu_cozinha',      label:'Cozinha / Cardápio' },
     { modulo:'menu_saude',        label:'Saúde' },
     { modulo:'menu_financeiro',   label:'Financeiro' },
     { modulo:'menu_admin',        label:'Administração' },
   ]
-  const TODOS_CARGOS = ['visitante','aprovado','encontreiro','lider','lider_cozinha','lider_enfermaria','lider_financeiro','lider_intercessao','lider_limpeza','lider_logistica','lider_manutencao','lider_recepcao','lider_som','lider_teatro','lider_vision','financeiro','secretaria','coordenador','pastor','admin']
-  const LABEL_CARGO: Record<string,string> = { visitante:'Visitante',aprovado:'Aprovado',encontreiro:'Encontreiro',lider:'Líder',lider_cozinha:'Líder Cozinha',lider_enfermaria:'Líder Enfermaria',lider_financeiro:'Líder Financeiro',lider_intercessao:'Líder Intercessão',lider_limpeza:'Líder Limpeza',lider_logistica:'Líder Logística',lider_manutencao:'Líder Manutenção',lider_recepcao:'Líder Recepção',lider_som:'Líder Som',lider_teatro:'Líder Teatro',lider_vision:'Líder Vision',financeiro:'Financeiro',secretaria:'Secretaria',coordenador:'Coordenador',pastor:'Pastor',admin:'Admin' }
 
   // ---- PESSOA ----
   async function carregarPermsPessoa(p: any) {
