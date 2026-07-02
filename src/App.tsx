@@ -30,6 +30,7 @@ import Locais from './pages/Locais'
 import Saude from './pages/Saude'
 import SaudeFicha from './pages/SaudeFicha'
 import Medicamentos from './pages/Medicamentos'
+import SaudeConfig from './pages/SaudeConfig'
 import Alertas from './pages/Alertas'
 import Ocorrencias from './pages/Ocorrencias'
 import Financeiro from './pages/Financeiro'
@@ -82,6 +83,7 @@ function AppRoutes({ profile, onProfileUpdate }: { profile: Profile; onProfileUp
       <Route path="/saude"                 element={<Saude profile={profile} />} />
       <Route path="/saude/ficha"           element={<SaudeFicha profile={profile} />} />
       <Route path="/saude/medicamentos"    element={<Medicamentos profile={profile} />} />
+      <Route path="/saude/config"          element={<SaudeConfig profile={profile} />} />
       <Route path="/alertas"               element={<Alertas profile={profile} />} />
       <Route path="/ocorrencias"           element={<Ocorrencias profile={profile} />} />
       <Route path="/financeiro"            element={<Financeiro profile={profile} />} />
@@ -117,6 +119,7 @@ const TITULOS_ROTA: Record<string,string> = {
   '/saude': 'Saúde',
   '/saude/ficha': 'Saúde',
   '/saude/medicamentos': 'Medicamentos',
+  '/saude/config': 'Configuração',
   '/ocorrencias': 'Ocorrências',
   '/financeiro': 'Financeiro',
   '/doacoes': 'Doações',

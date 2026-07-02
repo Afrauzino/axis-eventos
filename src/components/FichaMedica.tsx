@@ -19,18 +19,18 @@ const VAZIO: FichaState = { restricao_alimentar:false, restricoes_alimentares:''
 type MedRow = { id?:string; nome:string; dosagem:string; intervalo_h:string; ultima_dose:string }
 const MED_VAZIO: MedRow = { nome:'', dosagem:'', intervalo_h:'8', ultima_dose:'' }
 
-// Período FIXO de controle: agora → resto do dia + dia seguinte inteiro → encerra 14h do dia seguinte ao dia completo.
-// (Ex: sexta 14h → válido sexta+sábado → encerra domingo 14h). Regra não editável.
-function periodoFim(): Date {
-  const fim = new Date(); fim.setDate(fim.getDate()+2); fim.setHours(14,0,0,0); return fim
+// Período de controle: agora → resto do dia + dia seguinte inteiro → encerra na HORA DE CORTE
+// (configurável em Saúde → Configuração; padrão 14h) do dia seguinte ao dia completo.
+function periodoFim(corteHora: number): Date {
+  const fim = new Date(); fim.setDate(fim.getDate()+2); fim.setHours(corteHora,0,0,0); return fim
 }
 // Gera as doses a partir da última dose tomada + intervalo, dentro do período.
-function gerarDoses(med: MedRow, personId: string, eventId: string, medCtrlId: string) {
+function gerarDoses(med: MedRow, personId: string, eventId: string, medCtrlId: string, corteHora: number) {
   const rows: any[] = []
   const iv = parseInt(med.intervalo_h) || 0
   if (!med.ultima_dose || iv <= 0) return rows
   const agora = Date.now()
-  const fim = periodoFim().getTime()
+  const fim = periodoFim(corteHora).getTime()
   let t = new Date(med.ultima_dose).getTime() + iv * 3600000
   let guard = 0
   while (t <= fim && guard < 300) {
@@ -69,6 +69,7 @@ export default function FichaMedica({ personId, eventId, readOnly=false, startOp
   const [msg, setMsg]           = useState('')
   const [f, setF]               = useState<FichaState>(VAZIO)
   const [meds, setMeds]         = useState<MedRow[]>([])
+  const [corteHora, setCorteHora] = useState(14)
 
   function setMed(i:number, patch:Partial<MedRow>) { setMeds(prev=>prev.map((m,idx)=>idx===i?{...m,...patch}:m)) }
   function addMed() { setMeds(prev=>[...prev,{...MED_VAZIO}]) }
@@ -80,10 +81,12 @@ export default function FichaMedica({ personId, eventId, readOnly=false, startOp
 
   async function carregar() {
     setLoading(true)
-    const [{ data }, { data: mc }] = await Promise.all([
+    const [{ data }, { data: mc }, { data: ev }] = await Promise.all([
       supabase.from('saude_fichas').select('*').eq('person_id',personId).eq('event_id',eventId).maybeSingle(),
       supabase.from('med_controlados').select('*').eq('person_id',personId).eq('event_id',eventId),
+      supabase.from('events').select('med_corte_hora').eq('id',eventId).maybeSingle(),
     ])
+    if (ev && (ev as any).med_corte_hora != null) setCorteHora((ev as any).med_corte_hora)
     if (data) setF({
       restricao_alimentar:  data.restricao_alimentar ?? !!data.restricoes_alimentares,
       restricoes_alimentares: data.restricoes_alimentares ?? '',
@@ -133,7 +136,7 @@ export default function FichaMedica({ personId, eventId, readOnly=false, startOp
         if (medId && med.ultima_dose) await supabase.from('med_controlados').update({ ultima_dose:new Date(med.ultima_dose).toISOString() }).eq('id',medId)
         if (medId) {
           await supabase.from('med_agenda').delete().eq('med_ctrl_id',medId).eq('entregue',false)
-          const doses = gerarDoses(med, personId, eventId, medId)
+          const doses = gerarDoses(med, personId, eventId, medId, corteHora)
           if (doses.length) {
             const r = await supabase.from('med_agenda').insert(doses)
             if (r.error) { setSalvando(false); setMsg('Erro ao gerar as doses: ' + r.error.message); return }
@@ -181,7 +184,7 @@ export default function FichaMedica({ personId, eventId, readOnly=false, startOp
               <SimNao label="Toma medicamento controlado (contínuo)?" value={f.toma_controlado} disabled={readOnly} onChange={v=>setF(s=>({...s,toma_controlado:v}))}/>
               {f.toma_controlado && (
                 <div style={{marginBottom:12}}>
-                  <p style={{fontSize:12,color:'var(--muted)',marginBottom:8}}>Cadastre cada medicamento. As doses são calculadas automaticamente (até 14h do dia seguinte ao dia completo).</p>
+                  <p style={{fontSize:12,color:'var(--muted)',marginBottom:8}}>Cadastre cada medicamento. As doses são calculadas automaticamente (até {corteHora}h do dia seguinte ao dia completo).</p>
                   {meds.map((m,i)=>(
                     <div key={m.id ?? i} style={{border:'1px solid var(--border)',borderRadius:10,padding:'10px 12px',marginBottom:8}}>
                       <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:8}}>
