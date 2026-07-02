@@ -15,6 +15,9 @@ dist-ssr
 # Export de conversas do Claude (grande, pessoal)
 data-*.zip
 
+# Log bruto automatico de ideias (hook) - pessoal, so no PC
+docs/IDEIAS_LOG.md
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
