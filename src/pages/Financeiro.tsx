@@ -66,7 +66,7 @@ export default function Financeiro({ profile }: { profile?: Profile }) {
     const jaP = getPago(form.person_id)
     const novoValor = parseFloat(form.valor)
     if (!editando && jaP + novoValor > valorTotal && valorTotal > 0) {
-      alert(`Valor ultrapassa o saldo devedor. Já pago: {fmtBRL(jaP)} | Valor restante: {fmtBRL(valorTotal-jaP)}`)
+      alert(`Valor ultrapassa o saldo devedor. Já pago: ${fmtBRL(jaP)} | Valor restante: ${fmtBRL(valorTotal-jaP)}`)
       setSalvando(false); return
     }
     const payload = { person_id:form.person_id, valor:novoValor, status:form.status, forma_pagamento:form.forma_pagamento||null, data_pagamento:form.data_pagamento?new Date(form.data_pagamento).toISOString():new Date().toISOString(), observacoes:form.observacoes||null, event_id:evento.id }
