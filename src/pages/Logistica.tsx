@@ -65,16 +65,18 @@ export default function Logistica({ profile }: { profile?: Profile }) {
   }
 
   // ---- Marcação por encontrista ----
-  function marcado(encId:string, itemId:string) {
-    return status.find(s=>s.encontrista_id===encId && s.item_id===itemId)?.marcado ?? false
+  // resposta do item: true=Sim, false=Não, null=não respondido
+  function respostaDe(encId:string, itemId:string): boolean|null {
+    const s = status.find(s=>s.encontrista_id===encId && s.item_id===itemId)
+    return s ? s.marcado : null
   }
-  async function toggle(encId:string, itemId:string, atual:boolean) {
+  async function responder(encId:string, itemId:string, sim:boolean) {
     const existe = status.find(s=>s.encontrista_id===encId && s.item_id===itemId)
     if (existe) {
-      await supabase.from('logistica_checklist_status').update({ marcado:!atual }).eq('id',existe.id)
-      setStatus(prev=>prev.map(s=>s.id===existe.id?{...s,marcado:!atual}:s))
+      await supabase.from('logistica_checklist_status').update({ marcado:sim }).eq('id',existe.id)
+      setStatus(prev=>prev.map(s=>s.id===existe.id?{...s,marcado:sim}:s))
     } else {
-      const { data } = await supabase.from('logistica_checklist_status').insert({ event_id:evento!.id, encontrista_id:encId, item_id:itemId, marcado:true }).select().single()
+      const { data } = await supabase.from('logistica_checklist_status').insert({ event_id:evento!.id, encontrista_id:encId, item_id:itemId, marcado:sim }).select().single()
       if (data) setStatus(prev=>[...prev,data])
     }
   }
@@ -92,8 +94,9 @@ export default function Logistica({ profile }: { profile?: Profile }) {
   }
   function progresso(encId:string) {
     if (itens.length===0) return 0
-    const feitos = status.filter(s=>s.encontrista_id===encId && s.marcado).length
-    return Math.round((feitos/itens.length)*100)
+    // progresso = itens respondidos (Sim ou Não) sobre o total
+    const respondidos = itens.filter(it=>status.some(s=>s.encontrista_id===encId && s.item_id===it.id)).length
+    return Math.round((respondidos/itens.length)*100)
   }
 
   if (evLoading || loading) return <div className="page">{[1,2,3].map(i=><div key={i} className="skeleton" style={{height:80,marginBottom:10,borderRadius:14}}/>)}</div>
@@ -191,11 +194,22 @@ export default function Logistica({ profile }: { profile?: Profile }) {
             <div style={{background:'white',borderRadius:12,overflow:'hidden',boxShadow:'var(--shadow-sm)',marginBottom:16}}>
               {itens.length===0 ? <p style={{padding:14,fontSize:12,color:'var(--muted)',textAlign:'center'}}>Nenhum item no checklist</p> :
               itens.map(it=>{
-                const on = marcado(aberto.id, it.id)
+                const r = respostaDe(aberto.id, it.id)
                 return (
-                  <div key={it.id} onClick={()=>toggle(aberto.id,it.id,on)} style={{display:'flex',alignItems:'center',gap:10,padding:'11px 14px',borderBottom:'1px solid var(--border)',cursor:'pointer'}}>
-                    <span className="icon" style={{fontSize:22,color:on?'var(--success)':'var(--muted-light)'}}>{on?'check_box':'check_box_outline_blank'}</span>
-                    <span style={{fontSize:13,color:on?'var(--muted)':'var(--text)'}}>{it.texto}</span>
+                  <div key={it.id} style={{display:'flex',alignItems:'center',gap:10,padding:'10px 14px',borderBottom:'1px solid var(--border)'}}>
+                    <span style={{flex:1,fontSize:13}}>{it.texto}</span>
+                    <div style={{display:'flex',gap:6,flexShrink:0}}>
+                      {([['Sim',true],['Não',false]] as const).map(([lab,val])=>{
+                        const on = r===val
+                        return (
+                          <button key={lab} onClick={()=>responder(aberto.id,it.id,val)}
+                            style={{padding:'5px 12px',borderRadius:8,cursor:'pointer',fontFamily:'inherit',fontSize:12,fontWeight:700,
+                              border:on?`2px solid ${val?'var(--success)':'var(--danger)'}`:'1px solid var(--border)',
+                              background:on?(val?'var(--success-bg)':'var(--danger-bg)'):'white',
+                              color:on?(val?'var(--success)':'var(--danger)'):'var(--text2)'}}>{lab}</button>
+                        )
+                      })}
+                    </div>
                   </div>
                 )
               })}
