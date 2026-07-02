@@ -146,11 +146,16 @@ Ocorrências · Financeiro · Escalas (com checagem de conflito) · Cozinha/Card
         da **ficha médica** da pessoa.
       - Pergunta: última vez que tomou o remédio (alimenta o sistema de medicamento contínuo).
 
-### Ficha médica (Saúde) — alterar
-- [ ] **Condições de saúde** vira **caixa de seleção múltipla** (igual ao multi-select de pessoas).
-- [ ] **Remover** da ficha: plano de saúde, medicamentos em uso, contato do médico.
-- [ ] Incluir a mesma configuração de **medicamento controlado/contínuo** que existe no cadastro.
-- [ ] **Nome do menor / responsável:** só aparece quando a pessoa é **menor** (idealmente já no cadastro).
+### Ficha médica / Medicamento contínuo — FEITO (fases 1-5)
+- [x] **Ficha Médica reutilizável** (`components/FichaMedica`, fonte única `saude_fichas`): restrição alimentar,
+      alergia a medicamentos (Sim+texto), medicamento controlado (Sim/Não). Usada em Saúde e Logística.
+- [x] **Medicamento contínuo**: lista ilimitada (nome, quantidade, intervalo, última dose) + motor de doses
+      no período fixo (encerra 14h do dia seguinte ao completo) → `med_agenda`.
+- [x] **Saúde → Medicamentos**: abas Agenda (pendentes, Entregar) + Histórico (quem/quando, atraso).
+- [x] **Logística**: botão/accordion "Ficha Médica" inline (mesmo componente, volta pro contexto).
+- [x] **Tela rápida da pessoa** (`PessoaSaudeResumo`): alergias em destaque, meds ativos, referência WhatsApp.
+- Rodar SQLs: `11`, `12`, `13`.
+- [ ] Pendente ainda: **Nome do menor/responsável** só quando menor (não feito).
 
 ### Cronograma
 - [ ] O que **predomina no card é o nome da Ministração**.
