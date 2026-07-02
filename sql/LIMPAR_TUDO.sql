@@ -12,6 +12,9 @@
 -- >>> FAÇA UM BACKUP ANTES (Admin → Backup → Exportar) se quiser guardar o teste. <<<
 -- >>> Isto é IRREVERSÍVEL. <<<
 --
+-- ⚠️  Este script NÃO apaga as FOTOS/ARQUIVOS (Storage). Para limpar também as
+--     fotos, rode o sql/LIMPAR_STORAGE.sql (ou apague pelo painel Storage).
+--
 -- Obs: os LOGINS (auth.users) das pessoas removidas continuam existindo, mas
 --      sem profile elas não têm acesso. Para apagá-los de vez: Supabase →
 --      Authentication → Users → excluir manualmente (menos a sua conta).
