@@ -37,6 +37,26 @@
 - [ ] **Monitoramento de erro** (ex.: Sentry) — opcional, ajuda a ver bugs em produção.
 - [x] **console.*** — poucos (4), sem problema.
 
+## 🛠️ Administração (varredura + reorganização)
+
+- [x] **Duplicidade de permissões removida** — havia 3 sistemas (cargo/pessoa/equipe); o **por cargo**
+  era código morto (aba `cargos` inacessível + bug `setCargos`). Removido. Ficaram **por pessoa** e
+  **por equipe** (o que você pediu).
+- [x] **Tipos (cronograma) com emoji colorido** — trocado o `EmojiPicker` (line-icons) por `EmojiGrid`.
+- [x] **Bugs de tipo pré-existentes no Admin** corrigidos (`.catch` em delete, `start_date/end_date`).
+- [x] **Auditoria de tudo** — `sql/16_audit_triggers.sql`: trigger no banco que registra TODA
+  inserção/edição/exclusão com quem fez + valores antigos/novos. **Rodar no Supabase.** Depois, a aba
+  **Logs** do Admin mostra tudo (quem, o quê, quando).
+- [ ] **Menu (tela MenusAdmin) está DESCONECTADO** — `menu_config` só é lido/gravado na própria tela;
+  **nada mais consome** (o menu real `Nav` é fixo no código). Por isso "não dá pra escolher o emoji do
+  menu": mudar lá não afeta o menu de verdade. **Decisão:** ou (a) ligar o `Nav` ao `menu_config` e usar
+  emoji, ou (b) remover a tela MenusAdmin. Precisa da sua escolha.
+
+## 🐞 Bugs achados na varredura (pré-existentes, a corrigir)
+- [ ] `src/pages/Encontreiros.tsx:105` — passa prop `badges` para um componente que não aceita → badges
+  não renderizam.
+- [ ] `src/pages/Login.tsx:63` — lê `ano_encontro` que não está no `select` → sempre `undefined`.
+
 ## ✅ Já OK
 - Deploy Vercel: `vercel.json` com SPA rewrites (rotas do react-router funcionam). Build (`npx vite build`) passa.
 - `index.html`: título/descrição/theme-color corretos (AXIS Eventos).
