@@ -7,7 +7,7 @@ import { invalidarEventoAtivo } from '../hooks/useEvento'
 import { registrarLog } from '../lib/audit'
 import SubTabs from '../components/SubTabs'
 import type { Profile } from '../App'
-import EmojiPicker from '../components/EmojiPicker'
+import EmojiGrid from '../components/EmojiGrid'
 
 type LogRow = { id:string; actor_name:string|null; action:string; entity:string; description:string|null; created_at:string }
 const ACAO_LABEL: Record<string,string> = { create:'Criou', update:'Editou', delete:'Excluiu', approve:'Aprovou', reject:'Rejeitou', payment:'Pagamento', medication:'Medicação', login:'Login', export:'Exportou', other:'Ação' }
@@ -27,7 +27,7 @@ const SECOES_BACKUP: { key:string; label:string }[] = [
 const TODAS_SECOES = () => Object.fromEntries(SECOES_BACKUP.map(s => [s.key, true])) as Record<string,boolean>
 
 type Usuario = { id:string; user_id:string; name:string|null; full_name?:string|null; user_role:string; email?:string }
-type Evento  = { id:string; name:string; status:string; location:string|null; valor_encontrista:number|null; valor_encontreiro:number|null; created_at:string }
+type Evento  = { id:string; name:string; status:string; location:string|null; valor_encontrista:number|null; valor_encontreiro:number|null; created_at:string; start_date?:string|null; end_date?:string|null }
 
 const ROLES = ['visitante','aprovado','encontreiro','lider','financeiro','secretaria','coordenador','pastor','admin']
 const ROLE_LABEL: Record<string,string> = { visitante:'Visitante', aprovado:'Aprovado', encontreiro:'Encontreiro', lider:'Líder', financeiro:'Financeiro', secretaria:'Secretaria', coordenador:'Coordenador', pastor:'Pastor', admin:'Admin' }
@@ -51,7 +51,7 @@ const TIPOS_PADRÃO = [
 const CORES_TIPO = ['#00A99D','#6B46C1','#E8821A','#2F855A','#D53F8C','#2B6CB0','#C53030','#D69E2E','#718096','#1A202C']
 
 export default function Admin({ profile }: { profile?: Profile }) {
-  const [aba, setAba]               = useState<'usuarios'|'cargos'|'equipes_perm'|'eventos'|'tipos'|'backup'|'logs'|'aparencia'>('usuarios')
+  const [aba, setAba]               = useState<'usuarios'|'equipes_perm'|'eventos'|'tipos'|'backup'|'logs'|'aparencia'>('usuarios')
   const [logs, setLogs]             = useState<LogRow[]>([])
   const [logsLoading, setLogsLoading] = useState(false)
   const [logsErro, setLogsErro]     = useState('')
@@ -80,9 +80,6 @@ export default function Admin({ profile }: { profile?: Profile }) {
     {role:'aprovado',           label:'Aprovado',                     descricao:'Usuário aprovado'},
     {role:'visitante',          label:'Visitante',                    descricao:'Aguardando aprovação'},
   ]
-  const [editandoCargo, setEditandoCargo] = useState<{role:string;label:string;descricao:string}|null>(null)
-  const [formCargo, setFormCargo]   = useState({label:'',descricao:''})
-
   const [usuarios, setUsuarios]     = useState<Usuario[]>([])
   const [pessoas, setPessoas]       = useState<{
     id:string; name:string; photo_url:string|null; church:string;
@@ -95,12 +92,9 @@ export default function Admin({ profile }: { profile?: Profile }) {
   // Permissões
   const [permsPessoa, setPermsPessoa]   = useState<any[]>([])
   const [permsAba, setPermsAba]         = useState<'liberacoes'|'acoes'|'menus_visiveis'>('liberacoes')
-  const [cargoPerm, setCargoPerm]       = useState<string>('encontreiro')
-  const [permsCargo, setPermsCargo]     = useState<any[]>([])
   const [equipesPerm, setEquipesPerm]   = useState<any[]>([])
   const [equipePermSel, setEquipePermSel] = useState<any|null>(null)
   const [permsEquipe, setPermsEquipe]   = useState<any[]>([])
-  const [cargoSubAba, setCargoSubAba]   = useState<'acoes'|'menus'>('acoes')
   const [equipeSubAba, setEquipeSubAba] = useState<'acoes'|'menus'>('acoes')
   const [eventos, setEventos]       = useState<Evento[]>([])
   const [tipos, setTipos]           = useState<any[]>([])
@@ -190,29 +184,6 @@ export default function Admin({ profile }: { profile?: Profile }) {
   }
   async function removerPermPessoa(p: any, modulo: string) {
     await definirPermPessoa(p, modulo, null)
-  }
-
-  // ---- CARGO ----
-  async function carregarPermsCargo(cargo: string) {
-    const { data } = await supabase.from('permissoes').select('*').eq('role', cargo).is('person_id', null).is('team_id', null)
-    setPermsCargo(data ?? [])
-  }
-  async function togglePermCargo(cargo: string, modulo: string) {
-    const existe = permsCargo.find(x => x.role === cargo && x.modulo === modulo && x.acao === 'ver')
-    if (existe) {
-      await supabase.from('permissoes').update({ permitido: !existe.permitido }).eq('id', existe.id)
-      setPermsCargo(prev => prev.map(x => x.id === existe.id ? { ...x, permitido: !existe.permitido } : x))
-    } else {
-      const { data: n } = await supabase.from('permissoes').insert({ role: cargo, modulo, acao: 'ver', permitido: true }).select().single()
-      if (n) setPermsCargo(prev => [...prev, n])
-    }
-  }
-  async function removerPermCargo(cargo: string, modulo: string) {
-    const existe = permsCargo.find(x => x.role === cargo && x.modulo === modulo && x.acao === 'ver')
-    if (existe) {
-      await supabase.from('permissoes').delete().eq('id', existe.id)
-      setPermsCargo(prev => prev.filter(x => x.id !== existe.id))
-    }
   }
 
   // ---- EQUIPE ----
@@ -481,7 +452,7 @@ export default function Admin({ profile }: { profile?: Profile }) {
     await supabase.from('ministrações').delete().eq('event_id',id)
     await supabase.from('theaters').delete().eq('event_id',id)
     await supabase.from('locais').delete().eq('event_id',id)
-    await supabase.from('alertas').delete().eq('event_id',id).catch(()=>{})
+    try { await supabase.from('alertas').delete().eq('event_id',id) } catch {}
     await supabase.from('occurrences').delete().eq('event_id',id)
     const nome = eventos.find(e=>e.id===id)?.name ?? ''
     await supabase.from('events').delete().eq('id',id)
@@ -1116,7 +1087,7 @@ export default function Admin({ profile }: { profile?: Profile }) {
               </div>
             </div>
           ))}
-          <button className="fab" onClick={()=>{setEditandoEvento(null);setFormEvento({name:'',location:'',valor_encontrista:'',valor_encontreiro:''});setModalEvento(true)}}><span className="icon">add</span></button>
+          <button className="fab" onClick={()=>{setEditandoEvento(null);setFormEvento({name:'',location:'',valor_encontrista:'',valor_encontreiro:'',start_date:'',end_date:''});setModalEvento(true)}}><span className="icon">add</span></button>
         </>
       )}
 
@@ -1126,8 +1097,8 @@ export default function Admin({ profile }: { profile?: Profile }) {
           <p style={{fontSize:13,color:'var(--text2)',marginBottom:14}}>Tipos de atividade do cronograma com cores personalizáveis.</p>
           {tipos.map(t=>(
             <div key={t.id} style={{background:'white',borderRadius:14,boxShadow:'var(--shadow-sm)',marginBottom:8,display:'flex',alignItems:'center',gap:12,padding:'12px 14px'}}>
-              <div style={{width:36,height:36,borderRadius:10,background:t.cor,flexShrink:0,display:'flex',alignItems:'center',justifyContent:'center'}}>
-                {t.icone && <span style={{fontFamily:"'Material Symbols Outlined'",color:'white',fontSize:20,fontWeight:'normal',fontStyle:'normal',lineHeight:1,letterSpacing:'normal',textTransform:'none',display:'inline-block',whiteSpace:'nowrap',WebkitFontSmoothing:'antialiased',fontVariationSettings:"'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24"}}>{t.icone}</span>}
+              <div style={{width:36,height:36,borderRadius:10,background:t.cor,flexShrink:0,display:'flex',alignItems:'center',justifyContent:'center',fontSize:20,lineHeight:1}}>
+                {t.icone && /\p{Emoji}/u.test(t.icone) ? t.icone : ''}
               </div>
               <p style={{flex:1,fontWeight:600,fontSize:14}}>{t.nome}{t.protegido && <span style={{marginLeft:6,fontSize:10,color:'var(--muted)',fontWeight:600}}>🔒 protegido</span>}</p>
               <button onClick={()=>{setEditandoTipo(t);setFormTipo({nome:t.nome,cor:t.cor,icone:t.icone??''});setModalTipo(true)}} style={{background:'var(--bg)',border:'1px solid var(--border)',borderRadius:8,padding:'5px 10px',cursor:'pointer',fontSize:12,fontWeight:600,fontFamily:'inherit'}}>Editar</button>
@@ -1229,42 +1200,6 @@ export default function Admin({ profile }: { profile?: Profile }) {
         </div>
       )}
 
-      {/* CARGOS */}
-      {(aba as string)==='cargos' && (
-        <div>
-          <p style={{fontSize:13,color:'var(--text2)',marginBottom:16,lineHeight:1.6}}>Edite os nomes e descrições dos cargos exibidos no sistema. Os identificadores internos (chaves) não podem ser alterados.</p>
-          {cargos.map(cargo=>(
-            <div key={cargo.role} style={{background:'white',borderRadius:14,boxShadow:'var(--shadow-sm)',marginBottom:8,padding:'12px 16px'}}>
-              {editandoCargo?.role===cargo.role ? (
-                <div>
-                  <div className="form-group"><label className="form-label">Nome exibido</label>
-                    <input className="form-input" value={formCargo.label} onChange={e=>setFormCargo(f=>({...f,label:e.target.value}))}/>
-                  </div>
-                  <div className="form-group"><label className="form-label">Descrição</label>
-                    <input className="form-input" value={formCargo.descricao} onChange={e=>setFormCargo(f=>({...f,descricao:e.target.value}))}/>
-                  </div>
-                  <div style={{display:'flex',gap:8}}>
-                    <button className="btn btn-primary btn-sm" onClick={()=>{setCargos(prev=>prev.map(c=>c.role===cargo.role?{...c,label:formCargo.label,descricao:formCargo.descricao}:c));setEditandoCargo(null)}}>Salvar</button>
-                    <button className="btn btn-ghost btn-sm" onClick={()=>setEditandoCargo(null)}>Cancelar</button>
-                  </div>
-                </div>
-              ) : (
-                <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
-                  <div>
-                    <div style={{display:'flex',alignItems:'center',gap:8}}>
-                      <p style={{fontWeight:700,fontSize:14}}>{cargo.label}</p>
-                      <span className="badge badge-neutral" style={{fontSize:9}}>{cargo.role}</span>
-                    </div>
-                    <p style={{fontSize:12,color:'var(--muted)',marginTop:2}}>{cargo.descricao}</p>
-                  </div>
-                  <button onClick={()=>{setEditandoCargo(cargo);setFormCargo({label:cargo.label,descricao:cargo.descricao})}} style={{background:'var(--bg)',border:'1px solid var(--border)',borderRadius:8,padding:'5px 10px',cursor:'pointer',fontSize:12,fontWeight:600,fontFamily:'inherit'}}>Editar</button>
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
-
       {/* Modal evento */}
       {modalEvento && (
         <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.5)',zIndex:300,display:'flex',flexDirection:'column',justifyContent:'flex-end'}} onClick={e=>e.target===e.currentTarget&&setModalEvento(false)}>
@@ -1363,8 +1298,8 @@ export default function Admin({ profile }: { profile?: Profile }) {
                 <input className="form-input" value={formTipo.nome} onChange={e=>setFormTipo(f=>({...f,nome:e.target.value}))} required/>
               </div>
               <div className="form-group">
-                <label className="form-label">Ícone</label>
-                <EmojiPicker value={formTipo.icone} onChange={v=>setFormTipo(f=>({...f,icone:v}))} label="Escolher ícone Material"/>
+                <label className="form-label">Emoji</label>
+                <EmojiGrid value={formTipo.icone} onChange={v=>setFormTipo(f=>({...f,icone:v}))}/>
               </div>
               <div className="form-group"><label className="form-label">Cor</label>
                 <div style={{display:'flex',gap:8,flexWrap:'wrap',paddingTop:4,marginBottom:8}}>
