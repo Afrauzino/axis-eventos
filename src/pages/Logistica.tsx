@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import FichaMedica from '../components/FichaMedica'
 import { getInitials, isAdmin, formatName } from '../utils'
 import { useEvento } from '../hooks/useEvento'
 import type { Profile } from '../App'
@@ -15,7 +15,6 @@ const OBJETOS_PADRAO = ['Colchão','Roupa de cama','Travesseiro','Remédios','Ca
 
 export default function Logistica({ profile }: { profile?: Profile }) {
   const { evento, loading: evLoading } = useEvento()
-  const navigate = useNavigate()
   const [loading, setLoading] = useState(true)
   const [encontristas, setEncontristas] = useState<Pessoa[]>([])
   const [itens, setItens]     = useState<ItemChk[]>([])
@@ -221,12 +220,12 @@ export default function Logistica({ profile }: { profile?: Profile }) {
                   <input className="form-input" type="datetime-local"
                     value={inf.ultima_dose ? new Date(inf.ultima_dose).toISOString().slice(0,16) : ''}
                     onChange={e=>salvarInfo(aberto.id,{ultima_dose: e.target.value ? new Date(e.target.value).toISOString() : null})}/>
-                  <button className="btn btn-ghost btn-full" style={{marginTop:10}} onClick={()=>{ setAberto(null); navigate('/saude/ficha') }}>
-                    <span className="icon icon-sm">medical_services</span> Preencher ficha médica
-                  </button>
                 </>
               )}
             </div>
+
+            {/* Ficha Médica (mesmo componente da Saúde — fonte única; ao salvar/fechar continua aqui) */}
+            {evento && <FichaMedica personId={aberto.id} eventId={evento.id} />}
 
             {/* Concluir */}
             <button className={`btn btn-full ${inf.concluido?'btn-ghost':'btn-primary'}`} onClick={()=>salvarInfo(aberto.id,{concluido:!inf.concluido})}>
