@@ -40,8 +40,9 @@ function CrachaView({ pessoa, equipeTxt, tamanho, fundo, cfg, edit, sel, onSelec
   const px=(p:number)=>W*p/100
   const ref = useRef<HTMLDivElement>(null)
   const drag = useRef<string|null>(null)
+  const interacted = useRef(false)
 
-  function pointerDown(k:string, e:React.PointerEvent) { if(!edit) return; e.stopPropagation(); drag.current=k; onSelect?.(k); (e.target as HTMLElement).setPointerCapture?.(e.pointerId) }
+  function pointerDown(k:string, e:React.PointerEvent) { if(!edit) return; e.stopPropagation(); interacted.current=true; drag.current=k; onSelect?.(k); (e.target as HTMLElement).setPointerCapture?.(e.pointerId) }
   function pointerMove(e:React.PointerEvent) {
     if(!edit||!drag.current||!ref.current) return
     const r = ref.current.getBoundingClientRect()
