@@ -14,8 +14,8 @@ _Detalhes e "onde mexer" em `docs/HANDOFF.md`._
 - [ ] **Crachá — 3 modelos** (Encontreiros/Encontrista/Especiais) por barra no topo, mesmo editor;
       tamanho personalizado (larg/alt em mm/cm/px); inserir vários **PNGs como camadas**
       (posicionar/redimensionar/transparência); foto **Redonda OU Quadrada 3×4**.
-- [ ] **Ranking/Encontristas** — botão "Votar neste encontrista" vai direto pra pessoa; ao fechar volta
-      pra página de origem; sem quebrar o fechar do Ranking.
+- [x] **Ranking/Encontristas** — [feito] botão "Votar neste encontrista" abre direto na pessoa (router
+      state votarPessoaId+origem); ao fechar volta pra origem; fechar normal do Ranking preservado.
 
 ## Novas ideias (adicionar abaixo, com data)
 <!-- ex: - 2026-07-02 — [ ] descrição da ideia -->

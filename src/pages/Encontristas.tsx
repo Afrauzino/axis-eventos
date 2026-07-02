@@ -170,7 +170,7 @@ export default function Encontristas({ profile }: { profile: Profile }) {
               )}
 
               <button
-                onClick={()=>{ setSelecionado(null); navigate('/ranking') }}
+                onClick={()=>{ const alvo=selecionado.id; setSelecionado(null); navigate('/ranking', { state:{ votarPessoaId: alvo, origem:'/encontristas' } }) }}
                 style={{width:'100%',background:'#F6AD55',color:'#744210',border:'none',borderRadius:10,padding:'12px',cursor:'pointer',fontSize:14,fontWeight:700,fontFamily:'inherit',display:'flex',alignItems:'center',justifyContent:'center',gap:8,marginBottom:8}}>
                 <span style={{fontFamily:"'Material Symbols Outlined'",fontSize:18,color:'#744210',fontWeight:'normal',fontStyle:'normal',lineHeight:1,letterSpacing:'normal',textTransform:'none',display:'inline-block',whiteSpace:'nowrap',userSelect:'none'}}>how_to_vote</span>
                 Votar neste encontrista

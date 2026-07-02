@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { getInitials } from '../utils'
 import { useEvento } from '../hooks/useEvento'
@@ -35,7 +36,27 @@ export default function Ranking({ profile }: { profile?: Profile }) {
   const [catSel,     setCatSel]     = useState<Categoria|null>(null)
   const [pessoaAberta, setPessoaAberta] = useState<Pessoa|null>(null)
   const [myPersonId, setMyPersonId] = useState<string|null>(null)
+  const [voltarPara, setVoltarPara] = useState<string|null>(null) // origem quando aberto via "Votar neste encontrista"
   const canAdmin = profile && ['admin','coordenador'].includes(profile.user_role)
+  const location = useLocation()
+  const navigate = useNavigate()
+
+  // Deep-link: veio de "Votar neste encontrista" -> abre a pessoa direto
+  useEffect(() => {
+    if (!pessoas.length) return
+    const st = location.state as any
+    if (st?.votarPessoaId) {
+      const p = pessoas.find(x=>x.id===st.votarPessoaId)
+      if (p) { setPessoaAberta(p); setVoltarPara(st.origem ?? '/encontristas') }
+      navigate(location.pathname, { replace:true, state:{} }) // limpa para não reabrir em refresh
+    }
+  }, [location.state, pessoas])
+
+  // Fecha o modal da pessoa; se veio por deep-link, volta para a página de origem
+  function fecharPessoa() {
+    if (voltarPara) { const dest = voltarPara; setVoltarPara(null); setPessoaAberta(null); navigate(dest) }
+    else setPessoaAberta(null)
+  }
 
   useEffect(() => {
     if (evLoading) return
@@ -238,7 +259,7 @@ export default function Ranking({ profile }: { profile?: Profile }) {
       {/* Modal da pessoa — todas as categorias, votos recebidos e votação inline */}
       {pessoaAberta && (
         <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.5)',zIndex:300,display:'flex',flexDirection:'column',justifyContent:'flex-end'}}
-          onClick={e=>e.target===e.currentTarget&&setPessoaAberta(null)}>
+          onClick={e=>e.target===e.currentTarget&&fecharPessoa()}>
           <div style={{background:'white',borderRadius:'20px 20px 0 0',maxHeight:'90vh',overflowY:'auto'}}>
             <div style={{width:36,height:4,background:'var(--border)',borderRadius:2,margin:'12px auto 0'}}/>
 
@@ -282,7 +303,7 @@ export default function Ranking({ profile }: { profile?: Profile }) {
             </div>
 
             <div style={{padding:'0 20px 28px'}}>
-              <button className="btn btn-ghost btn-full" onClick={()=>setPessoaAberta(null)}>Fechar</button>
+              <button className="btn btn-ghost btn-full" onClick={fecharPessoa}>{voltarPara?'Concluir e voltar':'Fechar'}</button>
             </div>
           </div>
         </div>
