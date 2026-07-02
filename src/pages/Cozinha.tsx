@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import EmojiGrid from '../components/EmojiGrid'
+import PrintOverlay from '../components/PrintOverlay'
 import { useEvento } from '../hooks/useEvento'
 import type { Profile } from '../App'
 
@@ -15,6 +16,7 @@ export default function Cozinha({ profile }: { profile?: Profile }) {
   const [tipos, setTipos] = useState<RefTipo[]>([])
   const [cardapios, setCardapios] = useState<Cardapio[]>([])
   const [loading, setLoading] = useState(true)
+  const [imprimir, setImprimir] = useState(false)
 
   // modal tipo
   const [modalTipo, setModalTipo] = useState(false)
@@ -104,6 +106,12 @@ export default function Cozinha({ profile }: { profile?: Profile }) {
         <button className={`tab ${aba==='cardapio'?'active':''}`} onClick={()=>setAba('cardapio')}>Cardápio</button>
         <button className={`tab ${aba==='tipo'?'active':''}`} onClick={()=>setAba('tipo')}>Tipo</button>
       </div>
+
+      {cardapios.length>0 && (
+        <button className="btn btn-outline btn-full btn-sm mb-3" onClick={()=>setImprimir(true)}>
+          <span className="icon icon-sm">print</span> Imprimir cardápios (com detalhes)
+        </button>
+      )}
 
       {/* ABA CARDÁPIO */}
       {aba==='cardapio' && (
@@ -200,6 +208,27 @@ export default function Cozinha({ profile }: { profile?: Profile }) {
             <button className="btn btn-ghost btn-full" onClick={()=>setModalCard(false)}>Cancelar</button>
           </div>
         </div>
+      )}
+
+      {imprimir && (
+        <PrintOverlay titulo="Cardápios da cozinha" onClose={()=>setImprimir(false)}>
+          {(() => {
+            const grupos = tipos.map(t => ({ tipo:t, cards:cardapios.filter(c=>c.refeicao_tipo_id===t.id) }))
+            const semTipo = cardapios.filter(c=>!c.refeicao_tipo_id || !tipos.some(t=>t.id===c.refeicao_tipo_id))
+            if (semTipo.length) grupos.push({ tipo:{ id:'_', nome:'Sem tipo', cor:'#6b7280', ordem:99, emoji:'🍽️' }, cards:semTipo })
+            return grupos.filter(g=>g.cards.length).map(g => (
+              <div key={g.tipo.id} style={{marginBottom:22}}>
+                <h2 style={{fontSize:17,fontWeight:800,marginBottom:10,borderBottom:`2px solid ${g.tipo.cor}`,paddingBottom:4}}>{g.tipo.emoji||'🍽️'} {g.tipo.nome}</h2>
+                {g.cards.map(c => (
+                  <div key={c.id} style={{border:'1px solid #e5e7eb',borderRadius:8,padding:'10px 12px',marginBottom:8,breakInside:'avoid'}}>
+                    <p style={{fontWeight:700,fontSize:14}}>{c.titulo || 'Cardápio'}</p>
+                    {c.itens && <p style={{fontSize:13,color:'#374151',whiteSpace:'pre-wrap',marginTop:4}}>{c.itens}</p>}
+                  </div>
+                ))}
+              </div>
+            ))
+          })()}
+        </PrintOverlay>
       )}
     </div>
   )

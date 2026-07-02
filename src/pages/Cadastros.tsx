@@ -34,6 +34,7 @@ export default function Cadastros({ profile }: { profile: Profile }) {
   const [editando, setEditando] = useState<Pessoa|null>(null)
   const [copiadoId, setCopiadoId] = useState<string|null>(null)
   const [imprimir, setImprimir] = useState(false)
+  const [impScope, setImpScope] = useState<'ambos'|'encounterer'|'worker'>('ambos')
 
   async function copiarCodigo(p: Pessoa) {
     if (!p.invite_code) return
@@ -141,9 +142,14 @@ export default function Cadastros({ profile }: { profile: Profile }) {
           <button key={v} className={`chip ${filtroRole===v?'active':''}`} onClick={()=>setFiltroRole(v)}>{l}</button>
         ))}
       </div>
-      <button className="btn btn-outline btn-full btn-sm mb-3" onClick={()=>setImprimir(true)}>
-        <span className="icon icon-sm">print</span> Imprimir lista com fotos
-      </button>
+      <div style={{display:'flex',gap:6,marginBottom:12}}>
+        <span style={{fontSize:12,color:'var(--muted)',alignSelf:'center'}}>Imprimir:</span>
+        {([['ambos','Os dois'],['encounterer','Encontristas'],['worker','Encontreiros']] as const).map(([v,l])=>(
+          <button key={v} className="btn btn-outline btn-sm" style={{flex:1,padding:'6px 4px'}} onClick={()=>{setImpScope(v);setImprimir(true)}}>
+            <span className="icon icon-sm">print</span> {l}
+          </button>
+        ))}
+      </div>
 
       {/* Lista */}
       {loading ? [1,2,3,4].map(i=><div key={i} className="skeleton" style={{height:72,marginBottom:8,borderRadius:14}}/>) :
@@ -277,7 +283,7 @@ export default function Cadastros({ profile }: { profile: Profile }) {
 
       {imprimir && (
         <PrintOverlay titulo="Lista com fotos" onClose={()=>setImprimir(false)}>
-          {([['Encontristas','encounterer'],['Encontreiros','worker']] as const).map(([tit,rt])=>{
+          {([['Encontristas','encounterer'],['Encontreiros','worker']] as const).filter(([,rt])=>impScope==='ambos'||impScope===rt).map(([tit,rt])=>{
             const arr = lista.filter(p=>p.role_type===rt)
             return (
               <div key={rt} className="print-break" style={{marginBottom:24}}>
