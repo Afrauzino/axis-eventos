@@ -866,7 +866,7 @@ export default function Admin({ profile }: { profile?: Profile }) {
 
             {permsAba==='acoes' && (
               <div style={{marginBottom:14}}>
-                <p style={{fontSize:12,color:'var(--muted)',marginBottom:10,lineHeight:1.5}}>Liberações individuais (somam com a equipe). Cada área tem suas funções — ex.: <strong>Ver</strong> a lista sem poder <strong>Criar/editar</strong>.</p>
+                <p style={{fontSize:12,color:'var(--muted)',marginBottom:10,lineHeight:1.5}}>Liberações extras desta pessoa — <strong>acumulam</strong> com as da(s) equipe(s) dela (união, não substitui). Ex.: <strong>Ver</strong> a lista sem poder <strong>Criar/editar</strong>.</p>
                 {PERM_CATALOGO.map(area => (
                   <div key={area.modulo} style={{background:'white',borderRadius:12,boxShadow:'var(--shadow-sm)',marginBottom:8,overflow:'hidden'}}>
                     <div style={{display:'flex',alignItems:'center',gap:8,padding:'9px 14px',background:'var(--bg)',borderBottom:'1px solid var(--border)'}}>
@@ -1060,7 +1060,7 @@ export default function Admin({ profile }: { profile?: Profile }) {
               <p style={{fontWeight:700,fontSize:16}}>{equipePermSel.name}</p>
             </div>
             <div style={{background:'var(--primary-light)',borderRadius:10,padding:'10px 14px',marginBottom:12}}>
-              <p style={{fontSize:12,color:'var(--primary)',fontWeight:600}}>Liberações aqui se somam ao cargo de quem faz parte desta equipe.</p>
+              <p style={{fontSize:12,color:'var(--primary)',fontWeight:600}}>Liberações aqui acumulam com as individuais de cada membro (união).</p>
             </div>
             <div className="tabs mb-3">
               <button className={`tab ${equipeSubAba==='acoes'?'active':''}`} onClick={()=>setEquipeSubAba('acoes')}>Liberações</button>

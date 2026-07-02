@@ -1,14 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 
-type Item = { id:string; tipo:string; url:string; ordem:number }
+type Item = { id:string; tipo:string; url:string; ordem:number; duracao?:number }
 
 const ehYoutube = (u:string) => /youtube\.com|youtu\.be/.test(u)
-const ytEmbed = (u:string) => {
-  const m = u.match(/(?:v=|youtu\.be\/|embed\/)([\w-]{11})/)
-  return m ? `https://www.youtube.com/embed/${m[1]}` : u
-}
+const ytId = (u:string) => { const m = u.match(/(?:v=|youtu\.be\/|embed\/)([\w-]{11})/); return m ? m[1] : '' }
+const ytEmbed = (u:string) => { const id = ytId(u); return id ? `https://www.youtube.com/embed/${id}?autoplay=1&mute=1&playsinline=1&rel=0` : u }
 const detectarTipo = (u:string) => (ehYoutube(u) || /\.(mp4|webm|ogg|mov)(\?|$)/i.test(u)) ? 'video' : 'imagem'
+const ehVideoArquivo = (it:Item) => it.tipo==='video' && !ehYoutube(it.url)
 
 export default function HomeCarousel({ admin }: { admin: boolean }) {
   const [itens, setItens] = useState<Item[]>([])
@@ -17,17 +16,23 @@ export default function HomeCarousel({ admin }: { admin: boolean }) {
   const [erro, setErro] = useState(false)
   const [modal, setModal] = useState(false)
   const [link, setLink] = useState('')
+  const [dur, setDur] = useState(5)
   const [subindo, setSubindo] = useState(false)
   const timer = useRef<any>(null)
 
+  const proximo = () => setIdx(i => (itens.length ? (i + 1) % itens.length : 0))
+
   useEffect(() => { carregar() }, [])
+
+  // Auto-avanço: imagem/YouTube por tempo (duração); vídeo-arquivo avança no onEnded
   useEffect(() => {
-    // auto-avança só quando o slide atual é imagem
-    clearInterval(timer.current)
-    if (itens.length > 1 && itens[idx]?.tipo === 'imagem') {
-      timer.current = setInterval(() => setIdx(i => (i + 1) % itens.length), 4500)
-    }
-    return () => clearInterval(timer.current)
+    clearTimeout(timer.current)
+    const it = itens[idx]
+    if (!it || itens.length <= 1) return
+    if (ehVideoArquivo(it)) return
+    const ms = Math.max(2, it.duracao || 5) * 1000
+    timer.current = setTimeout(proximo, ms)
+    return () => clearTimeout(timer.current)
   }, [itens, idx])
 
   async function carregar() {
@@ -44,14 +49,15 @@ export default function HomeCarousel({ admin }: { admin: boolean }) {
     const { error } = await supabase.storage.from('arquivos').upload(path, file, { upsert:true })
     if (!error) {
       const { data:u } = supabase.storage.from('arquivos').getPublicUrl(path)
-      await supabase.from('home_midias').insert({ tipo:'imagem', url:u.publicUrl, ordem:itens.length })
+      const tipo = file.type.startsWith('video') ? 'video' : 'imagem'
+      await supabase.from('home_midias').insert({ tipo, url:u.publicUrl, ordem:itens.length, duracao:dur })
       await carregar()
     } else alert('Erro ao enviar: ' + error.message)
     setSubindo(false); setModal(false)
   }
   async function adicionarLink() {
     const u = link.trim(); if (!u) return
-    await supabase.from('home_midias').insert({ tipo:detectarTipo(u), url:u, ordem:itens.length })
+    await supabase.from('home_midias').insert({ tipo:detectarTipo(u), url:u, ordem:itens.length, duracao:dur })
     setLink(''); setModal(false); await carregar()
   }
   async function remover(id: string) {
@@ -60,7 +66,6 @@ export default function HomeCarousel({ admin }: { admin: boolean }) {
     await carregar()
   }
 
-  // Nada configurado: some pra todo mundo; admin vê um botão discreto pra adicionar
   if (!carregado) return null
   if (itens.length === 0) {
     if (!admin) return null
@@ -68,13 +73,13 @@ export default function HomeCarousel({ admin }: { admin: boolean }) {
       <>
         {erro && (
           <div className="alert-box alert-warning mb-2" style={{fontSize:12}}>
-            A tabela do carrossel não existe ainda. Rode <b>sql/18_home_carousel.sql</b> no Supabase para poder adicionar imagens/vídeos.
+            A tabela do carrossel não existe ainda. Rode <b>sql/18_home_carousel.sql</b> (e o <b>sql/20_home_duracao.sql</b>) no Supabase.
           </div>
         )}
         <button onClick={()=>setModal(true)} style={{width:'100%',border:'2px dashed var(--border)',background:'var(--bg)',borderRadius:14,padding:'18px',cursor:'pointer',fontFamily:'inherit',color:'var(--muted)',fontSize:13,fontWeight:600,marginBottom:16,display:'flex',alignItems:'center',justifyContent:'center',gap:8}}>
           <span className="icon icon-sm">add_photo_alternate</span> Adicionar banner na Início
         </button>
-        {modal && <ModalAdd {...{link,setLink,subindo,enviarImagem,adicionarLink,fechar:()=>setModal(false)}}/>}
+        {modal && <ModalAdd {...{link,setLink,dur,setDur,subindo,enviarImagem,adicionarLink,fechar:()=>setModal(false)}}/>}
       </>
     )
   }
@@ -85,8 +90,8 @@ export default function HomeCarousel({ admin }: { admin: boolean }) {
       <div style={{position:'relative',width:'100%',aspectRatio:'16 / 7',borderRadius:14,overflow:'hidden',background:'#000',boxShadow:'var(--shadow-sm)'}}>
         {atual.tipo === 'video'
           ? (ehYoutube(atual.url)
-              ? <iframe src={ytEmbed(atual.url)} title="video" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen style={{width:'100%',height:'100%',border:'none'}}/>
-              : <video src={atual.url} controls style={{width:'100%',height:'100%',objectFit:'cover'}}/>)
+              ? <iframe key={atual.id} src={ytEmbed(atual.url)} title="video" allow="autoplay; encrypted-media; picture-in-picture" allowFullScreen style={{width:'100%',height:'100%',border:'none'}}/>
+              : <video key={atual.id} src={atual.url} autoPlay muted playsInline controls loop={itens.length<=1} onEnded={proximo} style={{width:'100%',height:'100%',objectFit:'cover'}}/>)
           : <img src={atual.url} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}}/>}
 
         {admin && (
@@ -109,13 +114,13 @@ export default function HomeCarousel({ admin }: { admin: boolean }) {
         )}
       </div>
 
-      {modal && <ModalAdd {...{link,setLink,subindo,enviarImagem,adicionarLink,fechar:()=>setModal(false)}}/>}
+      {modal && <ModalAdd {...{link,setLink,dur,setDur,subindo,enviarImagem,adicionarLink,fechar:()=>setModal(false)}}/>}
     </div>
   )
 }
 
-function ModalAdd({ link, setLink, subindo, enviarImagem, adicionarLink, fechar }:{
-  link:string; setLink:(v:string)=>void; subindo:boolean;
+function ModalAdd({ link, setLink, dur, setDur, subindo, enviarImagem, adicionarLink, fechar }:{
+  link:string; setLink:(v:string)=>void; dur:number; setDur:(v:number)=>void; subindo:boolean;
   enviarImagem:(f:File)=>void; adicionarLink:()=>void; fechar:()=>void
 }) {
   return (
@@ -123,9 +128,16 @@ function ModalAdd({ link, setLink, subindo, enviarImagem, adicionarLink, fechar 
       <div style={{background:'white',borderRadius:'20px 20px 0 0',padding:'8px 22px 28px',width:'100%',maxWidth:480,margin:'0 auto'}}>
         <div style={{width:36,height:4,background:'var(--border)',borderRadius:2,margin:'12px auto 16px'}}/>
         <p style={{fontSize:16,fontWeight:800,marginBottom:14}}>Adicionar ao carrossel</p>
+
+        <div className="form-group">
+          <label className="form-label">Segundos na tela (imagem/YouTube)</label>
+          <input className="form-input" type="number" min={2} max={120} value={dur} onChange={e=>setDur(Math.max(2, Number(e.target.value)||5))}/>
+          <p className="form-hint mt-1">Vídeo enviado (arquivo) avança sozinho quando termina.</p>
+        </div>
+
         <label className="btn btn-outline btn-full mb-3" style={{cursor:'pointer'}}>
-          <span className="icon icon-sm">upload</span> {subindo?'Enviando...':'Enviar imagem'}
-          <input type="file" accept="image/*" style={{display:'none'}} onChange={e=>{const f=e.target.files?.[0]; if(f) enviarImagem(f); e.target.value=''}}/>
+          <span className="icon icon-sm">upload</span> {subindo?'Enviando...':'Enviar imagem ou vídeo (arquivo)'}
+          <input type="file" accept="image/*,video/*" style={{display:'none'}} onChange={e=>{const f=e.target.files?.[0]; if(f) enviarImagem(f); e.target.value=''}}/>
         </label>
         <p style={{fontSize:12,color:'var(--muted)',margin:'6px 0 8px'}}>Ou cole um link de imagem ou vídeo (YouTube também):</p>
         <input className="form-input" value={link} onChange={e=>setLink(e.target.value)} placeholder="https://..." style={{marginBottom:12}}/>
