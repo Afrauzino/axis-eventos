@@ -7,7 +7,7 @@
 ## Em aberto (backlog atual)
 _Detalhes e "onde mexer" em `docs/HANDOFF.md`._
 
-- [ ] **BUG crachá** — editor não deixa editar (o onClick do container deseleciona logo após o clique).
+- [x] **BUG crachá** — [feito] editor não deixava editar; onClick do container só deseleciona no fundo vazio (`e.target===e.currentTarget`).
 - [ ] **Impressões:** Cozinha (detalhes); Cadastros (filtrar encontrista/encontreiro/os dois);
       Correio (checklist + avisar se tem arquivo no app); Cronograma (2 opções: inteiro / aberto com
       detalhes sem status e sem local); Equipes (nome+líder+liderados com foto, filtrar quais equipes).

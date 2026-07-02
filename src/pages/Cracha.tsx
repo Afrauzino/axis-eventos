@@ -40,9 +40,8 @@ function CrachaView({ pessoa, equipeTxt, tamanho, fundo, cfg, edit, sel, onSelec
   const px=(p:number)=>W*p/100
   const ref = useRef<HTMLDivElement>(null)
   const drag = useRef<string|null>(null)
-  const interacted = useRef(false)
 
-  function pointerDown(k:string, e:React.PointerEvent) { if(!edit) return; e.stopPropagation(); interacted.current=true; drag.current=k; onSelect?.(k); (e.target as HTMLElement).setPointerCapture?.(e.pointerId) }
+  function pointerDown(k:string, e:React.PointerEvent) { if(!edit) return; e.stopPropagation(); drag.current=k; onSelect?.(k); (e.target as HTMLElement).setPointerCapture?.(e.pointerId) }
   function pointerMove(e:React.PointerEvent) {
     if(!edit||!drag.current||!ref.current) return
     const r = ref.current.getBoundingClientRect()
@@ -55,7 +54,7 @@ function CrachaView({ pessoa, equipeTxt, tamanho, fundo, cfg, edit, sel, onSelec
   const selStyle = (k:string):React.CSSProperties => edit && sel===k ? { outline:'2px dashed var(--primary)', outlineOffset:2, cursor:'move' } : (edit?{cursor:'move'}:{})
 
   return (
-    <div ref={ref} onPointerMove={pointerMove} onPointerUp={pointerUp} onPointerLeave={pointerUp} onClick={()=>edit&&onSelect?.('')}
+    <div ref={ref} onPointerMove={pointerMove} onPointerUp={pointerUp} onPointerLeave={pointerUp} onClick={e=>{ if(edit && e.target===e.currentTarget) onSelect?.('') }}
       style={{position:'relative',width:W,height:H,background:fundo?`center/cover no-repeat url(${fundo})`:'#f3f4f6',border:'1px solid #e5e7eb',borderRadius:6,overflow:'hidden',flexShrink:0,touchAction:'none'}}>
       {cfg.foto.on && (
         <div onPointerDown={e=>pointerDown('foto',e)} style={{position:'absolute',left:`${cfg.foto.x}%`,top:`${cfg.foto.y}%`,transform:'translate(-50%,-50%)',width:px(cfg.foto.size),height:px(cfg.foto.size),borderRadius:'50%',overflow:'hidden',background:'#e5e7eb',display:'flex',alignItems:'center',justifyContent:'center',border:'2px solid white',boxShadow:'0 1px 4px rgba(0,0,0,0.2)',...selStyle('foto')}}>
