@@ -9,8 +9,23 @@ import SubTabs from '../components/SubTabs'
 import type { Profile } from '../App'
 import EmojiGrid from '../components/EmojiGrid'
 
-type LogRow = { id:string; actor_name:string|null; action:string; entity:string; description:string|null; created_at:string }
+type LogRow = { id:string; actor_name:string|null; action:string; entity:string; entity_id:string|null; description:string|null; metadata:any; created_at:string }
 const ACAO_LABEL: Record<string,string> = { create:'Criou', update:'Editou', delete:'Excluiu', approve:'Aprovou', reject:'Rejeitou', payment:'Pagamento', medication:'Medicação', login:'Login', export:'Exportou', other:'Ação' }
+// Nome amigável das tabelas para o log
+const ENTITY_LABEL: Record<string,string> = {
+  people:'Pessoa', profiles:'Perfil/Conta', teams:'Equipe', people_teams:'Vínculo de equipe', escalas:'Escala',
+  'ministrações':'Ministração', theaters:'Teatro', teatro_cenas:'Cena de teatro', teatro_elenco:'Elenco de teatro',
+  cronograma_eventos:'Cronograma', cronograma_tipos:'Tipo de cronograma', financeiro:'Pagamento', doacoes:'Doação',
+  saude_fichas:'Ficha médica', med_controlados:'Medicamento', med_agenda:'Agenda de medicação', medicamento_entregas:'Entrega de medicação',
+  correio_padrinhos:'Padrinho (Correio)', correio_checklist_itens:'Item de checklist (Correio)', correio_checklist_status:'Checklist (Correio)',
+  correio_arquivos:'Arquivo (Correio)', ranking_categorias:'Categoria de ranking', ranking_votos:'Voto', cozinha_cardapios:'Cardápio',
+  refeicao_tipos:'Tipo de refeição', locais:'Local', crachas:'Crachá', permissoes:'Permissão', events:'Evento',
+  alertas:'Alerta', occurrences:'Ocorrência', midias:'Mídia', arquivos_modulo:'Arquivo', menu_config:'Menu', home_midias:'Carrossel',
+}
+const nomeEntidade = (e:string) => ENTITY_LABEL[e] ?? e
+// Campos técnicos que não interessam mostrar no detalhe
+const CAMPOS_OCULTOS = new Set(['id','created_at','updated_at','event_id'])
+const valorLegivel = (v:any) => v===null||v===undefined ? '—' : typeof v==='object' ? JSON.stringify(v) : String(v)
 
 // Seções selecionáveis para exportar/importar backup
 const SECOES_BACKUP: { key:string; label:string }[] = [
@@ -55,6 +70,8 @@ export default function Admin({ profile }: { profile?: Profile }) {
   const [logs, setLogs]             = useState<LogRow[]>([])
   const [logsLoading, setLogsLoading] = useState(false)
   const [logsErro, setLogsErro]     = useState('')
+  const [logAberto, setLogAberto]   = useState<string|null>(null)
+  const [desfazendo, setDesfazendo] = useState<string|null>(null)
   const [secoesExport, setSecoesExport] = useState<Record<string,boolean>>(TODAS_SECOES())
   const [importArquivo, setImportArquivo] = useState<any|null>(null)   // conteúdo do JSON carregado
   const [secoesImport, setSecoesImport] = useState<Record<string,boolean>>({})
@@ -292,7 +309,7 @@ export default function Admin({ profile }: { profile?: Profile }) {
   async function carregarLogs() {
     setLogsLoading(true); setLogsErro('')
     const { data, error } = await supabase.from('audit_logs')
-      .select('id,actor_name,action,entity,description,created_at')
+      .select('id,actor_name,action,entity,entity_id,description,metadata,created_at')
       .order('created_at', { ascending: false }).limit(300)
     if (error) {
       const code = (error as any).code ?? ''
@@ -301,6 +318,50 @@ export default function Admin({ profile }: { profile?: Profile }) {
       else setLogsErro('Erro ao carregar logs: ' + error.message)
     } else setLogs(data ?? [])
     setLogsLoading(false)
+  }
+
+  // O que mudou (campo: de -> para) a partir do metadata do trigger
+  function detalhesLog(l: LogRow): { campo:string; de:any; para:any }[] {
+    const m = l.metadata || {}
+    if (l.action === 'update' && m.old && m.new) {
+      const keys = new Set([...Object.keys(m.old), ...Object.keys(m.new)])
+      return [...keys]
+        .filter(k => !CAMPOS_OCULTOS.has(k) && JSON.stringify(m.old[k]) !== JSON.stringify(m.new[k]))
+        .map(k => ({ campo:k, de:m.old[k], para:m.new[k] }))
+    }
+    if (l.action === 'delete' && m.old) return Object.entries(m.old).filter(([k])=>!CAMPOS_OCULTOS.has(k)).map(([k,v])=>({ campo:k, de:v, para:undefined }))
+    if (l.action === 'create' && m.new) return Object.entries(m.new).filter(([k])=>!CAMPOS_OCULTOS.has(k)).map(([k,v])=>({ campo:k, de:undefined, para:v }))
+    return []
+  }
+  const podeDesfazer = (l: LogRow) => {
+    const m = l.metadata || {}
+    return (l.action==='delete' && m.old) || (l.action==='update' && m.old && l.entity_id) || (l.action==='create' && l.entity_id)
+  }
+
+  // Desfaz a ação usando o metadata (old/new) gravado pelo trigger
+  async function desfazerLog(l: LogRow) {
+    if (!podeDesfazer(l)) { alert('Esta ação não tem dados suficientes para desfazer automaticamente.'); return }
+    if (!confirm(`Desfazer "${ACAO_LABEL[l.action]??l.action}" em ${nomeEntidade(l.entity)}?\n\nIsso reverte a alteração no banco.`)) return
+    setDesfazendo(l.id)
+    const m = l.metadata || {}
+    try {
+      let error:any = null
+      if (l.action === 'delete') {
+        ({ error } = await supabase.from(l.entity).insert(m.old))
+      } else if (l.action === 'update') {
+        const { id, created_at, ...rest } = m.old
+        ;({ error } = await supabase.from(l.entity).update(rest).eq('id', l.entity_id))
+      } else if (l.action === 'create') {
+        ({ error } = await supabase.from(l.entity).delete().eq('id', l.entity_id))
+      }
+      if (error) throw error
+      registrarLog({ action:'update', entity:l.entity, entityId:l.entity_id, description:`Desfez ${ACAO_LABEL[l.action]?.toLowerCase()??l.action} em ${nomeEntidade(l.entity)}`, eventId:eventoAtivoId() })
+      alert('✓ Ação desfeita.')
+      carregarLogs()
+    } catch (e:any) {
+      alert('Não foi possível desfazer: ' + (e?.message ?? e))
+    }
+    setDesfazendo(null)
   }
 
   async function aprovarPessoa(p: typeof pessoas[0]) {
@@ -1129,19 +1190,54 @@ export default function Admin({ profile }: { profile?: Profile }) {
           </div>
           {logsErro && <div className="alert-box alert-error mb-3">{logsErro}</div>}
           {logsLoading ? [1,2,3,4].map(i=><div key={i} className="skeleton" style={{height:56,marginBottom:8,borderRadius:12}}/>) :
-           (!logsErro && logs.length===0) ? <div className="empty"><p className="empty-desc">Nenhuma ação registrada ainda.</p></div> :
-           logs.map(l => (
-            <div key={l.id} style={{background:'white',borderRadius:12,boxShadow:'var(--shadow-sm)',marginBottom:8,padding:'11px 14px'}}>
+           (!logsErro && logs.length===0) ? <div className="empty"><p className="empty-desc">Nenhuma ação registrada ainda. Rode sql/16_audit_triggers.sql para registrar tudo automaticamente.</p></div> :
+           logs.map(l => {
+            const acaoCor = l.action==='delete'?'var(--danger)':l.action==='create'?'var(--success)':'var(--primary)'
+            const mudancas = detalhesLog(l)
+            const aberto = logAberto===l.id
+            return (
+            <div key={l.id} style={{background:'white',borderRadius:12,boxShadow:'var(--shadow-sm)',marginBottom:8,padding:'11px 14px',borderLeft:`3px solid ${acaoCor}`}}>
               <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:3}}>
-                <span style={{fontSize:11,fontWeight:800,color:'var(--primary)',textTransform:'uppercase'}}>{ACAO_LABEL[l.action]??l.action}</span>
-                <span style={{fontSize:11,color:'var(--muted)'}}>· {l.entity}</span>
+                <span style={{fontSize:11,fontWeight:800,color:acaoCor,textTransform:'uppercase'}}>{ACAO_LABEL[l.action]??l.action}</span>
+                <span style={{fontSize:12,fontWeight:600,color:'var(--text)'}}>{nomeEntidade(l.entity)}</span>
                 <span style={{flex:1}}/>
                 <span style={{fontSize:11,color:'var(--muted)'}}>{fmtDataHora(l.created_at)}</span>
               </div>
-              <p style={{fontSize:13,color:'var(--text)'}}>{l.description || '—'}</p>
-              {l.actor_name && <p style={{fontSize:11,color:'var(--muted)',marginTop:2}}>por {l.actor_name}</p>}
+              {l.description && <p style={{fontSize:13,color:'var(--text)'}}>{l.description}</p>}
+              <p style={{fontSize:11,color:'var(--muted)',marginTop:2}}>
+                por <strong>{l.actor_name || 'desconhecido'}</strong>{l.entity_id ? ` · id ${String(l.entity_id).slice(0,8)}` : ''}
+              </p>
+
+              {/* Ações: ver detalhes / desfazer */}
+              <div style={{display:'flex',gap:8,marginTop:8}}>
+                {mudancas.length>0 && (
+                  <button className="btn btn-ghost btn-sm" onClick={()=>setLogAberto(aberto?null:l.id)}>
+                    <span className="icon icon-sm">{aberto?'expand_less':'expand_more'}</span> {aberto?'Ocultar':'Detalhes'} ({mudancas.length})
+                  </button>
+                )}
+                {podeDesfazer(l) && (
+                  <button className="btn btn-sm" style={{background:'var(--warning-bg)',color:'var(--warning)',border:'1px solid var(--warning)'}} onClick={()=>desfazerLog(l)} disabled={desfazendo===l.id}>
+                    <span className="icon icon-sm">undo</span> {desfazendo===l.id?'Desfazendo...':'Desfazer'}
+                  </button>
+                )}
+              </div>
+
+              {/* Detalhes do que mudou */}
+              {aberto && mudancas.length>0 && (
+                <div style={{marginTop:8,background:'var(--bg)',borderRadius:8,padding:'8px 10px'}}>
+                  {mudancas.map((c,i)=>(
+                    <div key={i} style={{fontSize:12,padding:'3px 0',borderBottom:i<mudancas.length-1?'1px solid var(--border)':'none'}}>
+                      <span style={{fontWeight:700,color:'var(--text2)'}}>{c.campo}: </span>
+                      {l.action==='update'
+                        ? <span><span style={{color:'var(--danger)',textDecoration:'line-through'}}>{valorLegivel(c.de)}</span> → <span style={{color:'var(--success)'}}>{valorLegivel(c.para)}</span></span>
+                        : <span style={{color:'var(--text)'}}>{valorLegivel(l.action==='delete'?c.de:c.para)}</span>}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
-          ))}
+            )
+          })}
         </div>
       )}
 
