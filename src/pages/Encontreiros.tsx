@@ -98,14 +98,13 @@ export default function Encontreiros({ profile }: { profile?: Profile }) {
           <CardItem
             key={p.id}
             cor={corCard}
+            ehPessoa
             fotoUrl={p.photo_url}
             iniciais={getInitials(p.name)}
             titulo={p.name}
-            subtitulo={p.church}
-            badges={eqs.length>0
-              ? eqs.map(e=>({ emoji:'👥', texto:e.name, cor:e.color }))
-              : [{ emoji:'⚠️', texto:'Sem equipe' }]}
-            onClick={()=>{ if(!canEdit) return; setEditando(p); setForm({name:p.name,phone:p.phone,church:p.church,sexo:p.sexo??'',birth_date:p.birth_date??'',cpf:p.cpf??'',cidade:p.cidade??''}); setErro(''); setModal(true) }}
+            subtitulo={eqs.length>0 ? p.church : (p.church ? `${p.church} · Sem equipe` : 'Sem equipe')}
+            equipes={eqs.map(e=>({ emoji:'👥', titulo:e.name, cor:e.color, fotoUrl:(e as any).foto_url??null }))}
+            onVer={()=>{ if(!canEdit) return; setEditando(p); setForm({name:p.name,phone:p.phone,church:p.church,sexo:p.sexo??'',birth_date:p.birth_date??'',cpf:p.cpf??'',cidade:p.cidade??''}); setErro(''); setModal(true) }}
           />
         )
       })}

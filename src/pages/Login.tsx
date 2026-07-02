@@ -40,7 +40,7 @@ export default function Login() {
     e.preventDefault(); setErro(''); setLoading(true)
     const { data, error } = await supabase
       .from('people')
-      .select('id,name,user_id,event_id,phone,church,role_type,sexo,birth_date,cpf,rg,cidade,estado,endereco,bairro,cep,contact_phone,photo_url,notes')
+      .select('id,name,user_id,event_id,phone,church,role_type,sexo,birth_date,cpf,rg,cidade,estado,endereco,bairro,cep,contact_phone,photo_url,notes,ano_encontro')
       .eq('invite_code', codigo.toUpperCase().trim())
       .maybeSingle()
 
