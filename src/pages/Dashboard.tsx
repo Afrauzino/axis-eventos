@@ -6,14 +6,15 @@ import { useEvento } from '../hooks/useEvento'
 import { usePermissao } from '../hooks/usePermissao'
 import HomeCarousel from '../components/HomeCarousel'
 import BoasVindas, { type BVVariante } from '../components/BoasVindas'
+import { MENUS_CATALOGO } from '../lib/permCatalog'
 import type { Profile } from '../App'
 
 type Stats = { encontristas:number; encontreiros:number; equipes:number; alertas:number }
 
 export default function Dashboard({ profile }: { profile: Profile }) {
-  const { pode, myTeams } = usePermissao(profile)
+  const { pode, carregado: permsCarregadas } = usePermissao(profile)
   const admin = isAdmin(profile.user_role) || profile.is_admin
-  // Tela de boas-vindas para quem entrou sem liberação
+  // Tela de boas-vindas para quem entrou SEM LIBERAÇÃO (não vê nenhum menu)
   const [roleType, setRoleType] = useState<string|null>(null)
   useEffect(() => {
     if (!profile?.user_id) return
@@ -21,7 +22,8 @@ export default function Dashboard({ profile }: { profile: Profile }) {
       .then(({ data }) => setRoleType(data?.role_type ?? null))
   }, [profile?.user_id])
   const variante: BVVariante = roleType === 'worker' ? 'encontreiro' : 'encontrista'
-  const semLiberacao = !admin && (profile.user_role === 'visitante' || roleType === 'encounterer' || (roleType === 'worker' && myTeams.length === 0))
+  // "Sem liberação" = não é admin e não enxerga NENHUM menu do sistema
+  const semLiberacao = permsCarregadas && !admin && !MENUS_CATALOGO.some(m => pode(m.modulo))
   // mapa rota -> permissao de menu
   const PERM_ROTA: Record<string,string> = { '/encontristas':'menu_encontristas','/cadastros':'menu_cadastros','/equipes':'menu_equipes','/alertas':'menu_alertas_lideres','/cronograma':'menu_cronograma','/minhas-atividades':'menu_atividades','/locais':'menu_evento','/financeiro':'menu_financeiro','/admin':'menu_admin','/ranking':'menu_ranking' }
   const podeIr = (rota:string) => admin || pode(PERM_ROTA[rota] ?? '')
