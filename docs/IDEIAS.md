@@ -11,9 +11,10 @@ _Detalhes e "onde mexer" em `docs/HANDOFF.md`._
 - [x] **Impressões:** [feito] Cozinha (detalhes); Cadastros (filtrar encontrista/encontreiro/os dois);
       Correio (checklist + avisar se tem arquivo no app); Cronograma (2 opções: inteiro / aberto com
       detalhes sem status e sem local); Equipes (nome+líder+liderados com foto, filtrar quais equipes).
-- [ ] **Crachá — 3 modelos** (Encontreiros/Encontrista/Especiais) por barra no topo, mesmo editor;
-      tamanho personalizado (larg/alt em mm/cm/px); inserir vários **PNGs como camadas**
-      (posicionar/redimensionar/transparência); foto **Redonda OU Quadrada 3×4**.
+- [x] **Crachá — 3 modelos** [feito] (Encontreiros/Encontrista/Especiais) por barra no topo, mesmo editor,
+      config por modelo em `campos.modelos` (jsonb, _v:2, retrocompatível com o formato antigo);
+      tamanho personalizado (larg/alt em mm/cm/px); PNGs como camadas independentes (arrastar/redimensionar/
+      transparência); foto Redonda OU Quadrada 3×4.
 - [x] **Ranking/Encontristas** — [feito] botão "Votar neste encontrista" abre direto na pessoa (router
       state votarPessoaId+origem); ao fechar volta pra origem; fechar normal do Ranking preservado.
 

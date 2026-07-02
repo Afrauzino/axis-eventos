@@ -29,7 +29,15 @@ resilientes (não quebram antes das migrações). Limpeza de teste: `sql/LIMPAR_
 
 ---
 
-## 🆕 BACKLOG NOVO (pedidos do Anderson — a fazer na próxima conversa)
+## ✅ BACKLOG CONCLUÍDO (sessão seguinte)
+- **BUG crachá** editar — corrigido (deselect só no fundo vazio, `e.target===e.currentTarget`).
+- **Impressões**: Cozinha (detalhes), Cadastros (encontrista/encontreiro/os dois), Correio (checklist +
+  "tem arquivo no app"), Cronograma (inteiro / detalhado sem status e sem local), Equipes (modular com fotos).
+- **Crachá 3 modelos** (Encontreiros/Encontrista/Especiais), tamanho personalizado (mm/cm/px), PNGs em
+  camadas, foto Redonda/Quadrada 3×4. Config por modelo em `crachas.campos.modelos` (jsonb, _v:2).
+- **Ranking**: "Votar neste encontrista" abre direto na pessoa e volta pra origem ao fechar.
+
+## 🆕 BACKLOG (histórico dos pedidos — todos já implementados acima)
 
 ### 0. BUG — Crachá não deixa editar (PRIORIDADE)
 "ao clicar a aba pisca, abre mas fecha logo em seguida." No editor `src/pages/Cracha.tsx`, o container do
