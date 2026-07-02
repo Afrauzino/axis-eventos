@@ -5,13 +5,23 @@ import { fmtDataLonga, isAdmin } from '../utils'
 import { useEvento } from '../hooks/useEvento'
 import { usePermissao } from '../hooks/usePermissao'
 import HomeCarousel from '../components/HomeCarousel'
+import BoasVindas, { type BVVariante } from '../components/BoasVindas'
 import type { Profile } from '../App'
 
 type Stats = { encontristas:number; encontreiros:number; equipes:number; alertas:number }
 
 export default function Dashboard({ profile }: { profile: Profile }) {
-  const { pode } = usePermissao(profile)
+  const { pode, myTeams } = usePermissao(profile)
   const admin = isAdmin(profile.user_role) || profile.is_admin
+  // Tela de boas-vindas para quem entrou sem liberação
+  const [roleType, setRoleType] = useState<string|null>(null)
+  useEffect(() => {
+    if (!profile?.user_id) return
+    supabase.from('people').select('role_type').eq('user_id', profile.user_id).maybeSingle()
+      .then(({ data }) => setRoleType(data?.role_type ?? null))
+  }, [profile?.user_id])
+  const variante: BVVariante = roleType === 'worker' ? 'encontreiro' : 'encontrista'
+  const semLiberacao = !admin && (profile.user_role === 'visitante' || roleType === 'encounterer' || (roleType === 'worker' && myTeams.length === 0))
   // mapa rota -> permissao de menu
   const PERM_ROTA: Record<string,string> = { '/encontristas':'menu_encontristas','/cadastros':'menu_cadastros','/equipes':'menu_equipes','/alertas':'menu_alertas_lideres','/cronograma':'menu_cronograma','/minhas-atividades':'menu_atividades','/locais':'menu_evento','/financeiro':'menu_financeiro','/admin':'menu_admin','/ranking':'menu_ranking' }
   const podeIr = (rota:string) => admin || pode(PERM_ROTA[rota] ?? '')
@@ -81,6 +91,12 @@ export default function Dashboard({ profile }: { profile: Profile }) {
 
       {/* Carrossel da Início (admin adiciona; some se vazio) */}
       <HomeCarousel admin={admin} />
+
+      {semLiberacao ? (
+        <BoasVindas variante={variante} admin={false} />
+      ) : (
+      <>
+      {admin && <BoasVindas variante={variante} admin={true} />}
 
       {!evento ? (
         <div className="info-section mb-4" style={{textAlign:'center',padding:'24px'}}>
@@ -161,6 +177,8 @@ export default function Dashboard({ profile }: { profile: Profile }) {
           <div className="section-title" style={{marginTop:20}}>Ranking do Encontro</div>
           <RankingMini eventoId={evento.id} navigate={navigate}/>
         </>
+      )}
+      </>
       )}
 
     </div>
