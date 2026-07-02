@@ -20,6 +20,12 @@ _Detalhes e "onde mexer" em `docs/HANDOFF.md`._
 
 ## Novas ideias (adicionar abaixo, com data)
 <!-- ex: - 2026-07-02 — [ ] descrição da ideia -->
+- 2026-07-02 — [ ] **Mídia**: emoji fora do padrão (usar EmojiGrid / emoji colorido).
+- 2026-07-02 — [ ] **Escala**: poder imprimir seguindo o padrão (PrintOverlay).
+- 2026-07-02 — [ ] **Cronograma "com detalhes"**: tirar duplicidade; emoji na frente do teatro; trazer
+  FOTO do ministrante + fotos dos atores com seus personagens.
+- 2026-07-02 — [ ] **Ministração impressão**: cabeçalho igual ao do app + foto (cara) do ministrante.
+  (Anderson vai enviar uma foto de referência do layout.)
 - 2026-07-02 — [x] Correio impressão: mostrar a bolinha com a foto da pessoa. [feito]
 - 2026-07-02 — [x] Cronograma impressão: refletir exatamente o que está na tela (mesmos grupos/filtro,
   visual de card); "com detalhes" só estende o card com ministração/teatro (coloca os teatros). [feito]

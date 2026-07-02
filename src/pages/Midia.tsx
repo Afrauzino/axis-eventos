@@ -7,10 +7,10 @@ import type { Profile } from '../App'
 
 type Midia = { id:string; tipo:'foto'|'audio'|'video'; titulo:string|null; url:string }
 
-const MIDIA_INFO: Record<string,{icone:string;label:string}> = {
-  foto:  { icone:'photo',      label:'Foto' },
-  audio: { icone:'music_note', label:'Áudio' },
-  video: { icone:'movie',      label:'Vídeo' },
+const MIDIA_INFO: Record<string,{icone:string;label:string;emoji:string}> = {
+  foto:  { icone:'photo',      label:'Foto',  emoji:'📷' },
+  audio: { icone:'music_note', label:'Áudio', emoji:'🎵' },
+  video: { icone:'movie',      label:'Vídeo', emoji:'🎬' },
 }
 
 function MatIcon({ name, size=20, color='var(--text2)' }: { name:string; size?:number; color?:string }) {
@@ -87,8 +87,8 @@ export default function Midia({ profile }: { profile?: Profile }) {
                     onError={e=>{(e.currentTarget as HTMLImageElement).style.display='none'}}/>
                 )}
                 <div style={{display:'flex',alignItems:'center',gap:10,padding:'10px 14px'}}>
-                  <div style={{width:36,height:36,borderRadius:9,background:'var(--primary-light)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
-                    <MatIcon name={info.icone} size={20} color={cor}/>
+                  <div style={{width:36,height:36,borderRadius:9,background:'var(--primary-light)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,fontSize:20,lineHeight:1}}>
+                    {info.emoji}
                   </div>
                   <div style={{flex:1,minWidth:0}}>
                     <p style={{fontWeight:700,fontSize:14,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{m.titulo || info.label}</p>
@@ -133,7 +133,7 @@ export default function Midia({ profile }: { profile?: Profile }) {
                     return (
                       <button key={t} type="button" onClick={()=>setForm(f=>({...f,tipo:t}))}
                         style={{flex:1,padding:'10px',borderRadius:10,cursor:'pointer',fontFamily:'inherit',fontSize:12,fontWeight:700,border:on?`2px solid ${cor}`:'1px solid var(--border)',background:on?'var(--primary-light)':'white',color:on?cor:'var(--text2)',display:'flex',flexDirection:'column',alignItems:'center',gap:4}}>
-                        <MatIcon name={MIDIA_INFO[t].icone} size={20} color={on?cor:'var(--muted)'}/>{MIDIA_INFO[t].label}
+                        <span style={{fontSize:20,lineHeight:1}}>{MIDIA_INFO[t].emoji}</span>{MIDIA_INFO[t].label}
                       </button>
                     )
                   })}

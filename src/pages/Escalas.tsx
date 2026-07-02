@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import SubTabs from '../components/SubTabs'
+import PrintOverlay from '../components/PrintOverlay'
 import { getInitials, fmtHora, isAdmin, isLider, nowLocalInput } from '../utils'
 import { useEvento } from '../hooks/useEvento'
 import PersonSelect from '../components/PersonSelect'
@@ -24,6 +25,7 @@ export default function Escalas({ profile }: { profile?: Profile }) {
   const [salvando, setSalvando] = useState(false)
   const [erro, setErro]         = useState('')
   const [conflito, setConflito] = useState<string|null>(null)
+  const [imprimir, setImprimir] = useState(false)
   const hoje = new Date()
   const [dataSel, setDataSel]   = useState(hoje)
 
@@ -191,6 +193,12 @@ export default function Escalas({ profile }: { profile?: Profile }) {
         </button>
       </div>
 
+      {escalasDia.length>0 && (
+        <button className="btn btn-outline btn-full btn-sm mb-3" onClick={()=>setImprimir(true)}>
+          <span className="icon icon-sm">print</span> Imprimir escala do dia
+        </button>
+      )}
+
       {loading ? [1,2,3].map(i=><div key={i} className="skeleton" style={{height:68,marginBottom:8,borderRadius:14}}/>) :
       escalasDia.length === 0 ? (
         <div className="empty">
@@ -225,6 +233,30 @@ export default function Escalas({ profile }: { profile?: Profile }) {
       })}
 
       {canEdit && <button className="fab" onClick={abrirNovo}><span className="icon">add</span></button>}
+
+      {/* ===== IMPRESSÃO — escala do dia (reflete a tela) ===== */}
+      {imprimir && (
+        <PrintOverlay titulo={`Escala — ${dataSel.toLocaleDateString('pt-BR',{weekday:'long',day:'numeric',month:'long'})}`} onClose={()=>setImprimir(false)}>
+          {escalasDia.length===0
+            ? <p style={{fontSize:13,color:'#6b7280'}}>Nenhuma escala neste dia.</p>
+            : escalasDia.map(e=>{
+                const p = getPessoa(e.person_id); const eq = getEquipe(e.team_id)
+                return (
+                  <div key={e.id} style={{display:'flex',alignItems:'center',gap:12,border:'1px solid #e5e7eb',borderRadius:8,overflow:'hidden',marginBottom:8,breakInside:'avoid'}}>
+                    <div style={{width:5,alignSelf:'stretch',background:eq?.color??'#00A99D',flexShrink:0}}/>
+                    <div style={{width:42,height:42,borderRadius:'50%',overflow:'hidden',flexShrink:0,background:'#f3f4f6',display:'flex',alignItems:'center',justifyContent:'center',margin:'8px 0'}}>
+                      {p?.photo_url?<img src={p.photo_url} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}}/>:<span style={{fontWeight:700,color:'#6b7280',fontSize:14}}>{getInitials(p?.name??'?')}</span>}
+                    </div>
+                    <div style={{flex:1,minWidth:0,padding:'8px 12px 8px 0'}}>
+                      <p style={{fontSize:11,fontWeight:700,color:eq?.color??'#00A99D'}}>{fmtHora(e.start_time)} — {fmtHora(e.end_time)}{eq?` · ${eq.name}`:''}</p>
+                      <p style={{fontWeight:700,fontSize:14}}>{p?.name}</p>
+                      <p style={{fontSize:12,color:'#6b7280'}}>{e.title}{e.location?` · ${e.location}`:''}</p>
+                    </div>
+                  </div>
+                )
+              })}
+        </PrintOverlay>
+      )}
 
       {modal && canEdit && (
         <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.5)',zIndex:300,display:'flex',flexDirection:'column',justifyContent:'flex-end'}} onClick={e=>e.target===e.currentTarget&&setModal(false)}>
