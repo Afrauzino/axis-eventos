@@ -112,18 +112,24 @@ export default function FichaMedica({ personId, eventId, readOnly=false, startOp
     }, { onConflict:'person_id,event_id' })
     if (error) { setSalvando(false); setMsg('Erro: ' + error.message); return }
 
-    // Medicamentos contínuos: salva cada um e (re)gera as doses pendentes no período fixo
+    // Medicamentos contínuos: salva cada um e (re)gera as doses pendentes no período fixo.
+    // Dedupe: reusa o mesmo registro (por id ou por nome) — NUNCA duplica.
     if (f.toma_controlado) {
-      for (const med of meds.filter(m=>m.nome.trim())) {
+      const salvos: MedRow[] = []
+      for (const med of meds) {
+        if (!med.nome.trim()) continue
         const iv = parseInt(med.intervalo_h) || 8
-        // colunas-base (não inclui ultima_dose — pode não existir se o SQL 12 não rodou)
         const base = { person_id:personId, event_id:eventId, nome:med.nome.trim(), dosagem:med.dosagem||null, horario_ini:'08:00', intervalo_h:iv, vezes_dia:Math.max(1,Math.round(24/iv)) }
         let medId = med.id
+        // sem id → procura um registro existente com o mesmo nome pra não duplicar
+        if (!medId) {
+          const { data: ex } = await supabase.from('med_controlados').select('id').eq('person_id',personId).eq('event_id',eventId).ilike('nome',med.nome.trim()).limit(1)
+          medId = ex?.[0]?.id
+        }
         let errMed
         if (medId) { const r = await supabase.from('med_controlados').update(base).eq('id',medId); errMed=r.error }
         else { const r = await supabase.from('med_controlados').insert(base).select('id').single(); errMed=r.error; medId=r.data?.id }
         if (errMed) { setSalvando(false); setMsg('Erro ao salvar o medicamento: ' + errMed.message); return }
-        // ultima_dose separado (resiliente): se a coluna não existir, ignora sem quebrar
         if (medId && med.ultima_dose) await supabase.from('med_controlados').update({ ultima_dose:new Date(med.ultima_dose).toISOString() }).eq('id',medId)
         if (medId) {
           await supabase.from('med_agenda').delete().eq('med_ctrl_id',medId).eq('entregue',false)
@@ -132,8 +138,10 @@ export default function FichaMedica({ personId, eventId, readOnly=false, startOp
             const r = await supabase.from('med_agenda').insert(doses)
             if (r.error) { setSalvando(false); setMsg('Erro ao gerar as doses: ' + r.error.message); return }
           }
+          salvos.push({ ...med, id: medId }) // guarda o id pra próximos saves não duplicarem
         }
       }
+      setMeds(salvos)
     }
 
     setSalvando(false)

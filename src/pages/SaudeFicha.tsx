@@ -59,7 +59,7 @@ export default function SaudeFicha({ profile }: { profile?: Profile }) {
     const flags:string[] = []
     if (f.restricao_alimentar ?? f.restricoes_alimentares) flags.push('Restrição alimentar')
     if (f.alergia_medicamentos ?? f.alergias) flags.push('Alergia a medicamentos')
-    if (f.toma_controlado ?? f.medicamento_controlado) flags.push('Medicamento contínuo')
+    if (f.toma_controlado ?? f.medicamento_controlado) flags.push('💊')
     return flags
   }
   function badgePessoa(pid:string) {

@@ -136,7 +136,7 @@ export default function Logistica({ profile }: { profile?: Profile }) {
                       <p style={{fontWeight:700,fontSize:15,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{formatName(e.name)}</p>
                       <div style={{display:'flex',gap:6,marginTop:3}}>
                         {inf.concluido && <span style={{fontSize:10,fontWeight:700,color:'white',background:'var(--success)',padding:'2px 8px',borderRadius:99}}>Concluído</span>}
-                        {inf.toma_controlado && <span style={{fontSize:10,fontWeight:700,color:'#C53030',background:'#FFF5F5',padding:'2px 8px',borderRadius:99}}>💊 Contínuo</span>}
+                        {inf.toma_controlado && <span style={{fontSize:14}} title="Medicamento contínuo">💊</span>}
                       </div>
                     </div>
                     <span style={{fontSize:15,fontWeight:800,color:'var(--primary)',flexShrink:0}}>{pct}%</span>
