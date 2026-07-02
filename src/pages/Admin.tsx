@@ -8,6 +8,7 @@ import { registrarLog } from '../lib/audit'
 import SubTabs from '../components/SubTabs'
 import type { Profile } from '../App'
 import EmojiGrid from '../components/EmojiGrid'
+import { PERM_CATALOGO, MENUS_CATALOGO } from '../lib/permCatalog'
 
 type LogRow = { id:string; actor_name:string|null; action:string; entity:string; entity_id:string|null; description:string|null; metadata:any; created_at:string }
 const ACAO_LABEL: Record<string,string> = { create:'Criou', update:'Editou', delete:'Excluiu', approve:'Aprovou', reject:'Rejeitou', payment:'Pagamento', medication:'Medicação', login:'Login', export:'Exportou', other:'Ação' }
@@ -130,52 +131,7 @@ export default function Admin({ profile }: { profile?: Profile }) {
 
   useEffect(() => { carregar() }, [])
 
-  // ===== PERMISSÕES: módulos (ações) e menus (visualização) =====
-  const TODOS_MODULOS = [
-    { modulo:'cronograma',   label:'Cronograma' },
-    { modulo:'encontristas', label:'Encontristas' },
-    { modulo:'cadastros',    label:'Cadastros' },
-    { modulo:'ministracoes', label:'Ministrações' },
-    { modulo:'ranking',      label:'Ranking' },
-    { modulo:'equipes',      label:'Equipes' },
-    { modulo:'escalas',      label:'Escalas' },
-    { modulo:'teatro',       label:'Teatro' },
-    { modulo:'alertas',      label:'Alertas' },
-    { modulo:'saude',        label:'Saúde' },
-    { modulo:'medicamentos', label:'Medicamentos' },
-    { modulo:'financeiro',   label:'Financeiro' },
-    { modulo:'doacoes',      label:'Doações' },
-    { modulo:'correio',      label:'Correio' },
-    { modulo:'cozinha',      label:'Cozinha' },
-    { modulo:'logistica',    label:'Logística' },
-    { modulo:'midia',        label:'Mídia' },
-    { modulo:'cracha',       label:'Crachá' },
-    { modulo:'locais',       label:'Locais' },
-    { modulo:'ocorrencias',  label:'Ocorrências' },
-    { modulo:'relatorios',   label:'Relatórios' },
-  ]
-  // Menus visíveis (o que aparece no menu lateral)
-  const TODOS_MENUS = [
-    { modulo:'menu_inicio',       label:'Início' },
-    { modulo:'menu_atividades',   label:'Minhas Atividades' },
-    { modulo:'menu_cronograma',   label:'Cronograma' },
-    { modulo:'menu_encontristas', label:'Encontristas' },
-    { modulo:'menu_cadastros',    label:'Cadastros' },
-    { modulo:'menu_ministracoes', label:'Ministrações' },
-    { modulo:'menu_ranking',      label:'Ranking' },
-    { modulo:'menu_correio',      label:'Correio' },
-    { modulo:'menu_logistica',    label:'Logística' },
-    { modulo:'menu_midia',        label:'Mídia' },
-    { modulo:'menu_cracha',       label:'Crachá' },
-    { modulo:'menu_equipes',      label:'Equipes & Escalas' },
-    { modulo:'menu_teatro',       label:'Teatro' },
-    { modulo:'menu_evento',       label:'Evento (Locais/Ocorrências)' },
-    { modulo:'menu_alertas_lideres', label:'Alertas entre Líderes' },
-    { modulo:'menu_cozinha',      label:'Cozinha / Cardápio' },
-    { modulo:'menu_saude',        label:'Saúde' },
-    { modulo:'menu_financeiro',   label:'Financeiro' },
-    { modulo:'menu_admin',        label:'Administração' },
-  ]
+  // Catálogo de permissões por função (PERM_CATALOGO) e menus (MENUS_CATALOGO) em src/lib/permCatalog.ts
 
   // ---- PESSOA ----
   async function carregarPermsPessoa(p: any) {
@@ -184,9 +140,9 @@ export default function Admin({ profile }: { profile?: Profile }) {
     setPermsPessoa(data ?? [])
   }
   // Define estado explícito: true=liberado, false=bloqueado, null=remove (neutro)
-  async function definirPermPessoa(p: any, modulo: string, estado: boolean|null) {
+  async function definirPermPessoa(p: any, modulo: string, acao: string, estado: boolean|null) {
     if (!p?.id) return
-    const existe = permsPessoa.find(x => x.person_id === p.id && x.modulo === modulo && x.acao === 'ver')
+    const existe = permsPessoa.find(x => x.person_id === p.id && x.modulo === modulo && x.acao === acao)
     if (estado === null) {
       if (existe) {
         await supabase.from('permissoes').delete().eq('id', existe.id)
@@ -198,17 +154,21 @@ export default function Admin({ profile }: { profile?: Profile }) {
       await supabase.from('permissoes').update({ permitido: estado }).eq('id', existe.id)
       setPermsPessoa(prev => prev.map(x => x.id === existe.id ? { ...x, permitido: estado } : x))
     } else {
-      const { data: n } = await supabase.from('permissoes').insert({ person_id: p.id, modulo, acao: 'ver', permitido: estado }).select().single()
+      const { data: n } = await supabase.from('permissoes').insert({ person_id: p.id, modulo, acao, permitido: estado }).select().single()
       if (n) setPermsPessoa(prev => [...prev, n])
     }
   }
-  async function togglePermPessoa(p: any, modulo: string, atual: boolean|undefined) {
+  async function togglePermPessoa(p: any, modulo: string, acao: string, atual: boolean|undefined) {
     limparCachePermissoes()
-    // mantido para compatibilidade — alterna liberado/neutro
-    await definirPermPessoa(p, modulo, atual ? null : true)
+    await definirPermPessoa(p, modulo, acao, atual ? null : true)
   }
-  async function removerPermPessoa(p: any, modulo: string) {
-    await definirPermPessoa(p, modulo, null)
+  async function removerPermPessoa(p: any, modulo: string, acao: string) {
+    limparCachePermissoes()
+    await definirPermPessoa(p, modulo, acao, null)
+  }
+  const permPessoa = (modulo: string, acao: string): boolean|undefined => {
+    const x = permsPessoa.find(p => p.modulo === modulo && p.acao === acao)
+    return x ? x.permitido : undefined
   }
 
   // ---- EQUIPE ----
@@ -222,23 +182,28 @@ export default function Admin({ profile }: { profile?: Profile }) {
     const { data } = await supabase.from('permissoes').select('*').eq('team_id', team_id).is('person_id', null).is('role', null)
     setPermsEquipe(data ?? [])
   }
-  async function togglePermEquipe(team_id: string, modulo: string) {
+  async function togglePermEquipe(team_id: string, modulo: string, acao: string = 'ver') {
     limparCachePermissoes()
-    const existe = permsEquipe.find(x => x.team_id === team_id && x.modulo === modulo && x.acao === 'ver')
+    const existe = permsEquipe.find(x => x.team_id === team_id && x.modulo === modulo && x.acao === acao)
     if (existe) {
       await supabase.from('permissoes').update({ permitido: !existe.permitido }).eq('id', existe.id)
       setPermsEquipe(prev => prev.map(x => x.id === existe.id ? { ...x, permitido: !existe.permitido } : x))
     } else {
-      const { data: n } = await supabase.from('permissoes').insert({ team_id, modulo, acao: 'ver', permitido: true }).select().single()
+      const { data: n } = await supabase.from('permissoes').insert({ team_id, modulo, acao, permitido: true }).select().single()
       if (n) setPermsEquipe(prev => [...prev, n])
     }
   }
-  async function removerPermEquipe(team_id: string, modulo: string) {
-    const existe = permsEquipe.find(x => x.team_id === team_id && x.modulo === modulo && x.acao === 'ver')
+  async function removerPermEquipe(team_id: string, modulo: string, acao: string = 'ver') {
+    limparCachePermissoes()
+    const existe = permsEquipe.find(x => x.team_id === team_id && x.modulo === modulo && x.acao === acao)
     if (existe) {
       await supabase.from('permissoes').delete().eq('id', existe.id)
       setPermsEquipe(prev => prev.filter(x => x.id !== existe.id))
     }
+  }
+  const permEquipe = (modulo: string, acao: string): boolean => {
+    const x = permsEquipe.find(p => p.modulo === modulo && p.acao === acao)
+    return x ? x.permitido : false
   }
 
 
@@ -901,35 +866,40 @@ export default function Admin({ profile }: { profile?: Profile }) {
 
             {permsAba==='acoes' && (
               <div style={{marginBottom:14}}>
-                <p style={{fontSize:12,color:'var(--muted)',marginBottom:10,lineHeight:1.5}}>Liberações individuais desta pessoa. A liberação final é a <strong>soma</strong> da equipe + aqui. Ativar aqui dá acesso mesmo que a equipe não dê.</p>
-                <div style={{background:'white',borderRadius:12,overflow:'hidden',boxShadow:'var(--shadow-sm)'}}>
-                  {TODOS_MODULOS.map(({modulo,label})=>{
-                    const perm = permsPessoa.find(x=>x.modulo===modulo && x.acao==='ver')
-                    const liberado = perm ? perm.permitido : undefined
-                    return (
-                      <div key={modulo} style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'10px 14px',borderBottom:'1px solid var(--border)'}}>
-                        <div>
-                          <p style={{fontSize:13,fontWeight:600}}>{label}</p>
-                          {liberado===undefined && <p style={{fontSize:10,color:'var(--muted)'}}>Segue a equipe</p>}
-                          {liberado===true && <p style={{fontSize:10,color:'var(--success)',fontWeight:700}}>✓ Liberado individualmente</p>}
-                        </div>
-                        <div style={{display:'flex',gap:6}}>
-                          <button onClick={()=>togglePermPessoa(pessoaDetalhe,modulo,liberado)}
-                            title={liberado?'Desativar':'Ativar'}
-                            style={{width:40,height:22,borderRadius:11,border:'none',cursor:'pointer',background:liberado?'var(--success)':'var(--border)',transition:'background 0.2s',position:'relative',flexShrink:0}}>
-                            <span style={{position:'absolute',top:2,left:liberado?20:2,width:18,height:18,borderRadius:'50%',background:'white',transition:'left 0.2s',boxShadow:'0 1px 3px rgba(0,0,0,0.2)'}}/>
-                          </button>
-                          {liberado!==undefined && (
-                            <button onClick={()=>removerPermPessoa(pessoaDetalhe,modulo)} title="Remover (volta ao padrão da equipe)"
-                              style={{width:22,height:22,borderRadius:6,border:'1px solid var(--border)',background:'white',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}>
-                              <span className="icon" style={{fontSize:14,color:'var(--muted)'}}>undo</span>
+                <p style={{fontSize:12,color:'var(--muted)',marginBottom:10,lineHeight:1.5}}>Liberações individuais (somam com a equipe). Cada área tem suas funções — ex.: <strong>Ver</strong> a lista sem poder <strong>Criar/editar</strong>.</p>
+                {PERM_CATALOGO.map(area => (
+                  <div key={area.modulo} style={{background:'white',borderRadius:12,boxShadow:'var(--shadow-sm)',marginBottom:8,overflow:'hidden'}}>
+                    <div style={{display:'flex',alignItems:'center',gap:8,padding:'9px 14px',background:'var(--bg)',borderBottom:'1px solid var(--border)'}}>
+                      <span style={{fontSize:17,lineHeight:1}}>{area.emoji}</span>
+                      <p style={{fontSize:13,fontWeight:700}}>{area.label}</p>
+                    </div>
+                    {area.funcoes.map(fn => {
+                      const liberado = permPessoa(area.modulo, fn.acao)
+                      return (
+                        <div key={fn.acao} style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'9px 14px',borderBottom:'1px solid var(--border)'}}>
+                          <div>
+                            <p style={{fontSize:13}}>{fn.label}</p>
+                            {liberado===undefined && <p style={{fontSize:10,color:'var(--muted)'}}>Segue a equipe</p>}
+                            {liberado===true && <p style={{fontSize:10,color:'var(--success)',fontWeight:700}}>✓ Liberado</p>}
+                          </div>
+                          <div style={{display:'flex',gap:6}}>
+                            <button onClick={()=>togglePermPessoa(pessoaDetalhe,area.modulo,fn.acao,liberado)}
+                              title={liberado?'Desativar':'Ativar'}
+                              style={{width:40,height:22,borderRadius:11,border:'none',cursor:'pointer',background:liberado?'var(--success)':'var(--border)',transition:'background 0.2s',position:'relative',flexShrink:0}}>
+                              <span style={{position:'absolute',top:2,left:liberado?20:2,width:18,height:18,borderRadius:'50%',background:'white',transition:'left 0.2s',boxShadow:'0 1px 3px rgba(0,0,0,0.2)'}}/>
                             </button>
-                          )}
+                            {liberado!==undefined && (
+                              <button onClick={()=>removerPermPessoa(pessoaDetalhe,area.modulo,fn.acao)} title="Voltar ao padrão da equipe"
+                                style={{width:22,height:22,borderRadius:6,border:'1px solid var(--border)',background:'white',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}>
+                                <span className="icon" style={{fontSize:14,color:'var(--muted)'}}>undo</span>
+                              </button>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    )
-                  })}
-                </div>
+                      )
+                    })}
+                  </div>
+                ))}
               </div>
             )}
 
@@ -937,23 +907,25 @@ export default function Admin({ profile }: { profile?: Profile }) {
               <div style={{marginBottom:14}}>
                 <p style={{fontSize:12,color:'var(--muted)',marginBottom:10,lineHeight:1.5}}>Menus que esta pessoa pode ver. Ativar mostra o menu. Vazio = segue a equipe.</p>
                 <div style={{background:'white',borderRadius:12,overflow:'hidden',boxShadow:'var(--shadow-sm)'}}>
-                  {TODOS_MENUS.map(({modulo,label})=>{
-                    const perm = permsPessoa.find(x=>x.modulo===modulo && x.acao==='ver')
-                    const liberado = perm ? perm.permitido : undefined
+                  {MENUS_CATALOGO.map(({modulo,label,emoji})=>{
+                    const liberado = permPessoa(modulo,'ver')
                     return (
                       <div key={modulo} style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'10px 14px',borderBottom:'1px solid var(--border)'}}>
-                        <div>
-                          <p style={{fontSize:13,fontWeight:600}}>{label}</p>
-                          {liberado===undefined && <p style={{fontSize:10,color:'var(--muted)'}}>Segue a equipe</p>}
-                          {liberado===true && <p style={{fontSize:10,color:'var(--success)',fontWeight:700}}>✓ Menu visível</p>}
+                        <div style={{display:'flex',alignItems:'center',gap:10}}>
+                          <span style={{fontSize:17,lineHeight:1}}>{emoji}</span>
+                          <div>
+                            <p style={{fontSize:13,fontWeight:600}}>{label}</p>
+                            {liberado===undefined && <p style={{fontSize:10,color:'var(--muted)'}}>Segue a equipe</p>}
+                            {liberado===true && <p style={{fontSize:10,color:'var(--success)',fontWeight:700}}>✓ Menu visível</p>}
+                          </div>
                         </div>
                         <div style={{display:'flex',gap:6}}>
-                          <button onClick={()=>togglePermPessoa(pessoaDetalhe,modulo,liberado)}
+                          <button onClick={()=>togglePermPessoa(pessoaDetalhe,modulo,'ver',liberado)}
                             style={{width:40,height:22,borderRadius:11,border:'none',cursor:'pointer',background:liberado?'var(--primary)':'var(--border)',transition:'background 0.2s',position:'relative',flexShrink:0}}>
                             <span style={{position:'absolute',top:2,left:liberado?20:2,width:18,height:18,borderRadius:'50%',background:'white',transition:'left 0.2s',boxShadow:'0 1px 3px rgba(0,0,0,0.2)'}}/>
                           </button>
                           {liberado!==undefined && (
-                            <button onClick={()=>removerPermPessoa(pessoaDetalhe,modulo)} title="Voltar ao padrão"
+                            <button onClick={()=>removerPermPessoa(pessoaDetalhe,modulo,'ver')} title="Voltar ao padrão"
                               style={{width:22,height:22,borderRadius:6,border:'1px solid var(--border)',background:'white',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}>
                               <span className="icon" style={{fontSize:14,color:'var(--muted)'}}>undo</span>
                             </button>
@@ -1029,7 +1001,7 @@ export default function Admin({ profile }: { profile?: Profile }) {
               const cp = permsPessoa.find(x=>x.modulo==='cronograma_inteligente' && x.acao==='ver')
               const ativo = cp ? cp.permitido : false
               return (
-                <div onClick={()=>definirPermPessoa(pessoaDetalhe,'cronograma_inteligente', ativo?null:true)} style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'12px 14px',background:'white',borderRadius:12,boxShadow:'var(--shadow-sm)',marginBottom:12,cursor:'pointer'}}>
+                <div onClick={()=>definirPermPessoa(pessoaDetalhe,'cronograma_inteligente','ver', ativo?null:true)} style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'12px 14px',background:'white',borderRadius:12,boxShadow:'var(--shadow-sm)',marginBottom:12,cursor:'pointer'}}>
                   <div>
                     <p style={{fontSize:13,fontWeight:700}}>Cronograma Inteligente</p>
                     <p style={{fontSize:11,color:'var(--muted)'}}>Pode iniciar e ajustar o tempo dos blocos</p>
@@ -1094,29 +1066,64 @@ export default function Admin({ profile }: { profile?: Profile }) {
               <button className={`tab ${equipeSubAba==='acoes'?'active':''}`} onClick={()=>setEquipeSubAba('acoes')}>Liberações</button>
               <button className={`tab ${equipeSubAba==='menus'?'active':''}`} onClick={()=>setEquipeSubAba('menus')}>Menus visíveis</button>
             </div>
-            <div style={{background:'white',borderRadius:14,boxShadow:'var(--shadow-sm)',overflow:'hidden'}}>
-              {(equipeSubAba==='acoes'?TODOS_MODULOS:TODOS_MENUS).map(({modulo,label})=>{
-                const perm = permsEquipe.find(x=>x.modulo===modulo && x.acao==='ver')
-                const liberado = perm ? perm.permitido : false
-                return (
-                  <div key={modulo} style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'11px 16px',borderBottom:'1px solid var(--border)'}}>
-                    <p style={{fontSize:13,fontWeight:600}}>{label}</p>
-                    <div style={{display:'flex',gap:6,alignItems:'center'}}>
-                      <button onClick={()=>togglePermEquipe(equipePermSel.id,modulo)}
-                        style={{width:44,height:24,borderRadius:12,border:'none',cursor:'pointer',background:liberado?'var(--primary)':'var(--border)',transition:'background 0.2s',position:'relative',flexShrink:0}}>
-                        <span style={{position:'absolute',top:3,left:liberado?23:3,width:18,height:18,borderRadius:'50%',background:'white',transition:'left 0.2s',boxShadow:'0 1px 3px rgba(0,0,0,0.2)'}}/>
-                      </button>
-                      {perm && (
-                        <button onClick={()=>removerPermEquipe(equipePermSel.id,modulo)} title="Remover"
-                          style={{width:24,height:24,borderRadius:6,border:'1px solid var(--border)',background:'white',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}>
-                          <span className="icon" style={{fontSize:14,color:'var(--muted)'}}>delete</span>
-                        </button>
-                      )}
-                    </div>
+            {equipeSubAba==='acoes' ? (
+              PERM_CATALOGO.map(area => (
+                <div key={area.modulo} style={{background:'white',borderRadius:12,boxShadow:'var(--shadow-sm)',marginBottom:8,overflow:'hidden'}}>
+                  <div style={{display:'flex',alignItems:'center',gap:8,padding:'9px 16px',background:'var(--bg)',borderBottom:'1px solid var(--border)'}}>
+                    <span style={{fontSize:17,lineHeight:1}}>{area.emoji}</span>
+                    <p style={{fontSize:13,fontWeight:700}}>{area.label}</p>
                   </div>
-                )
-              })}
-            </div>
+                  {area.funcoes.map(fn => {
+                    const perm = permsEquipe.find(x=>x.modulo===area.modulo && x.acao===fn.acao)
+                    const liberado = perm ? perm.permitido : false
+                    return (
+                      <div key={fn.acao} style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'10px 16px',borderBottom:'1px solid var(--border)'}}>
+                        <p style={{fontSize:13}}>{fn.label}</p>
+                        <div style={{display:'flex',gap:6,alignItems:'center'}}>
+                          <button onClick={()=>togglePermEquipe(equipePermSel.id,area.modulo,fn.acao)}
+                            style={{width:44,height:24,borderRadius:12,border:'none',cursor:'pointer',background:liberado?'var(--primary)':'var(--border)',transition:'background 0.2s',position:'relative',flexShrink:0}}>
+                            <span style={{position:'absolute',top:3,left:liberado?23:3,width:18,height:18,borderRadius:'50%',background:'white',transition:'left 0.2s',boxShadow:'0 1px 3px rgba(0,0,0,0.2)'}}/>
+                          </button>
+                          {perm && (
+                            <button onClick={()=>removerPermEquipe(equipePermSel.id,area.modulo,fn.acao)} title="Remover"
+                              style={{width:24,height:24,borderRadius:6,border:'1px solid var(--border)',background:'white',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}>
+                              <span className="icon" style={{fontSize:14,color:'var(--muted)'}}>delete</span>
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              ))
+            ) : (
+              <div style={{background:'white',borderRadius:14,boxShadow:'var(--shadow-sm)',overflow:'hidden'}}>
+                {MENUS_CATALOGO.map(({modulo,label,emoji})=>{
+                  const perm = permsEquipe.find(x=>x.modulo===modulo && x.acao==='ver')
+                  const liberado = perm ? perm.permitido : false
+                  return (
+                    <div key={modulo} style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'11px 16px',borderBottom:'1px solid var(--border)'}}>
+                      <div style={{display:'flex',alignItems:'center',gap:10}}>
+                        <span style={{fontSize:17,lineHeight:1}}>{emoji}</span>
+                        <p style={{fontSize:13,fontWeight:600}}>{label}</p>
+                      </div>
+                      <div style={{display:'flex',gap:6,alignItems:'center'}}>
+                        <button onClick={()=>togglePermEquipe(equipePermSel.id,modulo,'ver')}
+                          style={{width:44,height:24,borderRadius:12,border:'none',cursor:'pointer',background:liberado?'var(--primary)':'var(--border)',transition:'background 0.2s',position:'relative',flexShrink:0}}>
+                          <span style={{position:'absolute',top:3,left:liberado?23:3,width:18,height:18,borderRadius:'50%',background:'white',transition:'left 0.2s',boxShadow:'0 1px 3px rgba(0,0,0,0.2)'}}/>
+                        </button>
+                        {perm && (
+                          <button onClick={()=>removerPermEquipe(equipePermSel.id,modulo,'ver')} title="Remover"
+                            style={{width:24,height:24,borderRadius:6,border:'1px solid var(--border)',background:'white',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}>
+                            <span className="icon" style={{fontSize:14,color:'var(--muted)'}}>delete</span>
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
           </>
         )
       )}
