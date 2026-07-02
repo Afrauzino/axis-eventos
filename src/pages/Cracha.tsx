@@ -6,8 +6,11 @@ import type { Profile } from '../App'
 
 type Pessoa = { id:string; name:string; photo_url:string|null; role_type?:string }
 type Equipe = { id:string; name:string }
-type Campo = { on:boolean; x:number; y:number; size:number; cor?:string }
+type Campo = { on:boolean; x:number; y:number; size:number; cor?:string; fonte?:string; negrito?:boolean; italico?:boolean; sublinhado?:boolean }
 type Campos = { foto:Campo; nome:Campo; equipe:Campo }
+
+const FONTES = ['Padrão','Arial','Helvetica','Georgia','Times New Roman','Verdana','Trebuchet MS','Tahoma','Courier New','Impact','Comic Sans MS','Brush Script MT']
+function fontFamilyDe(f?:string) { return (!f || f==='Padrão') ? 'inherit' : `'${f}', sans-serif` }
 
 const CM = 37.8 // 1cm ~ 37.8px (96dpi) — px = tamanho físico ao imprimir
 const TAMANHOS: Record<string,{label:string;w:number;h:number}> = {
@@ -17,8 +20,8 @@ const TAMANHOS: Record<string,{label:string;w:number;h:number}> = {
 }
 const CAMPOS_PADRAO: Campos = {
   foto:   { on:true, x:50, y:30, size:42 },
-  nome:   { on:true, x:50, y:64, size:12, cor:'#111827' },
-  equipe: { on:true, x:50, y:78, size:6,  cor:'#6b7280' },
+  nome:   { on:true, x:50, y:64, size:12, cor:'#111827', fonte:'Padrão', negrito:true,  italico:false, sublinhado:false },
+  equipe: { on:true, x:50, y:78, size:6,  cor:'#6b7280', fonte:'Padrão', negrito:false, italico:false, sublinhado:false },
 }
 
 function CrachaView({ pessoa, equipeTxt, tamanho, fundo, campos }: { pessoa:Pessoa; equipeTxt:string; tamanho:string; fundo:string|null; campos:Campos }) {
@@ -33,10 +36,10 @@ function CrachaView({ pessoa, equipeTxt, tamanho, fundo, campos }: { pessoa:Pess
         </div>
       )}
       {campos.nome.on && (
-        <div style={{position:'absolute',left:`${campos.nome.x}%`,top:`${campos.nome.y}%`,transform:'translate(-50%,-50%)',width:'92%',textAlign:'center',fontWeight:800,fontSize:px(campos.nome.size),color:campos.nome.cor,lineHeight:1.15}}>{pessoa.name}</div>
+        <div style={{position:'absolute',left:`${campos.nome.x}%`,top:`${campos.nome.y}%`,transform:'translate(-50%,-50%)',width:'92%',textAlign:'center',fontSize:px(campos.nome.size),color:campos.nome.cor,lineHeight:1.15,fontFamily:fontFamilyDe(campos.nome.fonte),fontWeight:campos.nome.negrito?800:400,fontStyle:campos.nome.italico?'italic':'normal',textDecoration:campos.nome.sublinhado?'underline':'none'}}>{pessoa.name}</div>
       )}
       {campos.equipe.on && equipeTxt && (
-        <div style={{position:'absolute',left:`${campos.equipe.x}%`,top:`${campos.equipe.y}%`,transform:'translate(-50%,-50%)',width:'92%',textAlign:'center',fontWeight:600,fontSize:px(campos.equipe.size),color:campos.equipe.cor}}>{equipeTxt}</div>
+        <div style={{position:'absolute',left:`${campos.equipe.x}%`,top:`${campos.equipe.y}%`,transform:'translate(-50%,-50%)',width:'92%',textAlign:'center',fontSize:px(campos.equipe.size),color:campos.equipe.cor,fontFamily:fontFamilyDe(campos.equipe.fonte),fontWeight:campos.equipe.negrito?700:400,fontStyle:campos.equipe.italico?'italic':'normal',textDecoration:campos.equipe.sublinhado?'underline':'none'}}>{equipeTxt}</div>
       )}
     </div>
   )
@@ -148,15 +151,32 @@ export default function Cracha({ profile }: { profile?: Profile }) {
           </button>
         </div>
         {c.on && (
-          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:8}}>
-            {([['x','Horizontal'],['y','Vertical'],['size','Tamanho']] as const).map(([f,lab])=>(
-              <div key={f}>
-                <label style={{fontSize:10,color:'var(--muted)'}}>{lab}</label>
-                <input type="range" min={f==='size'?4:0} max={f==='size'?60:100} value={(c as any)[f]} disabled={!canEdit} onChange={e=>setCampo(k,{[f]:parseInt(e.target.value)} as any)} style={{width:'100%'}}/>
+          <>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:8}}>
+              {([['x','Horizontal'],['y','Vertical'],['size','Tamanho']] as const).map(([f,lab])=>(
+                <div key={f}>
+                  <label style={{fontSize:10,color:'var(--muted)'}}>{lab}</label>
+                  <input type="range" min={f==='size'?4:0} max={f==='size'?60:100} value={(c as any)[f]} disabled={!canEdit} onChange={e=>setCampo(k,{[f]:parseInt(e.target.value)} as any)} style={{width:'100%'}}/>
+                </div>
+              ))}
+              {k!=='foto' && <div><label style={{fontSize:10,color:'var(--muted)'}}>Cor</label><input type="color" value={c.cor} disabled={!canEdit} onChange={e=>setCampo(k,{cor:e.target.value})} style={{width:'100%',height:28,border:'1px solid var(--border)',borderRadius:6}}/></div>}
+            </div>
+            {k!=='foto' && (
+              <div style={{display:'flex',alignItems:'center',gap:8,marginTop:8}}>
+                <select className="form-select" value={c.fonte??'Padrão'} disabled={!canEdit} onChange={e=>setCampo(k,{fonte:e.target.value})} style={{flex:1,fontFamily:fontFamilyDe(c.fonte)}}>
+                  {FONTES.map(f=><option key={f} value={f} style={{fontFamily:fontFamilyDe(f)}}>{f}</option>)}
+                </select>
+                {([['negrito','B',{fontWeight:800}],['italico','I',{fontStyle:'italic'}],['sublinhado','S',{textDecoration:'underline'}]] as const).map(([prop,lab,st])=>{
+                  const on=(c as any)[prop]
+                  return (
+                    <button key={prop} type="button" disabled={!canEdit} onClick={()=>setCampo(k,{[prop]:!on} as any)}
+                      style={{width:34,height:34,borderRadius:8,cursor:'pointer',fontFamily:'inherit',fontSize:14,...st,
+                        border:on?'2px solid var(--primary)':'1px solid var(--border)',background:on?'var(--primary-light)':'white',color:on?'var(--primary)':'var(--text2)'}}>{lab}</button>
+                  )
+                })}
               </div>
-            ))}
-            {k!=='foto' && <div><label style={{fontSize:10,color:'var(--muted)'}}>Cor</label><input type="color" value={c.cor} disabled={!canEdit} onChange={e=>setCampo(k,{cor:e.target.value})} style={{width:'100%',height:28,border:'1px solid var(--border)',borderRadius:6}}/></div>}
-          </div>
+            )}
+          </>
         )}
       </div>
     )
