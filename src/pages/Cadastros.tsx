@@ -5,6 +5,7 @@
  */
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import PrintOverlay from '../components/PrintOverlay'
 import { formatName, getInitials, isAdmin, canEditPessoas } from '../utils'
 import { useEvento } from '../hooks/useEvento'
 import type { Profile } from '../App'
@@ -32,6 +33,7 @@ export default function Cadastros({ profile }: { profile: Profile }) {
   const [form, setForm]       = useState({ name:'', phone:'', church:'', role_type:'encounterer' })
   const [editando, setEditando] = useState<Pessoa|null>(null)
   const [copiadoId, setCopiadoId] = useState<string|null>(null)
+  const [imprimir, setImprimir] = useState(false)
 
   async function copiarCodigo(p: Pessoa) {
     if (!p.invite_code) return
@@ -139,6 +141,9 @@ export default function Cadastros({ profile }: { profile: Profile }) {
           <button key={v} className={`chip ${filtroRole===v?'active':''}`} onClick={()=>setFiltroRole(v)}>{l}</button>
         ))}
       </div>
+      <button className="btn btn-outline btn-full btn-sm mb-3" onClick={()=>setImprimir(true)}>
+        <span className="icon icon-sm">print</span> Imprimir lista com fotos
+      </button>
 
       {/* Lista */}
       {loading ? [1,2,3,4].map(i=><div key={i} className="skeleton" style={{height:72,marginBottom:8,borderRadius:14}}/>) :
@@ -268,6 +273,29 @@ export default function Cadastros({ profile }: { profile: Profile }) {
             </form>
           </div>
         </div>
+      )}
+
+      {imprimir && (
+        <PrintOverlay titulo="Lista com fotos" onClose={()=>setImprimir(false)}>
+          {([['Encontristas','encounterer'],['Encontreiros','worker']] as const).map(([tit,rt])=>{
+            const arr = lista.filter(p=>p.role_type===rt)
+            return (
+              <div key={rt} className="print-break" style={{marginBottom:24}}>
+                <h2 style={{fontSize:18,fontWeight:800,marginBottom:12,borderBottom:'2px solid #111827',paddingBottom:4}}>{tit} ({arr.length})</h2>
+                <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(130px,1fr))',gap:12}}>
+                  {arr.map(p=>(
+                    <div key={p.id} style={{border:'1px solid #e5e7eb',borderRadius:8,padding:'10px 6px',textAlign:'center'}}>
+                      <div style={{width:78,height:78,borderRadius:'50%',margin:'0 auto 6px',overflow:'hidden',background:'#f3f4f6',display:'flex',alignItems:'center',justifyContent:'center'}}>
+                        {p.photo_url?<img src={p.photo_url} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}}/>:<span style={{fontWeight:700,color:'#6b7280',fontSize:20}}>{getInitials(p.name)}</span>}
+                      </div>
+                      <p style={{fontSize:12,fontWeight:600,lineHeight:1.2}}>{formatName(p.name)}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )
+          })}
+        </PrintOverlay>
       )}
     </div>
   )

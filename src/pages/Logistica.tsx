@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import FichaMedica from '../components/FichaMedica'
+import PrintOverlay from '../components/PrintOverlay'
 import { getInitials, isAdmin, formatName } from '../utils'
 import { useEvento } from '../hooks/useEvento'
 import type { Profile } from '../App'
@@ -24,6 +25,22 @@ export default function Logistica({ profile }: { profile?: Profile }) {
   const [aberto, setAberto] = useState<Pessoa|null>(null)
   const [novoItem, setNovoItem] = useState('')
   const [busca, setBusca] = useState('')
+  const [imprimir, setImprimir] = useState(false)
+  const [gerando, setGerando] = useState(false)
+  const [fichaMap, setFichaMap] = useState<Record<string,any>>({})
+  const [medMap, setMedMap]     = useState<Record<string,any[]>>({})
+
+  async function gerarPdfTodos() {
+    if (!evento) return
+    setGerando(true)
+    const [fi, mc] = await Promise.all([
+      supabase.from('saude_fichas').select('*').eq('event_id',evento.id),
+      supabase.from('med_controlados').select('*').eq('event_id',evento.id),
+    ])
+    const fm: Record<string,any> = {}; (fi.data??[]).forEach((f:any)=>{ fm[f.person_id]=f })
+    const mm: Record<string,any[]> = {}; (mc.data??[]).forEach((m:any)=>{ (mm[m.person_id]=mm[m.person_id]||[]).push(m) })
+    setFichaMap(fm); setMedMap(mm); setGerando(false); setImprimir(true)
+  }
 
   const canConfig = isAdmin(profile?.user_role)
 
@@ -123,6 +140,9 @@ export default function Logistica({ profile }: { profile?: Profile }) {
             <span className="icon icon-sm" style={{color:'var(--muted-light)'}}>search</span>
             <input placeholder="Buscar encontrista..." value={busca} onChange={e=>setBusca(e.target.value)}/>
           </div>
+          <button className="btn btn-outline btn-full btn-sm mb-3" onClick={gerarPdfTodos} disabled={gerando}>
+            <span className="icon icon-sm">picture_as_pdf</span> {gerando?'Gerando...':`Gerar PDF de todos (${filtrados.length}) — checklist + ficha`}
+          </button>
           {filtrados.length===0 ? <div className="empty"><p className="empty-desc">Nenhum encontrista.</p></div> :
           filtrados.map(e=>{
             const pct = progresso(e.id); const inf = info(e.id)
@@ -227,6 +247,50 @@ export default function Logistica({ profile }: { profile?: Profile }) {
         </div>
         )
       })()}
+
+      {imprimir && (
+        <PrintOverlay titulo="Logística — checklist + ficha médica" onClose={()=>setImprimir(false)}>
+          {filtrados.map(e=>{
+            const fi = fichaMap[e.id]
+            const meds = medMap[e.id] ?? []
+            return (
+              <div key={e.id} className="print-break" style={{marginBottom:24}}>
+                <div style={{display:'flex',alignItems:'center',gap:12,borderBottom:'2px solid #111827',paddingBottom:8,marginBottom:12}}>
+                  <div style={{width:56,height:56,borderRadius:'50%',overflow:'hidden',background:'#f3f4f6',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+                    {e.photo_url?<img src={e.photo_url} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}}/>:<span style={{fontWeight:700,color:'#6b7280'}}>{getInitials(e.name)}</span>}
+                  </div>
+                  <h2 style={{fontSize:18,fontWeight:800}}>{formatName(e.name)}</h2>
+                </div>
+
+                <h3 style={{fontSize:13,fontWeight:800,textTransform:'uppercase',color:'#374151',marginBottom:6}}>Checklist</h3>
+                <table style={{width:'100%',borderCollapse:'collapse',marginBottom:14,fontSize:13}}>
+                  <tbody>
+                    {itens.map(it=>{
+                      const r = respostaDe(e.id, it.id)
+                      return (
+                        <tr key={it.id} style={{borderBottom:'1px solid #e5e7eb'}}>
+                          <td style={{padding:'5px 4px'}}>{it.texto}</td>
+                          <td style={{padding:'5px 4px',textAlign:'right',fontWeight:700,width:70,color:r===true?'#16a34a':r===false?'#dc2626':'#9ca3af'}}>{r===true?'Sim':r===false?'Não':'—'}</td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+
+                <h3 style={{fontSize:13,fontWeight:800,textTransform:'uppercase',color:'#374151',marginBottom:6}}>Ficha médica</h3>
+                <p style={{fontSize:13,marginBottom:3}}>Restrição alimentar: <strong>{fi?.restricao_alimentar||fi?.restricoes_alimentares?`Sim${fi?.restricoes_alimentares?` — ${fi.restricoes_alimentares}`:''}`:'Não'}</strong></p>
+                <p style={{fontSize:13,marginBottom:3}}>Alergia a medicamentos: <strong>{fi?.alergia_medicamentos||fi?.alergias?`Sim${fi?.alergias?` — ${fi.alergias}`:''}`:'Não'}</strong></p>
+                <p style={{fontSize:13,marginBottom:3}}>Medicamento contínuo: <strong>{fi?.toma_controlado||meds.length?'Sim':'Não'}</strong></p>
+                {meds.length>0 && (
+                  <ul style={{fontSize:13,margin:'4px 0 0 18px'}}>
+                    {meds.map((m:any)=><li key={m.id}>{m.nome}{m.dosagem?` · ${m.dosagem}`:''}{m.intervalo_h?` · ${m.intervalo_h}/${m.intervalo_h}h`:''}</li>)}
+                  </ul>
+                )}
+              </div>
+            )
+          })}
+        </PrintOverlay>
+      )}
     </div>
   )
 }
