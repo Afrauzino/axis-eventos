@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import SubTabs from '../components/SubTabs'
 import { getInitials, fmtDataHora } from '../utils'
@@ -14,7 +13,6 @@ type Pessoa = { id:string; name:string; photo_url:string|null }
 const TIPOS = ['Medicamento','Atendimento geral','Pressão arterial','Glicemia','Curativo','Febre','Outro']
 
 export default function Saude({ profile }: { profile?: Profile }) {
-  const navigate = useNavigate()
   const { evento, loading: evLoading } = useEvento()
   const [atendimentos, setAtendimentos] = useState<Atendimento[]>([])
   const [pessoas, setPessoas]           = useState<Pessoa[]>([])
@@ -55,18 +53,6 @@ export default function Saude({ profile }: { profile?: Profile }) {
   return (
     <div className="page">
       <SubTabs group="saude"/>
-      {/* Atalhos */}
-      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,marginBottom:16}}>
-        <button className="btn btn-outline" onClick={()=>navigate('/saude/ficha')} style={{display:'flex',alignItems:'center',justifyContent:'center',gap:8,padding:'12px'}}>
-          <span className="icon icon-sm">assignment</span>
-          <span style={{fontSize:13,fontWeight:600}}>Fichas</span>
-        </button>
-        <button className="btn btn-outline" onClick={()=>navigate('/saude/medicamentos')} style={{display:'flex',alignItems:'center',justifyContent:'center',gap:8,padding:'12px'}}>
-          <span className="icon icon-sm">medication</span>
-          <span style={{fontSize:13,fontWeight:600}}>Medicamentos</span>
-        </button>
-      </div>
-
       <div className="section-title">Atendimentos recentes</div>
 
       {loading ? [1,2,3].map(i=><div key={i} className="skeleton" style={{height:68,marginBottom:8,borderRadius:14}}/>) :
@@ -79,15 +65,17 @@ export default function Saude({ profile }: { profile?: Profile }) {
       ) : atendimentos.map(a => {
         const p = getPessoa(a.person_id)
         return (
-          <div key={a.id} className="list-card" style={{cursor:'default'}}>
-            <div className="list-card-bar" style={{background:'#2B6CB0'}}/>
-            <div className="list-card-media" style={{background:'#EBF8FF'}}>
-              {p?.photo_url?<img src={p.photo_url} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}}/>:<span style={{fontSize:16,fontWeight:700,color:'#2B6CB0'}}>{getInitials(p?.name??'?')}</span>}
-            </div>
-            <div className="list-card-body">
-              <div className="list-card-time" style={{color:'#2B6CB0'}}>{fmtDataHora(a.timestamp)}</div>
-              <div className="list-card-title">{p?.name}</div>
-              <div className="list-card-desc">{a.medicine_name}{a.reason?` · ${a.reason}`:''}</div>
+          <div key={a.id} style={{background:'white',borderRadius:12,boxShadow:'0 1px 5px rgba(0,0,0,0.12)',marginBottom:10,overflow:'hidden',display:'flex'}}>
+            <div style={{width:6,alignSelf:'stretch',background:'var(--primary)',flexShrink:0}}/>
+            <div style={{flex:1,minWidth:0,display:'flex',alignItems:'center',gap:14,padding:'16px 15px'}}>
+              <div style={{width:58,height:58,borderRadius:'50%',background:'var(--primary-light)',display:'flex',alignItems:'center',justifyContent:'center',overflow:'hidden',flexShrink:0}}>
+                {p?.photo_url?<img src={p.photo_url} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}}/>:<span style={{fontSize:20,fontWeight:700,color:'var(--primary)'}}>{getInitials(p?.name??'?')}</span>}
+              </div>
+              <div style={{flex:1,minWidth:0}}>
+                <p style={{fontSize:11,fontWeight:700,color:'var(--primary)',marginBottom:2}}>{fmtDataHora(a.timestamp)}</p>
+                <p style={{fontWeight:700,fontSize:15,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{p?.name}</p>
+                <p style={{fontSize:12,color:'var(--muted)',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{a.medicine_name}{a.reason?` · ${a.reason}`:''}</p>
+              </div>
             </div>
           </div>
         )

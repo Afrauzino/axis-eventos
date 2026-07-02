@@ -127,16 +127,21 @@ export default function Logistica({ profile }: { profile?: Profile }) {
             return (
               <div key={e.id} style={{background:'white',borderRadius:12,boxShadow:'0 1px 5px rgba(0,0,0,0.12)',marginBottom:10,overflow:'hidden',display:'flex'}}>
                 <div style={{width:6,alignSelf:'stretch',background:'var(--primary)',flexShrink:0}}/>
-                <button onClick={()=>setAberto(e)} style={{flex:1,minWidth:0,textAlign:'left',fontFamily:'inherit',background:'none',border:'none',padding:'16px 15px',cursor:'pointer',display:'flex',alignItems:'center',gap:14}}>
-                  <Avatar p={e} size={52}/>
-                  <div style={{flex:1,minWidth:0}}>
-                    <p style={{fontWeight:700,fontSize:15,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{formatName(e.name)}</p>
-                    <div style={{display:'flex',gap:6,marginTop:3}}>
-                      {inf.concluido && <span style={{fontSize:10,fontWeight:700,color:'white',background:'var(--success)',padding:'2px 8px',borderRadius:99}}>Concluído</span>}
-                      {inf.toma_controlado && <span style={{fontSize:10,fontWeight:700,color:'#C53030',background:'#FFF5F5',padding:'2px 8px',borderRadius:99}}>💊 Contínuo</span>}
+                <button onClick={()=>setAberto(e)} style={{flex:1,minWidth:0,textAlign:'left',fontFamily:'inherit',background:'none',border:'none',padding:'14px 15px',cursor:'pointer'}}>
+                  <div style={{display:'flex',alignItems:'center',gap:14,marginBottom:10}}>
+                    <Avatar p={e} size={52}/>
+                    <div style={{flex:1,minWidth:0}}>
+                      <p style={{fontWeight:700,fontSize:15,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{formatName(e.name)}</p>
+                      <div style={{display:'flex',gap:6,marginTop:3}}>
+                        {inf.concluido && <span style={{fontSize:10,fontWeight:700,color:'white',background:'var(--success)',padding:'2px 8px',borderRadius:99}}>Concluído</span>}
+                        {inf.toma_controlado && <span style={{fontSize:10,fontWeight:700,color:'#C53030',background:'#FFF5F5',padding:'2px 8px',borderRadius:99}}>💊 Contínuo</span>}
+                      </div>
                     </div>
+                    <span style={{fontSize:15,fontWeight:800,color:'var(--primary)',flexShrink:0}}>{pct}%</span>
                   </div>
-                  <span style={{fontSize:15,fontWeight:800,color:'var(--primary)',flexShrink:0}}>{pct}%</span>
+                  <div style={{height:6,background:'var(--bg)',borderRadius:99,overflow:'hidden'}}>
+                    <div style={{height:'100%',width:`${pct}%`,background:'var(--primary)',borderRadius:99,transition:'width 0.3s'}}/>
+                  </div>
                 </button>
               </div>
             )
