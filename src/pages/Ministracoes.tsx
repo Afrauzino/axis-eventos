@@ -6,6 +6,7 @@ import { useEvento } from '../hooks/useEvento'
 import PersonSelect from '../components/PersonSelect'
 import RichEditor from '../components/RichEditor'
 import ArquivosModulo from '../components/ArquivosModulo'
+import PrintOverlay from '../components/PrintOverlay'
 import EmojiGrid from '../components/EmojiGrid'
 import type { Profile } from '../App'
 
@@ -34,6 +35,7 @@ export default function Ministracoes({ profile }: { profile?: Profile }) {
   const [detalhe, setDetalhe]   = useState<Ministracao|null>(null)
   const [abaDetalhe, setAbaDetalhe] = useState<'info'|'sermao'|'anotacoes'>('info')
   const [modal, setModal]       = useState(false)
+  const [imprimir, setImprimir] = useState<Ministracao|null>(null)
   const [editando, setEditando] = useState<Ministracao|null>(null)
   const [salvando, setSalvando] = useState(false)
   const [erro, setErro]         = useState('')
@@ -256,6 +258,9 @@ export default function Ministracoes({ profile }: { profile?: Profile }) {
                       ) : null
                     })()}
 
+                    <button className="btn btn-outline btn-full btn-sm" onClick={()=>setImprimir(detalhe)} style={{marginBottom:8}}>
+                      <span className="icon icon-sm">print</span> Imprimir ministração
+                    </button>
                     {canEdit && (
                       <div style={{display:'flex',gap:8}}>
                         <button className="btn btn-ghost" style={{flex:1}} onClick={()=>{setDetalhe(null);abrirEdicao(detalhe)}}>Editar</button>
@@ -421,6 +426,26 @@ export default function Ministracoes({ profile }: { profile?: Profile }) {
           </div>
         </div>
       )}
+
+      {imprimir && (() => {
+        const min = getPessoa(imprimir.ministrante_id)
+        let blocos: {tipo:string;conteudo:string}[] = []
+        if (imprimir.conteudo_sermao) { try { blocos = JSON.parse(imprimir.conteudo_sermao) } catch { blocos = [{tipo:'Esboço',conteudo:imprimir.conteudo_sermao}] } }
+        return (
+          <PrintOverlay titulo={`Ministração — ${imprimir.titulo}`} onClose={()=>setImprimir(null)}>
+            <h1 style={{fontSize:22,fontWeight:800,marginBottom:4}}>{imprimir.titulo}</h1>
+            <p style={{fontSize:13,color:'#374151'}}>{fmtData(imprimir.hora_inicio)} · {fmtHora(imprimir.hora_inicio)} — {fmtHora(imprimir.hora_fim)}{imprimir.local?` · ${imprimir.local}`:''}</p>
+            {min && <p style={{fontSize:13,color:'#374151',marginBottom:12}}>Ministrante: {min.name}</p>}
+            {blocos.length===0 ? <p style={{fontSize:13,color:'#6b7280',marginTop:12}}>Sem conteúdo cadastrado.</p> :
+            blocos.map((bl,i)=>(
+              <div key={i} style={{marginBottom:16}}>
+                <p style={{fontSize:12,fontWeight:800,textTransform:'uppercase',color:'#374151',marginBottom:6}}>{bl.tipo}</p>
+                {bl.tipo==='Imagem' ? <img src={bl.conteudo} alt="" style={{maxWidth:'100%'}}/> : <div style={{fontSize:14,lineHeight:1.7}} dangerouslySetInnerHTML={{__html:bl.conteudo}}/>}
+              </div>
+            ))}
+          </PrintOverlay>
+        )
+      })()}
     </div>
   )
 }

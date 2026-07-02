@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import ArquivosModulo from '../components/ArquivosModulo'
+import PrintOverlay from '../components/PrintOverlay'
 import { getInitials, isAdmin } from '../utils'
 import PersonSelect from '../components/PersonSelect'
 import type { Profile } from '../App'
@@ -43,6 +44,7 @@ export default function TeatroDetalhe({ profile }: { profile?: Profile }) {
   const [ministrante, setMinistrante] = useState<Pessoa|null>(null)
   const [midias, setMidias]     = useState<Midia[]>([])
   const [aba, setAba]           = useState<'cenas'|'elenco'|'midia'|'arquivos'>('cenas')
+  const [imprimir, setImprimir] = useState(false)
   const [modalMidia, setModalMidia] = useState(false)
   const [formMidia, setFormMidia]   = useState<{tipo:'foto'|'audio'|'video';titulo:string;url:string}>({ tipo:'foto', titulo:'', url:'' })
   const [salvandoMidia, setSalvandoMidia] = useState(false)
@@ -279,6 +281,9 @@ export default function TeatroDetalhe({ profile }: { profile?: Profile }) {
         </button>
       )}
 
+      <button className="btn btn-outline btn-full btn-sm mb-3" onClick={()=>setImprimir(true)}>
+        <span className="icon icon-sm">print</span> Imprimir este teatro
+      </button>
       <div className="tabs mb-4">
         <button className={`tab ${aba==='cenas'?'active':''}`} onClick={()=>setAba('cenas')}>Cenas ({cenas.length})</button>
         <button className={`tab ${aba==='elenco'?'active':''}`} onClick={()=>setAba('elenco')}>Elenco ({elenco.length})</button>
@@ -595,6 +600,34 @@ export default function TeatroDetalhe({ profile }: { profile?: Profile }) {
             </form>
           </div>
         </div>
+      )}
+
+      {imprimir && teatro && (
+        <PrintOverlay titulo={`Teatro — ${teatro.nome}`} onClose={()=>setImprimir(false)}>
+          <h1 style={{fontSize:22,fontWeight:800,marginBottom:4}}>{teatro.nome}</h1>
+          {teatro.local && <p style={{fontSize:13,color:'#374151',marginBottom:2}}>Local: {teatro.local}</p>}
+          {ministracao && <p style={{fontSize:13,color:'#374151',marginBottom:2}}>Ministração: {ministracao.titulo}{ministrante?` · ${ministrante.name}`:''}</p>}
+          {teatro.descricao && <p style={{fontSize:13,marginTop:6,marginBottom:12}}>{teatro.descricao}</p>}
+
+          <h2 style={{fontSize:15,fontWeight:800,textTransform:'uppercase',color:'#374151',margin:'14px 0 8px',borderBottom:'2px solid #111827',paddingBottom:4}}>Cenas ({cenas.length})</h2>
+          {cenas.map((c,i)=>{
+            const pg=getPersonagem(c.personagem_id); const pe=getPessoa(c.person_id); const obj=getObjeto(c.objeto_id)
+            return (
+              <div key={c.id} style={{marginBottom:12,paddingBottom:10,borderBottom:'1px solid #e5e7eb'}}>
+                <p style={{fontWeight:800,fontSize:14}}>{c.ordem}. {c.titulo || `Cena ${c.ordem}`}</p>
+                {c.deixa && <p style={{fontSize:13,margin:'2px 0'}}><strong>Deixa:</strong> {c.deixa}</p>}
+                {c.acao && <p style={{fontSize:13,margin:'2px 0'}}><strong>Ação:</strong> {c.acao}</p>}
+                {c.fala && <p style={{fontSize:13,margin:'2px 0',fontStyle:'italic'}}>"{c.fala}"</p>}
+                {pg && <p style={{fontSize:13,margin:'2px 0'}}><strong>Personagem:</strong> {pg.nome}{pe?` — ${pe.name}`:''}</p>}
+                {obj && <p style={{fontSize:13,margin:'2px 0'}}><strong>Objeto:</strong> {obj.nome}</p>}
+                {c.trilha_sonora && <p style={{fontSize:13,margin:'2px 0'}}><strong>Som:</strong> {c.trilha_sonora}</p>}
+              </div>
+            )
+          })}
+
+          <h2 style={{fontSize:15,fontWeight:800,textTransform:'uppercase',color:'#374151',margin:'14px 0 8px',borderBottom:'2px solid #111827',paddingBottom:4}}>Elenco ({elenco.length})</h2>
+          {elenco.map(el=>{ const p=getPessoa(el.person_id); const pg=getPersonagem(el.personagem_id); return p ? <p key={el.id} style={{fontSize:13,margin:'2px 0'}}>{p.name}{pg?` — ${pg.nome}`:''}</p> : null })}
+        </PrintOverlay>
       )}
     </div>
   )
