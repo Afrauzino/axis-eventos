@@ -52,11 +52,11 @@ export default function Relatorios({ profile }: { profile?: Profile }) {
   const totalPendente= stats.pa.filter((p:any)=>p.status==='pendente').reduce((s:number,p:any)=>s+p.valor,0)
 
   const relatorios = [
-    { label:'Lista de Encontristas', desc:`${stats.enc.length} registros`, icon:'group', data:stats.enc, nome:'encontristas' },
-    { label:'Lista de Encontreiros', desc:`${stats.trb.length} registros`, icon:'groups', data:stats.trb, nome:'encontreiros' },
-    { label:'Lista de Equipes',      desc:`${stats.eq.length} equipes`,    icon:'shield', data:stats.eq, nome:'equipes' },
-    { label:'Teatros',               desc:`${stats.te.length} teatros`,    icon:'theater_comedy', data:stats.te, nome:'teatros' },
-    { label:'Relatorio Financeiro',  desc:`R$ ${totalPago.toFixed(2)} pagos · R$ ${totalPendente.toFixed(2)} pendentes`, icon:'account_balance_wallet', data:stats.pa, nome:'financeiro' },
+    { label:'Lista de Encontristas', desc:`${stats.enc.length} registros`, emoji:'🙋', data:stats.enc, nome:'encontristas' },
+    { label:'Lista de Encontreiros', desc:`${stats.trb.length} registros`, emoji:'🤝', data:stats.trb, nome:'encontreiros' },
+    { label:'Lista de Equipes',      desc:`${stats.eq.length} equipes`,    emoji:'🛡️', data:stats.eq, nome:'equipes' },
+    { label:'Teatros',               desc:`${stats.te.length} teatros`,    emoji:'🎭', data:stats.te, nome:'teatros' },
+    { label:'Relatorio Financeiro',  desc:`R$ ${totalPago.toFixed(2)} pagos · R$ ${totalPendente.toFixed(2)} pendentes`, emoji:'💰', data:stats.pa, nome:'financeiro' },
   ]
 
   return (
@@ -73,8 +73,8 @@ export default function Relatorios({ profile }: { profile?: Profile }) {
 
       {relatorios.map(r=>(
         <div key={r.nome} style={{background:'white',borderRadius:14,boxShadow:'var(--shadow-sm)',marginBottom:8,padding:'14px 16px',display:'flex',alignItems:'center',gap:12}}>
-          <div style={{width:44,height:44,borderRadius:12,background:'var(--primary-light)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
-            <span className="icon" style={{color:'var(--primary)'}}>{r.icon}</span>
+          <div style={{width:44,height:44,borderRadius:12,background:'var(--primary-light)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,fontSize:22,lineHeight:1}}>
+            {r.emoji}
           </div>
           <div style={{flex:1}}>
             <p style={{fontWeight:700,fontSize:14,marginBottom:2}}>{r.label}</p>
