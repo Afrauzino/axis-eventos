@@ -433,9 +433,18 @@ export default function Ministracoes({ profile }: { profile?: Profile }) {
         if (imprimir.conteudo_sermao) { try { blocos = JSON.parse(imprimir.conteudo_sermao) } catch { blocos = [{tipo:'Esboço',conteudo:imprimir.conteudo_sermao}] } }
         return (
           <PrintOverlay titulo={`Ministração — ${imprimir.titulo}`} onClose={()=>setImprimir(null)}>
-            <h1 style={{fontSize:22,fontWeight:800,marginBottom:4}}>{imprimir.titulo}</h1>
-            <p style={{fontSize:13,color:'#374151'}}>{fmtData(imprimir.hora_inicio)} · {fmtHora(imprimir.hora_inicio)} — {fmtHora(imprimir.hora_fim)}{imprimir.local?` · ${imprimir.local}`:''}</p>
-            {min && <p style={{fontSize:13,color:'#374151',marginBottom:12}}>Ministrante: {min.name}</p>}
+            {/* Cabeçalho no estilo do app (header colorido) + cara do ministrante */}
+            <div style={{background:(imprimir as any).cor ?? '#6B46C1',borderRadius:14,padding:'16px 20px',color:'white',marginBottom:16,display:'flex',alignItems:'center',gap:14,WebkitPrintColorAdjust:'exact',printColorAdjust:'exact'} as any}>
+              <div style={{width:66,height:66,borderRadius:'50%',overflow:'hidden',flexShrink:0,background:'rgba(255,255,255,0.25)',border:'2px solid rgba(255,255,255,0.6)',display:'flex',alignItems:'center',justifyContent:'center'}}>
+                {min?.photo_url ? <img src={min.photo_url} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}}/> : <span style={{fontSize:30}}>{(imprimir as any).emoji || '🎤'}</span>}
+              </div>
+              <div style={{flex:1,minWidth:0}}>
+                <p style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.06em',opacity:0.8,marginBottom:3}}>Ministração</p>
+                <p style={{fontSize:20,fontWeight:800,lineHeight:1.15}}>{imprimir.titulo}</p>
+                <p style={{fontSize:13,opacity:0.9,marginTop:3}}>{fmtData(imprimir.hora_inicio)} · {fmtHora(imprimir.hora_inicio)} — {fmtHora(imprimir.hora_fim)}{imprimir.local?` · ${imprimir.local}`:''}</p>
+                {min && <p style={{fontSize:13,opacity:0.95,marginTop:2,fontWeight:600}}>Ministrante: {min.name}</p>}
+              </div>
+            </div>
             {blocos.length===0 ? <p style={{fontSize:13,color:'#6b7280',marginTop:12}}>Sem conteúdo cadastrado.</p> :
             blocos.map((bl,i)=>(
               <div key={i} style={{marginBottom:16}}>
