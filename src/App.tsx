@@ -40,7 +40,6 @@ import Relatorios from './pages/Relatorios'
 import Doacoes from './pages/Doacoes'
 import MenusAdmin from './pages/MenusAdmin'
 import Ranking from './pages/Ranking'
-import PermissoesAdmin from './pages/PermissoesAdmin'
 import Admin from './pages/Admin'
 import Perfil from './pages/Perfil'
 
@@ -93,7 +92,6 @@ function AppRoutes({ profile, onProfileUpdate }: { profile: Profile; onProfileUp
       <Route path="/doacoes"               element={<Doacoes profile={profile} />} />
       <Route path="/admin/menus"           element={<MenusAdmin profile={profile} />} />
       <Route path="/ranking"               element={<Ranking profile={profile} />} />
-      <Route path="/admin/permissoes"      element={<PermissoesAdmin profile={profile} />} />
       <Route path="/admin"                 element={<Admin profile={profile} />} />
       <Route path="/perfil"                element={<Perfil profile={profile} onUpdate={onProfileUpdate} />} />
       <Route path="*"                      element={<Navigate to="/" replace />} />
@@ -129,7 +127,6 @@ const TITULOS_ROTA: Record<string,string> = {
   '/locais': 'Locais',
   '/admin': 'Administração',
   '/admin/menus': 'Administração',
-  '/admin/permissoes': 'Permissões',
   '/correio': 'Correio',
   '/logistica': 'Logística',
   '/midia': 'Mídia',
