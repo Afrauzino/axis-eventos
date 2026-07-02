@@ -20,3 +20,8 @@ _Detalhes e "onde mexer" em `docs/HANDOFF.md`._
 
 ## Novas ideias (adicionar abaixo, com data)
 <!-- ex: - 2026-07-02 — [ ] descrição da ideia -->
+- 2026-07-02 — [x] Correio impressão: mostrar a bolinha com a foto da pessoa. [feito]
+- 2026-07-02 — [x] Cronograma impressão: refletir exatamente o que está na tela (mesmos grupos/filtro,
+  visual de card); "com detalhes" só estende o card com ministração/teatro (coloca os teatros). [feito]
+- 2026-07-02 — [x] Crachá: PNG estava "duro" pra mover — desligado o drag nativo (draggable=false) e
+  camadas renderizadas por cima pra pegar fácil. [feito]

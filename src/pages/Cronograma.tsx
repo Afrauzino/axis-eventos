@@ -327,7 +327,7 @@ export default function Cronograma({ profile }: { profile?: Profile }) {
       ))}
 
       {canEdit && (
-        <button className="fab" onClick={() => { setEditando(null); setForm({titulo:'',tipo:'atividade',hora_inicio:nowLocalInput(),hora_fim:nowLocalInput(),duracao_minutos:'60',local:'',descricao:'',ministracao_id:'',theater_id:''}); setErro(''); setModal(true) }}>
+        <button className="fab" onClick={() => { setEditando(null); setForm({titulo:'',tipo:'atividade',hora_inicio:nowLocalInput(),hora_fim:nowLocalInput(),duracao_minutos:'60',local:'',descricao:'',ministracao_id:'',theater_id:'',cardapio_id:''}); setErro(''); setModal(true) }}>
           <span className="icon">add</span>
         </button>
       )}
@@ -526,51 +526,50 @@ export default function Cronograma({ profile }: { profile?: Profile }) {
         <CronometroPopup item={cronometro} podeControlar={podeCronometro} onClose={()=>{setCronometro(null);carregar()}} onUpdate={carregar} />
       )}
 
-      {/* ===== IMPRESSÃO ===== */}
-      {imprimir && (() => {
-        const ordenados = [...itens].sort((a,b)=>a.hora_inicio.localeCompare(b.hora_inicio))
-        const porDia: Record<string,Item[]> = {}
-        ordenados.forEach(it=>{ const k=new Date(it.hora_inicio).toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'long'}); (porDia[k]=porDia[k]||[]).push(it) })
-        const nomeTipo = (it:Item)=> tiposDB.find(t=>t.nome.toLowerCase()===it.tipo.toLowerCase())?.nome ?? it.tipo
-        return (
-          <PrintOverlay titulo={imprimir==='inteiro'?'Cronograma completo':'Cronograma detalhado'} onClose={()=>setImprimir(null)}>
-            {Object.entries(porDia).map(([dia,items])=>(
-              <div key={dia} style={{marginBottom:20}}>
-                <h2 style={{fontSize:17,fontWeight:800,marginBottom:10,borderBottom:'2px solid #111827',paddingBottom:4,textTransform:'capitalize'}}>{dia}</h2>
-                {items.map(it=>{
-                  const { min, tea, ministrante } = getInfo(it)
+      {/* ===== IMPRESSÃO — reflete exatamente o que está na tela (mesmos grupos/filtro) ===== */}
+      {imprimir && (
+        <PrintOverlay titulo={imprimir==='inteiro'?'Cronograma':'Cronograma com detalhes'} onClose={()=>setImprimir(null)}>
+          {Object.keys(grupos).length===0
+            ? <p style={{fontSize:13,color:'#6b7280'}}>Nada para o filtro atual.</p>
+            : Object.entries(grupos).map(([hora,items])=>(
+              <div key={hora}>
+                <div style={{fontWeight:800,fontSize:13,color:'#6b7280',margin:'14px 0 6px'}}>{hora}</div>
+                {items.map(item=>{
+                  const { min, tea, ministrante } = getInfo(item)
+                  const cor = tiposDB.find(t=>t.nome.toLowerCase()===item.tipo.toLowerCase())?.cor ?? TIPO_COR_FALLBACK[item.tipo] ?? '#00A99D'
+                  const tipoNome = tiposDB.find(t=>t.nome.toLowerCase()===item.tipo.toLowerCase())?.nome ?? item.tipo
                   return (
-                    <div key={it.id} style={{borderLeft:'3px solid #d1d5db',paddingLeft:10,marginBottom:imprimir==='detalhado'?12:6,breakInside:'avoid'}}>
-                      <p style={{fontSize:13}}>
-                        <strong>{fmtHora(it.hora_inicio)}–{fmtHora(it.hora_fim)}</strong> · {min?.titulo ?? it.titulo}
-                        <span style={{color:'#6b7280'}}> ({nomeTipo(it)})</span>
-                      </p>
-                      {imprimir==='inteiro' ? (
+                    <div key={item.id} style={{display:'flex',border:'1px solid #e5e7eb',borderRadius:8,overflow:'hidden',marginBottom:8,breakInside:'avoid'}}>
+                      <div style={{width:5,background:cor,flexShrink:0}}/>
+                      <div style={{padding:'8px 12px',flex:1}}>
+                        <p style={{fontSize:12,color:'#6b7280'}}>{fmtHora(item.hora_inicio)} — {fmtHora(item.hora_fim)}</p>
+                        <p style={{fontWeight:700,fontSize:14,...(item.status==='concluido'?{textDecoration:'line-through',opacity:0.6}:{})}}>{min?.titulo ?? item.titulo}</p>
                         <p style={{fontSize:12,color:'#6b7280'}}>
-                          {it.local?`Local: ${it.local}`:''}{it.local?' · ':''}{STATUS_CFG[it.status]?.label ?? it.status}
+                          {tipoNome}{item.local?` · ${item.local}`:''}{ministrante?` · ${ministrante.name.split(' ')[0]}`:''}{tea?` · ${tea.nome}`:''}
                         </p>
-                      ) : (
-                        <div style={{fontSize:12,color:'#374151',marginTop:2}}>
-                          {min && <>
-                            {ministrante && <p>Ministrante: {ministrante.name}</p>}
-                            {min.tema && <p>Tema: {min.tema}</p>}
-                            {min.descricao && <p style={{whiteSpace:'pre-wrap'}}>{min.descricao}</p>}
-                          </>}
-                          {tea && <>
-                            <p>Teatro: {tea.nome}</p>
-                            {tea.descricao && <p style={{whiteSpace:'pre-wrap'}}>{tea.descricao}</p>}
-                          </>}
-                          {!min && !tea && it.descricao && <p style={{whiteSpace:'pre-wrap'}}>{it.descricao}</p>}
-                        </div>
-                      )}
+                        {imprimir==='detalhado' && (min || tea || item.descricao) && (
+                          <div style={{marginTop:6,fontSize:12,color:'#374151',borderTop:'1px dashed #e5e7eb',paddingTop:6}}>
+                            {min && <>
+                              {ministrante && <p>Ministrante: {ministrante.name}</p>}
+                              {min.tema && <p>Tema: {min.tema}</p>}
+                              {min.descricao && <p style={{whiteSpace:'pre-wrap'}}>{min.descricao}</p>}
+                            </>}
+                            {tea && <>
+                              <p style={{fontWeight:600,marginTop:min?4:0}}>🎭 Teatro: {tea.nome}</p>
+                              {tea.local && <p>Local: {tea.local}</p>}
+                              {tea.descricao && <p style={{whiteSpace:'pre-wrap'}}>{tea.descricao}</p>}
+                            </>}
+                            {!min && !tea && item.descricao && <p style={{whiteSpace:'pre-wrap'}}>{item.descricao}</p>}
+                          </div>
+                        )}
+                      </div>
                     </div>
                   )
                 })}
               </div>
             ))}
-          </PrintOverlay>
-        )
-      })()}
+        </PrintOverlay>
+      )}
     </div>
   )
 }

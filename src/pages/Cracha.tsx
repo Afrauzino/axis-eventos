@@ -80,12 +80,6 @@ function CrachaView({ pessoa, equipeTxt, m, edit, sel, onSelect, onMove }:{
     <div ref={ref} onPointerMove={pointerMove} onPointerUp={pointerUp} onPointerLeave={pointerUp} onClick={e=>{ if(edit && e.target===e.currentTarget) onSelect?.('') }}
       style={{position:'relative',width:W,height:H,background:m.fundo?`center/cover no-repeat url(${m.fundo})`:'#f3f4f6',border:'1px solid #e5e7eb',borderRadius:6,overflow:'hidden',flexShrink:0,touchAction:'none'}}>
 
-      {/* PNGs em camadas (independentes) */}
-      {m.imagens.map(im=>(
-        <img key={im.id} src={im.url} alt="" onPointerDown={e=>pointerDown('img:'+im.id,e)}
-          style={{position:'absolute',left:`${im.x}%`,top:`${im.y}%`,transform:'translate(-50%,-50%)',width:px(im.w),height:'auto',pointerEvents:edit?'auto':'none',...selStyle('img:'+im.id)}}/>
-      ))}
-
       {cfg.foto.on && (
         <div onPointerDown={e=>pointerDown('foto',e)} style={{position:'absolute',left:`${cfg.foto.x}%`,top:`${cfg.foto.y}%`,transform:'translate(-50%,-50%)',width:fotoW,height:fotoH,borderRadius:fotoQuad?fotoW*0.12:'50%',overflow:'hidden',background:'#e5e7eb',display:'flex',alignItems:'center',justifyContent:'center',border:'2px solid white',boxShadow:'0 1px 4px rgba(0,0,0,0.2)',...selStyle('foto')}}>
           {pessoa.photo_url?<img src={pessoa.photo_url} alt="" style={{width:'100%',height:'100%',objectFit:'cover',pointerEvents:'none'}}/>:<span style={{fontWeight:700,fontSize:fotoW*0.35,color:'#6b7280'}}>{getInitials(pessoa.name)}</span>}
@@ -99,6 +93,12 @@ function CrachaView({ pessoa, equipeTxt, m, edit, sel, onSelect, onMove }:{
       )}
       {cfg.textos.map(tx=>(
         <div key={tx.id} onPointerDown={e=>pointerDown('t:'+tx.id,e)} style={{position:'absolute',left:`${tx.x}%`,top:`${tx.y}%`,transform:'translate(-50%,-50%)',width:'92%',textAlign:'center',...estiloTexto(tx,px(tx.size)),...selStyle('t:'+tx.id)}}>{tx.conteudo||' '}</div>
+      ))}
+
+      {/* PNGs em camadas (independentes) — por cima, fáceis de arrastar */}
+      {m.imagens.map(im=>(
+        <img key={im.id} src={im.url} alt="" draggable={false} onPointerDown={e=>pointerDown('img:'+im.id,e)}
+          style={{position:'absolute',left:`${im.x}%`,top:`${im.y}%`,transform:'translate(-50%,-50%)',width:px(im.w),height:'auto',pointerEvents:edit?'auto':'none',userSelect:'none',WebkitUserDrag:'none',touchAction:'none',...selStyle('img:'+im.id)} as any}/>
       ))}
     </div>
   )

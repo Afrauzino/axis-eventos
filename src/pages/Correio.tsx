@@ -450,7 +450,10 @@ export default function Correio({ profile }: { profile?: Profile }) {
             const padris = padrinhos.filter(p=>p.afiliado_id===af.id).map(p=>todasPessoas.find(t=>t.id===p.padrinho_id)).filter(Boolean) as Pessoa[]
             return (
               <div key={af.id} style={{border:'1px solid #e5e7eb',borderRadius:8,padding:'12px 14px',marginBottom:12,breakInside:'avoid'}}>
-                <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:6}}>
+                <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:6}}>
+                  <div style={{width:44,height:44,borderRadius:'50%',overflow:'hidden',flexShrink:0,background:'#f3f4f6',display:'flex',alignItems:'center',justifyContent:'center'}}>
+                    {af.photo_url?<img src={af.photo_url} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}}/>:<span style={{fontWeight:700,color:'#6b7280',fontSize:15}}>{getInitials(af.name)}</span>}
+                  </div>
                   <p style={{fontWeight:800,fontSize:15,flex:1}}>{formatName(af.name)}</p>
                   <span style={{fontSize:10,fontWeight:700,color:'white',background:st.cor,padding:'2px 8px',borderRadius:99}}>{st.label}</span>
                 </div>
