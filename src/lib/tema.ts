@@ -72,4 +72,26 @@ export async function salvarCor(hex: string) {
   }
 }
 
+// ===== Config genérica (chave/valor em `configuracoes`) — logo, etc. =====
+export async function carregarConfig(chave: string): Promise<string | null> {
+  try {
+    const { data } = await supabase.from('configuracoes').select('valor').eq('chave', chave).maybeSingle()
+    return data?.valor ?? null
+  } catch { return null }
+}
+export async function salvarConfig(chave: string, valor: string): Promise<boolean> {
+  try {
+    await supabase.from('configuracoes').upsert({ chave, valor }, { onConflict: 'chave' })
+    return true
+  } catch { return false }
+}
+
+// Define o ícone (favicon) do app dinamicamente para a logo
+export function aplicarFavicon(url: string) {
+  if (!url) return
+  let link = document.querySelector<HTMLLinkElement>("link[rel='icon']")
+  if (!link) { link = document.createElement('link'); link.rel = 'icon'; document.head.appendChild(link) }
+  link.href = url
+}
+
 export { COR_PADRAO }

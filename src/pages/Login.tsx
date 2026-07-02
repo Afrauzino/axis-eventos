@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
+import { carregarConfig } from '../lib/tema'
 import CadastroPessoa, { FORM_VAZIO, MED_VAZIO, type PessoaForm, type MedCtrl } from '../components/CadastroPessoa'
 
 type Modo = 'login' | 'codigo' | 'cadastro' | 'recuperar'
@@ -14,6 +15,8 @@ export default function Login() {
   const [erro, setErro]   = useState('')
   const [ok, setOk]       = useState('')
   const [loading, setLoading] = useState(false)
+  const [logoUrl, setLogoUrl] = useState<string|null>(null)
+  useEffect(() => { carregarConfig('logo_url').then(setLogoUrl) }, [])
 
   // Formulário unificado
   const [form, setForm]   = useState<PessoaForm>({...FORM_VAZIO})
@@ -246,7 +249,9 @@ export default function Login() {
     <div className="auth-wrap">
       <div className="auth-top">
         <div className="auth-logo">
-          <div className="auth-logo-icon">ECD</div>
+          {logoUrl
+            ? <img src={logoUrl} alt="Logo" className="auth-logo-icon" style={{objectFit:'cover',padding:0}}/>
+            : <div className="auth-logo-icon">ECD</div>}
           <div>
             <div className="auth-logo-text">AXIS Eventos</div>
             <div className="auth-logo-sub">Gestão de Eventos</div>

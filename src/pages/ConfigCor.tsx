@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
-import { aplicarCor, salvarCor, carregarCorSalva, COR_PADRAO } from '../lib/tema'
+import { aplicarCor, salvarCor, carregarCorSalva, carregarConfig, salvarConfig, aplicarFavicon, COR_PADRAO } from '../lib/tema'
+import { supabase } from '../lib/supabase'
 
 const PALETA = [
   { nome: 'Turquesa', cor: '#00A99D' },
@@ -21,10 +22,30 @@ export default function ConfigCor() {
   const [corPreview, setCorPreview] = useState(COR_PADRAO)
   const [salvando, setSalvando] = useState(false)
   const [salvo, setSalvo] = useState(false)
+  const [logoUrl, setLogoUrl] = useState<string|null>(null)
+  const [subindoLogo, setSubindoLogo] = useState(false)
 
   useEffect(() => {
     carregarCorSalva().then(c => { setCorAtual(c); setCorPreview(c) })
+    carregarConfig('logo_url').then(setLogoUrl)
   }, [])
+
+  async function enviarLogo(file: File) {
+    setSubindoLogo(true)
+    const ext = file.name.split('.').pop()
+    const path = `sistema/logo_${Date.now()}.${ext}`
+    const { error } = await supabase.storage.from('arquivos').upload(path, file, { upsert: true })
+    if (!error) {
+      const { data:u } = supabase.storage.from('arquivos').getPublicUrl(path)
+      await salvarConfig('logo_url', u.publicUrl)
+      setLogoUrl(u.publicUrl); aplicarFavicon(u.publicUrl)
+    } else alert('Erro ao enviar a logo: ' + error.message)
+    setSubindoLogo(false)
+  }
+  async function removerLogo() {
+    await salvarConfig('logo_url', '')
+    setLogoUrl(null)
+  }
 
   // prévia ao vivo
   function preview(cor: string) {
@@ -54,6 +75,22 @@ export default function ConfigCor() {
       <p style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 16 }}>
         Escolha a cor principal do sistema. A mudança aparece na hora (prévia). Toque em <b>Aplicar</b> para salvar para todos.
       </p>
+
+      {/* LOGO do sistema (aparece no Login e vira o ícone do app) */}
+      <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--muted)', marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Logo do sistema</div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 24 }}>
+        <div style={{ width: 64, height: 64, borderRadius: 14, background: logoUrl ? '#eee' : 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flexShrink: 0, color: 'white', fontWeight: 800 }}>
+          {logoUrl ? <img src={logoUrl} alt="Logo" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : 'LOGO'}
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <label className="btn btn-outline btn-sm" style={{ cursor: 'pointer' }}>
+            <span className="icon icon-sm">upload</span> {subindoLogo ? 'Enviando...' : (logoUrl ? 'Trocar logo' : 'Enviar logo')}
+            <input type="file" accept="image/*" style={{ display: 'none' }} onChange={e => { const f = e.target.files?.[0]; if (f) enviarLogo(f); e.target.value = '' }} />
+          </label>
+          {logoUrl && <button onClick={removerLogo} className="btn btn-ghost btn-sm" style={{ color: 'var(--danger)' }}>Remover logo</button>}
+          <p style={{ fontSize: 11, color: 'var(--muted)' }}>Aparece na tela de login e vira o ícone do app.</p>
+        </div>
+      </div>
 
       {/* Paleta pronta */}
       <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--muted)', marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Cores prontas</div>
