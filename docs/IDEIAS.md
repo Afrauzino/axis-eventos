@@ -44,3 +44,16 @@ _Detalhes e "onde mexer" em `docs/HANDOFF.md`._
   visual de card); "com detalhes" só estende o card com ministração/teatro (coloca os teatros). [feito]
 - 2026-07-02 — [x] Crachá: PNG estava "duro" pra mover — desligado o drag nativo (draggable=false) e
   camadas renderizadas por cima pra pegar fácil. [feito]
+- 2026-07-02 — [x] Menus: só config visual (removido liberações/rota); carrossel avisa se tabela não existe. [feito]
+- 2026-07-02 — [x] Relatórios: emoji colorido no lugar dos line-icons. [feito]
+- 2026-07-02 — [x] Logs ricos: o que mudou (de→para), quem/onde + botão **Desfazer** (sql/16). [feito]
+- 2026-07-02 — [x] **Permissões por função**: catálogo (Ver/Criar-editar/especiais como "Criar checklist")
+  + tela Liberações reformada (Usuários/Equipes); acumulativo (união), não somativo. [feito — falta bloqueio por tela]
+- 2026-07-02 — [x] Cor/logo no Login (leitura pública de configuracoes, sql/19). [feito]
+- 2026-07-02 — [x] Carrossel: autoplay, loop, vídeo avança ao terminar, duração por imagem (sql/20). [feito]
+- 2026-07-02 — [x] **Boas-vindas**: 2 telas editáveis (texto rico + GPS/mapa + contatos WhatsApp) p/ quem
+  entra sem liberação (visitante/encontrista e encontreiro sem equipe). Só veem isso + carrossel. [feito]
+- 2026-07-02 — [ ] **Cadeado nas rotas** (redirect de quem não tem acesso) — pendente.
+- 2026-07-02 — [ ] **Bloqueio por função tela por tela** (Etapa 3 das permissões) — pendente.
+- 2026-07-02 — [ ] **Varredura restante**: Locais, Minhas Atividades, Saúde (3), Alertas — pendente.
+- 2026-07-02 — [ ] **Produção**: PWA (instalável/offline); credenciais em env var; schema do repo desatualizado. — pendente

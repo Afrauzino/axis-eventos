@@ -50,15 +50,25 @@
 - [x] **Auditoria de tudo** — `sql/16_audit_triggers.sql`: trigger no banco que registra TODA
   inserção/edição/exclusão com quem fez + valores antigos/novos. **Rodar no Supabase.** Depois, a aba
   **Logs** do Admin mostra tudo (quem, o quê, quando).
-- [ ] **Menu (tela MenusAdmin) está DESCONECTADO** — `menu_config` só é lido/gravado na própria tela;
-  **nada mais consome** (o menu real `Nav` é fixo no código). Por isso "não dá pra escolher o emoji do
-  menu": mudar lá não afeta o menu de verdade. **Decisão:** ou (a) ligar o `Nav` ao `menu_config` e usar
-  emoji, ou (b) remover a tela MenusAdmin. Precisa da sua escolha.
+- [x] **Menu ligado** — `Nav` agora lê `menu_config` (emoji/nome/ordem/visível) com fallback; MenusAdmin só
+  config visual (`sql/17`). RESOLVIDO.
+- [x] **Permissões por FUNÇÃO** — catálogo (Ver/Criar-editar/especiais) + tela Liberações reformada
+  (Usuários/Equipes). Config pronta; falta **aplicar o bloqueio em cada tela** (ver Pendências funcionais).
+- [x] **Logs ricos + Desfazer** — mostra o que mudou (de→para), quem, onde + botão desfazer (`sql/16`).
 
-## 🐞 Bugs achados na varredura (pré-existentes, a corrigir)
-- [ ] `src/pages/Encontreiros.tsx:105` — passa prop `badges` para um componente que não aceita → badges
-  não renderizam.
-- [ ] `src/pages/Login.tsx:63` — lê `ano_encontro` que não está no `select` → sempre `undefined`.
+## 🐞 Bugs achados na varredura
+- [x] `Encontreiros` (prop `badges`→`equipes`/`onVer`) — corrigido.
+- [x] `Login` (`ano_encontro` no select) — corrigido.
+- [x] `Financeiro` (template do alert sem `$`) — corrigido.
+
+## ⏳ PENDÊNCIAS FUNCIONAIS (o que falta fazer no app)
+- [ ] **Bloqueio por função em cada tela (Etapa 3)** — a config existe, mas as páginas ainda não checam
+  `pode(modulo,'editar')`. Ligar tela por tela (ex.: ver a lista sem poder criar/editar).
+- [ ] **Cadeado nas rotas** — hoje quem não tem acesso não vê no menu, mas digitando a URL a página carrega.
+  Redirecionar pra Início. (Fecha a brecha p/ visitante/encontrista.)
+- [ ] **Varredura das telas restantes** — Locais, Minhas Atividades, Saúde (Atendimentos/Ficha/Medicamentos),
+  Alertas: conferir bugs/padrão + aplicar bloqueio.
+- [ ] **SQLs a rodar no Supabase:** `sql/20_home_duracao.sql` (duração do carrossel). _(16–19 já rodados.)_
 
 ## ✅ Já OK
 - Deploy Vercel: `vercel.json` com SPA rewrites (rotas do react-router funcionam). Build (`npx vite build`) passa.
