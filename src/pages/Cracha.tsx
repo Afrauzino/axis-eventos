@@ -4,7 +4,8 @@ import { getInitials, isAdmin } from '../utils'
 import { useEvento } from '../hooks/useEvento'
 import type { Profile } from '../App'
 
-type Pessoa = { id:string; name:string; photo_url:string|null }
+type Pessoa = { id:string; name:string; photo_url:string|null; role_type?:string }
+type Equipe = { id:string; name:string }
 type Campo = { on:boolean; x:number; y:number; size:number; cor?:string }
 type Campos = { foto:Campo; nome:Campo; equipe:Campo }
 
@@ -17,7 +18,7 @@ const TAMANHOS: Record<string,{label:string;w:number;h:number}> = {
 const CAMPOS_PADRAO: Campos = {
   foto:   { on:true, x:50, y:30, size:42 },
   nome:   { on:true, x:50, y:64, size:12, cor:'#111827' },
-  equipe: { on:true, x:50, y:80, size:9,  cor:'#374151' },
+  equipe: { on:true, x:50, y:78, size:6,  cor:'#6b7280' },
 }
 
 function CrachaView({ pessoa, equipeTxt, tamanho, fundo, campos }: { pessoa:Pessoa; equipeTxt:string; tamanho:string; fundo:string|null; campos:Campos }) {
@@ -44,14 +45,19 @@ function CrachaView({ pessoa, equipeTxt, tamanho, fundo, campos }: { pessoa:Pess
 export default function Cracha({ profile }: { profile?: Profile }) {
   const { evento, loading: evLoading } = useEvento()
   const [pessoas, setPessoas] = useState<Pessoa[]>([])
-  const [equipeDe, setEquipeDe] = useState<Record<string,string>>({})
+  const [equipes, setEquipes] = useState<Equipe[]>([])
+  const [equipeDe, setEquipeDe] = useState<Record<string,string>>({})   // nomes (sem emoji) juntos
+  const [equipeIds, setEquipeIds] = useState<Record<string,string[]>>({}) // ids das equipes de cada pessoa
   const [tamanho, setTamanho] = useState('grande')
   const [fundo, setFundo]     = useState('')
   const [campos, setCampos]   = useState<Campos>(CAMPOS_PADRAO)
   const [loading, setLoading] = useState(true)
   const [salvando, setSalvando] = useState(false)
+  const [subindo, setSubindo] = useState(false)
   const [msg, setMsg]         = useState('')
   const [imprimir, setImprimir] = useState(false)
+  const [filtroTipo, setFiltroTipo]   = useState<'todos'|'encounterer'|'worker'>('todos')
+  const [filtroEquipe, setFiltroEquipe] = useState('')
   const canEdit = isAdmin(profile?.user_role)
 
   useEffect(() => { if (evLoading) return; if (!evento) { setLoading(false); return }; carregar() }, [evento, evLoading])
@@ -61,18 +67,25 @@ export default function Cracha({ profile }: { profile?: Profile }) {
     setLoading(true)
     const [cf, pe, tm, pt] = await Promise.all([
       supabase.from('crachas').select('*').eq('event_id',evento.id).maybeSingle(),
-      supabase.from('people').select('id,name,photo_url').eq('event_id',evento.id).order('name'),
-      supabase.from('teams').select('id,name,emoji').eq('event_id',evento.id),
+      supabase.from('people').select('id,name,photo_url,role_type').eq('event_id',evento.id).order('name'),
+      supabase.from('teams').select('id,name').eq('event_id',evento.id).order('name'),
       supabase.from('people_teams').select('person_id,team_id'),
     ])
     if (cf.data) { setTamanho(cf.data.tamanho||'grande'); setFundo(cf.data.fundo_url||''); if (cf.data.campos && Object.keys(cf.data.campos).length) setCampos({ ...CAMPOS_PADRAO, ...cf.data.campos }) }
     setPessoas(pe.data ?? [])
-    // equipe (emoji + nome) de cada pessoa (primeira equipe)
-    const teams: Record<string,{name:string;emoji:string|null}> = {}
-    ;(tm.data ?? []).forEach((t:any)=>{ teams[t.id]={name:t.name,emoji:t.emoji} })
-    const map: Record<string,string> = {}
-    ;(pt.data ?? []).forEach((v:any)=>{ if(!map[v.person_id] && teams[v.team_id]){ const t=teams[v.team_id]; map[v.person_id]=`${t.emoji?t.emoji+' ':''}${t.name}` } })
-    setEquipeDe(map)
+    setEquipes(tm.data ?? [])
+    // TODAS as equipes de cada pessoa — só o nome, sem emoji, texto simples
+    const nomeEquipe: Record<string,string> = {}
+    ;(tm.data ?? []).forEach((t:any)=>{ nomeEquipe[t.id]=t.name })
+    const nomes: Record<string,string[]> = {}
+    const ids: Record<string,string[]> = {}
+    ;(pt.data ?? []).forEach((v:any)=>{
+      ;(ids[v.person_id]=ids[v.person_id]||[]).push(v.team_id)
+      if (nomeEquipe[v.team_id]) (nomes[v.person_id]=nomes[v.person_id]||[]).push(nomeEquipe[v.team_id])
+    })
+    const str: Record<string,string> = {}
+    Object.entries(nomes).forEach(([pid,arr])=>{ str[pid]=arr.join(' · ') })
+    setEquipeDe(str); setEquipeIds(ids)
     setLoading(false)
   }
 
@@ -85,22 +98,40 @@ export default function Cracha({ profile }: { profile?: Profile }) {
 
   function setCampo(k:keyof Campos, patch:Partial<Campo>) { setCampos(c=>({ ...c, [k]:{ ...c[k], ...patch } })) }
 
+  async function uploadFundo(file:File) {
+    if (!evento) return
+    setSubindo(true); setMsg('')
+    const ext = file.name.split('.').pop()
+    const path = `cracha/${evento.id}/fundo_${Date.now()}.${ext}`
+    const { error } = await supabase.storage.from('arquivos').upload(path, file, { upsert:true })
+    if (error) { setMsg('Erro ao subir: '+error.message) }
+    else { const { data:u } = supabase.storage.from('arquivos').getPublicUrl(path); setFundo(u.publicUrl) }
+    setSubindo(false)
+  }
+
+  const pessoasFiltradas = pessoas.filter(p => {
+    if (filtroTipo!=='todos' && p.role_type!==filtroTipo) return false
+    if (filtroEquipe && !(equipeIds[p.id]??[]).includes(filtroEquipe)) return false
+    return true
+  })
+
   if (evLoading || loading) return <div className="page">{[1,2].map(i=><div key={i} className="skeleton" style={{height:120,marginBottom:12,borderRadius:14}}/>)}</div>
   if (!evento) return <div className="page"><div className="empty"><p className="empty-title">Nenhum evento ativo</p></div></div>
 
-  const amostra = pessoas[0] ?? { id:'x', name:'Nome da Pessoa', photo_url:null }
+  const amostra = pessoasFiltradas[0] ?? pessoas[0] ?? { id:'x', name:'Nome da Pessoa', photo_url:null }
 
   // Modo impressão: grade com todos
   if (imprimir) {
     return (
       <div style={{padding:16,background:'white'}}>
         <style>{`@media print { .no-print { display:none !important; } @page { margin:8mm; } }`}</style>
-        <div className="no-print" style={{display:'flex',gap:8,marginBottom:16}}>
-          <button className="btn btn-primary" onClick={()=>window.print()}>Imprimir</button>
+        <div className="no-print" style={{display:'flex',gap:8,marginBottom:8,alignItems:'center'}}>
+          <button className="btn btn-primary" onClick={()=>window.print()}>Imprimir / Salvar PDF</button>
           <button className="btn btn-ghost" onClick={()=>setImprimir(false)}>Voltar</button>
         </div>
+        <p className="no-print" style={{fontSize:12,color:'var(--muted)',marginBottom:16}}>No diálogo de impressão, escolha <strong>"Salvar como PDF"</strong> para exportar. {pessoasFiltradas.length} crachá(s).</p>
         <div style={{display:'flex',flexWrap:'wrap',gap:12}}>
-          {pessoas.map(p => <CrachaView key={p.id} pessoa={p} equipeTxt={equipeDe[p.id]??''} tamanho={tamanho} fundo={fundo||null} campos={campos}/>)}
+          {pessoasFiltradas.map(p => <CrachaView key={p.id} pessoa={p} equipeTxt={equipeDe[p.id]??''} tamanho={tamanho} fundo={fundo||null} campos={campos}/>)}
         </div>
       </div>
     )
@@ -135,7 +166,7 @@ export default function Cracha({ profile }: { profile?: Profile }) {
     <div className="page">
       {/* Preview */}
       <div style={{display:'flex',justifyContent:'center',marginBottom:16,padding:12,background:'var(--bg)',borderRadius:12,overflow:'auto'}}>
-        <CrachaView pessoa={amostra} equipeTxt={equipeDe[amostra.id]??'🎭 Equipe'} tamanho={tamanho} fundo={fundo||null} campos={campos}/>
+        <CrachaView pessoa={amostra} equipeTxt={equipeDe[amostra.id]??'Equipe'} tamanho={tamanho} fundo={fundo||null} campos={campos}/>
       </div>
 
       <div className="form-group">
@@ -145,9 +176,32 @@ export default function Cracha({ profile }: { profile?: Profile }) {
         </select>
       </div>
       <div className="form-group">
-        <label className="form-label">Imagem de fundo (link)</label>
-        <p className="form-hint mb-2">Faça a arte fora (Canva, etc.) e cole aqui o link direto da imagem. O sistema põe foto/nome/equipe por cima.</p>
-        <input className="form-input" value={fundo} disabled={!canEdit} onChange={e=>setFundo(e.target.value)} placeholder="https://... (imagem do fundo)"/>
+        <label className="form-label">Imagem de fundo</label>
+        <p className="form-hint mb-2">Faça a arte fora (Canva, etc.). Cole o link OU envie a imagem. O sistema põe foto/nome/equipe por cima.</p>
+        <input className="form-input" value={fundo} disabled={!canEdit} onChange={e=>setFundo(e.target.value)} placeholder="https://... (link da imagem)"/>
+        {canEdit && (
+          <div style={{display:'flex',gap:8,marginTop:8,alignItems:'center'}}>
+            <label className="btn btn-ghost btn-sm" style={{cursor:'pointer',border:'1px dashed var(--primary)',color:'var(--primary)'}}>
+              <span className="icon icon-sm">upload</span> {subindo?'Enviando...':'Enviar imagem'}
+              <input type="file" accept="image/*" style={{display:'none'}} onChange={e=>{const f=e.target.files?.[0]; if(f) uploadFundo(f); e.target.value=''}}/>
+            </label>
+            {fundo && <button type="button" className="btn btn-ghost btn-sm" onClick={()=>setFundo('')} style={{color:'var(--danger)'}}>Remover fundo</button>}
+          </div>
+        )}
+      </div>
+
+      {/* Quem entra na impressão */}
+      <div className="section-label mb-2">Quem entra</div>
+      <div className="filter-bar mb-2">
+        {([['todos','Todos'],['encounterer','Encontristas'],['worker','Encontreiros']] as const).map(([v,l])=>(
+          <button key={v} className={`chip ${filtroTipo===v?'active':''}`} onClick={()=>setFiltroTipo(v)}>{l}</button>
+        ))}
+      </div>
+      <div className="form-group">
+        <select className="form-select" value={filtroEquipe} onChange={e=>setFiltroEquipe(e.target.value)}>
+          <option value="">Todas as equipes</option>
+          {equipes.map(eq=><option key={eq.id} value={eq.id}>{eq.name}</option>)}
+        </select>
       </div>
 
       <div className="section-label mb-2">Posição dos campos</div>
@@ -162,8 +216,8 @@ export default function Cracha({ profile }: { profile?: Profile }) {
       )}
       {msg && <p style={{fontSize:12,textAlign:'center',marginTop:8,color:msg.startsWith('Erro')?'var(--danger)':'var(--success)'}}>{msg}</p>}
 
-      <button className="btn btn-outline btn-full" onClick={()=>setImprimir(true)} style={{marginTop:10}}>
-        <span className="icon icon-sm">print</span> Gerar crachás ({pessoas.length}) para impressão
+      <button className="btn btn-outline btn-full" onClick={()=>setImprimir(true)} disabled={pessoasFiltradas.length===0} style={{marginTop:10}}>
+        <span className="icon icon-sm">print</span> Gerar crachás ({pessoasFiltradas.length}) — imprimir / PDF
       </button>
     </div>
   )
