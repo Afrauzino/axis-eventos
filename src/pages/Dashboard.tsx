@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase'
 import { fmtDataLonga, isAdmin } from '../utils'
 import { useEvento } from '../hooks/useEvento'
 import { usePermissao } from '../hooks/usePermissao'
+import HomeCarousel from '../components/HomeCarousel'
 import type { Profile } from '../App'
 
 type Stats = { encontristas:number; encontreiros:number; equipes:number; alertas:number }
@@ -77,6 +78,9 @@ export default function Dashboard({ profile }: { profile: Profile }) {
         <p className="text-sm text-muted mb-1">{fmtDataLonga(new Date().toISOString())}</p>
         <h1 style={{fontSize:22,fontWeight:800}}>Olá, {(profile.full_name??'').split(' ')[0]}</h1>
       </div>
+
+      {/* Carrossel da Início (admin adiciona; some se vazio) */}
+      <HomeCarousel admin={admin} />
 
       {!evento ? (
         <div className="info-section mb-4" style={{textAlign:'center',padding:'24px'}}>

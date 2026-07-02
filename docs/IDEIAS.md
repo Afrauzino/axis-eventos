@@ -20,6 +20,12 @@ _Detalhes e "onde mexer" em `docs/HANDOFF.md`._
 
 ## Novas ideias (adicionar abaixo, com data)
 <!-- ex: - 2026-07-02 — [ ] descrição da ideia -->
+- 2026-07-02 — [x] Varredura Admin: removida duplicidade de permissões (só pessoa+equipe), Tipos com
+  emoji, auditoria automática (trigger sql/16), menu configurável de verdade (Nav↔menu_config, sql/17). [feito]
+- 2026-07-02 — [x] Cor do sistema é global (admin muda p/ todos) — já funcionava via configuracoes. [ok]
+- 2026-07-02 — [x] Logo configurável (Admin→Aparência): aparece no Login e vira o ícone do app. [feito]
+- 2026-07-02 — [x] Carrossel na Início (imagens/vídeos, só admin adiciona, some se vazio) — sql/18. [feito]
+- 2026-07-02 — [x] Bugs corrigidos: Encontreiros (badges) e Login (ano_encontro). [feito]
 - 2026-07-02 — [x] **Mídia**: emoji colorido (📷🎵🎬) no lugar dos line-icons. [feito]
 - 2026-07-02 — [x] **Escala**: impressão do dia no padrão (PrintOverlay, com foto). [feito]
 - 2026-07-02 — [x] **Cronograma "com detalhes"**: sem duplicidade; 🎭 na frente do teatro; FOTO do
