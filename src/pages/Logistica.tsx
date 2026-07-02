@@ -255,37 +255,54 @@ export default function Logistica({ profile }: { profile?: Profile }) {
             const meds = medMap[e.id] ?? []
             return (
               <div key={e.id} className="print-break" style={{marginBottom:24}}>
-                <div style={{display:'flex',alignItems:'center',gap:12,borderBottom:'2px solid #111827',paddingBottom:8,marginBottom:12}}>
+                {(() => {
+                  const cx = (v:boolean|null|undefined) => <span style={{whiteSpace:'nowrap'}}>{v===true?'☑':'☐'} Sim &nbsp;&nbsp;{v===false?'☑':'☐'} Não</span>
+                  const linha = (txt?:string) => <span style={{borderBottom:'1px solid #9ca3af',display:'inline-block',minWidth:200,paddingLeft:4,lineHeight:1.4}}>{txt||' '}</span>
+                  const rest = fi ? (fi.restricao_alimentar || !!fi.restricoes_alimentares) : undefined
+                  const aler = fi ? (fi.alergia_medicamentos || !!fi.alergias) : undefined
+                  const cont = fi ? (fi.toma_controlado || meds.length>0) : (meds.length>0?true:undefined)
+                  return (
+                <>
+                <div style={{display:'flex',alignItems:'center',gap:12,borderBottom:'2px solid #111827',paddingBottom:8,marginBottom:8}}>
                   <div style={{width:56,height:56,borderRadius:'50%',overflow:'hidden',background:'#f3f4f6',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
                     {e.photo_url?<img src={e.photo_url} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}}/>:<span style={{fontWeight:700,color:'#6b7280'}}>{getInitials(e.name)}</span>}
                   </div>
                   <h2 style={{fontSize:18,fontWeight:800}}>{formatName(e.name)}</h2>
                 </div>
+                <p style={{fontSize:13,marginBottom:12}}>Encontreiro responsável: {linha()}</p>
 
                 <h3 style={{fontSize:13,fontWeight:800,textTransform:'uppercase',color:'#374151',marginBottom:6}}>Checklist</h3>
                 <table style={{width:'100%',borderCollapse:'collapse',marginBottom:14,fontSize:13}}>
                   <tbody>
-                    {itens.map(it=>{
-                      const r = respostaDe(e.id, it.id)
-                      return (
-                        <tr key={it.id} style={{borderBottom:'1px solid #e5e7eb'}}>
-                          <td style={{padding:'5px 4px'}}>{it.texto}</td>
-                          <td style={{padding:'5px 4px',textAlign:'right',fontWeight:700,width:70,color:r===true?'#16a34a':r===false?'#dc2626':'#9ca3af'}}>{r===true?'Sim':r===false?'Não':'—'}</td>
-                        </tr>
-                      )
-                    })}
+                    {itens.map(it=>(
+                      <tr key={it.id} style={{borderBottom:'1px solid #e5e7eb'}}>
+                        <td style={{padding:'6px 4px'}}>{it.texto}</td>
+                        <td style={{padding:'6px 4px',textAlign:'right',width:120}}>{cx(respostaDe(e.id, it.id))}</td>
+                      </tr>
+                    ))}
                   </tbody>
                 </table>
 
                 <h3 style={{fontSize:13,fontWeight:800,textTransform:'uppercase',color:'#374151',marginBottom:6}}>Ficha médica</h3>
-                <p style={{fontSize:13,marginBottom:3}}>Restrição alimentar: <strong>{fi?.restricao_alimentar||fi?.restricoes_alimentares?`Sim${fi?.restricoes_alimentares?` — ${fi.restricoes_alimentares}`:''}`:'Não'}</strong></p>
-                <p style={{fontSize:13,marginBottom:3}}>Alergia a medicamentos: <strong>{fi?.alergia_medicamentos||fi?.alergias?`Sim${fi?.alergias?` — ${fi.alergias}`:''}`:'Não'}</strong></p>
-                <p style={{fontSize:13,marginBottom:3}}>Medicamento contínuo: <strong>{fi?.toma_controlado||meds.length?'Sim':'Não'}</strong></p>
-                {meds.length>0 && (
-                  <ul style={{fontSize:13,margin:'4px 0 0 18px'}}>
-                    {meds.map((m:any)=><li key={m.id}>{m.nome}{m.dosagem?` · ${m.dosagem}`:''}{m.intervalo_h?` · ${m.intervalo_h}/${m.intervalo_h}h`:''}</li>)}
-                  </ul>
-                )}
+                <p style={{fontSize:13,marginBottom:6}}>Restrição alimentar: {cx(rest)} &nbsp; Qual: {linha(fi?.restricoes_alimentares)}</p>
+                <p style={{fontSize:13,marginBottom:6}}>Alergia a medicamentos: {cx(aler)} &nbsp; Quais: {linha(fi?.alergias)}</p>
+                <p style={{fontSize:13,marginBottom:6}}>Medicamento contínuo: {cx(cont)}</p>
+                <table style={{width:'100%',borderCollapse:'collapse',fontSize:12,marginTop:4}}>
+                  <thead><tr style={{borderBottom:'1px solid #111827'}}><th style={{textAlign:'left',padding:'3px 4px'}}>Medicamento</th><th style={{textAlign:'left',padding:'3px 4px'}}>Dose</th><th style={{textAlign:'left',padding:'3px 4px'}}>Intervalo</th><th style={{textAlign:'left',padding:'3px 4px'}}>Última dose</th></tr></thead>
+                  <tbody>
+                    {[...meds, ...(meds.length<2?Array(2-meds.length).fill(null):[])].map((m:any,i:number)=>(
+                      <tr key={m?.id??'b'+i} style={{borderBottom:'1px solid #e5e7eb'}}>
+                        <td style={{padding:'6px 4px'}}>{m?linha(m.nome):linha()}</td>
+                        <td style={{padding:'6px 4px'}}>{m?linha(m.dosagem):linha()}</td>
+                        <td style={{padding:'6px 4px'}}>{m?linha(m.intervalo_h?`${m.intervalo_h}h`:''):linha()}</td>
+                        <td style={{padding:'6px 4px'}}>{linha()}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                </>
+                  )
+                })()}
               </div>
             )
           })}
