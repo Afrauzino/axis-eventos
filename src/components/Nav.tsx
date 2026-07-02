@@ -1,8 +1,11 @@
+import { useEffect, useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { getInitials, isAdmin } from '../utils'
 import { usePermissao } from '../hooks/usePermissao'
 import { supabase } from '../lib/supabase'
 import type { Profile } from '../App'
+
+type Override = { emoji?:string|null; label?:string|null; visivel?:boolean; ordem?:number|null }
 
 type Sub = { label:string; rota:string }
 type Item = { id:string; label:string; icon:string; emoji?:string; rota?:string; sub?:Sub[]; perm:string }
@@ -42,8 +45,30 @@ export default function Nav({ profile, onClose }: { profile: Profile; onClose: (
   const location  = useLocation()
   const { pode, carregado } = usePermissao(profile)
   const admin = isAdmin(profile.user_role) || profile.is_admin
-  // Opção B: cada menu só aparece se admin OU se a permissão (equipe/individual) liberar
-  const menu = buildMenu().filter(item => admin || pode(item.perm))
+
+  // Personalização do menu (emoji/nome/ordem/visível) vinda de menu_config.
+  // Fallback seguro: se não carregar, usa os padrões do código.
+  const [ovr, setOvr] = useState<Record<string, Override>>({})
+  useEffect(() => {
+    let ativo = true
+    supabase.from('menu_config').select('key,label,emoji,visivel,ordem').then(({ data }) => {
+      if (!ativo || !data) return
+      const m: Record<string, Override> = {}
+      data.forEach((r:any) => { m[r.key] = { emoji:r.emoji, label:r.label, visivel:r.visivel, ordem:r.ordem } })
+      setOvr(m)
+    })
+    return () => { ativo = false }
+  }, [])
+
+  // cada menu só aparece se admin OU a permissão liberar; menu_config pode ocultar/renomear/reordenar
+  const menu = buildMenu()
+    .filter(item => admin || pode(item.perm))
+    .filter(item => ovr[item.perm]?.visivel !== false)
+    .map(item => {
+      const o = ovr[item.perm]
+      return o ? { ...item, emoji:o.emoji || item.emoji, label:o.label || item.label, _ordem:o.ordem ?? undefined } : item
+    })
+    .sort((a:any, b:any) => (a._ordem ?? 999) - (b._ordem ?? 999))
 
   async function logout() {
     await supabase.auth.signOut()

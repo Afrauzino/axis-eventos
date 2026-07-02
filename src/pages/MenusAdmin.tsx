@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import SubTabs from '../components/SubTabs'
+import EmojiGrid from '../components/EmojiGrid'
 import type { Profile } from '../App'
 
-type MenuItem = { id:string; key:string; label:string; icon:string; rota:string|null; parent_id:string|null; ordem:number; visivel:boolean; roles:string[] }
+type MenuItem = { id:string; key:string; label:string; icon:string; emoji?:string|null; rota:string|null; parent_id:string|null; ordem:number; visivel:boolean; roles:string[] }
 
 function MatIcon({ name, size=20, color='var(--text2)' }: {name:string;size?:number;color?:string}) {
   return <span style={{fontFamily:"'Material Symbols Outlined'",fontWeight:'normal',fontStyle:'normal',fontSize:size,lineHeight:1,letterSpacing:'normal',textTransform:'none',display:'inline-block',whiteSpace:'nowrap',direction:'ltr',WebkitFontSmoothing:'antialiased',fontVariationSettings:"'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24",color,userSelect:'none'}}>{name}</span>
@@ -16,7 +17,7 @@ export default function MenusAdmin({ profile }: { profile?: Profile }) {
   const [loading, setLoading]   = useState(true)
   const [editando, setEditando] = useState<MenuItem|null>(null)
   const [salvando, setSalvando] = useState(false)
-  const [form, setForm] = useState({ label:'', icon:'circle', rota:'', visivel:true, roles:[] as string[] })
+  const [form, setForm] = useState({ label:'', emoji:'📋', icon:'circle', rota:'', visivel:true, roles:[] as string[] })
 
   useEffect(() => { carregar() }, [])
 
@@ -29,14 +30,14 @@ export default function MenusAdmin({ profile }: { profile?: Profile }) {
 
   function abrirEdicao(m: MenuItem) {
     setEditando(m)
-    setForm({ label:m.label, icon:m.icon, rota:m.rota??'', visivel:m.visivel, roles:m.roles??[] })
+    setForm({ label:m.label, emoji:m.emoji||'📋', icon:m.icon, rota:m.rota??'', visivel:m.visivel, roles:m.roles??[] })
   }
 
   async function salvar(e: React.FormEvent) {
     e.preventDefault(); setSalvando(true)
     if (!editando) { setSalvando(false); return }
     await supabase.from('menu_config').update({
-      label: form.label, icon: form.icon,
+      label: form.label, emoji: form.emoji, icon: form.icon,
       rota: form.rota||null, visivel: form.visivel, roles: form.roles
     }).eq('id', editando.id)
     setSalvando(false); setEditando(null); carregar()
@@ -83,8 +84,8 @@ export default function MenusAdmin({ profile }: { profile?: Profile }) {
         <div key={item.id} style={{background:'white',borderRadius:14,boxShadow:'var(--shadow-sm)',marginBottom:8,overflow:'hidden'}}>
           {/* Item principal */}
           <div style={{display:'flex',alignItems:'center',gap:10,padding:'12px 14px',background:item.visivel?'white':'var(--bg)'}}>
-            <div style={{width:36,height:36,borderRadius:8,background:item.visivel?'var(--primary-light)':'var(--bg)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
-              <MatIcon name={item.icon} size={20} color={item.visivel?'var(--primary)':'var(--muted-light)'}/>
+            <div style={{width:36,height:36,borderRadius:8,background:item.visivel?'var(--primary-light)':'var(--bg)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,fontSize:20,lineHeight:1,opacity:item.visivel?1:0.5}}>
+              {item.emoji || '📋'}
             </div>
             <div style={{flex:1,minWidth:0}}>
               <p style={{fontWeight:700,fontSize:14,color:item.visivel?'var(--text)':'var(--muted)'}}>{item.label}</p>
@@ -103,7 +104,7 @@ export default function MenusAdmin({ profile }: { profile?: Profile }) {
           {/* Filhos */}
           {getFilhos(item.id).map((filho, fi) => (
             <div key={filho.id} style={{display:'flex',alignItems:'center',gap:10,padding:'8px 14px 8px 56px',borderTop:'1px solid var(--border)',background:filho.visivel?'var(--bg)':'#f9f9f9'}}>
-              <MatIcon name={filho.icon} size={16} color={filho.visivel?'var(--muted)':'var(--muted-light)'}/>
+              <span style={{fontSize:16,lineHeight:1,opacity:filho.visivel?1:0.5}}>{filho.emoji || '📋'}</span>
               <p style={{flex:1,fontSize:13,color:filho.visivel?'var(--text2)':'var(--muted-light)',fontWeight:filho.visivel?500:400}}>{filho.label}</p>
               {filho.rota && <p style={{fontSize:10,color:'var(--muted)'}}>{filho.rota}</p>}
               <div style={{display:'flex',gap:4}}>
@@ -132,13 +133,8 @@ export default function MenusAdmin({ profile }: { profile?: Profile }) {
               <div className="form-group"><label className="form-label">Nome exibido</label>
                 <input className="form-input" value={form.label} onChange={e=>setForm(f=>({...f,label:e.target.value}))} required/>
               </div>
-              <div className="form-group"><label className="form-label">Ícone (Material Symbols)</label>
-                <div style={{display:'flex',gap:10,alignItems:'center'}}>
-                  <input className="form-input" value={form.icon} onChange={e=>setForm(f=>({...f,icon:e.target.value}))} placeholder="Ex: home, settings, group"/>
-                  <div style={{width:40,height:40,background:'var(--primary-light)',borderRadius:8,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
-                    <MatIcon name={form.icon||'circle'} size={22} color='var(--primary)'/>
-                  </div>
-                </div>
+              <div className="form-group"><label className="form-label">Emoji do menu</label>
+                <EmojiGrid value={form.emoji} onChange={em=>setForm(f=>({...f,emoji:em}))}/>
               </div>
               <div className="form-group"><label className="form-label">Rota interna</label>
                 <input className="form-input" value={form.rota} onChange={e=>setForm(f=>({...f,rota:e.target.value}))} placeholder="Ex: /cronograma"/>

@@ -5,7 +5,10 @@
 
 ## 🔴 BLOQUEADORES (resolver ANTES de abrir pro público)
 
-- [ ] **RLS incompleto (dados sensíveis expostos).** A `anon key` do app é **pública** (vai no
+- [x] **RLS — RESOLVIDO.** Diagnóstico rodado no Supabase (02/07): **todas as tabelas têm RLS ligada +
+  policies** (a maioria com 4). O banco real está protegido; era só o SQL do repo que estava desatualizado.
+
+- [~] **(histórico) RLS incompleto no repo.** A `anon key` do app é **pública** (vai no
   frontend, está em `src/lib/supabase.ts`). A única proteção real é o **RLS** estar ligado + com
   policies em TODAS as tabelas. O SQL do repo só cobre ~13 tabelas, mas o app usa **~55** — incluindo
   **`saude_fichas`, `med_controlados`, `med_agenda`, `medicamento_entregas`, `financeiro`, `doacoes`,
