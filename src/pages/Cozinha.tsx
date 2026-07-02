@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import EmojiGrid from '../components/EmojiGrid'
 import { useEvento } from '../hooks/useEvento'
 import type { Profile } from '../App'
 
-type RefTipo = { id:string; nome:string; cor:string; ordem:number }
+type RefTipo = { id:string; nome:string; cor:string; ordem:number; emoji?:string|null }
 type Cardapio = { id:string; refeicao_tipo_id:string|null; tipo_refeicao_nome:string|null; titulo:string|null; itens:string|null }
 
 const CORES = ['#00A99D','#6B46C1','#2F855A','#D69E2E','#E53E3E','#3182CE','#DD6B20','#805AD5']
@@ -17,7 +18,8 @@ export default function Cozinha({ profile }: { profile?: Profile }) {
 
   // modal tipo
   const [modalTipo, setModalTipo] = useState(false)
-  const [novoTipo, setNovoTipo] = useState({ nome:'', cor:CORES[0] })
+  const [editTipo, setEditTipo] = useState<RefTipo|null>(null)
+  const [novoTipo, setNovoTipo] = useState({ nome:'', cor:CORES[0], emoji:'🍽️' })
 
   // modal cardapio
   const [modalCard, setModalCard] = useState(false)
@@ -38,13 +40,25 @@ export default function Cozinha({ profile }: { profile?: Profile }) {
     setLoading(false)
   }
 
-  async function criarTipo() {
+  function abrirNovoTipo() { setEditTipo(null); setNovoTipo({ nome:'', cor:CORES[0], emoji:'🍽️' }); setModalTipo(true) }
+  function abrirEditarTipo(t:RefTipo) { setEditTipo(t); setNovoTipo({ nome:t.nome, cor:t.cor, emoji:t.emoji||'🍽️' }); setModalTipo(true) }
+
+  async function salvarTipo() {
     if (!novoTipo.nome.trim() || !evento) return
-    const { data } = await supabase.from('refeicao_tipos').insert({
-      event_id:evento.id, nome:novoTipo.nome.trim(), cor:novoTipo.cor, ordem:tipos.length,
-    }).select().single()
-    if (data) setTipos(prev=>[...prev,data])
-    setNovoTipo({ nome:'', cor:CORES[0] }); setModalTipo(false)
+    if (editTipo) {
+      await supabase.from('refeicao_tipos').update({ nome:novoTipo.nome.trim(), cor:novoTipo.cor }).eq('id',editTipo.id)
+      await supabase.from('refeicao_tipos').update({ emoji:novoTipo.emoji||null }).eq('id',editTipo.id) // resiliente
+      setTipos(prev=>prev.map(t=>t.id===editTipo.id?{...t,nome:novoTipo.nome.trim(),cor:novoTipo.cor,emoji:novoTipo.emoji}:t))
+    } else {
+      const { data } = await supabase.from('refeicao_tipos').insert({
+        event_id:evento.id, nome:novoTipo.nome.trim(), cor:novoTipo.cor, ordem:tipos.length,
+      }).select().single()
+      if (data) {
+        await supabase.from('refeicao_tipos').update({ emoji:novoTipo.emoji||null }).eq('id',data.id) // resiliente
+        setTipos(prev=>[...prev,{...data,emoji:novoTipo.emoji}])
+      }
+    }
+    setNovoTipo({ nome:'', cor:CORES[0], emoji:'🍽️' }); setEditTipo(null); setModalTipo(false)
   }
   async function excluirTipo(id:string) {
     if (!confirm('Excluir este tipo de refeição?')) return
@@ -97,19 +111,24 @@ export default function Cozinha({ profile }: { profile?: Profile }) {
           ? <div className="empty"><p className="empty-title">Nenhum cardápio</p><p className="empty-sub">Toque no + para criar.</p></div>
           : cardapios.map(c=>{
             const tipo = tipos.find(t=>t.id===c.refeicao_tipo_id)
+            const cor  = tipo?.cor ?? 'var(--primary)'
             return (
-              <div key={c.id} style={{background:'white',borderRadius:14,padding:'14px 16px',marginBottom:8,boxShadow:'var(--shadow-sm)',borderLeft:`4px solid ${tipo?.cor??'var(--primary)'}`}}>
-                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:6}}>
-                  <div>
-                    {tipo && <span style={{fontSize:10,fontWeight:700,color:'white',background:tipo.cor,padding:'2px 8px',borderRadius:99}}>{tipo.nome}</span>}
-                    <p style={{fontSize:14,fontWeight:700,marginTop:4}}>{c.titulo || 'Cardápio'}</p>
+              <div key={c.id} style={{background:'white',borderRadius:12,boxShadow:'0 1px 5px rgba(0,0,0,0.12)',marginBottom:10,overflow:'hidden',display:'flex'}}>
+                <div style={{width:6,alignSelf:'stretch',background:cor,flexShrink:0}}/>
+                <div style={{flex:1,minWidth:0,padding:'14px 15px'}}>
+                  <div style={{display:'flex',alignItems:'center',gap:14}}>
+                    <div style={{width:52,height:52,borderRadius:'50%',background:tipo?tipo.cor+'24':'var(--primary-light)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,fontSize:24,lineHeight:1}}>{tipo?.emoji || '🍽️'}</div>
+                    <div style={{flex:1,minWidth:0}}>
+                      <p style={{fontWeight:700,fontSize:15,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{c.titulo || 'Cardápio'}</p>
+                      {tipo && <p style={{fontSize:12,color:'var(--muted)'}}>{tipo.nome}</p>}
+                    </div>
+                    <div style={{display:'flex',gap:8,flexShrink:0}}>
+                      <button onClick={()=>abrirEditarCardapio(c)} aria-label="Editar" style={{width:34,height:34,borderRadius:8,background:'var(--bg)',border:'none',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',color:'var(--muted)',fontFamily:'inherit'}}><span className="icon icon-sm">edit</span></button>
+                      <button onClick={()=>excluirCardapio(c.id)} aria-label="Excluir" style={{width:34,height:34,borderRadius:8,background:'var(--danger-bg)',border:'none',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',fontFamily:'inherit'}}><span className="icon icon-sm" style={{color:'var(--danger)'}}>delete</span></button>
+                    </div>
                   </div>
-                  <div style={{display:'flex',gap:4}}>
-                    <button onClick={()=>abrirEditarCardapio(c)} style={{background:'none',border:'none',cursor:'pointer',padding:4}}><span className="icon icon-sm" style={{color:'var(--primary)'}}>edit</span></button>
-                    <button onClick={()=>excluirCardapio(c.id)} style={{background:'none',border:'none',cursor:'pointer',padding:4}}><span className="icon icon-sm" style={{color:'var(--danger)'}}>delete</span></button>
-                  </div>
+                  {c.itens && <p style={{fontSize:13,color:'var(--muted)',whiteSpace:'pre-wrap',marginTop:10}}>{c.itens}</p>}
                 </div>
-                {c.itens && <p style={{fontSize:13,color:'var(--muted)',whiteSpace:'pre-wrap'}}>{c.itens}</p>}
               </div>
             )
           })
@@ -120,18 +139,22 @@ export default function Cozinha({ profile }: { profile?: Profile }) {
         tipos.length===0
           ? <div className="empty"><p className="empty-title">Nenhum tipo</p><p className="empty-sub">Toque no + para criar (Café, Almoço, Janta...).</p></div>
           : tipos.map(t=>(
-            <div key={t.id} style={{background:'white',borderRadius:14,padding:'14px 16px',marginBottom:8,boxShadow:'var(--shadow-sm)',display:'flex',alignItems:'center',justifyContent:'space-between',borderLeft:`4px solid ${t.cor}`}}>
-              <div style={{display:'flex',alignItems:'center',gap:10}}>
-                <span style={{width:20,height:20,borderRadius:'50%',background:t.cor,display:'inline-block'}}/>
-                <span style={{fontSize:14,fontWeight:700}}>{t.nome}</span>
+            <div key={t.id} style={{background:'white',borderRadius:12,boxShadow:'0 1px 5px rgba(0,0,0,0.12)',marginBottom:10,overflow:'hidden',display:'flex'}}>
+              <div style={{width:6,alignSelf:'stretch',background:t.cor,flexShrink:0}}/>
+              <div style={{flex:1,minWidth:0,display:'flex',alignItems:'center',gap:14,padding:'16px 15px'}}>
+                <div style={{width:58,height:58,borderRadius:'50%',background:t.cor+'24',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,fontSize:27,lineHeight:1}}>{t.emoji || '🍽️'}</div>
+                <p style={{flex:1,minWidth:0,fontWeight:700,fontSize:15,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{t.nome}</p>
+                <div style={{display:'flex',gap:8,flexShrink:0}}>
+                  <button onClick={()=>abrirEditarTipo(t)} aria-label="Editar" style={{width:34,height:34,borderRadius:8,background:'var(--bg)',border:'none',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',color:'var(--muted)',fontFamily:'inherit'}}><span className="icon icon-sm">edit</span></button>
+                  <button onClick={()=>excluirTipo(t.id)} aria-label="Excluir" style={{width:34,height:34,borderRadius:8,background:'var(--danger-bg)',border:'none',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',fontFamily:'inherit'}}><span className="icon icon-sm" style={{color:'var(--danger)'}}>delete</span></button>
+                </div>
               </div>
-              <button onClick={()=>excluirTipo(t.id)} style={{background:'none',border:'none',cursor:'pointer',padding:4}}><span className="icon icon-sm" style={{color:'var(--danger)'}}>delete</span></button>
             </div>
           ))
       )}
 
       {/* FAB - botão redondo de + conforme a aba */}
-      <button className="fab" onClick={()=> aba==='cardapio' ? abrirNovoCardapio() : setModalTipo(true)}>
+      <button className="fab" onClick={()=> aba==='cardapio' ? abrirNovoCardapio() : abrirNovoTipo()}>
         <span className="icon">add</span>
       </button>
 
@@ -140,13 +163,19 @@ export default function Cozinha({ profile }: { profile?: Profile }) {
         <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.5)',zIndex:400,display:'flex',flexDirection:'column',justifyContent:'flex-end'}} onClick={e=>e.target===e.currentTarget&&setModalTipo(false)}>
           <div style={{background:'white',borderRadius:'20px 20px 0 0',padding:'8px 22px 28px',width:'100%',maxWidth:480,margin:'0 auto',maxHeight:'88vh',overflowY:'auto'}}>
             <div style={{width:36,height:4,background:'var(--border)',borderRadius:2,margin:'12px auto 16px'}}/>
-            <p style={{fontSize:16,fontWeight:800,marginBottom:14}}>Novo tipo de refeição</p>
-            <input className="form-input" placeholder="Ex: Café da manhã, Almoço..." value={novoTipo.nome} onChange={e=>setNovoTipo(f=>({...f,nome:e.target.value}))} style={{marginBottom:12}}/>
-            <p style={{fontSize:12,fontWeight:700,color:'var(--muted)',marginBottom:8}}>Cor</p>
-            <div style={{display:'flex',gap:8,flexWrap:'wrap',marginBottom:16}}>
-              {CORES.map(c=><button key={c} onClick={()=>setNovoTipo(f=>({...f,cor:c}))} style={{width:32,height:32,borderRadius:8,background:c,border:novoTipo.cor===c?'3px solid var(--text)':'none',cursor:'pointer'}}/>)}
+            <p style={{fontSize:16,fontWeight:800,marginBottom:14}}>{editTipo?'Editar tipo de refeição':'Novo tipo de refeição'}</p>
+            <div className="form-group"><label className="form-label">Nome</label>
+              <input className="form-input" placeholder="Ex: Café da manhã, Almoço..." value={novoTipo.nome} onChange={e=>setNovoTipo(f=>({...f,nome:e.target.value}))}/>
             </div>
-            <button className="btn btn-primary btn-full" onClick={criarTipo} style={{marginBottom:8}}>Criar</button>
+            <div className="form-group"><label className="form-label">Emoji</label>
+              <EmojiGrid value={novoTipo.emoji} onChange={em=>setNovoTipo(f=>({...f,emoji:em}))}/>
+            </div>
+            <div className="form-group"><label className="form-label">Cor</label>
+              <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+                {CORES.map(c=><button key={c} type="button" onClick={()=>setNovoTipo(f=>({...f,cor:c}))} style={{width:32,height:32,borderRadius:8,background:c,border:novoTipo.cor===c?'3px solid var(--text)':'none',cursor:'pointer'}}/>)}
+              </div>
+            </div>
+            <button className="btn btn-primary btn-full" onClick={salvarTipo} style={{marginBottom:8}}>{editTipo?'Salvar':'Criar'}</button>
             <button className="btn btn-ghost btn-full" onClick={()=>setModalTipo(false)}>Cancelar</button>
           </div>
         </div>
