@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
-import { fmtHora, isAdmin, nowLocalInput } from '../utils'
+import { fmtHora, isAdmin, nowLocalInput, getInitials } from '../utils'
 import { useEvento } from '../hooks/useEvento'
 import PrintOverlay from '../components/PrintOverlay'
 import CronometroPopup from '../components/CronometroPopup'
@@ -66,6 +66,10 @@ export default function Cronograma({ profile }: { profile?: Profile }) {
     ministracao_id:'', theater_id:'', cardapio_id:'',
   })
   const [cardapios, setCardapios] = useState<{id:string;tipo_refeicao_nome:string|null;titulo:string|null}[]>([])
+  // fotos/elenco para a impressão "com detalhes"
+  const [pessoaFoto, setPessoaFoto] = useState<Record<string,{name:string;photo_url:string|null}>>({})
+  const [personagensMap, setPersonagensMap] = useState<Record<string,string>>({})
+  const [elencoPorTeatro, setElencoPorTeatro] = useState<Record<string,{person_id:string;personagem_id:string|null}[]>>({})
 
   // chave do tipo selecionado (protege regras de ministração/refeição)
   function ehTipoChave(chave:string){
@@ -102,7 +106,7 @@ export default function Cronograma({ profile }: { profile?: Profile }) {
 
   async function carregar() {
     if (!evento) return
-    const [it, mi, te, lo, pe, ti, cd] = await Promise.all([
+    const [it, mi, te, lo, pe, ti, cd, peAll, pgAll] = await Promise.all([
       supabase.from('cronograma_eventos').select('*').eq('event_id', evento.id).order('hora_inicio'),
       supabase.from('ministrações').select('id,titulo,ministrante_id,local,descricao,tema').eq('event_id', evento.id).order('titulo'),
       supabase.from('theaters').select('id,nome,local,descricao').eq('event_id', evento.id).order('nome'),
@@ -110,6 +114,8 @@ export default function Cronograma({ profile }: { profile?: Profile }) {
       supabase.from('people').select('id,name').eq('event_id', evento.id).eq('role_type','worker').order('name'),
       supabase.from('cronograma_tipos').select('id,nome,cor,chave,protegido').eq('ativo',true).order('ordem'),
       supabase.from('cozinha_cardapios').select('id,tipo_refeicao_nome,titulo').eq('event_id', evento.id),
+      supabase.from('people').select('id,name,photo_url').eq('event_id', evento.id),
+      supabase.from('personagens_globais').select('id,nome'),
     ])
     setItens(it.data ?? [])
     setMinistrações(mi.data ?? [])
@@ -118,6 +124,18 @@ export default function Cronograma({ profile }: { profile?: Profile }) {
     setMinistrantes(pe.data ?? [])
     setTiposDB(ti.data ?? [])
     setCardapios(cd.data ?? [])
+    // mapas para impressão detalhada
+    const fmap: Record<string,{name:string;photo_url:string|null}> = {}; (peAll.data ?? []).forEach((p:any)=>{ fmap[p.id]={name:p.name,photo_url:p.photo_url} })
+    setPessoaFoto(fmap)
+    const pgmap: Record<string,string> = {}; (pgAll.data ?? []).forEach((p:any)=>{ pgmap[p.id]=p.nome })
+    setPersonagensMap(pgmap)
+    const teatroIds = (te.data ?? []).map((t:any)=>t.id)
+    if (teatroIds.length) {
+      const { data: elRows } = await supabase.from('teatro_elenco').select('theater_id,person_id,personagem_id').in('theater_id', teatroIds)
+      const emap: Record<string,{person_id:string;personagem_id:string|null}[]> = {}
+      ;(elRows ?? []).forEach((e:any)=>{ (emap[e.theater_id]=emap[e.theater_id]||[]).push({person_id:e.person_id,personagem_id:e.personagem_id}) })
+      setElencoPorTeatro(emap)
+    } else setElencoPorTeatro({})
     setLoading(false)
   }
 
@@ -538,27 +556,55 @@ export default function Cronograma({ profile }: { profile?: Profile }) {
                   const { min, tea, ministrante } = getInfo(item)
                   const cor = tiposDB.find(t=>t.nome.toLowerCase()===item.tipo.toLowerCase())?.cor ?? TIPO_COR_FALLBACK[item.tipo] ?? '#00A99D'
                   const tipoNome = tiposDB.find(t=>t.nome.toLowerCase()===item.tipo.toLowerCase())?.nome ?? item.tipo
+                  const det = imprimir==='detalhado'
+                  const mfoto = min?.ministrante_id ? pessoaFoto[min.ministrante_id] : null
+                  const atores = tea ? (elencoPorTeatro[tea.id] ?? []) : []
                   return (
                     <div key={item.id} style={{display:'flex',border:'1px solid #e5e7eb',borderRadius:8,overflow:'hidden',marginBottom:8,breakInside:'avoid'}}>
                       <div style={{width:5,background:cor,flexShrink:0}}/>
                       <div style={{padding:'8px 12px',flex:1}}>
                         <p style={{fontSize:12,color:'#6b7280'}}>{fmtHora(item.hora_inicio)} — {fmtHora(item.hora_fim)}</p>
                         <p style={{fontWeight:700,fontSize:14,...(item.status==='concluido'?{textDecoration:'line-through',opacity:0.6}:{})}}>{min?.titulo ?? item.titulo}</p>
+                        {/* linha resumo: no modo "com detalhes" não repete ministrante/teatro (evita duplicidade) */}
                         <p style={{fontSize:12,color:'#6b7280'}}>
-                          {tipoNome}{item.local?` · ${item.local}`:''}{ministrante?` · ${ministrante.name.split(' ')[0]}`:''}{tea?` · ${tea.nome}`:''}
+                          {tipoNome}{item.local?` · ${item.local}`:''}{!det&&ministrante?` · ${ministrante.name.split(' ')[0]}`:''}{!det&&tea?` · ${tea.nome}`:''}
                         </p>
-                        {imprimir==='detalhado' && (min || tea || item.descricao) && (
-                          <div style={{marginTop:6,fontSize:12,color:'#374151',borderTop:'1px dashed #e5e7eb',paddingTop:6}}>
-                            {min && <>
-                              {ministrante && <p>Ministrante: {ministrante.name}</p>}
-                              {min.tema && <p>Tema: {min.tema}</p>}
-                              {min.descricao && <p style={{whiteSpace:'pre-wrap'}}>{min.descricao}</p>}
-                            </>}
-                            {tea && <>
-                              <p style={{fontWeight:600,marginTop:min?4:0}}>🎭 Teatro: {tea.nome}</p>
-                              {tea.local && <p>Local: {tea.local}</p>}
-                              {tea.descricao && <p style={{whiteSpace:'pre-wrap'}}>{tea.descricao}</p>}
-                            </>}
+                        {det && (min || tea || item.descricao) && (
+                          <div style={{marginTop:6,fontSize:12,color:'#374151',borderTop:'1px dashed #e5e7eb',paddingTop:8}}>
+                            {min && (
+                              <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:6}}>
+                                <div style={{width:40,height:40,borderRadius:'50%',overflow:'hidden',background:'#f3f4f6',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+                                  {mfoto?.photo_url?<img src={mfoto.photo_url} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}}/>:<span style={{fontWeight:700,color:'#6b7280',fontSize:13}}>{getInitials(mfoto?.name ?? ministrante?.name ?? '?')}</span>}
+                                </div>
+                                <div>
+                                  <p style={{fontWeight:700}}>Ministrante: {mfoto?.name ?? ministrante?.name ?? '—'}</p>
+                                  {min.tema && <p>Tema: {min.tema}</p>}
+                                </div>
+                              </div>
+                            )}
+                            {min?.descricao && <p style={{whiteSpace:'pre-wrap',marginBottom:6}}>{min.descricao}</p>}
+                            {tea && (
+                              <div style={{marginTop:min?4:0}}>
+                                <p style={{fontWeight:700}}>🎭 Teatro: {tea.nome}</p>
+                                {tea.descricao && <p style={{whiteSpace:'pre-wrap'}}>{tea.descricao}</p>}
+                                {atores.length>0 && (
+                                  <div style={{display:'flex',flexWrap:'wrap',gap:10,marginTop:8}}>
+                                    {atores.map((a,ix)=>{
+                                      const pf = pessoaFoto[a.person_id]; const pgn = a.personagem_id ? personagensMap[a.personagem_id] : ''
+                                      return (
+                                        <div key={ix} style={{width:78,textAlign:'center'}}>
+                                          <div style={{width:56,height:56,borderRadius:'50%',margin:'0 auto 3px',overflow:'hidden',background:'#f3f4f6',display:'flex',alignItems:'center',justifyContent:'center',border:'1px solid #e5e7eb'}}>
+                                            {pf?.photo_url?<img src={pf.photo_url} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}}/>:<span style={{fontWeight:700,color:'#6b7280',fontSize:16}}>{getInitials(pf?.name ?? '?')}</span>}
+                                          </div>
+                                          {pgn && <p style={{fontSize:11,fontWeight:700,lineHeight:1.15}}>{pgn}</p>}
+                                          <p style={{fontSize:11,color:'#6b7280',lineHeight:1.15}}>{pf?.name?.split(' ')[0] ?? ''}</p>
+                                        </div>
+                                      )
+                                    })}
+                                  </div>
+                                )}
+                              </div>
+                            )}
                             {!min && !tea && item.descricao && <p style={{whiteSpace:'pre-wrap'}}>{item.descricao}</p>}
                           </div>
                         )}
