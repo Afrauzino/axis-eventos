@@ -82,16 +82,16 @@ _Detalhes e "onde mexer" em `docs/HANDOFF.md`._
 10. [ ] **Ministrações**: remover data/horário/horário final/duração (agenda só no Cronograma).
 11. [ ] **Cronograma → atividades pessoais**: ministrante/elenco entram automaticamente nas atividades pessoais
     da pessoa, com horário vindo do Cronograma.
-12. [~] **Cronograma**: botão "Adicionar" do cronômetro não estoura mais o layout [feito]; FALTA sincronização
-    em tempo real (~1–2s) em todos os dispositivos (Supabase realtime).
+12. [x] **Cronograma**: botão "Adicionar" ok [feito]; sincronização em tempo real (Supabase Realtime em
+    cronograma_eventos; popup de quem acompanha sincroniza). **Rodar sql/22_realtime_cronograma.sql**. [feito]
 13. [x] **Tema**: barra superior do celular segue a cor do sistema (theme-color dinâmico em tema.ts). [feito]
 14. [x] **Impressão**: print-color-adjust em PrintOverlay preserva cores no PDF. [feito]
 15. [x] ~~Permissões por contexto~~ — DESCARTADO pelo Anderson (2026-07-03). Não fazer.
-16. [ ] **Permissões do ministrante**: acesso mínimo — só vê a própria ministração + bloco de notas; sem lista,
-    sem play/continuar/concluir; entra só pelo Cronograma; voltar/fechar sempre volta ao Cronograma.
+16. [x] **Permissões do ministrante** (cargo "Ministrante"=coordenador, não-admin): só vê a própria ministração
+    + notas; sem lista/status/play/print/editar; entra só pelo Cronograma; voltar sempre volta ao Cronograma. [feito]
 17. [x] **Início (Fotos/vídeos)**: playlist — imagem por tempo; YouTube autoplay limpo (IFrame API, sem
     controles/UI), avança só ao terminar; loop infinito. [feito]
-18. [ ] **MSG (aba no Admin)**: mensagem editável que acompanha o código de acesso (texto/instruções/links).
-    Não fixa no código — 100% editável. Ao copiar o código, copia a mensagem já montada.
-19. [ ] **Encontristas → "conheço esta pessoa"**: qualquer encontreiro marca que conhece um encontrista;
-    registra nome+foto+WhatsApp do encontreiro; vários podem marcar; fica no perfil do encontrista (rede social).
+18. [x] **MSG (aba no Admin)**: mensagem editável do código de acesso ({nome}/{codigo}), prévia, botão
+    "Copiar msg" monta a mensagem. [feito]
+19. [x] **Encontristas → "conheço esta pessoa"**: encontreiro marca (nome+foto+WhatsApp); vários marcam; lista
+    no perfil. **Rodar sql/23_encontrista_conhecidos.sql**. [feito]
