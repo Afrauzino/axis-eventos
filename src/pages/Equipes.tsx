@@ -292,8 +292,13 @@ export default function Equipes({ profile }: { profile?: Profile }) {
               </div>
               <div className="form-group">
                 <label className="form-label">Cor</label>
-                <div style={{display:'flex',gap:8,flexWrap:'wrap',paddingTop:4}}>
+                <div style={{display:'flex',gap:8,flexWrap:'wrap',paddingTop:4,alignItems:'center'}}>
                   {CORES.map(c=><button key={c} type="button" onClick={()=>setForm(f=>({...f,color:c}))} style={{width:34,height:34,borderRadius:8,background:c,border:'none',cursor:'pointer',boxShadow:form.color===c?`0 0 0 3px white, 0 0 0 5px ${c}`:'none',transition:'box-shadow 0.15s'}}/>)}
+                  {/* #3c — cor personalizada (color picker) */}
+                  <label title="Cor personalizada" style={{width:34,height:34,borderRadius:8,cursor:'pointer',position:'relative',overflow:'hidden',display:'flex',alignItems:'center',justifyContent:'center',border:CORES.includes(form.color)?'1px dashed var(--border)':`0 0 0 3px white`,background:CORES.includes(form.color)?'conic-gradient(red,orange,yellow,lime,cyan,blue,magenta,red)':form.color,boxShadow:CORES.includes(form.color)?'none':`0 0 0 3px white, 0 0 0 5px ${form.color}`}}>
+                    {CORES.includes(form.color) && <span className="icon icon-sm" style={{color:'white',mixBlendMode:'difference'}}>colorize</span>}
+                    <input type="color" value={form.color} onChange={e=>setForm(f=>({...f,color:e.target.value}))} style={{position:'absolute',inset:0,opacity:0,cursor:'pointer',width:'100%',height:'100%'}}/>
+                  </label>
                 </div>
               </div>
               <div className="form-group">
