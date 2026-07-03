@@ -63,7 +63,8 @@ _Detalhes e "onde mexer" em `docs/HANDOFF.md`._
 
 1. [x] **Admin → Usuários**: botão "Editar cadastro completo" (foto+todos os dados, reusa CadastroPessoa);
    barra de abas agora rola sozinha (não arrasta a página). [feito]
-2. [ ] **Instalar como app**: melhor caminho de instalação simples (PWA facilitada / prompt de install).
+2. [x] **Instalar como app**: PWA (manifest + service worker network-first) + botão "Instalar aplicativo"
+   no Login/Dashboard (Android 1 toque; iPhone mostra passo a passo). [feito]
 3. [~] **Equipes**: (c) color picker personalizado [feito]; (a) foto-ícone: código OK, faltava bucket →
    **rodar sql/21_storage_buckets.sql** [feito no código/SQL]; (b) tecla fantasma "2"/"W" — sem listener
    global no código; precisa REPRO no celular (qual tela, qual campo, qual teclado). PENDENTE repro.
@@ -88,5 +89,5 @@ _Detalhes e "onde mexer" em `docs/HANDOFF.md`._
 15. [x] ~~Permissões por contexto~~ — DESCARTADO pelo Anderson (2026-07-03). Não fazer.
 16. [ ] **Permissões do ministrante**: acesso mínimo — só vê a própria ministração + bloco de notas; sem lista,
     sem play/continuar/concluir; entra só pelo Cronograma; voltar/fechar sempre volta ao Cronograma.
-17. [ ] **Início (Fotos/vídeos)**: playlist automática. Imagem = tempo configurado. Vídeo YouTube = autoplay,
-    sem controles/barra/play/UI, avança só ao terminar. Loop infinito no fim.
+17. [x] **Início (Fotos/vídeos)**: playlist — imagem por tempo; YouTube autoplay limpo (IFrame API, sem
+    controles/UI), avança só ao terminar; loop infinito. [feito]
