@@ -237,18 +237,21 @@ export default function Admin({ profile }: { profile?: Profile }) {
         return { ...p, user_role:prof?.user_role??null, role_status:prof?.role_status??null, profile_name:prof?.name??null }
       })
 
-      // Add admin profiles that have no people record in this event
-      const adminPerfs = (allProfs??[]).filter(pr =>
-        ['admin','coordenador','financeiro'].includes(pr.user_role) &&
+      // TODAS as contas (profiles) que não têm cadastro de pessoa neste evento — mostrar todas
+      const contasSemCadastro = (allProfs??[]).filter(pr =>
         !(pe??[]).find((p:any)=>p.user_id===pr.user_id)
-      ).map(pr => ({
-        id: pr.user_id, // use user_id as id fallback
-        name: pr.name, photo_url: null, church: 'Administrador do sistema',
-        role_type: 'admin', invite_code: null, user_id: pr.user_id,
-        user_role: pr.user_role, role_status: pr.role_status, profile_name: pr.name
-      }))
+      ).map(pr => {
+        const ehAdmin = ['admin','coordenador','financeiro'].includes(pr.user_role)
+        return {
+          id: pr.user_id, // usa user_id como id de fallback (conta sem people)
+          name: pr.name || '(conta sem nome)', photo_url: null,
+          church: ehAdmin ? 'Administrador do sistema' : 'Conta — sem cadastro no evento',
+          role_type: ehAdmin ? 'admin' : 'conta', invite_code: null, user_id: pr.user_id,
+          user_role: pr.user_role, role_status: pr.role_status, profile_name: pr.name
+        }
+      })
 
-      setPessoas([...adminPerfs, ...pessoasComInfo])
+      setPessoas([...contasSemCadastro, ...pessoasComInfo])
     } else {
       // No active event - just show admin profiles
       const admins = (allProfs??[]).map(pr => ({
@@ -360,6 +363,7 @@ export default function Admin({ profile }: { profile?: Profile }) {
 
   // Excluir COMPLETAMENTE — remove de todas as tabelas, como se nunca tivesse existido
   async function excluirCadastro(p: typeof pessoas[0]) {
+    if (p.user_role === 'admin') { alert('Administradores não podem ser excluídos. Rebaixe o cargo antes, se precisar.'); return }
     const msg = p.user_id
       ? `Excluir "${p.name}" de TODOS os sistemas?\n\nSerá removido de teatro, escalas, equipes, saúde, ranking e a conta será bloqueada. Esta ação é permanente.`
       : `Excluir "${p.name}" de TODOS os sistemas?\n\nSerá removido de teatro, escalas, equipes, saúde e ranking. Esta ação é permanente.`
@@ -1019,12 +1023,14 @@ export default function Admin({ profile }: { profile?: Profile }) {
             </button>
 
             <button className="btn btn-ghost btn-full" onClick={()=>setPessoaDetalhe(null)}>Fechar</button>
-            <button
-              onClick={()=>excluirCadastro(pessoaDetalhe)}
-              style={{marginTop:8,width:'100%',padding:'10px',background:'var(--danger-bg)',color:'var(--danger)',border:'1px solid var(--danger)',borderRadius:10,cursor:'pointer',fontSize:13,fontWeight:700,fontFamily:'inherit',display:'flex',alignItems:'center',justifyContent:'center',gap:6}}>
-              <span className="icon icon-sm">person_remove</span>
-              {pessoaDetalhe.user_id ? 'Bloquear e excluir cadastro' : 'Excluir cadastro'}
-            </button>
+            {pessoaDetalhe.user_role !== 'admin' && (
+              <button
+                onClick={()=>excluirCadastro(pessoaDetalhe)}
+                style={{marginTop:8,width:'100%',padding:'10px',background:'var(--danger-bg)',color:'var(--danger)',border:'1px solid var(--danger)',borderRadius:10,cursor:'pointer',fontSize:13,fontWeight:700,fontFamily:'inherit',display:'flex',alignItems:'center',justifyContent:'center',gap:6}}>
+                <span className="icon icon-sm">person_remove</span>
+                {pessoaDetalhe.user_id ? 'Bloquear e excluir cadastro' : 'Excluir cadastro'}
+              </button>
+            )}
           </div>
         </div>
       )}
