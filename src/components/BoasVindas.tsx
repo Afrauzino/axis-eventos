@@ -16,6 +16,8 @@ function mapaSrc(d:BVData) {
   return `https://maps.google.com/maps?q=${encodeURIComponent(q)}&z=15&output=embed`
 }
 
+const CHAVE_ATIVO = 'boasvindas_ativo'
+
 export default function BoasVindas({ variante, admin }: { variante:BVVariante; admin:boolean }) {
   const [data, setData]   = useState<BVData>(VAZIO)
   const [carregado, setCarregado] = useState(false)
@@ -23,8 +25,10 @@ export default function BoasVindas({ variante, admin }: { variante:BVVariante; a
   const [salvando, setSalvando] = useState(false)
   const [msg, setMsg] = useState('')
   const [varEdit, setVarEdit] = useState<BVVariante>(variante)
+  const [ativo, setAtivo] = useState(true) // #4 — 1 botão liga/desliga as DUAS telas
 
   useEffect(() => { setVarEdit(variante); carregar(variante) }, [variante])
+  useEffect(() => { carregarConfig(CHAVE_ATIVO).then(v => { if (v !== null) setAtivo(v !== '0') }) }, [])
 
   async function carregar(v:BVVariante) {
     const raw = await carregarConfig(chaveDe(v))
@@ -36,6 +40,11 @@ export default function BoasVindas({ variante, admin }: { variante:BVVariante; a
     setSalvando(true)
     await salvarConfig(chaveDe(varEdit), JSON.stringify(data))
     setSalvando(false); setEditando(false); setMsg('✓ Salvo'); setTimeout(()=>setMsg(''),1500)
+  }
+  async function alternarAtivo(v:boolean) {
+    setAtivo(v)
+    await salvarConfig(CHAVE_ATIVO, v ? '1' : '0')
+    setMsg(v ? '✓ Boas-vindas ligada' : '✓ Boas-vindas desligada'); setTimeout(()=>setMsg(''),1500)
   }
   function usarMinhaLocalizacao() {
     if (!navigator.geolocation) { alert('Localização não disponível neste navegador.'); return }
@@ -50,12 +59,26 @@ export default function BoasVindas({ variante, admin }: { variante:BVVariante; a
 
   if (!carregado) return null
 
+  // #4 — desligada: some para todos (usuários); admin ainda vê o botão pra religar
+  if (!ativo && !admin) return null
+
   const vazio = !data.texto && !temMapa(data) && data.contatos.length===0
+
+  const SwitchAtivo = () => (
+    <button type="button" onClick={()=>alternarAtivo(!ativo)}
+      style={{display:'flex',alignItems:'center',gap:8,background:'none',border:'none',cursor:'pointer',fontFamily:'inherit',padding:0}}>
+      <span style={{width:40,height:22,borderRadius:99,background:ativo?'var(--primary)':'var(--border)',position:'relative',transition:'background .2s',flexShrink:0}}>
+        <span style={{position:'absolute',top:2,left:ativo?20:2,width:18,height:18,borderRadius:'50%',background:'white',transition:'left .2s',boxShadow:'0 1px 3px rgba(0,0,0,0.3)'}}/>
+      </span>
+      <span style={{fontSize:12,fontWeight:600,color:'var(--text2)'}}>{ativo?'Boas-vindas ligada':'Boas-vindas desligada'} (as 2 telas)</span>
+    </button>
+  )
 
   // ---------- MODO EDIÇÃO (admin) ----------
   if (admin && editando) {
     return (
       <div style={{background:'white',borderRadius:14,boxShadow:'var(--shadow-sm)',padding:16,marginBottom:16}}>
+        <div style={{paddingBottom:12,marginBottom:12,borderBottom:'1px solid var(--border)'}}><SwitchAtivo/></div>
         <div style={{display:'flex',gap:6,marginBottom:14}}>
           {(['encontrista','encontreiro'] as BVVariante[]).map(v=>(
             <button key={v} onClick={()=>{ setVarEdit(v); carregar(v) }} className="btn btn-sm"
@@ -112,9 +135,15 @@ export default function BoasVindas({ variante, admin }: { variante:BVVariante; a
   return (
     <div style={{background:'white',borderRadius:14,boxShadow:'var(--shadow-sm)',padding:16,marginBottom:16}}>
       {admin && (
-        <div style={{display:'flex',justifyContent:'flex-end',marginBottom:8}}>
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:8,gap:8,flexWrap:'wrap'}}>
+          <SwitchAtivo/>
           <button className="btn btn-ghost btn-sm" onClick={()=>setEditando(true)}><span className="icon icon-sm">edit</span> Editar boas-vindas</button>
         </div>
+      )}
+      {admin && !ativo && (
+        <p style={{fontSize:12,color:'var(--muted)',textAlign:'center',padding:'4px 0 8px'}}>
+          As telas de boas-vindas (Encontristas e Encontreiros) estão <b>desligadas</b> — os usuários não as veem.
+        </p>
       )}
       {msg && <p style={{fontSize:12,color:'var(--success)',textAlign:'center',marginBottom:8}}>{msg}</p>}
 
