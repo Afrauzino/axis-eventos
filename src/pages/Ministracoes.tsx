@@ -66,7 +66,7 @@ export default function Ministracoes({ profile }: { profile?: Profile }) {
     setLoading(true)
     const [mi, pe, lo, te] = await Promise.all([
       supabase.from('ministrações').select('*').eq('event_id',evento.id).order('hora_inicio'),
-      supabase.from('people').select('id,name,photo_url,user_id').eq('event_id',evento.id).order('name'),
+      supabase.from('people').select('id,name,photo_url,user_id,role_type').eq('event_id',evento.id).order('name'),
       supabase.from('locais').select('id,nome').eq('event_id',evento.id).order('nome'),
       supabase.from('theaters').select('id,nome,ministracao_id,cor').eq('event_id',evento.id).order('nome'),
     ])
@@ -349,7 +349,8 @@ export default function Ministracoes({ profile }: { profile?: Profile }) {
                       </div>
                     </div>
                     <div className="form-group">
-                      <PersonSelect label="Ministrante" pessoas={pessoas} value={form.ministrante_id} onChange={id=>setForm(f=>({...f,ministrante_id:id}))} placeholder="Buscar ministrante..."/>
+                      {/* #9 — só Encontreiros podem ser ministrantes */}
+                      <PersonSelect label="Ministrante" pessoas={pessoas.filter((p:any)=>p.role_type==='worker')} value={form.ministrante_id} onChange={id=>setForm(f=>({...f,ministrante_id:id}))} placeholder="Buscar ministrante (encontreiro)..."/>
                     </div>
                     <div className="form-grid-2">
                       <div className="form-group"><label className="form-label">Início <span className="req">*</span></label>

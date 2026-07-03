@@ -103,8 +103,8 @@ export default function CronometroPopup({ item, podeControlar, onClose, onUpdate
 
             {/* digitar minutos */}
             <div style={{display:'flex',gap:8,marginBottom:16}}>
-              <input type="number" min="1" value={addMin} onChange={e=>setAddMin(e.target.value)} placeholder="Minutos a adicionar" style={{flex:1,padding:'12px',borderRadius:12,border:'1px solid var(--border)',fontFamily:'inherit',fontSize:14}}/>
-              <button onClick={adicionarDigitado} style={{padding:'12px 18px',borderRadius:12,border:'none',background:'var(--primary)',color:'white',cursor:'pointer',fontWeight:800,fontFamily:'inherit'}}>Adicionar</button>
+              <input type="number" min="1" value={addMin} onChange={e=>setAddMin(e.target.value)} placeholder="Minutos a adicionar" style={{flex:1,minWidth:0,width:'100%',padding:'12px',borderRadius:12,border:'1px solid var(--border)',fontFamily:'inherit',fontSize:14,boxSizing:'border-box'}}/>
+              <button onClick={adicionarDigitado} style={{flexShrink:0,padding:'12px 18px',borderRadius:12,border:'none',background:'var(--primary)',color:'white',cursor:'pointer',fontWeight:800,fontFamily:'inherit'}}>Adicionar</button>
             </div>
 
             {!rodando
