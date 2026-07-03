@@ -47,11 +47,19 @@ export default function Ministracoes({ profile }: { profile?: Profile }) {
   const canEdit    = profile && isAdmin(profile.user_role)
   const userId     = profile?.user_id
   const isLiderPlus = profile && hasRole(profile.user_role, 'lider')
+  // #16 — Ministrante (cargo "Ministrante" = coordenador, e não admin): acesso mínimo.
+  // Só vê a PRÓPRIA ministração + bloco de notas; entra só pelo Cronograma; ao sair volta pro Cronograma.
+  const restrito   = profile?.user_role === 'coordenador' && !canEdit
 
   const { id: paramId } = useParams()
   const navigate = useNavigate()
 
   useEffect(() => { if (evLoading) return; if (!evento) { setLoading(false); return }; carregar() }, [evento, evLoading])
+
+  // #16 — ministrante nunca vê a lista geral: sem id na URL, volta pro cronograma
+  useEffect(() => { if (restrito && !paramId) navigate('/cronograma', { replace: true }) }, [restrito, paramId])
+  // Fechar/voltar do ministrante SEMPRE volta pro cronograma (nunca pra lista de ministrações)
+  const fecharDetalhe = () => { if (restrito) navigate('/cronograma'); else setDetalhe(null) }
 
   // Auto-open ministração when navigating from cronograma
   useEffect(() => {
@@ -156,7 +164,13 @@ export default function Ministracoes({ profile }: { profile?: Profile }) {
 
   return (
     <div className="page">
-      {loading ? [1,2,3].map(i=><div key={i} className="skeleton" style={{height:80,marginBottom:8,borderRadius:14}}/>) :
+      {restrito ? (
+        <div className="empty" style={{textAlign:'center'}}>
+          <div className="empty-icon"><span className="icon" style={{color:'var(--muted-light)'}}>event</span></div>
+          <p className="empty-title">Abra sua ministração pelo Cronograma</p>
+          <button className="btn btn-primary btn-sm" onClick={()=>navigate('/cronograma')}>Ir para o Cronograma</button>
+        </div>
+      ) : loading ? [1,2,3].map(i=><div key={i} className="skeleton" style={{height:80,marginBottom:8,borderRadius:14}}/>) :
       mins.length===0 ? (
         <div className="empty">
           <div className="empty-icon"><span className="icon" style={{color:'var(--muted-light)'}}>church</span></div>
@@ -195,10 +209,10 @@ export default function Ministracoes({ profile }: { profile?: Profile }) {
       {detalhe && (() => {
         const min = getPessoa(detalhe.ministrante_id)
         const isEuMinistrant = !!min?.user_id && min.user_id === userId
-        const canSeeConteudo = isLiderPlus
+        const canSeeConteudo = isLiderPlus || (restrito && isEuMinistrant)
 
         return (
-          <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.5)',zIndex:300,display:'flex',flexDirection:'column',justifyContent:'flex-end'}} onClick={e=>e.target===e.currentTarget&&setDetalhe(null)}>
+          <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.5)',zIndex:300,display:'flex',flexDirection:'column',justifyContent:'flex-end'}} onClick={e=>e.target===e.currentTarget&&fecharDetalhe()}>
             <div style={{background:'white',borderRadius:'20px 20px 0 0',maxHeight:'90vh',overflowY:'auto'}}>
               <div style={{width:36,height:4,background:'var(--border)',borderRadius:2,margin:'12px auto 0'}}/>
 
@@ -234,7 +248,7 @@ export default function Ministracoes({ profile }: { profile?: Profile }) {
                           <span className="info-value">{min.name}</span>
                         </div>
                       </div>}
-                                            <div className="info-row">
+                                            {!restrito && <div className="info-row">
                       <span className="info-label">Status</span>
                       <button
                         onClick={()=>mudarStatusMin(detalhe.id,detalhe.status)}
@@ -242,11 +256,11 @@ export default function Ministracoes({ profile }: { profile?: Profile }) {
                         style={{border:'none',cursor:'pointer',fontFamily:'inherit'}}
                         title="Clique para avançar status"
                       >{STATUS_LABEL[detalhe.status]??detalhe.status} ▶</button>
+                    </div>}
                     </div>
-                    </div>
-                    {/* Teatro vinculado */}
+                    {/* Teatro vinculado (ministrante restrito não navega pra fora) */}
                     {(() => {
-                      const teatroLink = teatros.find(t=>t.ministracao_id===detalhe.id)
+                      const teatroLink = restrito ? null : teatros.find(t=>t.ministracao_id===detalhe.id)
                       return teatroLink ? (
                         <button onClick={()=>{ setDetalhe(null); navigate('/teatro/'+teatroLink.id) }} style={{width:'100%',background:teatroLink.cor?teatroLink.cor+'22':'#FFF3E0',border:`1px solid ${teatroLink.cor??'var(--accent)'}`,borderRadius:12,padding:'12px 14px',marginBottom:12,cursor:'pointer',fontFamily:'inherit',textAlign:'left',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
                           <div>
@@ -258,9 +272,16 @@ export default function Ministracoes({ profile }: { profile?: Profile }) {
                       ) : null
                     })()}
 
-                    <button className="btn btn-outline btn-full btn-sm" onClick={()=>setImprimir(detalhe)} style={{marginBottom:8}}>
-                      <span className="icon icon-sm">print</span> Imprimir ministração
-                    </button>
+                    {!restrito && (
+                      <button className="btn btn-outline btn-full btn-sm" onClick={()=>setImprimir(detalhe)} style={{marginBottom:8}}>
+                        <span className="icon icon-sm">print</span> Imprimir ministração
+                      </button>
+                    )}
+                    {restrito && (
+                      <button className="btn btn-primary btn-full btn-sm" onClick={()=>navigate('/cronograma')} style={{marginTop:8}}>
+                        <span className="icon icon-sm">arrow_back</span> Voltar ao Cronograma
+                      </button>
+                    )}
                     {canEdit && (
                       <div style={{display:'flex',gap:8}}>
                         <button className="btn btn-ghost" style={{flex:1}} onClick={()=>{setDetalhe(null);abrirEdicao(detalhe)}}>Editar</button>
