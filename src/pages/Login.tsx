@@ -22,12 +22,11 @@ export default function Login() {
   const [form, setForm]   = useState<PessoaForm>({...FORM_VAZIO})
   const [usaMed, setUsaMed] = useState(false)
   const [meds, setMeds]   = useState<MedCtrl[]>([])
-  const [saudeOk, setSaudeOk] = useState(false)
 
   function reset(m: Modo) {
     setModo(m); setErro(''); setOk('')
     setEmail(''); setSenha(''); setConf('')
-    setForm({...FORM_VAZIO}); setUsaMed(false); setMeds([]); setSaudeOk(false)
+    setForm({...FORM_VAZIO}); setUsaMed(false); setMeds([])
   }
 
   // LOGIN
@@ -93,10 +92,6 @@ export default function Login() {
     if (!email.trim()) { setErro('Email é obrigatório.'); setLoading(false); return }
     if (senha.length < 6) { setErro('Senha mínima: 6 caracteres.'); setLoading(false); return }
     if (senha !== conf) { setErro('As senhas não coincidem.'); setLoading(false); return }
-    if (!saudeOk) {
-      setErro('Você precisa visitar a aba Saúde antes de concluir. Toque em "🩺 Saúde" acima.')
-      setLoading(false); return
-    }
     if (usaMed && meds.some(m=>!m.nome.trim())) { setErro('Preencha o nome de todos os medicamentos.'); setLoading(false); return }
 
     // Criar conta Supabase Auth
@@ -353,7 +348,6 @@ export default function Login() {
               showTeam={true}
               showReferencia={form.role_type==='encounterer'}
               fotoObrigatoria={true}
-              onSaudeVisit={()=>setSaudeOk(true)}
             />
 
             <button type="submit" className="btn btn-primary btn-full btn-lg" disabled={loading} style={{marginTop:16}}>

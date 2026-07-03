@@ -57,6 +57,18 @@ end $$;
 -- Religa as checagens
 set session_replication_role = 'origin';
 
+-- ----------------------------------------------------------------------------
+-- (OPCIONAL) APAGAR OS LOGINS de teste (auth.users), mantendo o SEU.
+-- Sem isso, um email usado no teste NÃO consegue re-cadastrar (já existe no auth)
+-- nem logar (perfil foi apagado). TROQUE pelo SEU email de admin e descomente:
+-- ----------------------------------------------------------------------------
+-- delete from auth.users where email <> 'SEU-EMAIL-ADMIN@exemplo.com';
+--
+-- Ou apagar só um email específico (pra ele poder cadastrar de novo):
+-- delete from auth.users where email = 'email-de-teste@exemplo.com';
+--
+-- (Alternativa sem SQL: Supabase → Authentication → Users → excluir manualmente.)
+
 -- Conferência rápida (deve sobrar só o admin em profiles e 0 em events/people)
 select 'profiles' as tabela, count(*) as linhas from public.profiles
 union all select 'events', count(*) from public.events

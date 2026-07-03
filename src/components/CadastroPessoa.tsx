@@ -101,8 +101,7 @@ export default function CadastroPessoa({
 }: Props) {
   const [equipes, setEquipes] = useState<{id:string;name:string;color:string}[]>([])
   const [refs,    setRefs]    = useState<{id:string;name:string;photo_url:string|null}[]>([])
-  const [aba, setAba]           = useState<'geral'|'saude'>('geral')
-  const [saudeVisitada, setSaudeVisitada] = useState(false)
+  const aba: string = 'geral' // Saúde removida do primeiro acesso (preenchida depois no módulo Saúde)
   const [refSearch, setRefSearch] = useState('')
   const [refOpen, setRefOpen]   = useState(false)
 
@@ -145,18 +144,7 @@ export default function CadastroPessoa({
 
   return (
     <div>
-      {/* ABAS */}
-      <div className="tabs mb-4">
-        <button type="button" className={`tab ${aba==='geral'?'active':''}`} onClick={()=>setAba('geral')}>👤 Dados gerais</button>
-        <button type="button" className={`tab ${aba==='saude'?'active':''}`}
-          onClick={()=>{setAba('saude');setSaudeVisitada(true);onSaudeVisit?.()}}
-          style={{position:'relative'}}>
-          🩺 Saúde
-          {!saudeVisitada && <span style={{position:'absolute',top:2,right:2,width:8,height:8,background:'var(--danger)',borderRadius:'50%'}}/>}
-        </button>
-      </div>
-
-      {/* ABA SAÚDE */}
+      {/* Saúde NÃO aparece no primeiro acesso (bloco abaixo fica inativo — aba é sempre 'geral') */}
       {aba==='saude' && (
         <div>
           <p className="section-label mb-2">Condições de saúde</p>
