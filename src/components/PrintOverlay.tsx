@@ -7,7 +7,12 @@ import type { ReactNode } from 'react'
 export default function PrintOverlay({ titulo, onClose, children }: { titulo?:string; onClose:()=>void; children:ReactNode }) {
   return (
     <div style={{position:'fixed',inset:0,background:'white',zIndex:1000,overflowY:'auto'}}>
-      <style>{`@media print { .no-print{display:none!important} @page{margin:10mm} } .print-break{break-after:page;page-break-after:always}`}</style>
+      <style>{`
+        /* #14 — preservar cores no PDF/impressão (barras coloridas, fundos, etc.) */
+        * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+        @media print { .no-print{display:none!important} @page{margin:10mm} body{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important} }
+        .print-break{break-after:page;page-break-after:always}
+      `}</style>
       <div className="no-print" style={{display:'flex',gap:8,alignItems:'center',padding:'12px 16px',position:'sticky',top:0,background:'white',borderBottom:'1px solid #eee',zIndex:2}}>
         <button className="btn btn-primary btn-sm" onClick={()=>window.print()}><span className="icon icon-sm">print</span> Imprimir / Salvar PDF</button>
         <button className="btn btn-ghost btn-sm" onClick={onClose}>Fechar</button>

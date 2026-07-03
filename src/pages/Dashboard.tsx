@@ -14,6 +14,8 @@ type Stats = { encontristas:number; encontreiros:number; equipes:number; alertas
 export default function Dashboard({ profile }: { profile: Profile }) {
   const { pode, carregado: permsCarregadas } = usePermissao(profile)
   const admin = isAdmin(profile.user_role) || profile.is_admin
+  // Indicadores (Encontristas/Encontreiros/Equipes/Alertas) só p/ Admin e Financeiro
+  const podeVerStats = admin || profile.user_role === 'financeiro'
   // Tela de boas-vindas para quem entrou SEM LIBERAÇÃO (não vê nenhum menu)
   const [roleType, setRoleType] = useState<string|null>(null)
   useEffect(() => {
@@ -138,8 +140,8 @@ export default function Dashboard({ profile }: { profile: Profile }) {
 
 
 
-          {/* Stats */}
-          {stats && (
+          {/* Stats — só Admin e Financeiro */}
+          {stats && podeVerStats && (
             <div className="stats-grid mb-4">
               {[
                 {label:'Encontristas', value:stats.encontristas,  rota:'/encontristas', cor:'#6B46C1'},
@@ -156,24 +158,6 @@ export default function Dashboard({ profile }: { profile: Profile }) {
           )}
 
 
-
-          {/* Acesso rápido */}
-          <div className="section-label mb-2">Acesso rápido</div>
-          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,marginBottom:20}}>
-            {[
-              {label:'Cronograma',   icon:'calendar_month',       rota:'/cronograma'},
-              {label:'Minhas Ativ.', icon:'task_alt',             rota:'/minhas-atividades'},
-              {label:'Alertas',      icon:'notifications',         rota:'/alertas'},
-              {label:'Locais',       icon:'location_on',           rota:'/locais'},
-              ...(isAdmin(profile.user_role)?[{label:'Financeiro',icon:'account_balance_wallet',rota:'/financeiro'}]:[]),
-              ...(isAdmin(profile.user_role)?[{label:'Admin',icon:'admin_panel_settings',rota:'/admin'}]:[]),
-            ].filter(item=>podeIr(item.rota)).map(item=>(
-              <button key={item.rota} onClick={()=>irSe(item.rota)} style={{background:'white',border:'1px solid var(--border)',borderRadius:10,padding:'12px 14px',cursor:'pointer',fontFamily:'inherit',fontSize:13,fontWeight:600,color:'var(--text)',textAlign:'left',display:'flex',alignItems:'center',gap:8,boxShadow:'var(--shadow-sm)'}}>
-                <span className="icon icon-sm" style={{color:'var(--primary)'}}>{item.icon}</span>
-                {item.label}
-              </button>
-            ))}
-          </div>
 
           {/* Ranking widget */}
           <div className="section-title" style={{marginTop:20}}>Ranking do Encontro</div>

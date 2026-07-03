@@ -37,6 +37,10 @@ export function aplicarCor(hex: string) {
   root.style.setProperty('--primary-dark', darken(hex, 0.18))
   root.style.setProperty('--primary-light', lighten(hex, 0.90))
   root.style.setProperty('--primary-mid', `rgba(${r},${g},${b},0.15)`)
+  // #13 — barra superior do celular (status bar) segue a cor do sistema
+  let meta = document.querySelector<HTMLMetaElement>("meta[name='theme-color']")
+  if (!meta) { meta = document.createElement('meta'); meta.name = 'theme-color'; document.head.appendChild(meta) }
+  meta.content = hex
 }
 
 const COR_PADRAO = '#00A99D'

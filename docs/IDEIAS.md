@@ -57,3 +57,36 @@ _Detalhes e "onde mexer" em `docs/HANDOFF.md`._
 - 2026-07-02 — [ ] **Bloqueio por função tela por tela** (Etapa 3 das permissões) — pendente.
 - 2026-07-02 — [ ] **Varredura restante**: Locais, Minhas Atividades, Saúde (3), Alertas — pendente.
 - 2026-07-02 — [ ] **Produção**: PWA (instalável/offline); credenciais em env var; schema do repo desatualizado. — pendente
+
+## 2026-07-03 — LISTA GRANDE (pré-lançamento online) — implementar tudo, publicar só no fim
+> Regra: fazer 2 a 2, checar bug, commitar. Publicar (Vercel) só quando TUDO ok.
+
+1. [ ] **Admin → Usuários**: admin edita 100% dos dados de qualquer usuário (foto + tudo). Corrigir rolagem
+   horizontal da tabela (barra própria, não arrastar a página).
+2. [ ] **Instalar como app**: melhor caminho de instalação simples (PWA facilitada / prompt de install).
+3. [ ] **Equipes**: (a) foto como ícone da equipe (emoji OU imagem); (b) bug do teclado (caractere "2"/"W"
+   ao fechar); (c) cor: manter paleta + color picker personalizado.
+4. [ ] **Boas-vindas**: 1 botão liga/desliga que controla as DUAS telas (Encontristas + Encontreiros) juntas.
+5. [ ] **Dashboard**: remover "Acessos Rápidos"; cards de indicadores só p/ Admin e Financeiro (encontrista/
+   encontreiro não veem).
+6. [ ] **Central de notificações (sino)**: escalas, alterações, avisos, mensagens, comunicados, "você foi
+   escalado p/ teatro", "adicionado em equipe", "atividade alterada" + lembretes automáticos antes das
+   atividades (ex.: 1h antes). (Aviso de aprovação já ok.)
+7. [ ] **Medicamentos**: 1º acesso sem nada de saúde (já feito); botão "Adicionar alarmes ao celular" que gera
+   lembretes (nome, medicamento, dose, horário) ~5–10 min antes. Android/iPhone/PWA (ICS/calendário se nativo
+   não der).
+8. [ ] **Tela de visitante**: logo não aparece (corrigir); tornar configurável junto com Encontrista/Encontreiro
+   (3ª opção "Tela de Visitante").
+9. [ ] **Ministrantes**: só perfil Encontreiro pode ser ministrante (encontrista não).
+10. [ ] **Ministrações**: remover data/horário/horário final/duração (agenda só no Cronograma).
+11. [ ] **Cronograma → atividades pessoais**: ministrante/elenco entram automaticamente nas atividades pessoais
+    da pessoa, com horário vindo do Cronograma.
+12. [ ] **Cronograma**: corrigir botão "Adicionar mais tempo" (sai do layout); sincronização em tempo real
+    (~1–2s) em todos os dispositivos, mesmo relógio, sem atualizar tela.
+13. [ ] **Tema**: barra superior do celular (header) seguir a cor do sistema (theme-color).
+14. [ ] **Impressão do Cronograma**: preservar cores (barra colorida da esquerda some no PDF) — print-color.
+15. [ ] **Permissões**: admin de um contexto NÃO acessa administração de outro contexto (isolar por contexto).
+16. [ ] **Permissões do ministrante**: acesso mínimo — só vê a própria ministração + bloco de notas; sem lista,
+    sem play/continuar/concluir; entra só pelo Cronograma; voltar/fechar sempre volta ao Cronograma.
+17. [ ] **Início (Fotos/vídeos)**: playlist automática. Imagem = tempo configurado. Vídeo YouTube = autoplay,
+    sem controles/barra/play/UI, avança só ao terminar. Loop infinito no fim.
