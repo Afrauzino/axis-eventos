@@ -385,11 +385,17 @@ export default function Admin({ profile }: { profile?: Profile }) {
     try { await supabase.from('medicamento_entregas').delete().eq('person_id', pid) } catch {}
     try { await supabase.from('people').update({ referencia_id: null }).eq('referencia_id', pid) } catch {}
 
-    if (p.user_id) {
-      await supabase.from('profiles').update({ role_status: 'rejected', user_role: 'visitante' }).eq('user_id', p.user_id)
-    }
-
     await supabase.from('people').delete().eq('id', pid)
+
+    // Excluir a CONTA de verdade (perfil + login auth) via Edge Function
+    if (p.user_id) {
+      const { error: fnErr } = await supabase.functions.invoke('admin-delete-user', { body: { target_user_id: p.user_id } })
+      if (fnErr) {
+        // Fallback: função ainda não publicada — bloqueia a conta e avisa
+        await supabase.from('profiles').update({ role_status: 'rejected', user_role: 'visitante' }).eq('user_id', p.user_id)
+        alert('Cadastro removido, mas o LOGIN não foi apagado (a Edge Function "admin-delete-user" ainda não está publicada). Passo a passo em docs/EDGE_FUNCTION_DELETE.md.')
+      }
+    }
     registrarLog({ action:'delete', entity:'people', entityId:pid, description:`Excluiu completamente o cadastro de ${p.name}`, eventId:eventoAtivoId() })
     setPessoaDetalhe(null)
     setPessoas(prev => prev.filter(x => x.id !== pid))
