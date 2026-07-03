@@ -66,9 +66,8 @@ _Detalhes e "onde mexer" em `docs/HANDOFF.md`._
 2. [ ] **Instalar como app**: melhor caminho de instalação simples (PWA facilitada / prompt de install).
 3. [ ] **Equipes**: (a) foto como ícone da equipe (emoji OU imagem); (b) bug do teclado (caractere "2"/"W"
    ao fechar); (c) cor: manter paleta + color picker personalizado.
-4. [ ] **Boas-vindas**: 1 botão liga/desliga que controla as DUAS telas (Encontristas + Encontreiros) juntas.
-5. [ ] **Dashboard**: remover "Acessos Rápidos"; cards de indicadores só p/ Admin e Financeiro (encontrista/
-   encontreiro não veem).
+4. [x] **Boas-vindas**: 1 botão liga/desliga que controla as DUAS telas. [feito — switch no card de boas-vindas]
+5. [x] **Dashboard**: removido "Acesso rápido"; indicadores só p/ Admin e Financeiro. [feito]
 6. [ ] **Central de notificações (sino)**: escalas, alterações, avisos, mensagens, comunicados, "você foi
    escalado p/ teatro", "adicionado em equipe", "atividade alterada" + lembretes automáticos antes das
    atividades (ex.: 1h antes). (Aviso de aprovação já ok.)
@@ -77,14 +76,14 @@ _Detalhes e "onde mexer" em `docs/HANDOFF.md`._
    não der).
 8. [ ] **Tela de visitante**: logo não aparece (corrigir); tornar configurável junto com Encontrista/Encontreiro
    (3ª opção "Tela de Visitante").
-9. [ ] **Ministrantes**: só perfil Encontreiro pode ser ministrante (encontrista não).
+9. [x] **Ministrantes**: só Encontreiro pode ser ministrante. [feito — PersonSelect filtra role_type=worker]
 10. [ ] **Ministrações**: remover data/horário/horário final/duração (agenda só no Cronograma).
 11. [ ] **Cronograma → atividades pessoais**: ministrante/elenco entram automaticamente nas atividades pessoais
     da pessoa, com horário vindo do Cronograma.
-12. [ ] **Cronograma**: corrigir botão "Adicionar mais tempo" (sai do layout); sincronização em tempo real
-    (~1–2s) em todos os dispositivos, mesmo relógio, sem atualizar tela.
-13. [ ] **Tema**: barra superior do celular (header) seguir a cor do sistema (theme-color).
-14. [ ] **Impressão do Cronograma**: preservar cores (barra colorida da esquerda some no PDF) — print-color.
+12. [~] **Cronograma**: botão "Adicionar" do cronômetro não estoura mais o layout [feito]; FALTA sincronização
+    em tempo real (~1–2s) em todos os dispositivos (Supabase realtime).
+13. [x] **Tema**: barra superior do celular segue a cor do sistema (theme-color dinâmico em tema.ts). [feito]
+14. [x] **Impressão**: print-color-adjust em PrintOverlay preserva cores no PDF. [feito]
 15. [ ] **Permissões**: admin de um contexto NÃO acessa administração de outro contexto (isolar por contexto).
 16. [ ] **Permissões do ministrante**: acesso mínimo — só vê a própria ministração + bloco de notas; sem lista,
     sem play/continuar/concluir; entra só pelo Cronograma; voltar/fechar sempre volta ao Cronograma.
