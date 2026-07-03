@@ -22,8 +22,47 @@ export default function Encontristas({ profile }: { profile: Profile }) {
   const [fotoAmpliada, setFotoAmpliada] = useState<string|null>(null)
   const [loading, setLoading]     = useState(true)
   const [selecionado, setSelecionado] = useState<Pessoa | null>(null)
+  // #19 — "conheço esta pessoa"
+  type Marca = { id:string; worker_user_id:string|null; worker_name:string|null; worker_photo:string|null; worker_phone:string|null }
+  const [meuP, setMeuP] = useState<{id:string;name:string;photo_url:string|null;phone:string|null;role_type:string}|null>(null)
+  const [conhecidos, setConhecidos] = useState<Marca[]>([])
+  const [marcando, setMarcando] = useState(false)
 
   useEffect(() => { if (evLoading) return; if (!evento) { setLoading(false); return }; carregar() }, [evento, evLoading])
+
+  // Carrega o cadastro da pessoa logada neste evento (pra saber se é encontreiro e pegar nome/foto/whats)
+  useEffect(() => {
+    if (!evento?.id || !profile?.user_id) return
+    supabase.from('people').select('id,name,photo_url,phone,role_type')
+      .eq('event_id', evento.id).eq('user_id', profile.user_id).maybeSingle()
+      .then(({ data }) => setMeuP(data as any ?? null))
+  }, [evento?.id, profile?.user_id])
+
+  useEffect(() => { if (selecionado?.id) carregarConhecidos(selecionado.id); else setConhecidos([]) }, [selecionado?.id])
+
+  async function carregarConhecidos(encontristaId: string) {
+    const { data } = await supabase.from('encontrista_conhecidos')
+      .select('id,worker_user_id,worker_name,worker_photo,worker_phone')
+      .eq('encontrista_id', encontristaId).order('created_at')
+    setConhecidos((data as any) ?? [])
+  }
+
+  async function toggleConheco() {
+    if (!selecionado || !meuP || !profile?.user_id) return
+    setMarcando(true)
+    const jaMarquei = conhecidos.find(c => c.worker_user_id === profile.user_id)
+    if (jaMarquei) {
+      await supabase.from('encontrista_conhecidos').delete().eq('id', jaMarquei.id)
+    } else {
+      await supabase.from('encontrista_conhecidos').insert({
+        event_id: evento?.id ?? null, encontrista_id: selecionado.id,
+        worker_user_id: profile.user_id, worker_name: meuP.name,
+        worker_photo: meuP.photo_url, worker_phone: meuP.phone,
+      })
+    }
+    await carregarConhecidos(selecionado.id)
+    setMarcando(false)
+  }
 
   async function carregar() {
     if (!evento) return
@@ -168,6 +207,46 @@ export default function Encontristas({ profile }: { profile: Profile }) {
                   <p style={{ fontSize: 13, color: 'var(--muted)' }}>Nenhum encontreiro de referencia vinculado.</p>
                 </div>
               )}
+
+              {/* #19 — Encontreiros que conhecem esta pessoa */}
+              <div style={{ marginBottom: 16 }}>
+                <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--muted)', marginBottom: 10 }}>
+                  Encontreiros que conhecem ({conhecidos.length})
+                </p>
+                {conhecidos.length === 0 && (
+                  <p style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 10 }}>Ninguém marcou ainda.</p>
+                )}
+                {conhecidos.map(c => (
+                  <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 0', borderBottom: '1px solid var(--border)' }}>
+                    <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'var(--primary-light)', overflow: 'hidden', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      {c.worker_photo ? <img src={c.worker_photo} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        : <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--primary)' }}>{getInitials(c.worker_name || '?')}</span>}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p style={{ fontWeight: 700, fontSize: 14 }}>{c.worker_name || 'Encontreiro'}</p>
+                      {c.worker_phone && <p style={{ fontSize: 12, color: 'var(--muted)' }}>{c.worker_phone}</p>}
+                    </div>
+                    {c.worker_phone && (
+                      <button onClick={() => whatsapp(c.worker_phone!, (c.worker_name||'').split(' ')[0])}
+                        style={{ background: '#25D366', border: 'none', borderRadius: 10, width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}>
+                        <span className="icon icon-sm" style={{ color: 'white' }}>chat</span>
+                      </button>
+                    )}
+                  </div>
+                ))}
+                {/* Botão só p/ encontreiro (quem tem cadastro worker no evento) */}
+                {meuP?.role_type === 'worker' && (
+                  <button onClick={toggleConheco} disabled={marcando}
+                    style={{ width: '100%', marginTop: 12, padding: '11px', borderRadius: 10, cursor: 'pointer', fontFamily: 'inherit', fontSize: 14, fontWeight: 700,
+                      border: conhecidos.find(c=>c.worker_user_id===profile?.user_id) ? '1px solid var(--danger)' : 'none',
+                      background: conhecidos.find(c=>c.worker_user_id===profile?.user_id) ? 'var(--danger-bg)' : 'var(--primary)',
+                      color: conhecidos.find(c=>c.worker_user_id===profile?.user_id) ? 'var(--danger)' : 'white',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                    <span className="icon icon-sm">{conhecidos.find(c=>c.worker_user_id===profile?.user_id) ? 'person_remove' : 'waving_hand'}</span>
+                    {marcando ? 'Salvando...' : (conhecidos.find(c=>c.worker_user_id===profile?.user_id) ? 'Não conheço mais' : 'Conheço esta pessoa')}
+                  </button>
+                )}
+              </div>
 
               <button
                 onClick={()=>{ const alvo=selecionado.id; setSelecionado(null); navigate('/ranking', { state:{ votarPessoaId: alvo, origem:'/encontristas' } }) }}
