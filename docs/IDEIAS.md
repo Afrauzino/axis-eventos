@@ -61,11 +61,12 @@ _Detalhes e "onde mexer" em `docs/HANDOFF.md`._
 ## 2026-07-03 — LISTA GRANDE (pré-lançamento online) — implementar tudo, publicar só no fim
 > Regra: fazer 2 a 2, checar bug, commitar. Publicar (Vercel) só quando TUDO ok.
 
-1. [ ] **Admin → Usuários**: admin edita 100% dos dados de qualquer usuário (foto + tudo). Corrigir rolagem
-   horizontal da tabela (barra própria, não arrastar a página).
+1. [x] **Admin → Usuários**: botão "Editar cadastro completo" (foto+todos os dados, reusa CadastroPessoa);
+   barra de abas agora rola sozinha (não arrasta a página). [feito]
 2. [ ] **Instalar como app**: melhor caminho de instalação simples (PWA facilitada / prompt de install).
-3. [ ] **Equipes**: (a) foto como ícone da equipe (emoji OU imagem); (b) bug do teclado (caractere "2"/"W"
-   ao fechar); (c) cor: manter paleta + color picker personalizado.
+3. [~] **Equipes**: (c) color picker personalizado [feito]; (a) foto-ícone: código OK, faltava bucket →
+   **rodar sql/21_storage_buckets.sql** [feito no código/SQL]; (b) tecla fantasma "2"/"W" — sem listener
+   global no código; precisa REPRO no celular (qual tela, qual campo, qual teclado). PENDENTE repro.
 4. [x] **Boas-vindas**: 1 botão liga/desliga que controla as DUAS telas. [feito — switch no card de boas-vindas]
 5. [x] **Dashboard**: removido "Acesso rápido"; indicadores só p/ Admin e Financeiro. [feito]
 6. [ ] **Central de notificações (sino)**: escalas, alterações, avisos, mensagens, comunicados, "você foi
@@ -74,8 +75,8 @@ _Detalhes e "onde mexer" em `docs/HANDOFF.md`._
 7. [ ] **Medicamentos**: 1º acesso sem nada de saúde (já feito); botão "Adicionar alarmes ao celular" que gera
    lembretes (nome, medicamento, dose, horário) ~5–10 min antes. Android/iPhone/PWA (ICS/calendário se nativo
    não der).
-8. [ ] **Tela de visitante**: logo não aparece (corrigir); tornar configurável junto com Encontrista/Encontreiro
-   (3ª opção "Tela de Visitante").
+8. [x] **Tela de visitante**: logo aparece na tela de boas-vindas + 3ª variante "Visitante" configurável;
+   visitante sem cadastro cai na tela própria. [feito]
 9. [x] **Ministrantes**: só Encontreiro pode ser ministrante. [feito — PersonSelect filtra role_type=worker]
 10. [ ] **Ministrações**: remover data/horário/horário final/duração (agenda só no Cronograma).
 11. [ ] **Cronograma → atividades pessoais**: ministrante/elenco entram automaticamente nas atividades pessoais
