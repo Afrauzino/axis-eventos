@@ -91,3 +91,7 @@ _Detalhes e "onde mexer" em `docs/HANDOFF.md`._
     sem play/continuar/concluir; entra só pelo Cronograma; voltar/fechar sempre volta ao Cronograma.
 17. [x] **Início (Fotos/vídeos)**: playlist — imagem por tempo; YouTube autoplay limpo (IFrame API, sem
     controles/UI), avança só ao terminar; loop infinito. [feito]
+18. [ ] **MSG (aba no Admin)**: mensagem editável que acompanha o código de acesso (texto/instruções/links).
+    Não fixa no código — 100% editável. Ao copiar o código, copia a mensagem já montada.
+19. [ ] **Encontristas → "conheço esta pessoa"**: qualquer encontreiro marca que conhece um encontrista;
+    registra nome+foto+WhatsApp do encontreiro; vários podem marcar; fica no perfil do encontrista (rede social).

@@ -10,6 +10,7 @@ import type { Profile } from '../App'
 import EmojiGrid from '../components/EmojiGrid'
 import { PERM_CATALOGO, MENUS_CATALOGO } from '../lib/permCatalog'
 import CadastroPessoa, { FORM_VAZIO, type PessoaForm } from '../components/CadastroPessoa'
+import { carregarConfig, salvarConfig } from '../lib/tema'
 
 type LogRow = { id:string; actor_name:string|null; action:string; entity:string; entity_id:string|null; description:string|null; metadata:any; created_at:string }
 const ACAO_LABEL: Record<string,string> = { create:'Criou', update:'Editou', delete:'Excluiu', approve:'Aprovou', reject:'Rejeitou', payment:'Pagamento', medication:'Medicação', login:'Login', export:'Exportou', other:'Ação' }
@@ -67,8 +68,27 @@ const TIPOS_PADRÃO = [
 
 const CORES_TIPO = ['#00A99D','#6B46C1','#E8821A','#2F855A','#D53F8C','#2B6CB0','#C53030','#D69E2E','#718096','#1A202C']
 
+// #18 — mensagem padrão que acompanha o código de acesso (editável no Admin → MSG)
+const MSG_CODIGO_PADRAO =
+`Olá {nome}! 🙌
+
+Seu código de acesso ao AXIS Eventos é: {codigo}
+
+Como entrar:
+1) Abra o app
+2) Toque em "Primeiro acesso"
+3) Digite o código {codigo}
+4) Crie seu e-mail e senha
+
+Qualquer dúvida, chame a gente. Deus abençoe! 🙏`
+
+const montarMsg = (template:string, nome:string, codigo:string) =>
+  (template || MSG_CODIGO_PADRAO)
+    .split('{nome}').join((nome||'').split(' ')[0] || 'participante')
+    .split('{codigo}').join(codigo || '')
+
 export default function Admin({ profile }: { profile?: Profile }) {
-  const [aba, setAba]               = useState<'usuarios'|'equipes_perm'|'eventos'|'tipos'|'backup'|'logs'|'aparencia'>('usuarios')
+  const [aba, setAba]               = useState<'usuarios'|'equipes_perm'|'eventos'|'tipos'|'backup'|'logs'|'aparencia'|'msg'>('usuarios')
   const [logs, setLogs]             = useState<LogRow[]>([])
   const [logsLoading, setLogsLoading] = useState(false)
   const [logsErro, setLogsErro]     = useState('')
@@ -113,6 +133,10 @@ export default function Admin({ profile }: { profile?: Profile }) {
   const [editEventoId, setEditEventoId] = useState<string|undefined>(undefined)
   const [editForm, setEditForm]         = useState<PessoaForm>(FORM_VAZIO)
   const [salvandoEdit, setSalvandoEdit] = useState(false)
+  // #18 — mensagem editável que acompanha o código de acesso
+  const [msgCodigo, setMsgCodigo] = useState('')
+  const [msgSalva, setMsgSalva]   = useState('')
+  const [salvandoMsg, setSalvandoMsg] = useState(false)
   // Permissões
   const [permsPessoa, setPermsPessoa]   = useState<any[]>([])
   const [permsAba, setPermsAba]         = useState<'liberacoes'|'acoes'|'menus_visiveis'>('liberacoes')
@@ -136,6 +160,19 @@ export default function Admin({ profile }: { profile?: Profile }) {
   const [formEvento, setFormEvento] = useState({ name:'', location:'', valor_encontrista:'', valor_encontreiro:'', start_date:'', end_date:'' })
 
   useEffect(() => { carregar() }, [])
+  useEffect(() => { carregarConfig('msg_codigo').then(v => { const m = v ?? MSG_CODIGO_PADRAO; setMsgCodigo(m); setMsgSalva(m) }) }, [])
+
+  async function salvarMsgCodigo() {
+    setSalvandoMsg(true)
+    await salvarConfig('msg_codigo', msgCodigo)
+    setMsgSalva(msgCodigo)
+    setSalvandoMsg(false)
+  }
+  function copiarComMsg(nome:string, codigo:string) {
+    const txt = montarMsg(msgSalva, nome, codigo)
+    if (navigator.clipboard) navigator.clipboard.writeText(txt)
+    else { const el=document.createElement('textarea');el.value=txt;document.body.appendChild(el);el.select();document.execCommand('copy');document.body.removeChild(el) }
+  }
 
   // Catálogo de permissões por função (PERM_CATALOGO) e menus (MENUS_CATALOGO) em src/lib/permCatalog.ts
 
@@ -805,6 +842,7 @@ export default function Admin({ profile }: { profile?: Profile }) {
         <button className={`tab ${aba==='backup'?'active':''}`}    onClick={()=>setAba('backup')}>Backup</button>
         <button className={`tab ${aba==='logs'?'active':''}`}      onClick={()=>{setAba('logs');carregarLogs()}}>Logs</button>
         <button className={`tab ${aba==='aparencia'?'active':''}`} onClick={()=>setAba('aparencia')}>Aparência</button>
+        <button className={`tab ${aba==='msg'?'active':''}`}       onClick={()=>setAba('msg')}>MSG</button>
       </div>
 
       {/* USUÁRIOS */}
@@ -892,7 +930,7 @@ export default function Admin({ profile }: { profile?: Profile }) {
                   ) : p.invite_code ? (
                     <div style={{display:'flex',alignItems:'center',gap:4}}>
                       <span style={{fontFamily:'monospace',fontSize:13,fontWeight:800,letterSpacing:'0.1em',color:'var(--primary)',background:'var(--primary-light)',padding:'3px 8px',borderRadius:6}}>{p.invite_code}</span>
-                      <button onClick={()=>navigator.clipboard?.writeText(p.invite_code??'')} title="Copiar código"
+                      <button onClick={e=>{e.stopPropagation();copiarComMsg(p.name, p.invite_code??'')}} title="Copiar mensagem com o código"
                         style={{background:'none',border:'none',cursor:'pointer',color:'var(--muted)',padding:0,fontFamily:'inherit',display:'flex',alignItems:'center'}}>
                         <span className="icon" style={{fontSize:16}}>content_copy</span>
                       </button>
@@ -1049,12 +1087,10 @@ export default function Admin({ profile }: { profile?: Profile }) {
                     <div>
                       <div style={{display:'flex',alignItems:'center',gap:8,background:'white',border:'1px solid var(--border)',borderRadius:8,padding:'10px 12px'}}>
                         <span style={{fontFamily:'monospace',fontSize:18,fontWeight:800,letterSpacing:'0.12em',color:'var(--primary)',flex:1}}>{pessoaDetalhe.invite_code}</span>
-                        <button onClick={()=>{
-                          const txt = pessoaDetalhe.invite_code??''
-                          if (navigator.clipboard) navigator.clipboard.writeText(txt)
-                          else { const el=document.createElement('textarea');el.value=txt;document.body.appendChild(el);el.select();document.execCommand('copy');document.body.removeChild(el) }
-                        }} style={{background:'var(--primary)',color:'white',border:'none',borderRadius:8,padding:'6px 12px',cursor:'pointer',fontSize:12,fontWeight:700,fontFamily:'inherit',display:'flex',alignItems:'center',gap:4}}>
-                          <span className="icon icon-sm" style={{color:'white'}}>content_copy</span> Copiar
+                        <button onClick={()=>copiarComMsg(pessoaDetalhe.name, pessoaDetalhe.invite_code??'')}
+                          title="Copia a mensagem completa (Admin → MSG) com o código"
+                          style={{background:'var(--primary)',color:'white',border:'none',borderRadius:8,padding:'6px 12px',cursor:'pointer',fontSize:12,fontWeight:700,fontFamily:'inherit',display:'flex',alignItems:'center',gap:4}}>
+                          <span className="icon icon-sm" style={{color:'white'}}>content_copy</span> Copiar msg
                         </button>
                       </div>
                       <button onClick={()=>gerarNovoCodigo(pessoaDetalhe)}
@@ -1420,6 +1456,31 @@ export default function Admin({ profile }: { profile?: Profile }) {
       {aba==='aparencia' && (
         <div>
           <ConfigCor />
+        </div>
+      )}
+
+      {/* #18 — MSG: mensagem que acompanha o código de acesso */}
+      {aba==='msg' && (
+        <div>
+          <p style={{fontSize:13,color:'var(--muted)',marginBottom:12,lineHeight:1.6}}>
+            Esta é a mensagem copiada quando você toca em <b>“Copiar msg”</b> no código de acesso de uma pessoa
+            (Usuários → pessoa sem conta). Cole no WhatsApp/onde quiser. Pode ter textos, instruções e links.
+          </p>
+          <div className="alert-box mb-3" style={{fontSize:12,background:'var(--bg)',border:'1px solid var(--border)',borderRadius:10,padding:'10px 12px'}}>
+            <b>Atalhos:</b> use <code>{'{codigo}'}</code> onde entra o código e <code>{'{nome}'}</code> onde entra o primeiro nome da pessoa.
+          </div>
+          <textarea className="form-textarea" value={msgCodigo} onChange={e=>setMsgCodigo(e.target.value)}
+            style={{minHeight:220,fontFamily:'inherit',fontSize:14,lineHeight:1.6}} placeholder="Escreva a mensagem..."/>
+          <div style={{display:'flex',gap:8,marginTop:10,flexWrap:'wrap'}}>
+            <button className="btn btn-primary" onClick={salvarMsgCodigo} disabled={salvandoMsg||msgCodigo===msgSalva}>
+              {salvandoMsg?'Salvando...':(msgCodigo===msgSalva?'Salvo':'Salvar mensagem')}
+            </button>
+            <button className="btn btn-ghost" onClick={()=>setMsgCodigo(MSG_CODIGO_PADRAO)}>Restaurar padrão</button>
+          </div>
+          <p className="section-label" style={{marginTop:20,marginBottom:6}}>Prévia (código de exemplo)</p>
+          <div style={{background:'white',border:'1px solid var(--border)',borderRadius:12,padding:14,whiteSpace:'pre-wrap',fontSize:14,lineHeight:1.6,color:'var(--text)'}}>
+            {montarMsg(msgCodigo, 'Maria Silva', 'AB12CD')}
+          </div>
         </div>
       )}
 
