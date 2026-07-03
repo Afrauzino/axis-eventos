@@ -9,6 +9,7 @@ import SubTabs from '../components/SubTabs'
 import type { Profile } from '../App'
 import EmojiGrid from '../components/EmojiGrid'
 import { PERM_CATALOGO, MENUS_CATALOGO } from '../lib/permCatalog'
+import CadastroPessoa, { FORM_VAZIO, type PessoaForm } from '../components/CadastroPessoa'
 
 type LogRow = { id:string; actor_name:string|null; action:string; entity:string; entity_id:string|null; description:string|null; metadata:any; created_at:string }
 const ACAO_LABEL: Record<string,string> = { create:'Criou', update:'Editou', delete:'Excluiu', approve:'Aprovou', reject:'Rejeitou', payment:'Pagamento', medication:'Medicação', login:'Login', export:'Exportou', other:'Ação' }
@@ -107,6 +108,11 @@ export default function Admin({ profile }: { profile?: Profile }) {
   }[]>([])
   const [gerandoCodigos, setGerandoCodigos] = useState(false)
   const [pessoaDetalhe, setPessoaDetalhe] = useState<typeof pessoas[0]|null>(null)
+  // #1 — admin edita 100% do cadastro de qualquer pessoa (reusa CadastroPessoa)
+  const [editPessoaId, setEditPessoaId] = useState<string|null>(null)
+  const [editEventoId, setEditEventoId] = useState<string|undefined>(undefined)
+  const [editForm, setEditForm]         = useState<PessoaForm>(FORM_VAZIO)
+  const [salvandoEdit, setSalvandoEdit] = useState(false)
   // Permissões
   const [permsPessoa, setPermsPessoa]   = useState<any[]>([])
   const [permsAba, setPermsAba]         = useState<'liberacoes'|'acoes'|'menus_visiveis'>('liberacoes')
@@ -359,6 +365,67 @@ export default function Admin({ profile }: { profile?: Profile }) {
     await supabase.from('people').update({ role_type: novo }).eq('id', p.id)
     setPessoas(prev => prev.map(x => x.id === p.id ? { ...x, role_type: novo } : x))
     setPessoaDetalhe(prev => prev && prev.id === p.id ? { ...prev, role_type: novo } : prev)
+  }
+
+  // #1 — abrir edição COMPLETA do cadastro (foto + todos os dados)
+  async function abrirEdicaoCompleta(p: typeof pessoas[0]) {
+    const { data, error } = await supabase.from('people').select('*').eq('id', p.id).maybeSingle()
+    if (error || !data) { alert('Não foi possível carregar o cadastro desta pessoa.'); return }
+    setEditEventoId(data.event_id)
+    setEditForm({
+      ...FORM_VAZIO,
+      name: data.name ?? '', phone: data.phone ?? '', contact_phone: data.contact_phone ?? '',
+      church: data.church ?? '', ano_encontro: data.ano_encontro ? String(data.ano_encontro) : '',
+      sexo: data.sexo ?? '', birth_date: data.birth_date ?? '', cpf: data.cpf ?? '', rg: data.rg ?? '',
+      cidade: data.cidade ?? '', estado: data.estado ?? '', endereco: data.endereco ?? '',
+      bairro: data.bairro ?? '', cep: data.cep ?? '', role_type: data.role_type ?? 'encounterer',
+      team_pref: data.team_pref ?? '', notes: data.notes ?? '', photo_url: data.photo_url ?? null,
+    })
+    setEditPessoaId(p.id)
+  }
+
+  async function salvarEdicaoCompleta() {
+    if (!editPessoaId) return
+    if (!editForm.name.trim()) { alert('O nome é obrigatório.'); return }
+    setSalvandoEdit(true)
+    const { error } = await supabase.from('people').update({
+      name: editForm.name,
+      phone: (editForm.phone || '').replace(/\D/g,'') || editForm.phone || '',
+      contact_phone: editForm.contact_phone || null,
+      church: editForm.church || null,
+      ano_encontro: editForm.ano_encontro ? Number(editForm.ano_encontro) : null,
+      sexo: editForm.sexo || null,
+      birth_date: editForm.birth_date || null,
+      cpf: editForm.cpf || null,
+      rg: editForm.rg || null,
+      cidade: editForm.cidade || null,
+      estado: editForm.estado || null,
+      endereco: editForm.endereco || null,
+      bairro: editForm.bairro || null,
+      cep: editForm.cep || null,
+      notes: editForm.notes || null,
+      photo_url: editForm.photo_url || null,
+      role_type: editForm.role_type,
+      team_pref: editForm.team_pref || null,
+    }).eq('id', editPessoaId)
+    if (error) { setSalvandoEdit(false); alert('Erro ao salvar: ' + error.message); return }
+
+    // Espelha nome/foto no profile (conta) quando houver login vinculado
+    const alvo = pessoas.find(x => x.id === editPessoaId)
+    if (alvo?.user_id) {
+      await supabase.from('profiles').update({ name: editForm.name }).eq('user_id', alvo.user_id)
+    }
+    await registrarLog({ action:'update', entity:'people', entityId:editPessoaId, description:`Editou o cadastro de ${editForm.name}` })
+
+    // Atualiza a lista e o detalhe sem recarregar tudo
+    setPessoas(prev => prev.map(x => x.id === editPessoaId
+      ? { ...x, name: editForm.name, photo_url: editForm.photo_url, church: editForm.church, role_type: editForm.role_type }
+      : x))
+    setPessoaDetalhe(prev => prev && prev.id === editPessoaId
+      ? { ...prev, name: editForm.name, photo_url: editForm.photo_url, church: editForm.church, role_type: editForm.role_type }
+      : prev)
+    setSalvandoEdit(false)
+    setEditPessoaId(null)
   }
 
   // Excluir COMPLETAMENTE — remove de todas as tabelas, como se nunca tivesse existido
@@ -1023,6 +1090,13 @@ export default function Admin({ profile }: { profile?: Profile }) {
               )
             })()}
 
+            {/* #1 — editar 100% do cadastro (foto + todos os dados) — só p/ quem tem cadastro no evento */}
+            {(pessoaDetalhe.role_type==='worker' || pessoaDetalhe.role_type==='encounterer') && (
+              <button onClick={()=>abrirEdicaoCompleta(pessoaDetalhe)} className="btn btn-primary btn-full" style={{marginBottom:8}}>
+                <span className="icon icon-sm">edit</span> Editar cadastro completo
+              </button>
+            )}
+
             <button onClick={()=>trocarTipoPessoa(pessoaDetalhe)} className="btn btn-ghost btn-full" style={{marginBottom:8}}>
               <span className="icon icon-sm">swap_horiz</span>
               Transformar em {pessoaDetalhe.role_type==='encounterer'?'Encontreiro':'Encontrista'}
@@ -1037,6 +1111,32 @@ export default function Admin({ profile }: { profile?: Profile }) {
                 {pessoaDetalhe.user_id ? 'Bloquear e excluir cadastro' : 'Excluir cadastro'}
               </button>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* ===== #1 — EDITAR CADASTRO COMPLETO (admin edita tudo) ===== */}
+      {editPessoaId && (
+        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.5)',zIndex:400,display:'flex',flexDirection:'column',justifyContent:'flex-end'}} onClick={e=>e.target===e.currentTarget&&setEditPessoaId(null)}>
+          <div style={{background:'white',borderRadius:'20px 20px 0 0',padding:'8px 20px 32px',maxHeight:'92vh',overflowY:'auto'}}>
+            <div style={{width:36,height:4,background:'var(--border)',borderRadius:2,margin:'12px auto 0'}}/>
+            <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'16px 0 14px',borderBottom:'1px solid var(--border)',marginBottom:20}}>
+              <span style={{fontSize:17,fontWeight:700}}>Editar cadastro</span>
+              <button onClick={()=>setEditPessoaId(null)} style={{background:'var(--bg)',border:'1px solid var(--border)',borderRadius:'50%',width:32,height:32,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',fontFamily:'inherit'}}><span className="icon icon-sm">close</span></button>
+            </div>
+            <CadastroPessoa
+              form={editForm}
+              onChange={setEditForm}
+              eventoId={editEventoId}
+              showRole={true}
+              showStatus={false}
+              showTeam={true}
+              showReferencia={false}
+            />
+            <div style={{display:'flex',gap:8,marginTop:18}}>
+              <button className="btn btn-primary" style={{flex:1}} onClick={salvarEdicaoCompleta} disabled={salvandoEdit}>{salvandoEdit?'Salvando...':'Salvar alterações'}</button>
+              <button className="btn btn-ghost" onClick={()=>setEditPessoaId(null)}>Cancelar</button>
+            </div>
           </div>
         </div>
       )}

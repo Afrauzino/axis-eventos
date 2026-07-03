@@ -811,7 +811,13 @@ body {
   margin-bottom: 16px;
   border: 1px solid var(--border);
   gap: 3px;
+  /* #1 — barra de abas rola sozinha (não arrasta a página inteira no celular) */
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
 }
+.tabs::-webkit-scrollbar { height: 4px; }
+.tabs::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
 
 .tab {
   flex: 1;
