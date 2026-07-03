@@ -1,13 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import YouTubePlayer from './YouTubePlayer'
 
 type Item = { id:string; tipo:string; url:string; ordem:number; duracao?:number }
 
 const ehYoutube = (u:string) => /youtube\.com|youtu\.be/.test(u)
 const ytId = (u:string) => { const m = u.match(/(?:v=|youtu\.be\/|embed\/)([\w-]{11})/); return m ? m[1] : '' }
-const ytEmbed = (u:string) => { const id = ytId(u); return id ? `https://www.youtube.com/embed/${id}?autoplay=1&mute=1&playsinline=1&rel=0` : u }
 const detectarTipo = (u:string) => (ehYoutube(u) || /\.(mp4|webm|ogg|mov)(\?|$)/i.test(u)) ? 'video' : 'imagem'
-const ehVideoArquivo = (it:Item) => it.tipo==='video' && !ehYoutube(it.url)
 
 export default function HomeCarousel({ admin }: { admin: boolean }) {
   const [itens, setItens] = useState<Item[]>([])
@@ -24,12 +23,12 @@ export default function HomeCarousel({ admin }: { admin: boolean }) {
 
   useEffect(() => { carregar() }, [])
 
-  // Auto-avanço: imagem/YouTube por tempo (duração); vídeo-arquivo avança no onEnded
+  // #17 — Auto-avanço: IMAGEM por tempo (duração); VÍDEO (arquivo ou YouTube) avança quando termina.
   useEffect(() => {
     clearTimeout(timer.current)
     const it = itens[idx]
     if (!it || itens.length <= 1) return
-    if (ehVideoArquivo(it)) return
+    if (it.tipo === 'video') return // vídeos avançam no fim (onEnded / YouTubePlayer)
     const ms = Math.max(2, it.duracao || 5) * 1000
     timer.current = setTimeout(proximo, ms)
     return () => clearTimeout(timer.current)
@@ -90,8 +89,8 @@ export default function HomeCarousel({ admin }: { admin: boolean }) {
       <div style={{position:'relative',width:'100%',aspectRatio:'16 / 7',borderRadius:14,overflow:'hidden',background:'#000',boxShadow:'var(--shadow-sm)'}}>
         {atual.tipo === 'video'
           ? (ehYoutube(atual.url)
-              ? <iframe key={atual.id} src={ytEmbed(atual.url)} title="video" allow="autoplay; encrypted-media; picture-in-picture" allowFullScreen style={{width:'100%',height:'100%',border:'none'}}/>
-              : <video key={atual.id} src={atual.url} autoPlay muted playsInline controls loop={itens.length<=1} onEnded={proximo} style={{width:'100%',height:'100%',objectFit:'cover'}}/>)
+              ? <YouTubePlayer key={atual.id} videoId={ytId(atual.url)} onEnded={proximo} loop={itens.length<=1}/>
+              : <video key={atual.id} src={atual.url} autoPlay muted playsInline loop={itens.length<=1} onEnded={proximo} style={{width:'100%',height:'100%',objectFit:'cover'}}/>)
           : <img src={atual.url} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}}/>}
 
         {admin && (
@@ -130,9 +129,9 @@ function ModalAdd({ link, setLink, dur, setDur, subindo, enviarImagem, adicionar
         <p style={{fontSize:16,fontWeight:800,marginBottom:14}}>Adicionar ao carrossel</p>
 
         <div className="form-group">
-          <label className="form-label">Segundos na tela (imagem/YouTube)</label>
+          <label className="form-label">Segundos na tela (só imagens)</label>
           <input className="form-input" type="number" min={2} max={120} value={dur} onChange={e=>setDur(Math.max(2, Number(e.target.value)||5))}/>
-          <p className="form-hint mt-1">Vídeo enviado (arquivo) avança sozinho quando termina.</p>
+          <p className="form-hint mt-1">Vídeos (arquivo ou YouTube) avançam sozinhos quando terminam.</p>
         </div>
 
         <label className="btn btn-outline btn-full mb-3" style={{cursor:'pointer'}}>
