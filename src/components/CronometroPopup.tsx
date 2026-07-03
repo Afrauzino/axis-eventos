@@ -37,6 +37,17 @@ export default function CronometroPopup({ item, podeControlar, onClose, onUpdate
     return () => clearInterval(t)
   }, [estado])
 
+  // #12 — quem só ACOMPANHA sincroniza em tempo real com o item atualizado (Realtime).
+  // Quem controla mantém seu próprio estado (não sofre eco).
+  useEffect(() => {
+    if (podeControlar) return
+    setEstado(item.cron_estado ?? 'parado')
+    setIniciadoEm(item.cron_iniciado_em ?? null)
+    setAjuste(item.cron_ajuste_segundos ?? 0)
+    setAcumulado(item.cron_decorrido_segundos ?? 0)
+    setAgora(Date.now())
+  }, [podeControlar, item.cron_estado, item.cron_iniciado_em, item.cron_ajuste_segundos, item.cron_decorrido_segundos])
+
   // decorrido = tempo já acumulado + (se rodando) tempo desde que retomou
   let decorrido = acumulado
   if (iniciadoEm && estado==='correndo') {

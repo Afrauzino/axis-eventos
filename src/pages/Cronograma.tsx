@@ -89,6 +89,23 @@ export default function Cronograma({ profile }: { profile?: Profile }) {
 
   useEffect(() => { if (evLoading) return; if (!evento) { setLoading(false); return }; setLoading(true); carregar() }, [evento, evLoading])
 
+  // #12 — Sincronização em TEMPO REAL do cronograma/cronômetro em todos os dispositivos.
+  useEffect(() => {
+    if (!evento?.id) return
+    const canal = supabase
+      .channel('cronograma-rt-' + evento.id)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'cronograma_eventos', filter: `event_id=eq.${evento.id}` },
+        async () => {
+          const { data } = await supabase.from('cronograma_eventos').select('*').eq('event_id', evento.id).order('hora_inicio')
+          if (!data) return
+          setItens(data)
+          // Atualiza o item do cronômetro aberto (pra quem só acompanha ver o mesmo relógio)
+          setCronometro(prev => prev ? (data.find((x:any)=>x.id===prev.id) ?? prev) : prev)
+        })
+      .subscribe()
+    return () => { supabase.removeChannel(canal) }
+  }, [evento?.id])
+
   // Permissão Cronograma Inteligente (individual) — direto, sem hook duplicado
   useEffect(() => {
     let ativo = true
