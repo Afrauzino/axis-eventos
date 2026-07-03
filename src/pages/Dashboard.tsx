@@ -5,6 +5,7 @@ import { fmtDataLonga, isAdmin } from '../utils'
 import { useEvento } from '../hooks/useEvento'
 import { usePermissao } from '../hooks/usePermissao'
 import HomeCarousel from '../components/HomeCarousel'
+import InstallPWA from '../components/InstallPWA'
 import BoasVindas, { type BVVariante } from '../components/BoasVindas'
 import { MENUS_CATALOGO } from '../lib/permCatalog'
 import type { Profile } from '../App'
@@ -96,6 +97,9 @@ export default function Dashboard({ profile }: { profile: Profile }) {
 
       {/* Carrossel da Início (admin adiciona; some se vazio) */}
       <HomeCarousel admin={admin} />
+
+      {/* #2 — instalar como app (só aparece se der pra instalar e ainda não estiver instalado) */}
+      <InstallPWA />
 
       {semLiberacao ? (
         <BoasVindas variante={variante} admin={false} />

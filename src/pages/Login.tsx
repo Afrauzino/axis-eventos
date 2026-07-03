@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { carregarConfig } from '../lib/tema'
 import CadastroPessoa, { FORM_VAZIO, MED_VAZIO, type PessoaForm, type MedCtrl } from '../components/CadastroPessoa'
+import InstallPWA from '../components/InstallPWA'
 
 type Modo = 'login' | 'codigo' | 'cadastro' | 'recuperar'
 
@@ -296,6 +297,7 @@ export default function Login() {
                 Esqueci minha senha
               </button>
             </div>
+            <InstallPWA variant="inline" />
           </form>
         )}
 
