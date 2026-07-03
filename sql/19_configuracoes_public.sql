@@ -10,6 +10,11 @@
 
 alter table public.configuracoes enable row level security;
 
+-- IMPORTANTE: além da policy (RLS filtra LINHAS), o papel anon/authenticated
+-- precisa do GRANT de tabela (senão dá "permission denied for table").
+grant select on public.configuracoes to anon;
+grant select on public.configuracoes to authenticated;
+
 -- Qualquer um (inclusive não logado) pode LER o tema
 drop policy if exists "config_select_public" on public.configuracoes;
 create policy "config_select_public" on public.configuracoes
