@@ -23,7 +23,8 @@ export default function Dashboard({ profile }: { profile: Profile }) {
     supabase.from('people').select('role_type').eq('user_id', profile.user_id).maybeSingle()
       .then(({ data }) => setRoleType(data?.role_type ?? null))
   }, [profile?.user_id])
-  const variante: BVVariante = roleType === 'worker' ? 'encontreiro' : 'encontrista'
+  // #8 — visitante (sem cadastro no evento) tem tela própria; senão encontreiro/encontrista
+  const variante: BVVariante = roleType === 'worker' ? 'encontreiro' : roleType === 'encounterer' ? 'encontrista' : 'visitante'
   // "Sem liberação" = não é admin e não enxerga NENHUM menu do sistema
   const semLiberacao = permsCarregadas && !admin && !MENUS_CATALOGO.some(m => pode(m.modulo))
   // mapa rota -> permissao de menu

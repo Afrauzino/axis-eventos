@@ -2,12 +2,14 @@ import { useEffect, useState } from 'react'
 import RichEditor from './RichEditor'
 import { carregarConfig, salvarConfig } from '../lib/tema'
 
-export type BVVariante = 'encontrista' | 'encontreiro'
+export type BVVariante = 'visitante' | 'encontrista' | 'encontreiro'
 type Contato = { nome:string; funcao:string; numero:string }
 type BVData  = { texto:string; endereco:string; lat:string; lng:string; contatos:Contato[] }
 
 const VAZIO: BVData = { texto:'', endereco:'', lat:'', lng:'', contatos:[] }
 const chaveDe = (v:BVVariante) => `boasvindas_${v}`
+const LABEL_VAR: Record<BVVariante,string> = { visitante:'Visitante', encontrista:'Encontrista', encontreiro:'Encontreiro' }
+const VARIANTES: BVVariante[] = ['visitante','encontrista','encontreiro']
 const waLink = (num:string) => `https://wa.me/55${(num||'').replace(/\D/g,'')}`
 const temMapa = (d:BVData) => (d.lat && d.lng) || d.endereco
 
@@ -26,9 +28,13 @@ export default function BoasVindas({ variante, admin }: { variante:BVVariante; a
   const [msg, setMsg] = useState('')
   const [varEdit, setVarEdit] = useState<BVVariante>(variante)
   const [ativo, setAtivo] = useState(true) // #4 — 1 botão liga/desliga as DUAS telas
+  const [logoUrl, setLogoUrl] = useState<string|null>(null) // #8 — logo na tela de boas-vindas
 
   useEffect(() => { setVarEdit(variante); carregar(variante) }, [variante])
-  useEffect(() => { carregarConfig(CHAVE_ATIVO).then(v => { if (v !== null) setAtivo(v !== '0') }) }, [])
+  useEffect(() => {
+    carregarConfig(CHAVE_ATIVO).then(v => { if (v !== null) setAtivo(v !== '0') })
+    carregarConfig('logo_url').then(setLogoUrl)
+  }, [])
 
   async function carregar(v:BVVariante) {
     const raw = await carregarConfig(chaveDe(v))
@@ -80,10 +86,10 @@ export default function BoasVindas({ variante, admin }: { variante:BVVariante; a
       <div style={{background:'white',borderRadius:14,boxShadow:'var(--shadow-sm)',padding:16,marginBottom:16}}>
         <div style={{paddingBottom:12,marginBottom:12,borderBottom:'1px solid var(--border)'}}><SwitchAtivo/></div>
         <div style={{display:'flex',gap:6,marginBottom:14}}>
-          {(['encontrista','encontreiro'] as BVVariante[]).map(v=>(
+          {VARIANTES.map(v=>(
             <button key={v} onClick={()=>{ setVarEdit(v); carregar(v) }} className="btn btn-sm"
-              style={{flex:1,border:varEdit===v?'2px solid var(--primary)':'1px solid var(--border)',background:varEdit===v?'var(--primary-light)':'white',color:varEdit===v?'var(--primary)':'var(--text2)'}}>
-              {v==='encontrista'?'Visitante / Encontrista':'Encontreiro s/ equipe'}
+              style={{flex:1,padding:'8px 4px',border:varEdit===v?'2px solid var(--primary)':'1px solid var(--border)',background:varEdit===v?'var(--primary-light)':'white',color:varEdit===v?'var(--primary)':'var(--text2)'}}>
+              {LABEL_VAR[v]}
             </button>
           ))}
         </div>
@@ -134,6 +140,12 @@ export default function BoasVindas({ variante, admin }: { variante:BVVariante; a
   if (vazio && !admin) return null
   return (
     <div style={{background:'white',borderRadius:14,boxShadow:'var(--shadow-sm)',padding:16,marginBottom:16}}>
+      {/* #8 — logo do sistema na tela de boas-vindas/visitante */}
+      {logoUrl && (
+        <div style={{display:'flex',justifyContent:'center',marginBottom:12}}>
+          <img src={logoUrl} alt="Logo" style={{maxHeight:64,maxWidth:'70%',objectFit:'contain'}}/>
+        </div>
+      )}
       {admin && (
         <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:8,gap:8,flexWrap:'wrap'}}>
           <SwitchAtivo/>

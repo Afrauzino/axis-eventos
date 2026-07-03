@@ -84,7 +84,7 @@ _Detalhes e "onde mexer" em `docs/HANDOFF.md`._
     em tempo real (~1–2s) em todos os dispositivos (Supabase realtime).
 13. [x] **Tema**: barra superior do celular segue a cor do sistema (theme-color dinâmico em tema.ts). [feito]
 14. [x] **Impressão**: print-color-adjust em PrintOverlay preserva cores no PDF. [feito]
-15. [ ] **Permissões**: admin de um contexto NÃO acessa administração de outro contexto (isolar por contexto).
+15. [x] ~~Permissões por contexto~~ — DESCARTADO pelo Anderson (2026-07-03). Não fazer.
 16. [ ] **Permissões do ministrante**: acesso mínimo — só vê a própria ministração + bloco de notas; sem lista,
     sem play/continuar/concluir; entra só pelo Cronograma; voltar/fechar sempre volta ao Cronograma.
 17. [ ] **Início (Fotos/vídeos)**: playlist automática. Imagem = tempo configurado. Vídeo YouTube = autoplay,
