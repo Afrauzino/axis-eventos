@@ -59,6 +59,14 @@ Lista de 19 pedidos + follow-ups, **todos feitos e publicados**. Detalhe item a 
 - **Dica p/ verificar telas logadas:** o dev server (`npm run dev`) do Anderson costuma ter a **sessão dele ativa**,
   então dá pra ver o app logado no preview. É DADO REAL — só observar, não alterar.
 
+### SQLs pendentes p/ o Anderson rodar (SQL Editor) — 2026-07-04
+- `sql/24_fix_criar_cadastro.sql` → libera CRIAR pessoa p/ quem tem permissão granular "ver e editar Cadastro"
+  (o RLS de INSERT exigia 'create', mas o app só concede 'editar'). Também corrigido na UI: `Cadastros.tsx`
+  agora usa `pode('cadastros','editar')`, não só o cargo.
+- `sql/25_seguranca.sql` → tranca escrita de `configuracoes` só p/ admin (leitura pública mantida) e revoga
+  execução pública das funções de gatilho. NÃO mexe nos buckets (o app lista `avatars` p/ foto de perfil).
+- Avisos de bucket-listing e "leaked password protection" ficaram de fora de propósito (risco baixo / quebra foto).
+
 ### SQLs — Anderson disse que **JÁ RODOU** os 3 (2026-07-04): `sql/21`, `sql/22`, `sql/23`. (Idempotentes; pode reconferir se algo falhar.)
 
 ### ⏳ PENDÊNCIAS reais
