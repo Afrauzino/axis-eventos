@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
-import { fmtDataLonga, isAdmin } from '../utils'
+import { isAdmin } from '../utils'
 import { useEvento } from '../hooks/useEvento'
 import { usePermissao } from '../hooks/usePermissao'
 import HomeCarousel from '../components/HomeCarousel'
@@ -89,29 +89,24 @@ export default function Dashboard({ profile }: { profile: Profile }) {
 
   return (
     <div className="page slide-up">
-      <div className="mb-3">
-        <p className="text-sm text-muted mb-1">{fmtDataLonga(new Date().toISOString())}</p>
-        <h1 style={{fontSize:22,fontWeight:800}}>Olá, {(profile.full_name??'').split(' ')[0]}</h1>
-      </div>
-
-      {/* Carrossel da Início (admin adiciona; some se vazio) */}
-      <HomeCarousel admin={admin} />
-
       {semLiberacao ? (
-        <BoasVindas variante={variante} admin={false} />
-      ) : (
-      <>
-      {admin && <BoasVindas variante={variante} admin={true} />}
-
-      {!evento ? (
-        <div className="info-section mb-4" style={{textAlign:'center',padding:'24px'}}>
-          <span className="icon icon-xl" style={{color:'var(--muted-light)',display:'block',marginBottom:8}}>event</span>
-          <p className="text-muted text-sm mb-3">Nenhum evento ativo no momento.</p>
-          {isAdmin(profile.user_role) && <button className="btn btn-primary btn-sm" onClick={()=>navigate('/admin')}>Criar evento</button>}
-        </div>
+        <>
+          <HomeCarousel admin={admin} />
+          <BoasVindas variante={variante} admin={false} />
+        </>
+      ) : !evento ? (
+        <>
+          <HomeCarousel admin={admin} />
+          {admin && <BoasVindas variante={variante} admin={true} />}
+          <div className="info-section mb-4" style={{textAlign:'center',padding:'24px'}}>
+            <span className="icon icon-xl" style={{color:'var(--muted-light)',display:'block',marginBottom:8}}>event</span>
+            <p className="text-muted text-sm mb-3">Nenhum evento ativo no momento.</p>
+            {isAdmin(profile.user_role) && <button className="btn btn-primary btn-sm" onClick={()=>navigate('/admin')}>Criar evento</button>}
+          </div>
+        </>
       ) : (
         <>
-          {/* Card do evento + progresso */}
+          {/* 1) EVENTO ATUAL — topo */}
           <div style={{background:'var(--primary)',borderRadius:14,padding:'16px 20px',marginBottom:16,boxShadow:'0 4px 14px rgba(0,169,157,0.3)'}}>
             <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',marginBottom:10}}>
               <div>
@@ -141,9 +136,13 @@ export default function Dashboard({ profile }: { profile: Profile }) {
 
 
 
-          {/* Stats — só Admin e Financeiro */}
+          {/* 2) RANKING — logo após o evento */}
+          <div className="section-title">Ranking do Encontro</div>
+          <RankingMini eventoId={evento.id} navigate={navigate}/>
+
+          {/* 3) Indicadores — só Admin e Financeiro */}
           {stats && podeVerStats && (
-            <div className="stats-grid mb-4">
+            <div className="stats-grid mb-4" style={{marginTop:20}}>
               {[
                 {label:'Encontristas', value:stats.encontristas,  rota:'/encontristas', cor:'#6B46C1'},
                 {label:'Encontreiros', value:stats.encontreiros,  rota:'/cadastros',    cor:'var(--primary)'},
@@ -158,14 +157,12 @@ export default function Dashboard({ profile }: { profile: Profile }) {
             </div>
           )}
 
+          {/* 4) Carrossel de fotos/vídeos */}
+          <div style={{marginTop:20}}><HomeCarousel admin={admin} /></div>
 
-
-          {/* Ranking widget */}
-          <div className="section-title" style={{marginTop:20}}>Ranking do Encontro</div>
-          <RankingMini eventoId={evento.id} navigate={navigate}/>
+          {/* 5) Boas-vindas (admin edita) */}
+          {admin && <BoasVindas variante={variante} admin={true} />}
         </>
-      )}
-      </>
       )}
 
     </div>

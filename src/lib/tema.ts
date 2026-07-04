@@ -98,4 +98,43 @@ export function aplicarFavicon(url: string) {
   link.href = url
 }
 
+// #2 — faz a INSTALAÇÃO (PWA) usar a LOGO do sistema como ícone.
+// Gera um manifest dinâmico apontando pra logo (URL pública do Supabase) + apple-touch-icon.
+export function aplicarIconesApp(logoUrl: string | null) {
+  if (logoUrl) aplicarFavicon(logoUrl)
+
+  // Ícone da tela inicial no iPhone
+  if (logoUrl) {
+    let apple = document.querySelector<HTMLLinkElement>("link[rel='apple-touch-icon']")
+    if (!apple) { apple = document.createElement('link'); apple.rel = 'apple-touch-icon'; document.head.appendChild(apple) }
+    apple.href = logoUrl
+  }
+
+  const origin = location.origin
+  const isSvg = !!logoUrl && /\.svg(\?|$)/i.test(logoUrl)
+  const tipo = isSvg ? 'image/svg+xml' : 'image/png'
+  const cor = getComputedStyle(document.documentElement).getPropertyValue('--primary').trim() || COR_PADRAO
+
+  const icons = logoUrl
+    ? (isSvg
+        ? [{ src: logoUrl, sizes: 'any', type: tipo, purpose: 'any' },
+           { src: logoUrl, sizes: 'any', type: tipo, purpose: 'maskable' }]
+        : [{ src: logoUrl, sizes: '192x192', type: tipo, purpose: 'any' },
+           { src: logoUrl, sizes: '512x512', type: tipo, purpose: 'any' },
+           { src: logoUrl, sizes: '512x512', type: tipo, purpose: 'maskable' }])
+    : [{ src: origin + '/favicon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' }]
+
+  const manifest = {
+    name: 'AXIS Eventos', short_name: 'AXIS', description: 'Gestão de eventos religiosos',
+    start_url: origin + '/', scope: origin + '/', display: 'standalone', orientation: 'portrait',
+    background_color: '#ffffff', theme_color: cor, icons,
+  }
+  const blob = new Blob([JSON.stringify(manifest)], { type: 'application/manifest+json' })
+  const novaUrl = URL.createObjectURL(blob)
+  let link = document.querySelector<HTMLLinkElement>("link[rel='manifest']")
+  if (!link) { link = document.createElement('link'); link.rel = 'manifest'; document.head.appendChild(link) }
+  if (link.href.startsWith('blob:')) URL.revokeObjectURL(link.href)
+  link.href = novaUrl
+}
+
 export { COR_PADRAO }

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { supabase } from './lib/supabase'
-import { carregarCorSalva, carregarConfig, aplicarFavicon } from './lib/tema'
+import { carregarCorSalva, carregarConfig, aplicarIconesApp } from './lib/tema'
 import { formatName } from './utils'
 import Nav from './components/Nav'
 import CriticalAlert from './components/CriticalAlert'
@@ -158,7 +158,7 @@ export default function App() {
 
   useEffect(() => {
     carregarCorSalva()
-    carregarConfig('logo_url').then(url => { if (url) aplicarFavicon(url) })
+    carregarConfig('logo_url').then(url => aplicarIconesApp(url))
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session)
       if (session) loadProfile(session.user.id)
