@@ -8,6 +8,7 @@ import { supabase } from '../lib/supabase'
 import PrintOverlay from '../components/PrintOverlay'
 import { formatName, getInitials, isAdmin, canEditPessoas } from '../utils'
 import { useEvento } from '../hooks/useEvento'
+import { usePermissao } from '../hooks/usePermissao'
 import type { Profile } from '../App'
 
 type Pessoa = {
@@ -43,7 +44,9 @@ export default function Cadastros({ profile }: { profile: Profile }) {
     setTimeout(() => setCopiadoId(c => c===p.id ? null : c), 1500)
   }
 
-  const canEdit = isAdmin(profile.user_role) || canEditPessoas(profile.user_role)
+  const { pode } = usePermissao(profile)
+  // Cargo (admin/pastor/secretaria) OU permissão individual/equipe "ver e editar Cadastro"
+  const canEdit = isAdmin(profile.user_role) || canEditPessoas(profile.user_role) || pode('cadastros','editar')
 
   useEffect(() => { if (evLoading) return; if (!evento) { setLoading(false); return }; carregar() }, [evento, evLoading])
 
