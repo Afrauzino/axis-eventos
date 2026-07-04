@@ -59,8 +59,10 @@ Lista de 19 pedidos + follow-ups, **todos feitos e publicados**. Detalhe item a 
 - **Dica p/ verificar telas logadas:** o dev server (`npm run dev`) do Anderson costuma ter a **sessão dele ativa**,
   então dá pra ver o app logado no preview. É DADO REAL — só observar, não alterar.
 
-### SQLs — 2026-07-04 (TODOS JÁ RODADOS pelo Anderson ✅)
+### SQLs — 2026-07-04 (TODOS JÁ RODADOS pelo Anderson ✅) — MENOS o sql/27 (pendente)
 - `sql/21`, `sql/22`, `sql/23`, `sql/24_fix_criar_cadastro.sql`, `sql/25_seguranca.sql` — aplicados.
+- `sql/26_diagnostico_permissoes.sql` — só leitura, já rodado (revelou permissions EN inexistente, banco aberto).
+- `sql/27_permissoes_fonte_unica.sql` — ⚠️ **FALTA RODAR** (permissoes só admin escreve + doses só admin apaga).
 - `sql/24`: libera CRIAR pessoa p/ quem tem permissão granular "ver e editar Cadastro" (RLS de INSERT exigia
   'create', mas o app só concede 'editar'). UI também corrigida: `Cadastros.tsx` usa `pode('cadastros','editar')`.
 - `sql/25`: `configuracoes` só admin escreve (leitura pública mantida); revoga execução pública das funções de
@@ -68,6 +70,25 @@ Lista de 19 pedidos + follow-ups, **todos feitos e publicados**. Detalhe item a 
 - ⚠️ PROVÁVEL BUG IGUAL em OUTROS módulos: o INSERT de `teams`/`ministrações`/`escalas`/`theaters`/`cozinha`/
   `locais`/`cronograma` pode ter o mesmo problema do `people` (criar bloqueado p/ granular). Ver IDEIAS "[ALTA]".
 - Fora de propósito (risco baixo): bucket-listing e "leaked password protection" (dashboard).
+
+### ✅ TAREFA 1 — UNIFICAR PERMISSÕES (feito em 2026-07-04, parte 3) — falta rodar sql/27
+**Descoberta do diagnóstico (sql/26):** a tabela `permissions` (EN) e a função `has_permission()` **NÃO
+existem** neste banco. Logo a fonte única SEMPRE foi a `permissoes` (PT). E o banco está "de portão aberto":
+quase toda tabela tem policies genéricas `sel/ins/upd/del = auth.uid() IS NOT NULL` (qualquer logado grava).
+Quem controlava de verdade era o app. O bug real do "criar/editar": os módulos usavam `canEdit =
+isAdmin(user_role)` e **ignoravam** as liberações individuais/equipe da tela do Admin (tabela `permissoes`).
+**O que foi feito (fonte única = `permissoes` via `pode()`):**
+- App: cada módulo agora usa `canEdit = isAdmin || pode('<modulo>','editar')` — Equipes, Ministrações, Escalas,
+  Locais, Cozinha, Teatro (+ TeatroDetalhe/Atores/Objetos/Personagens), Cronograma. (Cadastros/Encontristas já
+  estavam via sql/24 + `pode('cadastros','editar')`.) Só SOMA acesso — ninguém perde. `tsc`+`build` passam.
+- `sql/27_permissoes_fonte_unica.sql` (⚠️ **Anderson precisa rodar**): fecha os 2 buracos perigosos sem travar
+  ninguém — (a) `permissoes` só admin escreve (fecha auto-promoção); (b) `medicamento_entregas` só admin apaga
+  (histórico de doses). NÃO mexe em saude_fichas/med_controlados/med_agenda (a Saúde apaga em fluxo legítimo).
+- Nota: hoje NÃO há grants de `editar` em equipes/escalas/cozinha/etc. na base (só `ver`); o conserto faz o
+  toggle do Admin **passar a valer** quando o Anderson liberar. Teatro tem 1 grant `editar` com permitido=false
+  (segue negado, correto). Decisão dele: "App manda, banco fecha só o perigoso" (não enrijecer RLS de tudo).
+- **Verificação real pendente:** liberar no Admin "Equipes → editar" p/ uma equipe e um encontreiro dessa equipe
+  confirmar que o botão de criar aparece. (Não dá pra testar no preview: dev server usa a sessão ADMIN do Anderson.)
 
 ### 🎯 TAREFAS ESCOLHIDAS PELO ANDERSON (fazer a seguir) — 2026-07-04
 1. **Unificar o sistema de permissões** (dívida técnica raiz — causou o bug do "criar"). Há DUAS fontes:
