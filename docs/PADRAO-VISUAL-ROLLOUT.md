@@ -35,15 +35,20 @@ Todos os `<select>` nativos trocados (2026, sessão de continuação):
 > Regra mantida: nunca `<Seletor>` (é `<button>`) dentro de outro `<button>` (validateDOMNesting).
 > O card da lista de Ministrações é `<button>` — só se converteu selects de formulários/modais.
 
-## ⏳ Calendário próprio (2º componente, AINDA NÃO criado)
-Criar `src/components/DataHora.tsx` no padrão do item 6 (mês navegável, dia na cor do sistema + seletor de hora).
-Preview já foi aprovado pelo Anderson. Depois trocar os `type="date"|"time"|"datetime-local"` em:
-- `src/pages/Admin.tsx` (~1508, ~1511 — datas do evento, só `date`)
-- `src/pages/Cronograma.tsx` (~521 — `datetime-local`)
-- `src/pages/Escalas.tsx` (~315, ~319 — `datetime-local` x2)
-- `src/pages/Financeiro.tsx` (~189 — `date`)
-- `src/components/CadastroPessoa.tsx` (~257 — `time`, horário do remédio)
-- `src/components/FichaMedica.tsx` (~210 — `datetime-local`, última dose)
+## ✅ Calendário próprio — item 2 CONCLUÍDO e publicado
+`src/components/DataHora.tsx` criado (item 6: mês navegável ‹ ›, dia selecionado = círculo na cor do sistema,
+hora com colunas horas/minutos + caixinha "14 : 00", botões Limpar/Confirmar). Mantém o MESMO formato de valor
+dos inputs nativos (date 'YYYY-MM-DD', time 'HH:MM', datetime 'YYYY-MM-DDTHH:MM') → troca sem mexer nos saves.
+Props: `modo='date'|'time'|'datetime'`, `value`, `onChange`, `disabled`, `placeholder`, `titulo`.
+TODOS os inputs nativos trocados (0 restantes):
+- `Admin.tsx`: datas início/fim do evento ✓
+- `Financeiro.tsx`: data de pagamento ✓
+- `Cronograma.tsx`: data e hora programada ✓
+- `Escalas.tsx`: início e fim (datetime) ✓
+- `FichaMedica.tsx`: última dose ✓
+- `CadastroPessoa.tsx`: nascimento (não estava na lista, é real) + horário do remédio ✓
+> ⚠️ Tradeoff: o Cronograma/Escalas tinham `min/max` (limitar às datas do evento) nos inputs nativos; o DataHora
+> ainda NÃO valida faixa. Se precisar travar fora do evento, adicionar props `min`/`max` ao DataHora depois.
 
 ## (menor) Color picker nativo
 `type="color"` em 7 telas (Equipes, Ministracoes, Admin, TeatroLista, Locais, Cracha, ConfigCor). Baixa prioridade;
