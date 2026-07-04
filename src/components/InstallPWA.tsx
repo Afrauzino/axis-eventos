@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 
 // #2 — Botão "Instalar aplicativo".
-// Android/Chrome: usa o evento beforeinstallprompt (instalação em 1 toque).
-// iPhone/Safari: mostra o passo a passo (Compartilhar → Adicionar à Tela de Início).
+// Android/Chrome: usa o evento beforeinstallprompt (instalação em 1 toque quando o navegador oferece).
+// Se o navegador não oferecer o pop-up (ou for iPhone), mostra o passo a passo curtinho.
 type BIPEvent = Event & { prompt: () => Promise<void>; userChoice: Promise<{ outcome: string }> }
 
 function jaInstalado() {
@@ -11,11 +11,14 @@ function jaInstalado() {
 function ehIOS() {
   return /iphone|ipad|ipod/i.test(navigator.userAgent) && !(window as any).MSStream
 }
+function ehAndroid() {
+  return /android/i.test(navigator.userAgent)
+}
 
 export default function InstallPWA({ variant = 'card' }: { variant?: 'card' | 'inline' }) {
   const [deferred, setDeferred] = useState<BIPEvent | null>(null)
   const [instalado, setInstalado] = useState(jaInstalado())
-  const [ajudaIOS, setAjudaIOS] = useState(false)
+  const [ajuda, setAjuda] = useState<null | 'ios' | 'android'>(null)
 
   useEffect(() => {
     if (instalado) return
@@ -30,8 +33,8 @@ export default function InstallPWA({ variant = 'card' }: { variant?: 'card' | 'i
   }, [instalado])
 
   if (instalado) return null
-  // Sem prompt disponível e não é iOS → navegador não suporta instalar; não mostra nada.
-  if (!deferred && !ehIOS()) return null
+  // Mostra em celular (Android/iPhone) ou quando o navegador já ofereceu o pop-up. No PC sem pop-up, esconde.
+  if (!deferred && !ehIOS() && !ehAndroid()) return null
 
   async function instalar() {
     if (deferred) {
@@ -40,7 +43,9 @@ export default function InstallPWA({ variant = 'card' }: { variant?: 'card' | 'i
       if (outcome === 'accepted') setInstalado(true)
       setDeferred(null)
     } else if (ehIOS()) {
-      setAjudaIOS(v => !v)
+      setAjuda(v => v === 'ios' ? null : 'ios')
+    } else {
+      setAjuda(v => v === 'android' ? null : 'android')
     }
   }
 
@@ -58,10 +63,16 @@ export default function InstallPWA({ variant = 'card' }: { variant?: 'card' | 'i
         <span className="icon icon-sm">install_mobile</span>
         Instalar aplicativo
       </button>
-      {ajudaIOS && (
+      {ajuda === 'ios' && (
         <div style={{ marginTop: 10, fontSize: 13, color: 'var(--text2)', lineHeight: 1.6, textAlign: 'center' }}>
           No iPhone: toque em <b>Compartilhar</b> <span style={{ fontSize: 15 }}>⬆️</span> e depois em
-          <b> “Adicionar à Tela de Início”</b>.
+          <b> "Adicionar à Tela de Início"</b>.
+        </div>
+      )}
+      {ajuda === 'android' && (
+        <div style={{ marginTop: 10, fontSize: 13, color: 'var(--text2)', lineHeight: 1.6, textAlign: 'center' }}>
+          No Android: toque no menu <b>⋮</b> do navegador e escolha
+          <b> "Instalar aplicativo"</b> (ou "Adicionar à tela inicial").
         </div>
       )}
     </div>
