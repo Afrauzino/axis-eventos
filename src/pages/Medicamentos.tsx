@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import SubTabs from '../components/SubTabs'
 import PessoaSaudeResumo from '../components/PessoaSaudeResumo'
+import { toast } from '../components/Toast'
 import { getInitials, fmtHora, fmtDataHora } from '../utils'
 import { useEvento } from '../hooks/useEvento'
 import { gerarICS, baixarICS, type EventoICS } from '../lib/ics'
@@ -40,7 +41,7 @@ export default function Medicamentos({ profile }: { profile?: Profile }) {
   // #7 — gera alarmes (.ics) de TODAS as doses pendentes; toca ~8 min antes
   function exportarAlarmes() {
     const pend = doses.filter(d => !d.entregue)
-    if (pend.length === 0) { alert('Não há doses pendentes para gerar alarmes.'); return }
+    if (pend.length === 0) { toast.info('Não há doses pendentes para gerar alarmes.'); return }
     const eventos: EventoICS[] = pend.map(d => {
       const pessoa = getPessoa(d.person_id)?.name ?? 'Participante'
       const hora = fmtHora(d.horario)
@@ -54,7 +55,7 @@ export default function Medicamentos({ profile }: { profile?: Profile }) {
       }
     })
     baixarICS('alarmes-medicamentos', gerarICS(eventos))
-    alert(`Gerados ${eventos.length} alarme(s).\n\nAbra o arquivo baixado para adicioná-los ao calendário do celular — eles tocam ~8 min antes de cada horário.`)
+    toast.sucesso(`${eventos.length} alarme(s) gerado(s). Abra o arquivo baixado para adicionar ao calendário — tocam ~8 min antes.`)
   }
 
   async function entregar(d: Dose) {

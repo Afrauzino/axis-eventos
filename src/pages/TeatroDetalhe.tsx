@@ -5,6 +5,7 @@ import ArquivosModulo from '../components/ArquivosModulo'
 import PrintOverlay from '../components/PrintOverlay'
 import { getInitials, isAdmin } from '../utils'
 import PersonSelect from '../components/PersonSelect'
+import { toast } from '../components/Toast'
 import { usePermissao } from '../hooks/usePermissao'
 import type { Profile } from '../App'
 
@@ -219,8 +220,8 @@ export default function TeatroDetalhe({ profile }: { profile?: Profile }) {
       theater_id: id, tipo: formMidia.tipo, titulo: formMidia.titulo.trim() || null, url,
     })
     setSalvandoMidia(false)
-    if (error) { alert('Erro ao salvar: ' + error.message); return }
-    setModalMidia(false); setFormMidia({ tipo:'foto', titulo:'', url:'' }); carregar()
+    if (error) { toast.falha('Não foi possível salvar.', error); return }
+    setModalMidia(false); setFormMidia({ tipo:'foto', titulo:'', url:'' }); carregar(); toast.sucesso('Salvo!')
   }
 
   async function excluirMidia(midiaId: string) {

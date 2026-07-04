@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from 'react'
 import { supabase } from '../lib/supabase'
+import { toast } from './Toast'
 
 type Arquivo = { id:string; nome:string; url:string; tipo:string|null; created_at:string }
 
@@ -34,14 +35,14 @@ export default function ArquivosModulo({ eventId, modulo, referenciaId, pessoaId
     const ext = file.name.split('.').pop()
     const path = `${modulo}/${referenciaId}/${Date.now()}.${ext}`
     const { error } = await supabase.storage.from('arquivos').upload(path, file, { upsert:true })
-    if (error) { setUploadando(false); alert('Erro ao enviar: ' + error.message); return }
+    if (error) { setUploadando(false); toast.falha('Não foi possível enviar o arquivo.', error); return }
     const { data:u } = supabase.storage.from('arquivos').getPublicUrl(path)
     const { data, error:dbErr } = await supabase.from('arquivos_modulo').insert({
       event_id: eventId, modulo, referencia_id: referenciaId,
       nome: file.name, url: u.publicUrl, tipo: file.type, tamanho: file.size, enviado_por: pessoaId ?? null,
     }).select().single()
     setUploadando(false)
-    if (dbErr) { alert('Erro ao registrar: ' + dbErr.message); return }
+    if (dbErr) { toast.falha('Não foi possível registrar o arquivo.', dbErr); return }
     if (data) setArquivos(prev => [data, ...prev])
   }
 

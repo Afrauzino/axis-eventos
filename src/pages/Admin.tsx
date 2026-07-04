@@ -6,6 +6,7 @@ import { fmtDataHora, isAdmin } from '../utils'
 import { invalidarEventoAtivo } from '../hooks/useEvento'
 import { registrarLog } from '../lib/audit'
 import SubTabs from '../components/SubTabs'
+import { toast } from '../components/Toast'
 import type { Profile } from '../App'
 import EmojiGrid from '../components/EmojiGrid'
 import { PERM_CATALOGO, MENUS_CATALOGO } from '../lib/permCatalog'
@@ -351,7 +352,7 @@ export default function Admin({ profile }: { profile?: Profile }) {
 
   // Desfaz a ação usando o metadata (old/new) gravado pelo trigger
   async function desfazerLog(l: LogRow) {
-    if (!podeDesfazer(l)) { alert('Esta ação não tem dados suficientes para desfazer automaticamente.'); return }
+    if (!podeDesfazer(l)) { toast.aviso('Esta ação não tem dados suficientes para desfazer automaticamente.'); return }
     if (!confirm(`Desfazer "${ACAO_LABEL[l.action]??l.action}" em ${nomeEntidade(l.entity)}?\n\nIsso reverte a alteração no banco.`)) return
     setDesfazendo(l.id)
     const m = l.metadata || {}
@@ -367,10 +368,10 @@ export default function Admin({ profile }: { profile?: Profile }) {
       }
       if (error) throw error
       registrarLog({ action:'update', entity:l.entity, entityId:l.entity_id, description:`Desfez ${ACAO_LABEL[l.action]?.toLowerCase()??l.action} em ${nomeEntidade(l.entity)}`, eventId:eventoAtivoId() })
-      alert('✓ Ação desfeita.')
+      toast.sucesso('Ação desfeita.')
       carregarLogs()
     } catch (e:any) {
-      alert('Não foi possível desfazer: ' + (e?.message ?? e))
+      toast.falha('Não foi possível desfazer.', e)
     }
     setDesfazendo(null)
   }
@@ -407,7 +408,7 @@ export default function Admin({ profile }: { profile?: Profile }) {
   // #1 — abrir edição COMPLETA do cadastro (foto + todos os dados)
   async function abrirEdicaoCompleta(p: typeof pessoas[0]) {
     const { data, error } = await supabase.from('people').select('*').eq('id', p.id).maybeSingle()
-    if (error || !data) { alert('Não foi possível carregar o cadastro desta pessoa.'); return }
+    if (error || !data) { toast.falha('Não foi possível carregar o cadastro desta pessoa.', error); return }
     setEditEventoId(data.event_id)
     setEditForm({
       ...FORM_VAZIO,
@@ -423,7 +424,7 @@ export default function Admin({ profile }: { profile?: Profile }) {
 
   async function salvarEdicaoCompleta() {
     if (!editPessoaId) return
-    if (!editForm.name.trim()) { alert('O nome é obrigatório.'); return }
+    if (!editForm.name.trim()) { toast.aviso('O nome é obrigatório.'); return }
     setSalvandoEdit(true)
     const { error } = await supabase.from('people').update({
       name: editForm.name,
@@ -445,7 +446,7 @@ export default function Admin({ profile }: { profile?: Profile }) {
       role_type: editForm.role_type,
       team_pref: editForm.team_pref || null,
     }).eq('id', editPessoaId)
-    if (error) { setSalvandoEdit(false); alert('Erro ao salvar: ' + error.message); return }
+    if (error) { setSalvandoEdit(false); toast.falha('Não foi possível salvar.', error); return }
 
     // Espelha nome/foto no profile (conta) quando houver login vinculado
     const alvo = pessoas.find(x => x.id === editPessoaId)
@@ -463,11 +464,12 @@ export default function Admin({ profile }: { profile?: Profile }) {
       : prev)
     setSalvandoEdit(false)
     setEditPessoaId(null)
+    toast.sucesso('Cadastro salvo!')
   }
 
   // Excluir COMPLETAMENTE — remove de todas as tabelas, como se nunca tivesse existido
   async function excluirCadastro(p: typeof pessoas[0]) {
-    if (p.user_role === 'admin') { alert('Administradores não podem ser excluídos. Rebaixe o cargo antes, se precisar.'); return }
+    if (p.user_role === 'admin') { toast.aviso('Administradores não podem ser excluídos. Rebaixe o cargo antes, se precisar.'); return }
     const msg = p.user_id
       ? `Excluir "${p.name}" de TODOS os sistemas?\n\nSerá removido de teatro, escalas, equipes, saúde, ranking e a conta será bloqueada. Esta ação é permanente.`
       : `Excluir "${p.name}" de TODOS os sistemas?\n\nSerá removido de teatro, escalas, equipes, saúde e ranking. Esta ação é permanente.`
@@ -497,12 +499,13 @@ export default function Admin({ profile }: { profile?: Profile }) {
       if (fnErr) {
         // Fallback: função ainda não publicada — bloqueia a conta e avisa
         await supabase.from('profiles').update({ role_status: 'rejected', user_role: 'visitante' }).eq('user_id', p.user_id)
-        alert('Cadastro removido, mas o LOGIN não foi apagado (a Edge Function "admin-delete-user" ainda não está publicada). Passo a passo em docs/EDGE_FUNCTION_DELETE.md.')
+        toast.aviso('Cadastro removido, mas o login ainda não foi apagado (recurso de servidor pendente). Detalhes em docs/EDGE_FUNCTION_DELETE.md.')
       }
     }
     registrarLog({ action:'delete', entity:'people', entityId:pid, description:`Excluiu completamente o cadastro de ${p.name}`, eventId:eventoAtivoId() })
     setPessoaDetalhe(null)
     setPessoas(prev => prev.filter(x => x.id !== pid))
+    toast.sucesso('Cadastro excluído.')
   }
 
   // Cria a estrutura obrigatória de um evento novo (o que o sistema precisa pra funcionar).
@@ -573,7 +576,7 @@ export default function Admin({ profile }: { profile?: Profile }) {
     registrarLog({ action:'update', entity:'events', entityId:id, description:`Tornou "${nome}" o evento ativo`, eventId:id })
     invalidarEventoAtivo()
     carregar()
-    alert(`"${nome}" agora é o evento ativo. Recarregue as outras telas para ver.`)
+    toast.sucesso(`"${nome}" agora é o evento ativo. Recarregue as outras telas para ver.`)
   }
 
   async function finalizarEvento(id:string) {
@@ -663,7 +666,7 @@ export default function Admin({ profile }: { profile?: Profile }) {
     }
 
     setDuplicando(false); setModalDuplicar(null); setNomeDuplicar('')
-    alert(`Evento "${nomeDuplicar}" criado com sucesso!`); carregar()
+    toast.sucesso(`Evento "${nomeDuplicar}" criado com sucesso!`); carregar()
   }
 
   async function salvarTipo(e:React.FormEvent) {
@@ -675,7 +678,7 @@ export default function Admin({ profile }: { profile?: Profile }) {
 
   async function excluirTipo(id:string) {
     const t = tipos.find(x=>x.id===id)
-    if (t?.protegido) { alert('Este tipo tem regras e não pode ser excluído. Você pode alterar nome e cor.'); return }
+    if (t?.protegido) { toast.aviso('Este tipo tem regras e não pode ser excluído. Você pode alterar nome e cor.'); return }
     if (!confirm('Excluir este tipo?')) return
     await supabase.from('cronograma_tipos').delete().eq('id',id)
     carregar()
@@ -736,7 +739,7 @@ export default function Admin({ profile }: { profile?: Profile }) {
           if (tem) disponiveis[s.key] = true
         })
         setSecoesImport(disponiveis)
-      } catch { alert('Arquivo inválido: não é um backup JSON válido.') }
+      } catch { toast.erro('Arquivo inválido: não é um backup JSON válido.') }
     }
     reader.readAsText(file)
   }
@@ -756,7 +759,7 @@ export default function Admin({ profile }: { profile?: Profile }) {
       name:nome, location:ev.location??null, valor_encontrista:ev.valor_encontrista??0,
       valor_encontreiro:ev.valor_encontreiro??0, start_date:ev.start_date??null, end_date:ev.end_date??null, status:'inactive',
     }).select('id').single()
-    if (eErr || !novo) { setImportando(false); alert('Erro ao criar evento: '+(eErr?.message??'')); return }
+    if (eErr || !novo) { setImportando(false); toast.falha('Não foi possível criar o evento.', eErr); return }
     const nid = novo.id
 
     // remapa id antigo → novo por tabela
@@ -809,13 +812,13 @@ export default function Admin({ profile }: { profile?: Profile }) {
         // votos dependem de pessoa; só importa se a pessoa veio junto
       }
     } catch (err:any) {
-      setImportando(false); alert('Importação parcial — erro: '+(err?.message??err)); carregar(); return
+      setImportando(false); toast.falha('Importação parcial: algo deu errado no meio.', err); carregar(); return
     }
 
     registrarLog({ action:'create', entity:'events', entityId:nid, description:`Importou o evento "${nome}" de um backup`, eventId:nid })
     invalidarEventoAtivo()
     setImportando(false); setImportArquivo(null); setSecoesImport({})
-    alert(`Evento "${nome}" importado! Ele está como Inativo — use "Tornar ativo" na aba Eventos para acessá-lo.`)
+    toast.sucesso(`Evento "${nome}" importado! Ele está como Inativo — use "Tornar ativo" na aba Eventos para acessá-lo.`)
     setAba('eventos'); carregar()
   }
 

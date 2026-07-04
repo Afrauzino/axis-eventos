@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import SubTabs from '../components/SubTabs'
+import { toast } from '../components/Toast'
 import { getInitials, isAdmin, fmtData, fmtBRL } from '../utils'
 import { useEvento } from '../hooks/useEvento'
 import PersonSelect from '../components/PersonSelect'
@@ -66,7 +67,7 @@ export default function Financeiro({ profile }: { profile?: Profile }) {
     const jaP = getPago(form.person_id)
     const novoValor = parseFloat(form.valor)
     if (!editando && jaP + novoValor > valorTotal && valorTotal > 0) {
-      alert(`Valor ultrapassa o saldo devedor. Já pago: ${fmtBRL(jaP)} | Valor restante: ${fmtBRL(valorTotal-jaP)}`)
+      toast.aviso(`Valor acima do que falta pagar. Já pago: ${fmtBRL(jaP)} · Falta: ${fmtBRL(valorTotal-jaP)}`)
       setSalvando(false); return
     }
     const payload = { person_id:form.person_id, valor:novoValor, status:form.status, forma_pagamento:form.forma_pagamento||null, data_pagamento:form.data_pagamento?new Date(form.data_pagamento).toISOString():new Date().toISOString(), observacoes:form.observacoes||null, event_id:evento.id }

@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from 'react'
 import { supabase } from '../lib/supabase'
+import { toast } from '../components/Toast'
 import { getInitials, formatName, isAdmin } from '../utils'
 import { useEvento } from '../hooks/useEvento'
 import type { Profile } from '../App'
@@ -112,17 +113,17 @@ export default function AlertasLideres({ profile }: { profile?: Profile }) {
     let destinatarios: string[] = []
     if (destino==='lideres') {
       destinatarios = selec
-      if (destinatarios.length===0) { alert('Selecione ao menos um líder.'); return }
+      if (destinatarios.length===0) { toast.aviso('Selecione ao menos um líder.'); return }
     } else if (destino==='equipe') {
-      if (equipeSel.length===0) { alert('Selecione ao menos uma equipe.'); return }
+      if (equipeSel.length===0) { toast.aviso('Selecione ao menos uma equipe.'); return }
       const { data: membros } = await supabase.from('people_teams').select('person_id').in('team_id', equipeSel)
       destinatarios = Array.from(new Set((membros ?? []).map(m=>m.person_id)))
-      if (destinatarios.length===0) { alert('As equipes não têm membros.'); return }
+      if (destinatarios.length===0) { toast.aviso('As equipes não têm membros.'); return }
     } else { // encontreiros: pessoas específicas dentro da equipe
       destinatarios = selec
-      if (destinatarios.length===0) { alert('Selecione ao menos uma pessoa.'); return }
+      if (destinatarios.length===0) { toast.aviso('Selecione ao menos uma pessoa.'); return }
     }
-    if (!texto.trim() && !foto) { alert('Escreva um texto ou anexe uma foto.'); return }
+    if (!texto.trim() && !foto) { toast.aviso('Escreva um texto ou anexe uma foto.'); return }
     // crítico só para líder
     const nivelFinal = (ehLider ? nivel : 'comum')
     setEnviando(true)
@@ -140,7 +141,7 @@ export default function AlertasLideres({ profile }: { profile?: Profile }) {
     }).select().single()
     if (al) await supabase.from('alertas_lideres_dest').insert(destinatarios.map(d => ({ alerta_id: al.id, destinatario_id: d })))
     setEnviando(false); setTexto(''); setFoto(null); setSelec([]); setEquipeSel([]); setEquipeEnc('')
-    alert('Alerta enviado!'); setAba('enviados'); carregar()
+    toast.sucesso('Alerta enviado!'); setAba('enviados'); carregar()
   }
 
   async function marcarLido(a: Alerta) {

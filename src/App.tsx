@@ -7,6 +7,7 @@ import Nav from './components/Nav'
 import CriticalAlert from './components/CriticalAlert'
 import NotificacoesCenter, { contarNaoLidas } from './components/NotificacoesCenter'
 import InstallPWA from './components/InstallPWA'
+import { ToastHost } from './components/Toast'
 import { useEvento } from './hooks/useEvento'
 import Login from './pages/Login'
 import Pending from './pages/Pending'
@@ -293,6 +294,7 @@ export default function App() {
         )}
 
         <CriticalAlert profile={profile}/>
+        <ToastHost />
       </div>
     </BrowserRouter>
   )

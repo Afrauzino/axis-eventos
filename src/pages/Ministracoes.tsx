@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase'
 import { getInitials, fmtHora, fmtData, isAdmin, hasRole } from '../utils'
 import { useEvento } from '../hooks/useEvento'
 import { usePermissao } from '../hooks/usePermissao'
+import { toast } from '../components/Toast'
 import PersonSelect from '../components/PersonSelect'
 import RichEditor from '../components/RichEditor'
 import ArquivosModulo from '../components/ArquivosModulo'
@@ -159,8 +160,8 @@ export default function Ministracoes({ profile }: { profile?: Profile }) {
     await supabase.from('theaters').update({ ministracao_id: null }).eq('ministracao_id', id)
     await supabase.from('cronograma_eventos').update({ ministracao_id: null }).eq('ministracao_id', id)
     const { error } = await supabase.from('ministrações').delete().eq('id', id)
-    if (error) { alert('Não foi possível excluir: ' + error.message); return }
-    setDetalhe(null); carregar()
+    if (error) { toast.falha('Não foi possível excluir.', error); return }
+    setDetalhe(null); carregar(); toast.sucesso('Excluído.')
   }
 
   async function salvarAnotacoes(id:string, val:string) {
@@ -436,7 +437,7 @@ export default function Ministracoes({ profile }: { profile?: Profile }) {
                         const path=`ministracao/blocos/${Date.now()}_${Math.random().toString(36).slice(2,7)}.${ext}`
                         const {error}=await supabase.storage.from('arquivos').upload(path,f,{upsert:true})
                         if(!error){const {data:u}=supabase.storage.from('arquivos').getPublicUrl(path); setBlocos(prev=>[...prev,{tipo:'Imagem',conteudo:u.publicUrl}])}
-                        else alert('Erro ao enviar imagem: '+error.message)
+                        else toast.falha('Não foi possível enviar a imagem.', error)
                       }
                       e.target.value=''
                     }}/>

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { aplicarCor, salvarCor, carregarCorSalva, carregarConfig, salvarConfig, aplicarFavicon, COR_PADRAO } from '../lib/tema'
 import { supabase } from '../lib/supabase'
+import { toast } from '../components/Toast'
 
 const PALETA = [
   { nome: 'Turquesa', cor: '#00A99D' },
@@ -39,7 +40,7 @@ export default function ConfigCor() {
       const { data:u } = supabase.storage.from('arquivos').getPublicUrl(path)
       await salvarConfig('logo_url', u.publicUrl)
       setLogoUrl(u.publicUrl); aplicarFavicon(u.publicUrl)
-    } else alert('Erro ao enviar a logo: ' + error.message)
+    } else toast.falha('Não foi possível enviar a logo. Tente de novo.', error)
     setSubindoLogo(false)
   }
   async function removerLogo() {

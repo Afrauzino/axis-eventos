@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import PrintOverlay from '../components/PrintOverlay'
+import { toast } from '../components/Toast'
 import { getInitials, isAdmin, formatName } from '../utils'
 import { useEvento } from '../hooks/useEvento'
 import type { Profile } from '../App'
@@ -187,7 +188,7 @@ export default function Correio({ profile }: { profile?: Profile }) {
     const { error } = await supabase.storage.from('correio').upload(path, file, { upsert:true })
     if (error) {
       setUploadando(false)
-      alert('Erro ao enviar: ' + error.message)
+      toast.falha('Não foi possível enviar o arquivo.', error)
       return
     }
     const { data:u } = supabase.storage.from('correio').getPublicUrl(path)
@@ -196,8 +197,8 @@ export default function Correio({ profile }: { profile?: Profile }) {
       url: u.publicUrl, tipo: file.type, tamanho: file.size, enviado_por: minhaPessoa?.id ?? null,
     }).select().single()
     setUploadando(false)
-    if (dbErr) { alert('Erro ao registrar: ' + dbErr.message); return }
-    if (data) setArquivos(prev => [data, ...prev])
+    if (dbErr) { toast.falha('Não foi possível registrar o arquivo.', dbErr); return }
+    if (data) { setArquivos(prev => [data, ...prev]); toast.sucesso('Arquivo enviado!') }
   }
 
   async function excluirArquivo(arq: Arquivo) {

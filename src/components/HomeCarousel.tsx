@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import YouTubePlayer from './YouTubePlayer'
+import { toast } from './Toast'
 
 type Item = { id:string; tipo:string; url:string; ordem:number; duracao?:number }
 
@@ -51,7 +52,7 @@ export default function HomeCarousel({ admin }: { admin: boolean }) {
       const tipo = file.type.startsWith('video') ? 'video' : 'imagem'
       await supabase.from('home_midias').insert({ tipo, url:u.publicUrl, ordem:itens.length, duracao:dur })
       await carregar()
-    } else alert('Erro ao enviar: ' + error.message)
+    } else toast.falha('Não foi possível enviar. Tente de novo.', error)
     setSubindo(false); setModal(false)
   }
   async function adicionarLink() {

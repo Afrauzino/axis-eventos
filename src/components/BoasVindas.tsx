@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import RichEditor from './RichEditor'
 import { carregarConfig, salvarConfig } from '../lib/tema'
+import { toast } from './Toast'
 
 export type BVVariante = 'visitante' | 'encontrista' | 'encontreiro'
 type Contato = { nome:string; funcao:string; numero:string }
@@ -53,10 +54,10 @@ export default function BoasVindas({ variante, admin }: { variante:BVVariante; a
     setMsg(v ? '✓ Boas-vindas ligada' : '✓ Boas-vindas desligada'); setTimeout(()=>setMsg(''),1500)
   }
   function usarMinhaLocalizacao() {
-    if (!navigator.geolocation) { alert('Localização não disponível neste navegador.'); return }
+    if (!navigator.geolocation) { toast.aviso('Localização não disponível neste navegador.'); return }
     navigator.geolocation.getCurrentPosition(
       pos => setData(d=>({ ...d, lat:String(pos.coords.latitude.toFixed(6)), lng:String(pos.coords.longitude.toFixed(6)) })),
-      () => alert('Não foi possível obter a localização (permita o acesso).')
+      () => toast.aviso('Não foi possível obter a localização. Permita o acesso e tente de novo.')
     )
   }
   const addContato = () => setData(d=>({ ...d, contatos:[...d.contatos, { nome:'', funcao:'', numero:'' }] }))

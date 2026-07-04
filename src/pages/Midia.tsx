@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import ArquivosModulo from '../components/ArquivosModulo'
+import { toast } from '../components/Toast'
 import { isAdmin } from '../utils'
 import { useEvento } from '../hooks/useEvento'
 import type { Profile } from '../App'
@@ -46,8 +47,8 @@ export default function Midia({ profile }: { profile?: Profile }) {
     setSalvando(true)
     const { error } = await supabase.from('midias').insert({ event_id:evento.id, tipo:form.tipo, titulo:form.titulo.trim()||null, url })
     setSalvando(false)
-    if (error) { alert('Erro ao salvar: ' + error.message); return }
-    setModal(false); setForm({ tipo:'foto', titulo:'', url:'' }); carregar()
+    if (error) { toast.falha('Não foi possível salvar.', error); return }
+    setModal(false); setForm({ tipo:'foto', titulo:'', url:'' }); carregar(); toast.sucesso('Salvo!')
   }
 
   async function excluir(id: string) {
