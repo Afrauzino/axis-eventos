@@ -121,3 +121,31 @@ Pendências que dependem do Anderson:
 Limitações assumidas (melhor alternativa feita):
 - #6 push/lembrete que toca com o app FECHADO precisa de backend/cron (não tem servidor) — no app mostra tudo + "começa em breve".
 - #7 alarme nativo em lote não existe na web — geramos .ics (calendário) que funciona em Android/iPhone.
+
+### 2026-07-04 — SQLs JÁ RODADOS pelo Anderson
+- `sql/21`, `sql/22`, `sql/23`, `sql/24` (criar cadastro), `sql/25` (segurança) — TODOS aplicados. Verificado:
+  admin ainda escreve em `configuracoes` (leitura pública mantida).
+
+### 2026-07-04 — IDEIAS DE MELHORIA (backlog priorizado, NÃO feito ainda)
+> Sugestões da Claude após varredura. Confirmar com o Anderson (caixa de seleção) antes de fazer as grandes.
+- **[ALTA] Auditar RLS de INSERT dos outros módulos.** O bug do "criar" (a permissão "Criar/editar" só concede a
+  ação `editar`, mas o RLS de INSERT pede `create`) foi corrigido só p/ `people` (sql/24). Provavelmente afeta
+  também `teams`, `ministrações`, `escalas`, `theaters`/teatro, `cozinha_cardapios`, `locais`, `cronograma_eventos`.
+  Fazer o mesmo padrão do sql/24 (política de INSERT que aceita a permissão granular 'editar') p/ cada um.
+- **[ALTA] Guardas de rota (cadeado).** Quem não tem permissão ainda consegue abrir uma tela digitando a URL.
+  Redirecionar p/ Início quem não tem o menu/permissão. (Já estava pendente: "Cadeado nas rotas".)
+- **[MÉDIA] Publicar a Edge Function `admin-delete-user`** (guia em `docs/EDGE_FUNCTION_DELETE.md`) p/ excluir
+  conta DE VERDADE (perfil + login) e liberar o e-mail. Código pronto; falta `supabase functions deploy`.
+- **[MÉDIA] Lembretes automáticos reais (1h antes) + push com app fechado.** Precisa de Edge Function + cron
+  (`pg_cron`/agendador) + Web Push (VAPID) ou FCM. Hoje o sino só mostra "começa em breve" com o app aberto.
+- **[MÉDIA] Credenciais em variáveis de ambiente.** Hoje URL+anon key estão fixos em `src/lib/supabase.ts`.
+  Mover p/ `VITE_SUPABASE_URL`/`VITE_SUPABASE_ANON_KEY` e configurar no Vercel (organização; anon key é pública).
+- **[BAIXA] Ícone PNG quadrado do app.** Hoje o ícone da instalação usa a logo do Supabase; se ela for
+  retangular, corta no ícone redondo. Gerar/enviar uma versão quadrada (ou maskable) fica melhor.
+- **[BAIXA] Toasts de "salvo".** Algumas telas salvam em silêncio; um aviso visual dá segurança ao usuário.
+- **[BAIXA] Endurecer listagem de buckets + ligar "leaked password protection"** (avisos de segurança do Supabase;
+  buckets: cuidado que o app LISTA `avatars` p/ foto de perfil — não trancar esse).
+- **[BAIXA] Modo fonte grande / acessibilidade** p/ público mais velho nos eventos.
+- **[FUTURO] Alguns testes de fumaça** (build/rotas) p/ não quebrar em mudanças futuras.
+- **#3b tecla fantasma "2"/"W"** ao abrir/fechar teclado criando equipe: sem causa no código; precisa repro no
+  celular (qual tela, campo e teclado).

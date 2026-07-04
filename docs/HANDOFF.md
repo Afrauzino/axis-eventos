@@ -59,13 +59,20 @@ Lista de 19 pedidos + follow-ups, **todos feitos e publicados**. Detalhe item a 
 - **Dica p/ verificar telas logadas:** o dev server (`npm run dev`) do Anderson costuma ter a **sessão dele ativa**,
   então dá pra ver o app logado no preview. É DADO REAL — só observar, não alterar.
 
-### SQLs pendentes p/ o Anderson rodar (SQL Editor) — 2026-07-04
-- `sql/24_fix_criar_cadastro.sql` → libera CRIAR pessoa p/ quem tem permissão granular "ver e editar Cadastro"
-  (o RLS de INSERT exigia 'create', mas o app só concede 'editar'). Também corrigido na UI: `Cadastros.tsx`
-  agora usa `pode('cadastros','editar')`, não só o cargo.
-- `sql/25_seguranca.sql` → tranca escrita de `configuracoes` só p/ admin (leitura pública mantida) e revoga
-  execução pública das funções de gatilho. NÃO mexe nos buckets (o app lista `avatars` p/ foto de perfil).
-- Avisos de bucket-listing e "leaked password protection" ficaram de fora de propósito (risco baixo / quebra foto).
+### SQLs — 2026-07-04 (TODOS JÁ RODADOS pelo Anderson ✅)
+- `sql/21`, `sql/22`, `sql/23`, `sql/24_fix_criar_cadastro.sql`, `sql/25_seguranca.sql` — aplicados.
+- `sql/24`: libera CRIAR pessoa p/ quem tem permissão granular "ver e editar Cadastro" (RLS de INSERT exigia
+  'create', mas o app só concede 'editar'). UI também corrigida: `Cadastros.tsx` usa `pode('cadastros','editar')`.
+- `sql/25`: `configuracoes` só admin escreve (leitura pública mantida); revoga execução pública das funções de
+  gatilho. NÃO mexe em buckets (o app lista `avatars`). Verificado: admin ainda escreve config (status 201).
+- ⚠️ PROVÁVEL BUG IGUAL em OUTROS módulos: o INSERT de `teams`/`ministrações`/`escalas`/`theaters`/`cozinha`/
+  `locais`/`cronograma` pode ter o mesmo problema do `people` (criar bloqueado p/ granular). Ver IDEIAS "[ALTA]".
+- Fora de propósito (risco baixo): bucket-listing e "leaked password protection" (dashboard).
+
+### 🔮 Próximos passos sugeridos (backlog priorizado)
+Ver `docs/IDEIAS.md` (bloco "IDEIAS DE MELHORIA 2026-07-04"). Destaques: [ALTA] auditar RLS de INSERT dos outros
+módulos (mesmo fix do sql/24); [ALTA] guardas de rota; [MÉDIA] publicar Edge Function admin-delete-user,
+lembretes/push reais, credenciais em env var. Pendência do usuário: repro da tecla fantasma (#3b).
 
 ### SQLs — Anderson disse que **JÁ RODOU** os 3 (2026-07-04): `sql/21`, `sql/22`, `sql/23`. (Idempotentes; pode reconferir se algo falhar.)
 
