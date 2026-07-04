@@ -5,6 +5,8 @@ import { carregarCorSalva, carregarConfig, aplicarFavicon } from './lib/tema'
 import { formatName } from './utils'
 import Nav from './components/Nav'
 import CriticalAlert from './components/CriticalAlert'
+import NotificacoesCenter, { contarNaoLidas } from './components/NotificacoesCenter'
+import { useEvento } from './hooks/useEvento'
 import Login from './pages/Login'
 import Pending from './pages/Pending'
 import Dashboard from './pages/Dashboard'
@@ -148,6 +150,10 @@ export default function App() {
   const [menuOpen, setMenuOpen] = useState(false)
   const [pendingCount, setPendingCount] = useState(0)
   const [alertCount, setAlertCount] = useState(0)
+  // #6 — central de notificações
+  const [notifOpen, setNotifOpen] = useState(false)
+  const [notifUnread, setNotifUnread] = useState(0)
+  const { evento: eventoAtivo } = useEvento()
 
   useEffect(() => {
     carregarCorSalva()
@@ -202,6 +208,16 @@ export default function App() {
     return () => { ativo = false; clearInterval(t) }
   }, [profile])
 
+  // #6 — contagem de notificações NÃO lidas (pro badge do sininho)
+  useEffect(() => {
+    if (!profile?.user_id) { setNotifUnread(0); return }
+    let ativo = true
+    const calc = () => contarNaoLidas(profile, eventoAtivo?.id ?? null).then(n => { if (ativo) setNotifUnread(n) }).catch(()=>{})
+    if (!notifOpen) calc()
+    const t = setInterval(() => { if (!notifOpen) calc() }, 60000)
+    return () => { ativo = false; clearInterval(t) }
+  }, [profile, eventoAtivo?.id, notifOpen])
+
   // Contagem de alertas não lidos (tempo real, todos os usuários)
   useEffect(() => {
     if (!profile?.user_id) { setAlertCount(0); return }
@@ -237,10 +253,10 @@ export default function App() {
             <span style={{fontFamily:"'Material Symbols Outlined'",fontSize:22,color:'white',fontVariationSettings:"'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24",fontWeight:'normal',fontStyle:'normal',lineHeight:1,letterSpacing:'normal',textTransform:'none',display:'inline-block',whiteSpace:'nowrap',userSelect:'none'}}>menu</span>
           </button>
           <HeaderTitle />
-          <button onClick={()=>window.location.href = pendingCount>0 ? '/admin' : '/alertas-lideres'} style={{background:'none',border:'none',cursor:'pointer',color:'white',display:'flex',alignItems:'center',justifyContent:'center',width:36,height:36,borderRadius:8,fontFamily:'inherit',position:'relative'}}>
+          <button onClick={()=>setNotifOpen(true)} style={{background:'none',border:'none',cursor:'pointer',color:'white',display:'flex',alignItems:'center',justifyContent:'center',width:36,height:36,borderRadius:8,fontFamily:'inherit',position:'relative'}}>
             <span style={{fontFamily:"'Material Symbols Outlined'",fontSize:22,color:'white',fontVariationSettings:"'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24",fontWeight:'normal',fontStyle:'normal',lineHeight:1,letterSpacing:'normal',textTransform:'none',display:'inline-block',whiteSpace:'nowrap',userSelect:'none'}}>notifications</span>
-            {(pendingCount+alertCount) > 0 && (
-              <span style={{position:'absolute',top:2,right:2,minWidth:16,height:16,background:'#E53E3E',borderRadius:99,fontSize:10,fontWeight:800,color:'white',display:'flex',alignItems:'center',justifyContent:'center',padding:'0 4px',border:'2px solid var(--primary)'}}>{pendingCount+alertCount}</span>
+            {notifUnread > 0 && (
+              <span style={{position:'absolute',top:2,right:2,minWidth:16,height:16,background:'#E53E3E',borderRadius:99,fontSize:10,fontWeight:800,color:'white',display:'flex',alignItems:'center',justifyContent:'center',padding:'0 4px',border:'2px solid var(--primary)'}}>{notifUnread}</span>
             )}
           </button>
           <button onClick={()=>window.location.href='/perfil'} style={{background:'rgba(255,255,255,0.2)',border:'none',cursor:'pointer',borderRadius:'50%',width:36,height:36,display:'flex',alignItems:'center',justifyContent:'center',overflow:'hidden',fontFamily:'inherit'}}>
@@ -256,6 +272,9 @@ export default function App() {
           <CriticoWatcher profile={profile} />
           <AppRoutes profile={profile} onProfileUpdate={()=>loadProfile(profile.user_id)} />
         </main>
+
+        {/* #6 — Central de notificações */}
+        {notifOpen && <NotificacoesCenter profile={profile} onClose={()=>setNotifOpen(false)} onUnread={setNotifUnread} />}
 
         {/* Drawer overlay */}
         {menuOpen && (
