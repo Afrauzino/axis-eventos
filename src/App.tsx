@@ -6,6 +6,7 @@ import { formatName } from './utils'
 import Nav from './components/Nav'
 import CriticalAlert from './components/CriticalAlert'
 import NotificacoesCenter, { contarNaoLidas } from './components/NotificacoesCenter'
+import InstallPWA from './components/InstallPWA'
 import { useEvento } from './hooks/useEvento'
 import Login from './pages/Login'
 import Pending from './pages/Pending'
@@ -271,6 +272,8 @@ export default function App() {
         <main style={{flex:1,overflowY:'auto',position:'relative'}}>
           <CriticoWatcher profile={profile} />
           <AppRoutes profile={profile} onProfileUpdate={()=>loadProfile(profile.user_id)} />
+          {/* #2 — Botão de instalar SEMPRE no final de tudo (aparece sozinho quando dá pra instalar) */}
+          <div style={{padding:'0 16px 24px'}}><InstallPWA autoShow /></div>
         </main>
 
         {/* #6 — Central de notificações */}
