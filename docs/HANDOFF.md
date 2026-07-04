@@ -90,6 +90,18 @@ isAdmin(user_role)` e **ignoravam** as liberações individuais/equipe da tela d
 - **Verificação real pendente:** liberar no Admin "Equipes → editar" p/ uma equipe e um encontreiro dessa equipe
   confirmar que o botão de criar aparece. (Não dá pra testar no preview: dev server usa a sessão ADMIN do Anderson.)
 
+### ✅ TAREFA 2 — AVISOS AMIGÁVEIS (feito e publicado em 2026-07-04, parte 3)
+- Novo `src/components/Toast.tsx`: card branco + barra colorida à esquerda + emoji, some sozinho, no padrão
+  visual. API global (funciona em qualquer lugar): `toast.sucesso('Salvo!')`, `toast.erro`, `toast.aviso`
+  (validações), `toast.info`, e `toast.falha('msg amigável', err)` que DETECTA falta de internet e mostra
+  "Sem internet". `<ToastHost/>` montado 1x no `App.tsx`. Também avisa sozinho ao ficar offline/voltar online
+  (listeners window). Animação `toastIn` em `index.css`.
+- Trocados TODOS os 36 `alert()` crus por toast (12 arquivos) + adicionado "Salvo!/Excluído!" em vários saves
+  antes silenciosos (Midia, TeatroDetalhe, Correio, Ministrações, Admin edição/exclusão de cadastro, etc.).
+- **Convenção nova:** nunca usar `alert()` — sempre `toast`. (Ver [[axis-padrao-visual-regra]].)
+- **Pendente opcional:** os `confirm()` de exclusão (≈22 telas) ainda são o pop-up nativo do navegador. Não
+  estava no pedido (era alert + saves silenciosos), mas dá pra trocar por um modal bonito de confirmação depois.
+
 ### 🎯 TAREFAS ESCOLHIDAS PELO ANDERSON (fazer a seguir) — 2026-07-04
 1. **Unificar o sistema de permissões** (dívida técnica raiz — causou o bug do "criar"). Há DUAS fontes:
    RLS usa `public.permissions` (EN: user_id/event_id/resource/action/allowed) via `has_permission(resource,action,event_id)`;
