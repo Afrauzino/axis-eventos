@@ -134,7 +134,8 @@ export default function MinhasAtividades({ profile }: { profile: Profile }) {
       .map(c => ({
         id: 'cron-' + c.id, title: c.titulo, start_time: c.hora_inicio, end_time: c.hora_fim,
         location: c.local, notes: c.descricao,
-        status: c.status === 'concluido' ? 'concluido' : 'pendente', team_id: null,
+        // mantém o status real do cronograma (concluido/cancelado/pendente) p/ a barra de progresso
+        status: c.status === 'concluido' ? 'concluido' : c.status === 'cancelado' ? 'cancelado' : 'pendente', team_id: null,
         tipo: (c.ministracao_id && minhasMinIds.has(c.ministracao_id)) ? 'ministracao' as const : 'teatro' as const,
       }))
     setCronoAtividades(atv)
@@ -155,12 +156,16 @@ export default function MinhasAtividades({ profile }: { profile: Profile }) {
   const concluidas = minhas.filter(a => a.status === 'concluido').length
   const total      = minhas.length
 
-  // Progresso GERAL = escalas + afilhados (Correio) somados
-  // Cancelados saem da conta (igual à barra do Correio)
+  // Progresso GERAL = escalas + afilhados (Correio) + atividades do Cronograma
+  // Cancelados de afilhados saem da conta (igual à barra do Correio)
   const afilhadosAtivos     = meusAfilhados.filter(a => a.status !== 'cancelado')
   const afilhadosConcluidos = afilhadosAtivos.filter(a => a.status === 'concluido').length
-  const totalGeral      = total + afilhadosAtivos.length
-  const concluidasGeral = concluidas + afilhadosConcluidos
+  // Cronograma (ministração/teatro): entram na barra, mas só SOBEM quando o cronograma
+  // estiver 'concluido' ou 'cancelado' (pendente/em andamento contam só no total).
+  const cronoTotal  = cronoAtividades.length
+  const cronoFeitas = cronoAtividades.filter(a => a.status === 'concluido' || a.status === 'cancelado').length
+  const totalGeral      = total + afilhadosAtivos.length + cronoTotal
+  const concluidasGeral = concluidas + afilhadosConcluidos + cronoFeitas
   const progresso  = totalGeral > 0 ? Math.round((concluidasGeral / totalGeral) * 100) : 0
 
   const exibir = filtro === 'pendentes'
@@ -270,10 +275,14 @@ export default function MinhasAtividades({ profile }: { profile: Profile }) {
               <div style={{width:4,alignSelf:'stretch',flexShrink:0,background:item.tipo==='teatro'?'#E8821A':'#6B46C1'}}/>
               <div style={{flex:1,padding:'12px 14px',minWidth:0}}>
                 <p style={{fontSize:11,color:'var(--muted)',marginBottom:2}}>{item.tipo==='teatro'?'🎭 Teatro':'🎤 Ministração'} · {fmtHora(item.start_time)} — {fmtHora(item.end_time)}</p>
-                <p style={{fontWeight:700,fontSize:14}}>{item.title}</p>
+                <p style={{fontWeight:700,fontSize:14,textDecoration:item.status==='cancelado'?'line-through':'none'}}>{item.title}</p>
                 {item.location && <p style={{fontSize:12,color:'var(--muted)',marginTop:1}}>{item.location}</p>}
               </div>
-              <span className="icon icon-sm" style={{color:'var(--muted-light)',marginRight:12,flexShrink:0}}>chevron_right</span>
+              {item.status==='concluido'
+                ? <span className="icon" style={{color:'var(--success)',marginRight:12,flexShrink:0}}>check_circle</span>
+                : item.status==='cancelado'
+                  ? <span style={{fontSize:11,fontWeight:700,color:'var(--danger)',marginRight:12,flexShrink:0}}>Cancelado</span>
+                  : <span className="icon icon-sm" style={{color:'var(--muted-light)',marginRight:12,flexShrink:0}}>chevron_right</span>}
             </div>
           ))}
         </>
