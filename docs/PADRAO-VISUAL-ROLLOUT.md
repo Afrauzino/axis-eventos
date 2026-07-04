@@ -21,17 +21,19 @@ import Seletor from '../components/Seletor'
 - Cronograma (tipo, ministração, teatro, cardápio, local) · Ministrações (local, teatro)
 - Teatro: Lista (ministração), Atores (teatro, personagem), Detalhe (personagem, objeto)
 
-## ⏳ Seletor que FALTA trocar (ainda `<select>` nativo)
-- `src/components/CadastroPessoa.tsx`: sexo (~347), UF/estado (~410), status (~430), team_pref (~440).
-  [Opcional/dead-code: tipo_sanguineo (~174), med tipo (~245), med intervalo (~260) — bloco Saúde não renderiza hoje.]
-- `src/pages/Cracha.tsx`: fonte (~303), tamanho (~329), unidade mm/cm/px (~346), filtroEquipe (~373).
-- `src/pages/SaudeConfig.tsx`: hora de corte (~45) — 24 opções (valor number → converter p/ string).
-- `src/pages/Admin.tsx`: cargo na LISTA (~924, é um select COMPACTO inline no card — precisa de estilo pequeno;
-  talvez adicionar prop `compact` ao Seletor) e cargo no DETALHE (~1072).
-- `src/pages/Ministracoes.tsx`: tipo do BLOCO de conteúdo (~409) — é um select inline "tipo texto"; converter com
-  cuidado pra não ficar pesado (ou deixar por último).
-> Regra: nunca colocar o `<Seletor>` (que é um `<button>`) DENTRO de outro `<button>` (aviso validateDOMNesting).
-> O card da lista de Ministrações é um `<button>` — só converter selects que estão em formulários/modais.
+## ✅ Seletor — item 1 CONCLUÍDO e publicado (deploy 9ca02cd)
+Todos os `<select>` nativos trocados (2026, sessão de continuação):
+- `CadastroPessoa.tsx`: sexo, UF/estado, status, team_pref ✓
+- `Cracha.tsx`: fonte, tamanho, unidade mm/cm/px, filtroEquipe ✓
+- `SaudeConfig.tsx`: hora de corte (24h, number↔string) ✓
+- `Admin.tsx`: cargo na LISTA (novo modo `compact` no Seletor + wrapper `stopPropagation` p/ não abrir o card) e cargo no DETALHE ✓
+- `Ministracoes.tsx`: tipo do bloco (`sheet compact`) ✓
+- `Escalas.tsx`: local (não estava na lista original, mas foi achado e trocado) ✓
+- **Novo no Seletor:** prop `compact` (gatilho pequeno p/ usar inline em cards/listas).
+- ÚNICO `<select>` restante: bloco Saúde dead-code em `CadastroPessoa.tsx` (tipo_sanguineo ~175, med tipo ~246,
+  med intervalo ~261) — NÃO renderiza hoje; deixado de propósito.
+> Regra mantida: nunca `<Seletor>` (é `<button>`) dentro de outro `<button>` (validateDOMNesting).
+> O card da lista de Ministrações é `<button>` — só se converteu selects de formulários/modais.
 
 ## ⏳ Calendário próprio (2º componente, AINDA NÃO criado)
 Criar `src/components/DataHora.tsx` no padrão do item 6 (mês navegável, dia na cor do sistema + seletor de hora).

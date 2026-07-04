@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import SubTabs from '../components/SubTabs'
 import { toast } from '../components/Toast'
+import DataHora from '../components/DataHora'
 import { getInitials, isAdmin, fmtData, fmtBRL } from '../utils'
 import { useEvento } from '../hooks/useEvento'
 import PersonSelect from '../components/PersonSelect'
@@ -186,7 +187,7 @@ export default function Financeiro({ profile }: { profile?: Profile }) {
                   <input className="form-input" type="number" step="0.01" min="0" value={form.valor} onChange={e=>setForm(f=>({...f,valor:e.target.value}))} required/>
                 </div>
                 <div className="form-group"><label className="form-label">Data</label>
-                  <input className="form-input" type="date" value={form.data_pagamento} onChange={e=>setForm(f=>({...f,data_pagamento:e.target.value}))}/>
+                  <DataHora modo="date" value={form.data_pagamento} onChange={v=>setForm(f=>({...f,data_pagamento:v}))}/>
                 </div>
               </div>
               <div className="form-group"><label className="form-label">Forma de pagamento</label>

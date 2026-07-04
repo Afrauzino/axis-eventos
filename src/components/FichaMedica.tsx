@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import DataHora from './DataHora'
 
 /**
  * Ficha Médica — componente reutilizável, FONTE ÚNICA (tabela saude_fichas).
@@ -207,7 +208,7 @@ export default function FichaMedica({ personId, eventId, readOnly=false, startOp
                       </div>
                       <div className="form-group" style={{marginBottom:0}}>
                         <label className="form-label">Última vez que tomou</label>
-                        <input className="form-input" type="datetime-local" value={m.ultima_dose} disabled={readOnly} onChange={e=>setMed(i,{ultima_dose:e.target.value})}/>
+                        <DataHora modo="datetime" value={m.ultima_dose} disabled={readOnly} onChange={v=>setMed(i,{ultima_dose:v})}/>
                       </div>
                     </div>
                   ))}

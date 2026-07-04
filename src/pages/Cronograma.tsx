@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase'
 import { fmtHora, isAdmin, nowLocalInput, getInitials } from '../utils'
 import { useEvento } from '../hooks/useEvento'
 import { usePermissao } from '../hooks/usePermissao'
+import DataHora from '../components/DataHora'
 import PrintOverlay from '../components/PrintOverlay'
 import Seletor from '../components/Seletor'
 import CronometroPopup from '../components/CronometroPopup'
@@ -512,9 +513,7 @@ export default function Cronograma({ profile }: { profile?: Profile }) {
               <div className="form-grid-2">
                 <div className="form-group">
                   <label className="form-label">Data e hora programada <span className="req">*</span></label>
-                  <input className="form-input" type="datetime-local" value={form.hora_inicio} onChange={e=>setForm(f=>({...f,hora_inicio:e.target.value}))} required
-                    min={(evento as any)?.start_date ? `${(evento as any).start_date}T00:00` : undefined}
-                    max={(evento as any)?.end_date ? `${(evento as any).end_date}T23:59` : undefined} />
+                  <DataHora modo="datetime" value={form.hora_inicio} onChange={v=>setForm(f=>({...f,hora_inicio:v}))}/>
                 </div>
                 <div className="form-group">
                   <label className="form-label">Duração <span className="req">*</span></label>

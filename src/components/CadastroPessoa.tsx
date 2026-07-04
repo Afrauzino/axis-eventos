@@ -7,6 +7,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import UploadFoto from './UploadFoto'
 import Seletor from './Seletor'
+import DataHora from './DataHora'
 
 export type MedCtrl = {
   nome:string; tipo:'comprimido'|'gotas'|'outros'
@@ -255,7 +256,7 @@ export default function CadastroPessoa({
                         </div>
                         <div className="form-grid-2">
                           <div className="form-group"><label className="form-label">Horário inicial</label>
-                            <input className="form-input" type="time" value={med.horario_ini} onChange={e=>updMed(i,'horario_ini',e.target.value)}/>
+                            <DataHora modo="time" value={med.horario_ini} onChange={v=>updMed(i,'horario_ini',v)}/>
                           </div>
                           <div className="form-group"><label className="form-label">Intervalo</label>
                             <select className="form-select" value={med.intervalo_h} onChange={e=>updMed(i,'intervalo_h',Number(e.target.value))}>
@@ -351,7 +352,7 @@ export default function CadastroPessoa({
         </div>
         <div className="form-group">
           <label className="form-label">Nascimento</label>
-          {inp('birth_date',{type:'date'})}
+          <DataHora modo="date" value={form.birth_date} onChange={v=>s('birth_date',v)} disabled={modoSoLeitura}/>
         </div>
       </div>
 

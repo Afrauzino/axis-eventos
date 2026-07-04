@@ -7,6 +7,7 @@ import { useEvento } from '../hooks/useEvento'
 import { usePermissao } from '../hooks/usePermissao'
 import PersonSelect from '../components/PersonSelect'
 import Seletor from '../components/Seletor'
+import DataHora from '../components/DataHora'
 import type { Profile } from '../App'
 
 type Escala  = { id:string; person_id:string; team_id:string|null; title:string; start_time:string; end_time:string; location:string|null; notes:string|null; status:string }
@@ -312,11 +313,11 @@ export default function Escalas({ profile }: { profile?: Profile }) {
               <div className="form-grid-2">
                 <div className="form-group">
                   <label className="form-label">4. Início <span className="req">*</span></label>
-                  <input className="form-input" type="datetime-local" value={form.start_time} onChange={e=>setForm(f=>({...f,start_time:e.target.value}))} required min={(evento as any)?.start_date ? `${(evento as any).start_date}T00:00` : undefined} max={(evento as any)?.end_date ? `${(evento as any).end_date}T23:59` : undefined}/>
+                  <DataHora modo="datetime" value={form.start_time} onChange={v=>setForm(f=>({...f,start_time:v}))}/>
                 </div>
                 <div className="form-group">
                   <label className="form-label">Fim <span className="req">*</span></label>
-                  <input className="form-input" type="datetime-local" value={form.end_time} onChange={e=>setForm(f=>({...f,end_time:e.target.value}))} required min={(evento as any)?.start_date ? `${(evento as any).start_date}T00:00` : undefined} max={(evento as any)?.end_date ? `${(evento as any).end_date}T23:59` : undefined}/>
+                  <DataHora modo="datetime" value={form.end_time} onChange={v=>setForm(f=>({...f,end_time:v}))}/>
                 </div>
               </div>
 

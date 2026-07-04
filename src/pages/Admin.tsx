@@ -8,6 +8,7 @@ import { registrarLog } from '../lib/audit'
 import SubTabs from '../components/SubTabs'
 import { toast } from '../components/Toast'
 import Seletor from '../components/Seletor'
+import DataHora from '../components/DataHora'
 import type { Profile } from '../App'
 import EmojiGrid from '../components/EmojiGrid'
 import { PERM_CATALOGO, MENUS_CATALOGO } from '../lib/permCatalog'
@@ -1501,10 +1502,10 @@ export default function Admin({ profile }: { profile?: Profile }) {
               </div>
               <div className="form-grid-2">
                 <div className="form-group"><label className="form-label">Data início</label>
-                  <input className="form-input" type="date" value={formEvento.start_date} onChange={e=>setFormEvento(f=>({...f,start_date:e.target.value}))}/>
+                  <DataHora modo="date" value={formEvento.start_date} onChange={v=>setFormEvento(f=>({...f,start_date:v}))}/>
                 </div>
                 <div className="form-group"><label className="form-label">Data fim</label>
-                  <input className="form-input" type="date" value={formEvento.end_date} onChange={e=>setFormEvento(f=>({...f,end_date:e.target.value}))}/>
+                  <DataHora modo="date" value={formEvento.end_date} onChange={v=>setFormEvento(f=>({...f,end_date:v}))}/>
                 </div>
               </div>
               <p style={{fontSize:11,color:'var(--muted)',marginTop:-8,marginBottom:12}}>As datas são usadas para o agendamento automático de medicamentos controlados.</p>
