@@ -5,6 +5,7 @@ import { getInitials, isAdmin } from '../utils'
 import { useEvento } from '../hooks/useEvento'
 import { usePermissao } from '../hooks/usePermissao'
 import PersonSelect from '../components/PersonSelect'
+import Seletor from '../components/Seletor'
 import type { Profile } from '../App'
 
 type Elenco  = { id:string; theater_id:string; person_id:string; personagem_id:string|null; observacoes:string|null }
@@ -112,19 +113,15 @@ export default function TeatroAtores({ profile }: { profile?: Profile }) {
             {erro && <div className="alert-box alert-error mb-3">{erro}</div>}
             <form onSubmit={salvar}>
               <div className="form-group"><label className="form-label">Teatro <span className="req">*</span></label>
-                <select className="form-select" value={form.theater_id} onChange={e=>setForm(f=>({...f,theater_id:e.target.value}))} required>
-                  <option value="">Selecionar teatro</option>
-                  {teatros.map(t=><option key={t.id} value={t.id}>{t.nome}</option>)}
-                </select>
+                <Seletor titulo="Selecionar teatro" placeholder="Selecionar teatro" value={form.theater_id} onChange={v=>setForm(f=>({...f,theater_id:v}))}
+                  opcoes={teatros.map(t=>({value:t.id,label:t.nome}))}/>
               </div>
               <div className="form-group">
                 <PersonSelect label="Ator" required pessoas={pessoas} value={form.person_id} onChange={id=>setForm(f=>({...f,person_id:id}))} placeholder="Buscar ator..."/>
               </div>
               <div className="form-group"><label className="form-label">Personagem</label>
-                <select className="form-select" value={form.personagem_id} onChange={e=>setForm(f=>({...f,personagem_id:e.target.value}))}>
-                  <option value="">Sem personagem</option>
-                  {personagens.map(p=><option key={p.id} value={p.id}>{p.nome}</option>)}
-                </select>
+                <Seletor titulo="Personagem" placeholder="Sem personagem" value={form.personagem_id} onChange={v=>setForm(f=>({...f,personagem_id:v}))}
+                  opcoes={[{value:'',label:'Sem personagem'}, ...personagens.map(p=>({value:p.id,label:p.nome}))]}/>
               </div>
               <div className="form-group"><label className="form-label">Observacoes</label>
                 <input className="form-input" value={form.observacoes} onChange={e=>setForm(f=>({...f,observacoes:e.target.value}))} placeholder="Ex: Narrador, figurino especial..."/>

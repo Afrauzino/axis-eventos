@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import SubTabs from '../components/SubTabs'
 import EmojiGrid from '../components/EmojiGrid'
+import Seletor from '../components/Seletor'
 import { isAdmin } from '../utils'
 import { useEvento } from '../hooks/useEvento'
 import { usePermissao } from '../hooks/usePermissao'
@@ -189,10 +190,8 @@ export default function TeatroLista({ profile }: { profile?: Profile }) {
               <div className="form-group">
                 <label className="form-label">Ministração vinculada</label>
                 <p className="form-hint mb-2">Ao vincular, teatro e ministração se abrem mutuamente.</p>
-                <select className="form-select" value={form.ministracao_id} onChange={e=>setForm(f=>({...f,ministracao_id:e.target.value}))}>
-                  <option value="">Nenhuma</option>
-                  {ministracoes.map(m=><option key={m.id} value={m.id}>{m.titulo}</option>)}
-                </select>
+                <Seletor titulo="Ministração vinculada" placeholder="Nenhuma" value={form.ministracao_id} onChange={v=>setForm(f=>({...f,ministracao_id:v}))}
+                  opcoes={[{value:'',label:'Nenhuma'}, ...ministracoes.map(m=>({value:m.id,label:m.titulo}))]}/>
               </div>
 
               {/* Arquivos (roteiro, trilha, etc.) */}

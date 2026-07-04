@@ -5,6 +5,7 @@ import ArquivosModulo from '../components/ArquivosModulo'
 import PrintOverlay from '../components/PrintOverlay'
 import { getInitials, isAdmin } from '../utils'
 import PersonSelect from '../components/PersonSelect'
+import Seletor from '../components/Seletor'
 import { toast } from '../components/Toast'
 import { usePermissao } from '../hooks/usePermissao'
 import type { Profile } from '../App'
@@ -516,10 +517,8 @@ export default function TeatroDetalhe({ profile }: { profile?: Profile }) {
                     <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:10}}>
                       <div style={{flex:1}}>
                         <label className="form-label" style={{marginBottom:4}}>Personagem</label>
-                        <select className="form-select" value={cp.personagem_id} onChange={e=>setPersonagemId(idx,e.target.value)}>
-                          <option value="">Selecionar personagem</option>
-                          {personagens.map(p=><option key={p.id} value={p.id}>{p.nome}{p.multiplo?' (múltiplo)':''}</option>)}
-                        </select>
+                        <Seletor titulo="Personagem" placeholder="Selecionar personagem" value={cp.personagem_id} onChange={v=>setPersonagemId(idx,v)}
+                          opcoes={[{value:'',label:'Selecionar personagem'}, ...personagens.map(p=>({value:p.id,label:`${p.nome}${p.multiplo?' (múltiplo)':''}`}))]}/>
                       </div>
                       <button type="button" onClick={()=>removePersonagem(idx)} style={{background:'var(--danger-bg)',color:'var(--danger)',border:'none',borderRadius:8,padding:'6px',cursor:'pointer',fontFamily:'inherit',marginTop:20,flexShrink:0}}>
                         <span className="icon icon-sm">delete</span>
@@ -565,10 +564,8 @@ export default function TeatroDetalhe({ profile }: { profile?: Profile }) {
               <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:10,marginTop:4}}>
                 <p style={{fontSize:13,fontWeight:700}}>Objetos / Figurinos</p>
                 <div style={{flex:1,marginLeft:12}}>
-                  <select className="form-select" value="" onChange={e=>{if(e.target.value) addObjeto(e.target.value); e.target.value=''}} style={{fontSize:12}}>
-                    <option value="">+ Adicionar objeto</option>
-                    {objetos.filter(o=>!cenaObjetos.includes(o.id)).map(o=><option key={o.id} value={o.id}>{o.nome}</option>)}
-                  </select>
+                  <Seletor titulo="Adicionar objeto" placeholder="+ Adicionar objeto" value="" onChange={v=>{ if(v) addObjeto(v) }}
+                    opcoes={objetos.filter(o=>!cenaObjetos.includes(o.id)).map(o=>({value:o.id,label:o.nome}))}/>
                 </div>
               </div>
               {cenaObjetos.length>0 && (
