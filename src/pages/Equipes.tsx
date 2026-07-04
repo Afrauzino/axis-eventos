@@ -6,6 +6,7 @@ import SubTabs from '../components/SubTabs'
 import PrintOverlay from '../components/PrintOverlay'
 import { getInitials, isAdmin, formatName } from '../utils'
 import { useEvento } from '../hooks/useEvento'
+import { usePermissao } from '../hooks/usePermissao'
 import type { Profile } from '../App'
 
 type Equipe  = { id:string; name:string; color:string; leader_id:string|null; co_leader_id:string|null; equipe_saude:boolean; equipe_cardapio?:boolean }
@@ -37,7 +38,9 @@ export default function Equipes({ profile }: { profile?: Profile }) {
   const [imprimir, setImprimir]     = useState(false)
   function togglePrint(id:string){ setPrintSel(prev=>prev.includes(id)?prev.filter(x=>x!==id):[...prev,id]) }
 
-  const canEdit = profile && isAdmin(profile.user_role)
+  const { pode } = usePermissao(profile ?? null)
+  // Admin OU liberação (individual/equipe) "ver e editar Equipes" na tela do Admin
+  const canEdit = (!!profile && isAdmin(profile.user_role)) || pode('equipes','editar')
 
   useEffect(() => { if (evLoading) return; if (!evento) { setLoading(false); return }; setLoading(true); carregar() }, [evento, evLoading])
 

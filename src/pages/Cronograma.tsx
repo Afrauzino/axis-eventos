@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { fmtHora, isAdmin, nowLocalInput, getInitials } from '../utils'
 import { useEvento } from '../hooks/useEvento'
+import { usePermissao } from '../hooks/usePermissao'
 import PrintOverlay from '../components/PrintOverlay'
 import CronometroPopup from '../components/CronometroPopup'
 import CronometroDisplay from '../components/CronometroDisplay'
@@ -85,7 +86,9 @@ export default function Cronograma({ profile }: { profile?: Profile }) {
     setForm(f=>({...f, cardapio_id:id, titulo: cd ? `Refeição - ${cd.tipo_refeicao_nome ?? ''}`.trim() : f.titulo}))
   }
 
-  const canEdit = profile && isAdmin(profile.user_role)
+  const { pode } = usePermissao(profile ?? null)
+  // Admin OU liberação (individual/equipe) "ver e editar Cronograma" na tela do Admin
+  const canEdit = (!!profile && isAdmin(profile.user_role)) || pode('cronograma','editar')
 
   useEffect(() => { if (evLoading) return; if (!evento) { setLoading(false); return }; setLoading(true); carregar() }, [evento, evLoading])
 

@@ -3,6 +3,8 @@ import { supabase } from '../lib/supabase'
 import EmojiGrid from '../components/EmojiGrid'
 import PrintOverlay from '../components/PrintOverlay'
 import { useEvento } from '../hooks/useEvento'
+import { usePermissao } from '../hooks/usePermissao'
+import { isAdmin } from '../utils'
 import type { Profile } from '../App'
 
 type RefTipo = { id:string; nome:string; cor:string; ordem:number; emoji?:string|null }
@@ -17,6 +19,10 @@ export default function Cozinha({ profile }: { profile?: Profile }) {
   const [cardapios, setCardapios] = useState<Cardapio[]>([])
   const [loading, setLoading] = useState(true)
   const [imprimir, setImprimir] = useState(false)
+
+  const { pode } = usePermissao(profile ?? null)
+  // Admin OU liberação (individual/equipe) "ver e editar Cozinha" na tela do Admin
+  const canEdit = (!!profile && isAdmin(profile.user_role)) || pode('cozinha','editar')
 
   // modal tipo
   const [modalTipo, setModalTipo] = useState(false)
@@ -130,10 +136,10 @@ export default function Cozinha({ profile }: { profile?: Profile }) {
                       <p style={{fontWeight:700,fontSize:15,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{c.titulo || 'Cardápio'}</p>
                       {tipo && <p style={{fontSize:12,color:'var(--muted)'}}>{tipo.nome}</p>}
                     </div>
-                    <div style={{display:'flex',gap:8,flexShrink:0}}>
+                    {canEdit && <div style={{display:'flex',gap:8,flexShrink:0}}>
                       <button onClick={()=>abrirEditarCardapio(c)} aria-label="Editar" style={{width:34,height:34,borderRadius:8,background:'var(--bg)',border:'none',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',color:'var(--muted)',fontFamily:'inherit'}}><span className="icon icon-sm">edit</span></button>
                       <button onClick={()=>excluirCardapio(c.id)} aria-label="Excluir" style={{width:34,height:34,borderRadius:8,background:'var(--danger-bg)',border:'none',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',fontFamily:'inherit'}}><span className="icon icon-sm" style={{color:'var(--danger)'}}>delete</span></button>
-                    </div>
+                    </div>}
                   </div>
                   {c.itens && <p style={{fontSize:13,color:'var(--muted)',whiteSpace:'pre-wrap',marginTop:10}}>{c.itens}</p>}
                 </div>
@@ -152,19 +158,19 @@ export default function Cozinha({ profile }: { profile?: Profile }) {
               <div style={{flex:1,minWidth:0,display:'flex',alignItems:'center',gap:14,padding:'16px 15px'}}>
                 <div style={{width:58,height:58,borderRadius:'50%',background:t.cor+'24',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,fontSize:27,lineHeight:1}}>{t.emoji || '🍽️'}</div>
                 <p style={{flex:1,minWidth:0,fontWeight:700,fontSize:15,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{t.nome}</p>
-                <div style={{display:'flex',gap:8,flexShrink:0}}>
+                {canEdit && <div style={{display:'flex',gap:8,flexShrink:0}}>
                   <button onClick={()=>abrirEditarTipo(t)} aria-label="Editar" style={{width:34,height:34,borderRadius:8,background:'var(--bg)',border:'none',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',color:'var(--muted)',fontFamily:'inherit'}}><span className="icon icon-sm">edit</span></button>
                   <button onClick={()=>excluirTipo(t.id)} aria-label="Excluir" style={{width:34,height:34,borderRadius:8,background:'var(--danger-bg)',border:'none',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',fontFamily:'inherit'}}><span className="icon icon-sm" style={{color:'var(--danger)'}}>delete</span></button>
-                </div>
+                </div>}
               </div>
             </div>
           ))
       )}
 
       {/* FAB - botão redondo de + conforme a aba */}
-      <button className="fab" onClick={()=> aba==='cardapio' ? abrirNovoCardapio() : abrirNovoTipo()}>
+      {canEdit && <button className="fab" onClick={()=> aba==='cardapio' ? abrirNovoCardapio() : abrirNovoTipo()}>
         <span className="icon">add</span>
-      </button>
+      </button>}
 
       {/* Modal novo tipo */}
       {modalTipo && (

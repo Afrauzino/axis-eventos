@@ -4,6 +4,7 @@ import SubTabs from '../components/SubTabs'
 import PrintOverlay from '../components/PrintOverlay'
 import { getInitials, fmtHora, isAdmin, isLider, nowLocalInput } from '../utils'
 import { useEvento } from '../hooks/useEvento'
+import { usePermissao } from '../hooks/usePermissao'
 import PersonSelect from '../components/PersonSelect'
 import type { Profile } from '../App'
 
@@ -34,7 +35,9 @@ export default function Escalas({ profile }: { profile?: Profile }) {
   const [modoGrupo, setModoGrupo]     = useState(false)
   const [pessoasSel, setPessoasSel]   = useState<string[]>([])
 
-  const canEdit = profile && (isAdmin(profile.user_role) || isLider(profile.user_role))
+  const { pode } = usePermissao(profile ?? null)
+  // Admin/líder OU liberação (individual/equipe) "ver e editar Escalas" na tela do Admin
+  const canEdit = (!!profile && (isAdmin(profile.user_role) || isLider(profile.user_role))) || pode('escalas','editar')
   const adminFull = profile && isAdmin(profile.user_role)
 
   // Resolve my person record and my teams (for líderes)

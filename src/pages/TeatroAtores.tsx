@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase'
 import SubTabs from '../components/SubTabs'
 import { getInitials, isAdmin } from '../utils'
 import { useEvento } from '../hooks/useEvento'
+import { usePermissao } from '../hooks/usePermissao'
 import PersonSelect from '../components/PersonSelect'
 import type { Profile } from '../App'
 
@@ -23,7 +24,8 @@ export default function TeatroAtores({ profile }: { profile?: Profile }) {
   const [erro, setErro]           = useState('')
   const [form, setForm] = useState({ theater_id:'', person_id:'', personagem_id:'', observacoes:'' })
 
-  const canEdit = profile && isAdmin(profile.user_role)
+  const { pode } = usePermissao(profile ?? null)
+  const canEdit = (!!profile && isAdmin(profile.user_role)) || pode('teatro','editar')
 
   useEffect(() => { if (evLoading) return; if (!evento) { setLoading(false); return }; carregar() }, [evento, evLoading])
 

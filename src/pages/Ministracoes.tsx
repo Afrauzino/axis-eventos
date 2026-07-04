@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { getInitials, fmtHora, fmtData, isAdmin, hasRole } from '../utils'
 import { useEvento } from '../hooks/useEvento'
+import { usePermissao } from '../hooks/usePermissao'
 import PersonSelect from '../components/PersonSelect'
 import RichEditor from '../components/RichEditor'
 import ArquivosModulo from '../components/ArquivosModulo'
@@ -44,7 +45,9 @@ export default function Ministracoes({ profile }: { profile?: Profile }) {
   const [blocos, setBlocos]     = useState<{tipo:string;conteudo:string}[]>([])
   const blocoImgRef = useRef<HTMLInputElement>(null)
 
-  const canEdit    = profile && isAdmin(profile.user_role)
+  const { pode } = usePermissao(profile ?? null)
+  // Admin OU liberação (individual/equipe) "ver e editar Ministrações" na tela do Admin
+  const canEdit    = (!!profile && isAdmin(profile.user_role)) || pode('ministracoes','editar')
   const userId     = profile?.user_id
   const isLiderPlus = profile && hasRole(profile.user_role, 'lider')
   // #16 — Ministrante (cargo "Ministrante" = coordenador, e não admin): acesso mínimo.

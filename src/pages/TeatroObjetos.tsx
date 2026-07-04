@@ -4,6 +4,7 @@ import SubTabs from '../components/SubTabs'
 import { isAdmin } from '../utils'
 import UploadFoto from '../components/UploadFoto'
 import EmojiGrid from '../components/EmojiGrid'
+import { usePermissao } from '../hooks/usePermissao'
 import type { Profile } from '../App'
 
 function MatIcon({ name, size=22, color='var(--accent)' }: {name:string;size?:number;color?:string}) {
@@ -23,7 +24,8 @@ export default function TeatroObjetos({ profile }: { profile?: Profile }) {
   const [fotoUrl, setFotoUrl]   = useState<string|null>(null)
   const [abaMedia, setAbaMedia] = useState<'emoji'|'foto'>('emoji')
 
-  const canEdit = profile && isAdmin(profile.user_role)
+  const { pode } = usePermissao(profile ?? null)
+  const canEdit = (!!profile && isAdmin(profile.user_role)) || pode('teatro','editar')
 
   useEffect(() => { carregar() }, [])
 

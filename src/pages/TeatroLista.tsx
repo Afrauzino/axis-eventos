@@ -5,6 +5,7 @@ import SubTabs from '../components/SubTabs'
 import EmojiGrid from '../components/EmojiGrid'
 import { isAdmin } from '../utils'
 import { useEvento } from '../hooks/useEvento'
+import { usePermissao } from '../hooks/usePermissao'
 import type { Profile } from '../App'
 
 type Teatro     = { id:string; nome:string; descricao:string|null; data_hora:string|null; local:string|null; status:string; cor:string|null; ministracao_id:string|null; emoji?:string|null }
@@ -28,7 +29,9 @@ export default function TeatroLista({ profile }: { profile?: Profile }) {
   const [form, setForm] = useState({ nome:'', descricao:'', cor:'#E8821A', ministracao_id:'', emoji:'🎭' })
   const [arqPend, setArqPend] = useState<File[]>([]) // arquivos escolhidos ao criar/editar
 
-  const canEdit = profile && isAdmin(profile.user_role)
+  const { pode } = usePermissao(profile ?? null)
+  // Admin OU liberação (individual/equipe) "ver e editar Teatro" na tela do Admin
+  const canEdit = (!!profile && isAdmin(profile.user_role)) || pode('teatro','editar')
 
   // Envia um arquivo para o storage e registra em arquivos_modulo
   async function uploadArquivo(modulo:string, refId:string, file:File) {

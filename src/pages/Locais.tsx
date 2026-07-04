@@ -5,6 +5,7 @@ import { isAdmin } from '../utils'
 import UploadFoto from '../components/UploadFoto'
 import EmojiGrid from '../components/EmojiGrid'
 import { useEvento } from '../hooks/useEvento'
+import { usePermissao } from '../hooks/usePermissao'
 import type { Profile } from '../App'
 
 function MatIcon({ name, size=22, color='var(--primary)' }: { name:string; size?:number; color?:string }) {
@@ -33,7 +34,9 @@ export default function Locais({ profile }: { profile?: Profile }) {
   const [fotoUrl, setFotoUrl] = useState<string|null>(null)
   const [form, setForm] = useState({ nome:'', tipo:'trabalho', capacidade:'', observacoes:'', equipe_responsavel_id:'', icone:'', cor:'#00A99D' })
 
-  const canEdit = profile && isAdmin(profile.user_role)
+  const { pode } = usePermissao(profile ?? null)
+  // Admin OU liberação (individual/equipe) "ver e editar Locais" na tela do Admin
+  const canEdit = (!!profile && isAdmin(profile.user_role)) || pode('locais','editar')
 
   useEffect(() => { if (evLoading) return; if (!evento) { setLoading(false); return }; carregar() }, [evento, evLoading])
 

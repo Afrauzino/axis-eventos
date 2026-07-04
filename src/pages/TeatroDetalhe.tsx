@@ -5,6 +5,7 @@ import ArquivosModulo from '../components/ArquivosModulo'
 import PrintOverlay from '../components/PrintOverlay'
 import { getInitials, isAdmin } from '../utils'
 import PersonSelect from '../components/PersonSelect'
+import { usePermissao } from '../hooks/usePermissao'
 import type { Profile } from '../App'
 
 type Teatro     = { id:string; nome:string; descricao:string|null; data_hora:string|null; local:string|null; status:string; cor:string|null }
@@ -62,7 +63,8 @@ export default function TeatroDetalhe({ profile }: { profile?: Profile }) {
   const [cenaObjetos, setCenaObjetos] = useState<string[]>([])
   const [cenaArq, setCenaArq] = useState<File[]>([]) // arquivos da cena
 
-  const canEdit = profile && isAdmin(profile.user_role)
+  const { pode } = usePermissao(profile ?? null)
+  const canEdit = (!!profile && isAdmin(profile.user_role)) || pode('teatro','editar')
 
   // Envia um arquivo para o storage e registra em arquivos_modulo
   async function uploadArquivoCena(refId:string, file:File) {
