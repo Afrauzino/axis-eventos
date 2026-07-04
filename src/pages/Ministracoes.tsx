@@ -120,10 +120,14 @@ export default function Ministracoes({ profile }: { profile?: Profile }) {
   async function salvar(e:React.FormEvent) {
     e.preventDefault(); setErro(''); setSalvando(true)
     if (!evento||!form.titulo.trim()) { setErro('Título obrigatório.'); setSalvando(false); return }
+    // #10 — a ministração não guarda mais agenda; mantemos um horário-base só pra não quebrar o banco
+    // (colunas hora_inicio/hora_fim ainda são obrigatórias). O horário real fica no Cronograma.
+    const base = (evento as any)?.start_date ? `${(evento as any).start_date}T09:00:00` : new Date().toISOString()
+    const iso = (v:string, plus=0) => { const d = new Date(v); const ok = !isNaN(d.getTime()); const t = (ok ? d : new Date(base)).getTime() + plus; return new Date(t).toISOString() }
     const payload = {
       titulo:form.titulo, ministrante_id:form.ministrante_id||null,
-      hora_inicio:new Date(form.hora_inicio).toISOString(),
-      hora_fim:new Date(form.hora_fim).toISOString(),
+      hora_inicio: iso(form.hora_inicio),
+      hora_fim: iso(form.hora_fim || form.hora_inicio, 60*60*1000),
       local:form.local||null, status:'planejado', emoji:form.emoji||null, cor:form.cor||'#6B46C1',
       conteudo_sermao: blocos.length > 0 ? JSON.stringify(blocos) : null,
       conteudo_teatro: blocos.find(b=>b.tipo==='Teatro')?.conteudo||null,
@@ -188,7 +192,6 @@ export default function Ministracoes({ profile }: { profile?: Profile }) {
                 : <span style={{fontSize:26}}>{(m as any).emoji || '🎤'}</span>}
             </div>
             <div className="list-card-body">
-              <div className="list-card-time" style={{color:'#6B46C1'}}>{fmtData(m.hora_inicio)} · {fmtHora(m.hora_inicio)}</div>
               <div className="list-card-title">{m.titulo}</div>
               <div className="list-card-desc">{min?.name??'Sem ministrante'}{m.local?` · ${m.local}`:''}</div>
             </div>
@@ -220,7 +223,7 @@ export default function Ministracoes({ profile }: { profile?: Profile }) {
               <div style={{background:(detalhe as any).cor??'#6B46C1',padding:'14px 20px',marginTop:8,color:'white'}}>
                 <p style={{fontSize:10,fontWeight:700,textTransform:'uppercase',opacity:0.75,marginBottom:4}}>Ministração</p>
                 <p style={{fontSize:17,fontWeight:800,marginBottom:2}}>{detalhe.titulo}</p>
-                <p style={{fontSize:12,opacity:0.8}}>{fmtHora(detalhe.hora_inicio)} — {fmtHora(detalhe.hora_fim)}{detalhe.local?` · ${detalhe.local}`:''}</p>
+                {detalhe.local && <p style={{fontSize:12,opacity:0.8}}>{detalhe.local}</p>}
               </div>
 
               {/* Abas do detalhe */}
@@ -373,13 +376,9 @@ export default function Ministracoes({ profile }: { profile?: Profile }) {
                       {/* #9 — só Encontreiros podem ser ministrantes */}
                       <PersonSelect label="Ministrante" pessoas={pessoas.filter((p:any)=>p.role_type==='worker')} value={form.ministrante_id} onChange={id=>setForm(f=>({...f,ministrante_id:id}))} placeholder="Buscar ministrante (encontreiro)..."/>
                     </div>
-                    <div className="form-grid-2">
-                      <div className="form-group"><label className="form-label">Início <span className="req">*</span></label>
-                        <input className="form-input" type="datetime-local" value={form.hora_inicio} onChange={e=>setForm(f=>({...f,hora_inicio:e.target.value}))} required min={(evento as any)?.start_date ? `${(evento as any).start_date}T00:00` : undefined} max={(evento as any)?.end_date ? `${(evento as any).end_date}T23:59` : undefined}/>
-                      </div>
-                      <div className="form-group"><label className="form-label">Fim <span className="req">*</span></label>
-                        <input className="form-input" type="datetime-local" value={form.hora_fim} onChange={e=>setForm(f=>({...f,hora_fim:e.target.value}))} required min={(evento as any)?.start_date ? `${(evento as any).start_date}T00:00` : undefined} max={(evento as any)?.end_date ? `${(evento as any).end_date}T23:59` : undefined}/>
-                      </div>
+                    {/* #10 — Ministração não tem mais data/horário/duração. A agenda fica só no Cronograma. */}
+                    <div className="alert-box mb-3" style={{fontSize:12,background:'var(--bg)',border:'1px solid var(--border)',borderRadius:10,padding:'10px 12px',color:'var(--muted)'}}>
+                      🗓️ O horário desta ministração é definido no <b>Cronograma</b> (aqui é só o conteúdo).
                     </div>
                     <div className="form-group"><label className="form-label">Local</label>
                       <select className="form-select" value={form.local} onChange={e=>setForm(f=>({...f,local:e.target.value}))}>
@@ -460,7 +459,7 @@ export default function Ministracoes({ profile }: { profile?: Profile }) {
             <div style={{background:cor,borderRadius:14,padding:'16px 20px',color:'white',marginBottom:14,WebkitPrintColorAdjust:'exact',printColorAdjust:'exact'} as any}>
               <p style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.06em',opacity:0.8,marginBottom:4}}>Ministração</p>
               <p style={{fontSize:20,fontWeight:800,lineHeight:1.15}}>{imprimir.titulo}</p>
-              <p style={{fontSize:13,opacity:0.9,marginTop:3}}>{fmtData(imprimir.hora_inicio)} · {fmtHora(imprimir.hora_inicio)} — {fmtHora(imprimir.hora_fim)}{imprimir.local?` · ${imprimir.local}`:''}</p>
+              {imprimir.local && <p style={{fontSize:13,opacity:0.9,marginTop:3}}>{imprimir.local}</p>}
             </div>
             {/* Linha "Ministrante" com a cara (igual à aba Info) */}
             {min && (
