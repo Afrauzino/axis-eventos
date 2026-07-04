@@ -53,13 +53,24 @@ export function gerarICS(eventos: EventoICS[]): string {
 }
 
 export function baixarICS(nomeArquivo: string, conteudo: string) {
+  const nome = nomeArquivo.endsWith('.ics') ? nomeArquivo : nomeArquivo + '.ics'
   const blob = new Blob([conteudo], { type: 'text/calendar;charset=utf-8' })
   const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = nomeArquivo.endsWith('.ics') ? nomeArquivo : nomeArquivo + '.ics'
-  document.body.appendChild(a)
-  a.click()
-  document.body.removeChild(a)
-  setTimeout(() => URL.revokeObjectURL(url), 1500)
+
+  // ABRE o arquivo automaticamente: no celular o sistema mostra "adicionar ao
+  // calendário" na hora, sem o usuário precisar procurar o download.
+  const janela = window.open(url, '_blank')
+
+  // Se o navegador bloquear a abertura (popup), baixa como reserva.
+  if (!janela) {
+    const a = document.createElement('a')
+    a.href = url
+    a.download = nome
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+  }
+
+  // Mantém a URL viva tempo suficiente pro app de calendário carregar o arquivo.
+  setTimeout(() => URL.revokeObjectURL(url), 10000)
 }

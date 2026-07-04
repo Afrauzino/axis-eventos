@@ -5,6 +5,7 @@ export default defineConfig({
   plugins: [react()],
   server: {
     host: '0.0.0.0',
-    port: 5173,
+    // Usa a porta do ambiente (preview) quando existir; senão 5173 (dev normal do Anderson)
+    port: Number(process.env.PORT) || 5173,
   },
 })

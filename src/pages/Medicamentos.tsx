@@ -55,7 +55,7 @@ export default function Medicamentos({ profile }: { profile?: Profile }) {
       }
     })
     baixarICS('alarmes-medicamentos', gerarICS(eventos))
-    toast.sucesso(`${eventos.length} alarme(s) gerado(s). Abra o arquivo baixado para adicionar ao calendário — tocam ~8 min antes.`)
+    toast.sucesso(`${eventos.length} alarme(s) gerado(s). Confirme "adicionar ao calendário" na tela que abriu — tocam ~8 min antes.`)
   }
 
   async function entregar(d: Dose) {

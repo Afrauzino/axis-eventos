@@ -142,6 +142,9 @@ export default function NotificacoesCenter({ profile, onClose, onUnread }: { pro
     const novo = new Set(lidas); itens.forEach(i => novo.add(i.id)); setLidas(novo); salvarLidas(profile.user_id, novo)
   }
 
+  // Depois de lida, a notificação SAI da lista (não fica mais aparecendo no sininho)
+  const visiveis = itens.filter(i => !lidas.has(i.id))
+
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 400, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}
       onClick={e => e.target === e.currentTarget && onClose()}>
@@ -149,19 +152,19 @@ export default function NotificacoesCenter({ profile, onClose, onUnread }: { pro
         <div style={{ width: 36, height: 4, background: 'var(--border)', borderRadius: 2, margin: '12px auto 0' }} />
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', borderBottom: '1px solid var(--border)', position: 'sticky', top: 0, background: 'white', zIndex: 1 }}>
           <p style={{ fontSize: 17, fontWeight: 800 }}>Notificações</p>
-          {itens.length > 0 && <button onClick={marcarTodas} style={{ background: 'none', border: 'none', color: 'var(--primary)', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Marcar todas como lidas</button>}
+          {visiveis.length > 0 && <button onClick={marcarTodas} style={{ background: 'none', border: 'none', color: 'var(--primary)', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Marcar todas como lidas</button>}
         </div>
 
         <div style={{ padding: '8px 16px 28px' }}>
           {!carregado ? (
             <p style={{ textAlign: 'center', color: 'var(--muted)', fontSize: 13, padding: '24px 0' }}>Carregando...</p>
-          ) : itens.length === 0 ? (
+          ) : visiveis.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '32px 0' }}>
               <p style={{ fontSize: 34, marginBottom: 8 }}>🔕</p>
               <p style={{ fontSize: 14, color: 'var(--muted)' }}>Nenhuma notificação por enquanto.</p>
             </div>
-          ) : itens.map(n => {
-            const naoLida = !lidas.has(n.id)
+          ) : visiveis.map(n => {
+            const naoLida = true
             const lb = lembrete(n.quando)
             return (
               <button key={n.id} onClick={() => abrir(n)}
