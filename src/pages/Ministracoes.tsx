@@ -403,9 +403,9 @@ export default function Ministracoes({ profile }: { profile?: Profile }) {
                         <div style={{display:'flex',alignItems:'center',gap:8,padding:'8px 12px',background:'var(--bg)',borderBottom:'1px solid var(--border)'}}>
                           <span style={{flex:1,fontSize:13,fontWeight:700,color:'var(--primary)'}}>{bloco.tipo==='Imagem'?'🖼️ Imagem':bloco.tipo}</span>
                           {bloco.tipo!=='Imagem' && (
-                            <select value={bloco.tipo} onChange={e=>setBlocos(prev=>prev.map((b,i)=>i===idx?{...b,tipo:e.target.value}:b))} style={{border:'none',background:'transparent',fontSize:12,fontWeight:600,color:'var(--muted)',fontFamily:'inherit',cursor:'pointer'}}>
-                              {TIPOS_BLOCO.map(t=><option key={t} value={t}>{t}</option>)}
-                            </select>
+                            <Seletor sheet compact titulo="Tipo do bloco"
+                              value={bloco.tipo} onChange={v=>setBlocos(prev=>prev.map((b,i)=>i===idx?{...b,tipo:v}:b))}
+                              opcoes={TIPOS_BLOCO.map(t=>({value:t, label:t}))}/>
                           )}
                           {idx>0 && <button type="button" onClick={()=>setBlocos(prev=>{const n=[...prev];[n[idx-1],n[idx]]=[n[idx],n[idx-1]];return n})} style={{background:'none',border:'none',cursor:'pointer',padding:2}} title="Subir"><span className="icon icon-sm" style={{color:'var(--muted)'}}>arrow_upward</span></button>}
                           {idx<blocos.length-1 && <button type="button" onClick={()=>setBlocos(prev=>{const n=[...prev];[n[idx+1],n[idx]]=[n[idx],n[idx+1]];return n})} style={{background:'none',border:'none',cursor:'pointer',padding:2}} title="Descer"><span className="icon icon-sm" style={{color:'var(--muted)'}}>arrow_downward</span></button>}

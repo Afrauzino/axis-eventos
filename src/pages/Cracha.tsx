@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { getInitials, isAdmin } from '../utils'
 import { useEvento } from '../hooks/useEvento'
+import Seletor from '../components/Seletor'
 import type { Profile } from '../App'
 
 type Pessoa = { id:string; name:string; photo_url:string|null; role_type?:string }
@@ -300,9 +301,11 @@ export default function Cracha({ profile }: { profile?: Profile }) {
           {/* Fonte/estilo/cor (texto/nome/equipe) */}
           {!ehImg && sel!=='foto' && (
             <div style={{display:'flex',alignItems:'center',gap:8}}>
-              <select className="form-select" value={s.fonte??'Padrão'} onChange={e=>patchSel({fonte:e.target.value})} style={{flex:1,fontFamily:fontFamilyDe(s.fonte)}}>
-                {FONTES.map(f=><option key={f} value={f} style={{fontFamily:fontFamilyDe(f)}}>{f}</option>)}
-              </select>
+              <div style={{flex:1}}>
+                <Seletor titulo="Fonte" placeholder="Fonte" sheet
+                  value={s.fonte??'Padrão'} onChange={v=>patchSel({fonte:v})}
+                  opcoes={FONTES.map(f=>({value:f, label:f}))}/>
+              </div>
               {([['negrito','B',{fontWeight:800}],['italico','I',{fontStyle:'italic'}],['sublinhado','S',{textDecoration:'underline'}]] as const).map(([prop,lab,st])=>{
                 const on=(s as any)[prop]
                 return <button key={prop} type="button" onClick={()=>patchSel({[prop]:!on})} style={{width:34,height:34,borderRadius:8,cursor:'pointer',fontFamily:'inherit',fontSize:14,...st,border:on?'2px solid var(--primary)':'1px solid var(--border)',background:on?'var(--primary-light)':'white',color:on?'var(--primary)':'var(--text2)'}}>{lab}</button>
@@ -326,10 +329,9 @@ export default function Cracha({ profile }: { profile?: Profile }) {
       {/* Tamanho do crachá */}
       <div className="form-group">
         <label className="form-label">Tamanho do crachá</label>
-        <select className="form-select" value={m.tamanho} disabled={!canEdit} onChange={e=>updM({tamanho:e.target.value})}>
-          {Object.entries(TAMANHOS).map(([k,v])=><option key={k} value={k}>{v.label}</option>)}
-          <option value="custom">Personalizar tamanho...</option>
-        </select>
+        <Seletor titulo="Tamanho do crachá" placeholder="Selecionar tamanho" disabled={!canEdit}
+          value={m.tamanho} onChange={v=>updM({tamanho:v})}
+          opcoes={[...Object.entries(TAMANHOS).map(([k,v])=>({value:k, label:v.label})), {value:'custom', label:'Personalizar tamanho...'}]}/>
       </div>
       {m.tamanho==='custom' && (
         <div style={{display:'flex',gap:8,alignItems:'flex-end',marginBottom:12}}>
@@ -343,9 +345,9 @@ export default function Cracha({ profile }: { profile?: Profile }) {
           </div>
           <div style={{flex:1}}>
             <label className="form-label">Unidade</label>
-            <select className="form-select" value={m.unidade} disabled={!canEdit} onChange={e=>updM({unidade:e.target.value as any})}>
-              <option value="mm">mm</option><option value="cm">cm</option><option value="px">px</option>
-            </select>
+            <Seletor titulo="Unidade" disabled={!canEdit}
+              value={m.unidade} onChange={v=>updM({unidade:v as any})}
+              opcoes={[{value:'mm',label:'mm'},{value:'cm',label:'cm'},{value:'px',label:'px'}]}/>
           </div>
         </div>
       )}
@@ -370,10 +372,9 @@ export default function Cracha({ profile }: { profile?: Profile }) {
       {filtroTipo==='worker' && (
         <div className="form-group">
           <label className="form-label">Filtrar por equipe</label>
-          <select className="form-select" value={filtroEquipe} onChange={e=>setFiltroEquipe(e.target.value)}>
-            <option value="">Todas as equipes</option>
-            {equipes.map(eq=><option key={eq.id} value={eq.id}>{eq.name}</option>)}
-          </select>
+          <Seletor titulo="Filtrar por equipe" placeholder="Todas as equipes"
+            value={filtroEquipe} onChange={v=>setFiltroEquipe(v)}
+            opcoes={[{value:'',label:'Todas as equipes'}, ...equipes.map(eq=>({value:eq.id,label:eq.name}))]}/>
         </div>
       )}
 

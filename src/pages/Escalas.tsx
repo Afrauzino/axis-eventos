@@ -6,6 +6,7 @@ import { getInitials, fmtHora, isAdmin, isLider, nowLocalInput } from '../utils'
 import { useEvento } from '../hooks/useEvento'
 import { usePermissao } from '../hooks/usePermissao'
 import PersonSelect from '../components/PersonSelect'
+import Seletor from '../components/Seletor'
 import type { Profile } from '../App'
 
 type Escala  = { id:string; person_id:string; team_id:string|null; title:string; start_time:string; end_time:string; location:string|null; notes:string|null; status:string }
@@ -302,10 +303,9 @@ export default function Escalas({ profile }: { profile?: Profile }) {
               {/* 3. Local dos locais cadastrados */}
               <div className="form-group">
                 <label className="form-label">3. Local</label>
-                <select className="form-select" value={form.location} onChange={e=>setForm(f=>({...f,location:e.target.value}))}>
-                  <option value="">Selecionar local...</option>
-                  {locais.map(l=><option key={l.id} value={l.nome}>{l.nome}</option>)}
-                </select>
+                <Seletor titulo="Local" placeholder="Selecionar local..."
+                  value={form.location} onChange={v=>setForm(f=>({...f,location:v}))}
+                  opcoes={[{value:'',label:'Sem local'}, ...locais.map(l=>({value:l.nome, label:l.nome}))]}/>
               </div>
 
               {/* 4. Horário */}

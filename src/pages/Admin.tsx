@@ -7,6 +7,7 @@ import { invalidarEventoAtivo } from '../hooks/useEvento'
 import { registrarLog } from '../lib/audit'
 import SubTabs from '../components/SubTabs'
 import { toast } from '../components/Toast'
+import Seletor from '../components/Seletor'
 import type { Profile } from '../App'
 import EmojiGrid from '../components/EmojiGrid'
 import { PERM_CATALOGO, MENUS_CATALOGO } from '../lib/permCatalog'
@@ -921,14 +922,11 @@ export default function Admin({ profile }: { profile?: Profile }) {
                         style={{fontSize:9,border:'none',cursor:p.role_status==='pending'?'pointer':'default',fontFamily:'inherit'}}>
                         {p.role_status==='pending'?'⏳ Aprovar':'✓ Ativo'}
                       </button>
-                      <select
-                        value={p.user_role??'visitante'}
-                        onClick={e=>e.stopPropagation()}
-                        onChange={e=>{e.stopPropagation();alterarRole(p.user_id!,e.target.value)}}
-                        style={{fontSize:11,padding:'2px 6px',borderRadius:6,border:`1px solid ${p.role_status==='pending'?'var(--warning)':'var(--border)'}`,background:p.role_status==='pending'?'var(--warning-bg)':'var(--bg)',cursor:'pointer',fontFamily:'inherit',maxWidth:130,fontWeight:p.role_status==='pending'?700:400}}
-                      >
-                        {CARGOS_APROVACAO.map(cg=><option key={cg.role} value={cg.role}>{cg.label}</option>)}
-                      </select>
+                      <div onClick={e=>e.stopPropagation()}>
+                        <Seletor sheet compact titulo="Cargo / Nível de acesso"
+                          value={p.user_role??'visitante'} onChange={v=>alterarRole(p.user_id!,v)}
+                          opcoes={CARGOS_APROVACAO.map(cg=>({value:cg.role, label:cg.label}))}/>
+                      </div>
                     </>
                   ) : p.invite_code ? (
                     <div style={{display:'flex',alignItems:'center',gap:4}}>
@@ -1069,12 +1067,10 @@ export default function Admin({ profile }: { profile?: Profile }) {
                   </div>
                   <div style={{marginBottom:6}}>
                     <label style={{fontSize:12,color:'var(--muted)',display:'block',marginBottom:4}}>Cargo / Nível de acesso</label>
-                    <select className="form-select"
+                    <Seletor titulo="Cargo / Nível de acesso"
                       value={pessoaDetalhe.user_role??'visitante'}
-                      onChange={e=>{alterarRole(pessoaDetalhe.user_id!,e.target.value);setPessoaDetalhe(prev=>prev?{...prev,user_role:e.target.value,role_status:e.target.value==='visitante'?'pending':'approved'}:null)}}
-                    >
-                      {CARGOS_APROVACAO.map(cg=><option key={cg.role} value={cg.role}>{cg.label}</option>)}
-                    </select>
+                      onChange={v=>{alterarRole(pessoaDetalhe.user_id!,v);setPessoaDetalhe(prev=>prev?{...prev,user_role:v,role_status:v==='visitante'?'pending':'approved'}:null)}}
+                      opcoes={CARGOS_APROVACAO.map(cg=>({value:cg.role, label:cg.label}))}/>
                   </div>
                   {pessoaDetalhe.role_status==='pending' && (
                     <button onClick={()=>aprovarPessoa(pessoaDetalhe)}
