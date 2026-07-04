@@ -20,12 +20,18 @@ function ehAndroid() {
 export default function InstallPWA({ variant = 'card', autoShow = false }: { variant?: 'card' | 'inline'; autoShow?: boolean }) {
   const [deferred, setDeferred] = useState<BIPEvent | null>(null)
   const [instalado, setInstalado] = useState(jaInstalado())
+  const [recemInstalado, setRecemInstalado] = useState(false)
   const [ajuda, setAjuda] = useState<null | 'ios' | 'android'>(null)
 
   useEffect(() => {
     if (instalado) return
     const onPrompt = (e: Event) => { e.preventDefault(); setDeferred(e as BIPEvent) }
-    const onInstalled = () => setInstalado(true)
+    const onInstalled = () => {
+      setInstalado(true)
+      setRecemInstalado(true)
+      // tenta fechar a aba (só funciona em alguns navegadores); senão o aviso orienta a pessoa
+      setTimeout(() => { try { window.close() } catch {} }, 1200)
+    }
     window.addEventListener('beforeinstallprompt', onPrompt)
     window.addEventListener('appinstalled', onInstalled)
     return () => {
@@ -33,6 +39,23 @@ export default function InstallPWA({ variant = 'card', autoShow = false }: { var
       window.removeEventListener('appinstalled', onInstalled)
     }
   }, [instalado])
+
+  // Aviso pós-instalação (só a instância global mostra, pra não duplicar)
+  if (recemInstalado && autoShow) {
+    return (
+      <div style={{ position: 'fixed', inset: 0, background: 'var(--primary)', zIndex: 1000, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: 24, color: 'white' }}>
+        <div style={{ fontSize: 54, marginBottom: 12 }}>✅</div>
+        <p style={{ fontSize: 22, fontWeight: 800, marginBottom: 8 }}>App instalado!</p>
+        <p style={{ fontSize: 15, lineHeight: 1.6, maxWidth: 320, opacity: 0.95 }}>
+          Pode fechar esta aba e abrir o <b>AXIS</b> pelo <b>ícone na tela inicial</b> do seu celular.
+        </p>
+        <button onClick={() => { try { window.close() } catch {} }}
+          style={{ marginTop: 20, background: 'white', color: 'var(--primary)', border: 'none', borderRadius: 12, padding: '12px 24px', fontFamily: 'inherit', fontSize: 15, fontWeight: 800, cursor: 'pointer' }}>
+          Fechar esta aba
+        </button>
+      </div>
+    )
+  }
 
   if (instalado) return null
   // Mostra em celular (Android/iPhone) ou quando o navegador já ofereceu o pop-up. No PC sem pop-up, esconde.

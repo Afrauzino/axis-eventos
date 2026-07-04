@@ -96,6 +96,20 @@ _Detalhes e "onde mexer" em `docs/HANDOFF.md`._
 19. [x] **Encontristas → "conheço esta pessoa"**: encontreiro marca (nome+foto+WhatsApp); vários marcam; lista
     no perfil. **Rodar sql/23_encontrista_conhecidos.sql**. [feito]
 
+### 2026-07-04 — ajustes pós-lançamento (publicados)
+- Instalar app: botão global no rodapé de todas as telas; aparece sozinho; ícone da instalação usa a LOGO
+  (manifest dinâmico em `src/lib/tema.ts::aplicarIconesApp`). Quem já instalou precisa reinstalar p/ trocar o ícone.
+- Tela inicial: sem data/"Olá nome"; ordem = evento → ranking → indicadores → carrossel → boas-vindas.
+- **Tela inicial reordenável:** admin arrasta os blocos (botão "Reordenar tela"), ordem salva em config `home_ordem`
+  e vale p/ todos. Blocos: evento/ranking/indicadores/carrossel/boasvindas (`Dashboard.tsx::renderSecao`).
+- Minhas Atividades: ministração/teatro do cronograma entram na barra de progresso, mas só sobem quando o
+  item do cronograma está 'concluido' ou 'cancelado'.
+- Ranking na tela inicial: removido o título "Ranking do Encontro" (fica só a caixa do widget).
+- Pós-instalação do app: ao instalar, mostra tela "App instalado! abra pelo ícone" e tenta fechar a aba
+  (`InstallPWA.tsx`, evento `appinstalled`).
+- **Performance:** telas carregadas sob demanda (React.lazy + Suspense em `App.tsx`). Bundle inicial caiu de
+  ~935KB p/ ~476KB (gzip 225KB→135KB). Nada de config foi perdido.
+
 ### ✅ FECHAMENTO 2026-07-03 — tudo publicado online
 SQLs pra rodar no Supabase (SQL Editor) quando puder — o app NÃO quebra sem eles, só as partes esperam:
 - `sql/21_storage_buckets.sql`  → foto de ícone da equipe (#3a)

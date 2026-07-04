@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, lazy, Suspense } from 'react'
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { supabase } from './lib/supabase'
 import { carregarCorSalva, carregarConfig, aplicarIconesApp } from './lib/tema'
@@ -11,40 +11,41 @@ import { useEvento } from './hooks/useEvento'
 import Login from './pages/Login'
 import Pending from './pages/Pending'
 import Dashboard from './pages/Dashboard'
-import MinhasAtividades from './pages/MinhasAtividades'
-import Cronograma from './pages/Cronograma'
-import Encontristas from './pages/Encontristas'
-import Cadastros from './pages/Cadastros'
-import Equipes from './pages/Equipes'
-import Correio from './pages/Correio'
-import SaudeSistema from './pages/SaudeSistema'
-import AlertasLideres from './pages/AlertasLideres'
-import Cozinha from './pages/Cozinha'
 import CriticoWatcher from './components/CriticoWatcher'
-import Ministracoes from './pages/Ministracoes'
-import Logistica from './pages/Logistica'
-import Midia from './pages/Midia'
-import Cracha from './pages/Cracha'
-import TeatroLista from './pages/TeatroLista'
-import TeatroDetalhe from './pages/TeatroDetalhe'
-import TeatroAtores from './pages/TeatroAtores'
-import TeatroObjetos from './pages/TeatroObjetos'
-import TeatroPersonagens from './pages/TeatroPersonagens'
-import Locais from './pages/Locais'
-import Saude from './pages/Saude'
-import SaudeFicha from './pages/SaudeFicha'
-import Medicamentos from './pages/Medicamentos'
-import SaudeConfig from './pages/SaudeConfig'
-import Alertas from './pages/Alertas'
-import Ocorrencias from './pages/Ocorrencias'
-import Financeiro from './pages/Financeiro'
-import Escalas from './pages/Escalas'
-import Relatorios from './pages/Relatorios'
-import Doacoes from './pages/Doacoes'
-import MenusAdmin from './pages/MenusAdmin'
-import Ranking from './pages/Ranking'
-import Admin from './pages/Admin'
-import Perfil from './pages/Perfil'
+// #perf — telas carregadas SOB DEMANDA (lazy): a inicial abre bem mais rápido, sem perder nada
+const MinhasAtividades = lazy(() => import('./pages/MinhasAtividades'))
+const Cronograma       = lazy(() => import('./pages/Cronograma'))
+const Encontristas     = lazy(() => import('./pages/Encontristas'))
+const Cadastros        = lazy(() => import('./pages/Cadastros'))
+const Equipes          = lazy(() => import('./pages/Equipes'))
+const Correio          = lazy(() => import('./pages/Correio'))
+const SaudeSistema     = lazy(() => import('./pages/SaudeSistema'))
+const AlertasLideres   = lazy(() => import('./pages/AlertasLideres'))
+const Cozinha          = lazy(() => import('./pages/Cozinha'))
+const Ministracoes     = lazy(() => import('./pages/Ministracoes'))
+const Logistica        = lazy(() => import('./pages/Logistica'))
+const Midia            = lazy(() => import('./pages/Midia'))
+const Cracha           = lazy(() => import('./pages/Cracha'))
+const TeatroLista      = lazy(() => import('./pages/TeatroLista'))
+const TeatroDetalhe    = lazy(() => import('./pages/TeatroDetalhe'))
+const TeatroAtores     = lazy(() => import('./pages/TeatroAtores'))
+const TeatroObjetos    = lazy(() => import('./pages/TeatroObjetos'))
+const TeatroPersonagens= lazy(() => import('./pages/TeatroPersonagens'))
+const Locais           = lazy(() => import('./pages/Locais'))
+const Saude            = lazy(() => import('./pages/Saude'))
+const SaudeFicha       = lazy(() => import('./pages/SaudeFicha'))
+const Medicamentos     = lazy(() => import('./pages/Medicamentos'))
+const SaudeConfig      = lazy(() => import('./pages/SaudeConfig'))
+const Alertas          = lazy(() => import('./pages/Alertas'))
+const Ocorrencias      = lazy(() => import('./pages/Ocorrencias'))
+const Financeiro       = lazy(() => import('./pages/Financeiro'))
+const Escalas          = lazy(() => import('./pages/Escalas'))
+const Relatorios       = lazy(() => import('./pages/Relatorios'))
+const Doacoes          = lazy(() => import('./pages/Doacoes'))
+const MenusAdmin       = lazy(() => import('./pages/MenusAdmin'))
+const Ranking          = lazy(() => import('./pages/Ranking'))
+const Admin            = lazy(() => import('./pages/Admin'))
+const Perfil           = lazy(() => import('./pages/Perfil'))
 
 export type Profile = {
   id: string
@@ -60,6 +61,7 @@ export type Profile = {
 
 function AppRoutes({ profile, onProfileUpdate }: { profile: Profile; onProfileUpdate: () => void }) {
   return (
+    <Suspense fallback={<div className="page">{[1,2,3].map(i=><div key={i} className="skeleton" style={{height:80,marginBottom:10,borderRadius:14}}/>)}</div>}>
     <Routes>
       <Route path="/"                      element={<Dashboard profile={profile} />} />
       <Route path="/minhas-atividades"     element={<MinhasAtividades profile={profile} />} />
@@ -99,6 +101,7 @@ function AppRoutes({ profile, onProfileUpdate }: { profile: Profile; onProfileUp
       <Route path="/perfil"                element={<Perfil profile={profile} onUpdate={onProfileUpdate} />} />
       <Route path="*"                      element={<Navigate to="/" replace />} />
     </Routes>
+    </Suspense>
   )
 }
 

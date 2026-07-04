@@ -165,7 +165,6 @@ export default function Dashboard({ profile }: { profile: Profile }) {
       case 'ranking':
         return (
           <div style={{marginBottom:16}}>
-            <div className="section-title">Ranking do Encontro</div>
             <RankingMini eventoId={evento.id} navigate={navigate}/>
           </div>
         )

@@ -48,6 +48,17 @@ Lista de 19 pedidos + follow-ups, **todos feitos e publicados**. Detalhe item a 
 - #19 "Conheço esta pessoa" em Encontristas (`Encontristas.tsx`) + `sql/23_encontrista_conhecidos.sql`.
 - Follow-up: barra de progresso de Minhas Atividades agora inclui cronograma, mas só sobe quando o item está 'concluido' ou 'cancelado'.
 
+### Ajustes 2026-07-04 (parte 2)
+- **Instalar app:** botão global no rodapé de TODAS as telas (`App.tsx` → `<InstallPWA autoShow/>`); ícone da
+  instalação usa a LOGO do sistema (manifest dinâmico em `tema.ts::aplicarIconesApp`). Pós-instalação (`appinstalled`)
+  mostra tela "App instalado" e tenta `window.close()`. Quem já instalou precisa reinstalar p/ trocar o ícone.
+- **Tela inicial (`Dashboard.tsx`):** sem data/"Olá nome"; **blocos arrastáveis pelo admin** (botão "Reordenar tela",
+  ordem salva em config `home_ordem`, função `renderSecao`). Ranking sem o título (só a caixa).
+- **Performance:** telas em `React.lazy`+`Suspense` (`App.tsx`). Bundle inicial ~935KB→476KB (gzip 225→135KB).
+  Login/Pending/Dashboard ficam eager; o resto carrega sob demanda. NENHUMA config perdida.
+- **Dica p/ verificar telas logadas:** o dev server (`npm run dev`) do Anderson costuma ter a **sessão dele ativa**,
+  então dá pra ver o app logado no preview. É DADO REAL — só observar, não alterar.
+
 ### SQLs — Anderson disse que **JÁ RODOU** os 3 (2026-07-04): `sql/21`, `sql/22`, `sql/23`. (Idempotentes; pode reconferir se algo falhar.)
 
 ### ⏳ PENDÊNCIAS reais
