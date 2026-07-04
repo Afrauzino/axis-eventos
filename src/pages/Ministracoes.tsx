@@ -5,6 +5,7 @@ import { getInitials, fmtHora, fmtData, isAdmin, hasRole } from '../utils'
 import { useEvento } from '../hooks/useEvento'
 import { usePermissao } from '../hooks/usePermissao'
 import { toast } from '../components/Toast'
+import Seletor from '../components/Seletor'
 import PersonSelect from '../components/PersonSelect'
 import RichEditor from '../components/RichEditor'
 import ArquivosModulo from '../components/ArquivosModulo'
@@ -385,18 +386,14 @@ export default function Ministracoes({ profile }: { profile?: Profile }) {
                       🗓️ O horário desta ministração é definido no <b>Cronograma</b> (aqui é só o conteúdo).
                     </div>
                     <div className="form-group"><label className="form-label">Local</label>
-                      <select className="form-select" value={form.local} onChange={e=>setForm(f=>({...f,local:e.target.value}))}>
-                        <option value="">Selecionar local...</option>
-                        {locais.map(l=><option key={l.id} value={l.nome}>{l.nome}</option>)}
-                      </select>
+                      <Seletor titulo="Local" placeholder="Selecionar local..." value={form.local} onChange={v=>setForm(f=>({...f,local:v}))}
+                        opcoes={[{value:'',label:'Sem local'}, ...locais.map(l=>({value:l.nome,label:l.nome}))]}/>
                     </div>
                     <div className="form-group">
                       <label className="form-label">Teatro vinculado</label>
                       <p className="form-hint mb-2">Ao vincular, teatro e ministração se abrem mutuamente. Cada teatro só pode ser vinculado a uma ministração.</p>
-                      <select className="form-select" value={form.teatro_id} onChange={e=>setForm(f=>({...f,teatro_id:e.target.value}))}>
-                        <option value="">Nenhum</option>
-                        {teatros.map(t=><option key={t.id} value={t.id}>{t.nome}</option>)}
-                      </select>
+                      <Seletor titulo="Teatro vinculado" placeholder="Nenhum" value={form.teatro_id} onChange={v=>setForm(f=>({...f,teatro_id:v}))}
+                        opcoes={[{value:'',label:'Nenhum'}, ...teatros.map(t=>({value:t.id,label:t.nome}))]}/>
                     </div>
                   </>
                 ) : (

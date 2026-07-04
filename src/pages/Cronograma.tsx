@@ -5,6 +5,7 @@ import { fmtHora, isAdmin, nowLocalInput, getInitials } from '../utils'
 import { useEvento } from '../hooks/useEvento'
 import { usePermissao } from '../hooks/usePermissao'
 import PrintOverlay from '../components/PrintOverlay'
+import Seletor from '../components/Seletor'
 import CronometroPopup from '../components/CronometroPopup'
 import CronometroDisplay from '../components/CronometroDisplay'
 import type { Profile } from '../App'
@@ -468,9 +469,8 @@ export default function Cronograma({ profile }: { profile?: Profile }) {
               {/* 1. TIPO primeiro */}
               <div className="form-group">
                 <label className="form-label">Tipo <span className="req">*</span></label>
-                <select className="form-select" value={form.tipo} onChange={e=>{const v=e.target.value; setForm(f=>({...f,tipo:v, ministracao_id:'', theater_id:'', cardapio_id:''}))}}>
-                  {tiposDB.map(t=><option key={t.id} value={t.nome.toLowerCase()}>{t.nome}</option>)}
-                </select>
+                <Seletor titulo="Tipo" value={form.tipo} onChange={v=>setForm(f=>({...f,tipo:v, ministracao_id:'', theater_id:'', cardapio_id:''}))}
+                  opcoes={tiposDB.map(t=>({value:t.nome.toLowerCase(),label:t.nome}))}/>
               </div>
 
               {/* 2. Se MINISTRAÇÃO: vincular ministração (e teatro, que só existe dentro dela) */}
@@ -479,17 +479,13 @@ export default function Cronograma({ profile }: { profile?: Profile }) {
                   <div className="form-group">
                     <label className="form-label">Vincular Ministração</label>
                     <p className="form-hint mb-2">O título seguirá o nome da ministração.</p>
-                    <select className="form-select" value={form.ministracao_id} onChange={e=>onSelectMinistracao(e.target.value)}>
-                      <option value="">Nenhuma</option>
-                      {ministrações.map(m=><option key={m.id} value={m.id}>{m.titulo}</option>)}
-                    </select>
+                    <Seletor titulo="Ministração" placeholder="Nenhuma" value={form.ministracao_id} onChange={onSelectMinistracao}
+                      opcoes={[{value:'',label:'Nenhuma'}, ...ministrações.map(m=>({value:m.id,label:m.titulo}))]}/>
                   </div>
                   <div className="form-group">
                     <label className="form-label">Vincular Teatro (opcional)</label>
-                    <select className="form-select" value={form.theater_id} onChange={e=>onSelectTeatro(e.target.value)}>
-                      <option value="">Nenhum</option>
-                      {teatros.map(t=><option key={t.id} value={t.id}>{t.nome}</option>)}
-                    </select>
+                    <Seletor titulo="Teatro" placeholder="Nenhum" value={form.theater_id} onChange={onSelectTeatro}
+                      opcoes={[{value:'',label:'Nenhum'}, ...teatros.map(t=>({value:t.id,label:t.nome}))]}/>
                   </div>
                 </>
               )}
@@ -499,10 +495,8 @@ export default function Cronograma({ profile }: { profile?: Profile }) {
                 <div className="form-group">
                   <label className="form-label">Cardápio</label>
                   <p className="form-hint mb-2">Criado em Cozinha → Cardápio. O título seguirá o tipo (ex: Refeição - Almoço).</p>
-                  <select className="form-select" value={form.cardapio_id} onChange={e=>onSelectCardapio(e.target.value)}>
-                    <option value="">Selecione um cardápio...</option>
-                    {cardapios.map(c=><option key={c.id} value={c.id}>{c.tipo_refeicao_nome ?? 'Refeição'}{c.titulo?` — ${c.titulo}`:''}</option>)}
-                  </select>
+                  <Seletor titulo="Cardápio" placeholder="Selecione um cardápio..." value={form.cardapio_id} onChange={onSelectCardapio}
+                    opcoes={cardapios.map(c=>({value:c.id,label:`${c.tipo_refeicao_nome ?? 'Refeição'}${c.titulo?` — ${c.titulo}`:''}`}))}/>
                 </div>
               )}
 
@@ -542,10 +536,8 @@ export default function Cronograma({ profile }: { profile?: Profile }) {
 
               <div className="form-group">
                 <label className="form-label">Local</label>
-                <select className="form-select" value={form.local} onChange={e=>setForm(f=>({...f,local:e.target.value}))}>
-                  <option value="">Selecionar local...</option>
-                  {locais.map(l=><option key={l.id} value={l.nome}>{l.nome}</option>)}
-                </select>
+                <Seletor titulo="Local" placeholder="Selecionar local..." value={form.local} onChange={v=>setForm(f=>({...f,local:v}))}
+                  opcoes={[{value:'',label:'Sem local'}, ...locais.map(l=>({value:l.nome,label:l.nome}))]}/>
               </div>
 
               <div className="form-group">
