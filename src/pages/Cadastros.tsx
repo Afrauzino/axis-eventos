@@ -6,6 +6,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import PrintOverlay from '../components/PrintOverlay'
+import UploadFoto from '../components/UploadFoto'
 import { formatName, getInitials, isAdmin, canEditPessoas } from '../utils'
 import { useEvento } from '../hooks/useEvento'
 import { usePermissao } from '../hooks/usePermissao'
@@ -31,7 +32,7 @@ export default function Cadastros({ profile }: { profile: Profile }) {
   const [erro, setErro]       = useState('')
   const [busca, setBusca]     = useState('')
   const [filtroRole, setFiltroRole] = useState('todos')
-  const [form, setForm]       = useState({ name:'', phone:'', church:'', role_type:'encounterer' })
+  const [form, setForm]       = useState<{name:string;phone:string;church:string;role_type:string;photo_url:string|null}>({ name:'', phone:'', church:'', role_type:'encounterer', photo_url:null })
   const [editando, setEditando] = useState<Pessoa|null>(null)
   const [copiadoId, setCopiadoId] = useState<string|null>(null)
   const [imprimir, setImprimir] = useState(false)
@@ -76,6 +77,7 @@ export default function Cadastros({ profile }: { profile: Profile }) {
         phone: form.phone || null,
         church: form.church || null,
         role_type: form.role_type,
+        photo_url: form.photo_url || null,
       }).eq('id', editando.id)
       error = r.error
     } else {
@@ -84,6 +86,7 @@ export default function Cadastros({ profile }: { profile: Profile }) {
         phone: form.phone || null,
         church: form.church || null,
         role_type: form.role_type,
+        photo_url: form.photo_url || null,
         status: 'inscrito',
         event_id: evento.id,
         invite_code: code,
@@ -92,7 +95,7 @@ export default function Cadastros({ profile }: { profile: Profile }) {
     }
     if (error) { setErro('Erro: ' + error.message); setSalvando(false); return }
     setModal(false); setSalvando(false); setEditando(null)
-    setForm({ name:'', phone:'', church:'', role_type:'encounterer' })
+    setForm({ name:'', phone:'', church:'', role_type:'encounterer', photo_url:null })
     carregar()
   }
 
@@ -203,7 +206,7 @@ export default function Cadastros({ profile }: { profile: Profile }) {
             {/* Ações */}
             {canEdit && (
               <div style={{display:'flex',flexShrink:0}}>
-                <button onClick={()=>{setErro('');setEditando(p);setForm({name:p.name,phone:p.phone??'',church:(p as any).church??'',role_type:p.role_type});setModal(true)}}
+                <button onClick={()=>{setErro('');setEditando(p);setForm({name:p.name,phone:p.phone??'',church:(p as any).church??'',role_type:p.role_type,photo_url:p.photo_url??null});setModal(true)}}
                   style={{background:'none',border:'none',color:'var(--primary)',cursor:'pointer',padding:'8px 10px',fontFamily:'inherit',display:'flex',alignItems:'center'}}
                   title="Editar">
                   <span className="icon icon-sm">edit</span>
@@ -220,7 +223,7 @@ export default function Cadastros({ profile }: { profile: Profile }) {
       })}
 
       {/* FAB */}
-      {canEdit && <button className="fab" onClick={()=>{setErro('');setEditando(null);setForm({name:'',phone:'',church:'',role_type:'encounterer'});setModal(true)}}><span className="icon">add</span></button>}
+      {canEdit && <button className="fab" onClick={()=>{setErro('');setEditando(null);setForm({name:'',phone:'',church:'',role_type:'encounterer',photo_url:null});setModal(true)}}><span className="icon">add</span></button>}
 
       {/* Modal pré-cadastro */}
       {modal && (
@@ -239,6 +242,19 @@ export default function Cadastros({ profile }: { profile: Profile }) {
             </p>
             {erro && <div className="alert-box alert-error mb-3">{erro}</div>}
             <form onSubmit={salvar}>
+              {/* Foto (opcional) — vale pra encontrista e encontreiro */}
+              <div style={{display:'flex',justifyContent:'center',marginBottom:18}}>
+                <UploadFoto
+                  bucket="pessoas"
+                  path={`pessoa-${editando?.id ?? Date.now()}`}
+                  currentUrl={form.photo_url}
+                  onUpload={url=>setForm(f=>({...f,photo_url:url}))}
+                  label={form.photo_url ? 'Trocar foto' : 'Adicionar foto'}
+                  size={96}
+                  shape="circle"
+                />
+              </div>
+
               {/* Tipo */}
               <div className="form-group">
                 <label className="form-label">Função no evento <span className="req">*</span></label>
