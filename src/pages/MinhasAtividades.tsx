@@ -24,6 +24,8 @@ export default function MinhasAtividades({ profile }: { profile: Profile }) {
   const [cardapios, setCardapios] = useState<{id:string;tipo_refeicao_nome:string|null;titulo:string|null;itens:string|null;data_servir:string|null}[]>([])
   const [cardapioDetalhe, setCardapioDetalhe] = useState<{id:string;tipo_refeicao_nome:string|null;titulo:string|null;itens:string|null;data_servir:string|null}|null>(null)
   const [meusAfilhados, setMeusAfilhados] = useState<{id:string;name:string;photo_url:string|null;pct:number;status:string}[]>([])
+  // #11 — atividades vindas do Cronograma (sou ministrante / estou no elenco)
+  const [cronoAtividades, setCronoAtividades] = useState<(Escala & { tipo:'ministracao'|'teatro' })[]>([])
 
   useEffect(() => {
     if (evLoading) return
@@ -71,6 +73,9 @@ export default function MinhasAtividades({ profile }: { profile: Profile }) {
     setMinhas(es.data ?? [])
     setAlertas(al.data ?? [])
 
+    // #11 — Cronograma → atividades pessoais (ministrante da ministração OU elenco do teatro)
+    await carregarDoCronograma(myPerson.id)
+
     // Cardápios do dia: se eu sou membro de alguma equipe marcada como equipe_cardapio
     const { data: meusTimes } = await supabase.from('people_teams').select('team_id').eq('person_id', myPerson.id)
     const teamIds = (meusTimes ?? []).map(t=>t.team_id)
@@ -98,6 +103,41 @@ export default function MinhasAtividades({ profile }: { profile: Profile }) {
       setMeusAfilhados(afilhadosData)
     }
     setLoading(false)
+  }
+
+  // #11 — monta as atividades pessoais a partir do Cronograma
+  async function carregarDoCronograma(personId: string) {
+    if (!evento) return
+    const { data: cronRows } = await supabase.from('cronograma_eventos')
+      .select('id,titulo,hora_inicio,hora_fim,local,descricao,status,ministracao_id,theater_id')
+      .eq('event_id', evento.id).order('hora_inicio')
+    if (!cronRows || cronRows.length === 0) { setCronoAtividades([]); return }
+
+    const minIds = cronRows.filter(c=>c.ministracao_id).map(c=>c.ministracao_id)
+    const teaIds = cronRows.filter(c=>c.theater_id).map(c=>c.theater_id)
+
+    // Ministrações em que EU sou o ministrante
+    let minhasMinIds = new Set<string>()
+    if (minIds.length) {
+      const { data } = await supabase.from('ministrações').select('id').in('id', minIds).eq('ministrante_id', personId)
+      minhasMinIds = new Set((data ?? []).map((m:any)=>m.id))
+    }
+    // Teatros em que EU estou no elenco
+    let meusTeaIds = new Set<string>()
+    if (teaIds.length) {
+      const { data } = await supabase.from('teatro_elenco').select('theater_id').in('theater_id', teaIds).eq('person_id', personId)
+      meusTeaIds = new Set((data ?? []).map((t:any)=>t.theater_id))
+    }
+
+    const atv = cronRows
+      .filter(c => (c.ministracao_id && minhasMinIds.has(c.ministracao_id)) || (c.theater_id && meusTeaIds.has(c.theater_id)))
+      .map(c => ({
+        id: 'cron-' + c.id, title: c.titulo, start_time: c.hora_inicio, end_time: c.hora_fim,
+        location: c.local, notes: c.descricao,
+        status: c.status === 'concluido' ? 'concluido' : 'pendente', team_id: null,
+        tipo: (c.ministracao_id && minhasMinIds.has(c.ministracao_id)) ? 'ministracao' as const : 'teatro' as const,
+      }))
+    setCronoAtividades(atv)
   }
 
   async function concluir(id: string) {
@@ -220,6 +260,25 @@ export default function MinhasAtividades({ profile }: { profile: Profile }) {
         </>
       )}
 
+      {/* #11 — Minha agenda vinda do Cronograma (ministração/teatro) */}
+      {cronoAtividades.length > 0 && (
+        <>
+          <div className="section-label" style={{marginTop:14}}>Minha agenda (Cronograma)</div>
+          {cronoAtividades.map(item => (
+            <div key={item.id} onClick={()=>setDetalhe(item)}
+              style={{background:'white',borderRadius:14,boxShadow:'var(--shadow-sm)',marginBottom:8,display:'flex',alignItems:'center',overflow:'hidden',cursor:'pointer',opacity:item.status==='concluido'?0.7:1}}>
+              <div style={{width:4,alignSelf:'stretch',flexShrink:0,background:item.tipo==='teatro'?'#E8821A':'#6B46C1'}}/>
+              <div style={{flex:1,padding:'12px 14px',minWidth:0}}>
+                <p style={{fontSize:11,color:'var(--muted)',marginBottom:2}}>{item.tipo==='teatro'?'🎭 Teatro':'🎤 Ministração'} · {fmtHora(item.start_time)} — {fmtHora(item.end_time)}</p>
+                <p style={{fontWeight:700,fontSize:14}}>{item.title}</p>
+                {item.location && <p style={{fontSize:12,color:'var(--muted)',marginTop:1}}>{item.location}</p>}
+              </div>
+              <span className="icon icon-sm" style={{color:'var(--muted-light)',marginRight:12,flexShrink:0}}>chevron_right</span>
+            </div>
+          ))}
+        </>
+      )}
+
       {/* Filtros */}
       {total > 0 && (
         <div style={{display:'flex',gap:6,marginTop:12,marginBottom:8,overflowX:'auto',scrollbarWidth:'none'}}>
@@ -237,7 +296,7 @@ export default function MinhasAtividades({ profile }: { profile: Profile }) {
 
       {/* Lista de atividades escaladas */}
       {total > 0 && <div className="section-label" style={{marginTop:8}}>Minhas escalas</div>}
-      {total === 0 && meusAfilhados.length === 0 ? (
+      {total === 0 && meusAfilhados.length === 0 && cronoAtividades.length === 0 ? (
         <div className="empty">
           <div className="empty-icon"><span className="icon" style={{color:'var(--muted-light)'}}>assignment</span></div>
           <p className="empty-title">Nenhuma atividade</p>
@@ -298,7 +357,11 @@ export default function MinhasAtividades({ profile }: { profile: Profile }) {
               </div>
             )}
 
-            {detalhe.status !== 'concluido' ? (
+            {detalhe.id.startsWith('cron-') ? (
+              <div style={{textAlign:'center',padding:'10px',marginBottom:8,background:'var(--bg)',borderRadius:10}}>
+                <span style={{color:'var(--muted)',fontSize:13}}>Definido no Cronograma — atualiza automaticamente.</span>
+              </div>
+            ) : detalhe.status !== 'concluido' ? (
               <button className="btn btn-primary btn-full" style={{marginBottom:8,display:'flex',alignItems:'center',justifyContent:'center',gap:6}}
                 onClick={()=>concluir(detalhe.id)}>
                 <span className="icon icon-sm">check_circle</span> Marcar como concluída
