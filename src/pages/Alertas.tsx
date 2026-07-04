@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { fmtDataHora, isAdmin, isLider } from '../utils'
 import { useEvento } from '../hooks/useEvento'
+import Seletor from '../components/Seletor'
 import type { Profile } from '../App'
 
 type Alerta = { id:string; title:string; message:string; priority:string; created_at:string; target_type:string; requires_read:boolean }
@@ -163,19 +164,21 @@ export default function Alertas({ profile }: { profile?: Profile }) {
               </div>
               <div className="form-grid-2">
                 <div className="form-group"><label className="form-label">Prioridade</label>
-                  <select className="form-select" value={form.priority} onChange={e=>setForm(f=>({...f,priority:e.target.value}))}>
-                    <option value="baixa">Baixa</option>
-                    <option value="info">Informativo</option>
-                    <option value="important">Importante</option>
-                    <option value="urgent">Urgente</option>
-                    {profile && isAdmin(profile.user_role) && <option value="critico">Critico (trava tela)</option>}
-                  </select>
+                  <Seletor titulo="Prioridade" value={form.priority} onChange={v=>setForm(f=>({...f,priority:v}))}
+                    opcoes={[
+                      {value:'baixa',label:'Baixa'},
+                      {value:'info',label:'Informativo'},
+                      {value:'important',label:'Importante'},
+                      {value:'urgent',label:'Urgente'},
+                      ...(profile && isAdmin(profile.user_role) ? [{value:'critico',label:'Crítico (trava tela)'}] : []),
+                    ]}/>
                 </div>
                 <div className="form-group"><label className="form-label">Destino</label>
-                  <select className="form-select" value={form.target_type} onChange={e=>setForm(f=>({...f,target_type:e.target.value}))}>
-                    {profile && isAdmin(profile.user_role) && <option value="all">Todos</option>}
-                    <option value="team">Minha equipe</option>
-                  </select>
+                  <Seletor titulo="Destino" value={form.target_type} onChange={v=>setForm(f=>({...f,target_type:v}))}
+                    opcoes={[
+                      ...(profile && isAdmin(profile.user_role) ? [{value:'all',label:'Todos'}] : []),
+                      {value:'team',label:'Minha equipe'},
+                    ]}/>
                 </div>
               </div>
               <button type="submit" className="btn btn-primary btn-full" disabled={salvando}>

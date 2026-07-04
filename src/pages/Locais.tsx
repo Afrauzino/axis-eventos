@@ -4,6 +4,7 @@ import SubTabs from '../components/SubTabs'
 import { isAdmin } from '../utils'
 import UploadFoto from '../components/UploadFoto'
 import EmojiGrid from '../components/EmojiGrid'
+import Seletor from '../components/Seletor'
 import { useEvento } from '../hooks/useEvento'
 import { usePermissao } from '../hooks/usePermissao'
 import type { Profile } from '../App'
@@ -145,9 +146,8 @@ export default function Locais({ profile }: { profile?: Profile }) {
               </div>
               <div className="form-grid-2">
                 <div className="form-group"><label className="form-label">Tipo</label>
-                  <select className="form-select" value={form.tipo} onChange={e=>setForm(f=>({...f,tipo:e.target.value}))}>
-                    {TIPOS.map(([v,l])=><option key={v} value={v}>{l}</option>)}
-                  </select>
+                  <Seletor titulo="Tipo do local" value={form.tipo} onChange={v=>setForm(f=>({...f,tipo:v}))}
+                    opcoes={TIPOS.map(([v,l])=>({value:v,label:l}))}/>
                 </div>
                 <div className="form-group"><label className="form-label">Capacidade</label>
                   <input className="form-input" type="number" placeholder="Ex: 50" value={form.capacidade} onChange={e=>setForm(f=>({...f,capacidade:e.target.value}))}/>
@@ -169,10 +169,8 @@ export default function Locais({ profile }: { profile?: Profile }) {
                 </div>
               </div>
               <div className="form-group"><label className="form-label">Equipe responsavel</label>
-                <select className="form-select" value={form.equipe_responsavel_id} onChange={e=>setForm(f=>({...f,equipe_responsavel_id:e.target.value}))}>
-                  <option value="">Nenhuma</option>
-                  {equipes.map(e=><option key={e.id} value={e.id}>{e.name}</option>)}
-                </select>
+                <Seletor titulo="Equipe responsável" placeholder="Nenhuma" value={form.equipe_responsavel_id} onChange={v=>setForm(f=>({...f,equipe_responsavel_id:v}))}
+                  opcoes={[{value:'',label:'Nenhuma'}, ...equipes.map(e=>({value:e.id,label:e.name}))]}/>
               </div>
               <div className="form-group"><label className="form-label">Observacoes</label>
                 <textarea className="form-textarea" value={form.observacoes} onChange={e=>setForm(f=>({...f,observacoes:e.target.value}))} style={{minHeight:60}}/>

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import EmojiGrid from '../components/EmojiGrid'
 import PrintOverlay from '../components/PrintOverlay'
+import Seletor from '../components/Seletor'
 import { useEvento } from '../hooks/useEvento'
 import { usePermissao } from '../hooks/usePermissao'
 import { isAdmin } from '../utils'
@@ -202,10 +203,10 @@ export default function Cozinha({ profile }: { profile?: Profile }) {
             <div style={{width:36,height:4,background:'var(--border)',borderRadius:2,margin:'12px auto 16px'}}/>
             <p style={{fontSize:17,fontWeight:800,marginBottom:14}}>{editCard?'Editar cardápio':'Novo cardápio'}</p>
             <label className="form-label">Tipo de refeição</label>
-            <select className="form-input" value={formCard.refeicao_tipo_id} onChange={e=>setFormCard(f=>({...f,refeicao_tipo_id:e.target.value}))} style={{marginBottom:12}}>
-              <option value="">Selecione...</option>
-              {tipos.map(t=><option key={t.id} value={t.id}>{t.nome}</option>)}
-            </select>
+            <div style={{marginBottom:12}}>
+              <Seletor titulo="Tipo de refeição" placeholder="Selecione..." value={formCard.refeicao_tipo_id} onChange={v=>setFormCard(f=>({...f,refeicao_tipo_id:v}))}
+                opcoes={tipos.map(t=>({value:t.id,label:t.nome}))}/>
+            </div>
             <label className="form-label">Título (opcional)</label>
             <input className="form-input" placeholder="Ex: Almoço de domingo" value={formCard.titulo} onChange={e=>setFormCard(f=>({...f,titulo:e.target.value}))} style={{marginBottom:12}}/>
             <label className="form-label">Itens do cardápio</label>
