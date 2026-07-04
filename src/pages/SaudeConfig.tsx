@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import SubTabs from '../components/SubTabs'
+import Seletor from '../components/Seletor'
 import { isAdmin } from '../utils'
 import { useEvento } from '../hooks/useEvento'
 import type { Profile } from '../App'
@@ -42,9 +43,9 @@ export default function SaudeConfig({ profile }: { profile?: Profile }) {
       <div style={{background:'white',borderRadius:12,padding:'16px',boxShadow:'var(--shadow-sm)',marginBottom:16}}>
         <div className="form-group">
           <label className="form-label">Hora de corte (encerramento das doses)</label>
-          <select className="form-select" value={corte} disabled={!canEdit} onChange={e=>setCorte(parseInt(e.target.value))}>
-            {Array.from({length:24}, (_,h)=><option key={h} value={h}>{String(h).padStart(2,'0')}:00</option>)}
-          </select>
+          <Seletor titulo="Hora de corte" placeholder="Selecionar hora" disabled={!canEdit}
+            value={String(corte)} onChange={v=>setCorte(parseInt(v))}
+            opcoes={Array.from({length:24}, (_,h)=>({value:String(h), label:`${String(h).padStart(2,'0')}:00`}))}/>
         </div>
         {canEdit && (
           <button className="btn btn-primary btn-full" onClick={salvar} disabled={salvando} style={{marginTop:4}}>

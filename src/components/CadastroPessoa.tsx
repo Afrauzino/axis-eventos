@@ -6,6 +6,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import UploadFoto from './UploadFoto'
+import Seletor from './Seletor'
 
 export type MedCtrl = {
   nome:string; tipo:'comprimido'|'gotas'|'outros'
@@ -344,11 +345,9 @@ export default function CadastroPessoa({
       <div className="form-grid-2">
         <div className="form-group">
           <label className="form-label">Sexo</label>
-          <select className="form-select" value={form.sexo} onChange={e=>s('sexo',e.target.value)} disabled={modoSoLeitura}>
-            <option value="">Selecionar</option>
-            <option value="M">Masculino</option>
-            <option value="F">Feminino</option>
-          </select>
+          <Seletor titulo="Sexo" placeholder="Selecionar" disabled={modoSoLeitura}
+            value={form.sexo} onChange={v=>s('sexo',v)}
+            opcoes={[{value:'M',label:'Masculino'},{value:'F',label:'Feminino'}]}/>
         </div>
         <div className="form-group">
           <label className="form-label">Nascimento</label>
@@ -407,10 +406,9 @@ export default function CadastroPessoa({
         </div>
         <div className="form-group">
           <label className="form-label">Estado</label>
-          <select className="form-select" value={form.estado} onChange={e=>s('estado',e.target.value)} disabled={modoSoLeitura}>
-            <option value="">UF</option>
-            {['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO'].map(uf=><option key={uf} value={uf}>{uf}</option>)}
-          </select>
+          <Seletor titulo="Estado (UF)" placeholder="UF" sheet disabled={modoSoLeitura}
+            value={form.estado} onChange={v=>s('estado',v)}
+            opcoes={[{value:'',label:'Nenhum'}, ...['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO'].map(uf=>({value:uf,label:uf}))]}/>
         </div>
       </div>
 
@@ -427,9 +425,8 @@ export default function CadastroPessoa({
       {showStatus && (
         <div className="form-group">
           <label className="form-label">Status</label>
-          <select className="form-select" value={form.status} onChange={e=>s('status',e.target.value)} disabled={modoSoLeitura}>
-            {STATUS_OPTS.map(o=><option key={o.value} value={o.value}>{o.label}</option>)}
-          </select>
+          <Seletor titulo="Status" disabled={modoSoLeitura}
+            value={form.status} onChange={v=>s('status',v)} opcoes={STATUS_OPTS}/>
         </div>
       )}
 
@@ -437,10 +434,9 @@ export default function CadastroPessoa({
         <div className="form-group">
           <label className="form-label">Equipe de interesse</label>
           <p style={{fontSize:11,color:'var(--muted)',marginBottom:4}}>Sujeito a aprovação do administrador</p>
-          <select className="form-select" value={form.team_pref} onChange={e=>s('team_pref',e.target.value)} disabled={modoSoLeitura}>
-            <option value="">Nenhuma preferência</option>
-            {equipes.map(e=><option key={e.id} value={e.id}>{e.name}</option>)}
-          </select>
+          <Seletor titulo="Equipe de interesse" placeholder="Nenhuma preferência" disabled={modoSoLeitura}
+            value={form.team_pref} onChange={v=>s('team_pref',v)}
+            opcoes={[{value:'',label:'Nenhuma preferência'}, ...equipes.map(e=>({value:e.id,label:e.name}))]}/>
         </div>
       )}
 
