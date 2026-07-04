@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import PrintOverlay from '../components/PrintOverlay'
 import UploadFoto from '../components/UploadFoto'
+import PersonSelect from '../components/PersonSelect'
 import { formatName, getInitials, isAdmin, canEditPessoas } from '../utils'
 import { useEvento } from '../hooks/useEvento'
 import { usePermissao } from '../hooks/usePermissao'
@@ -15,7 +16,7 @@ import type { Profile } from '../App'
 type Pessoa = {
   id:string; name:string; phone:string|null; church:string|null
   role_type:string; status:string; photo_url:string|null
-  invite_code:string|null; user_id:string|null
+  invite_code:string|null; user_id:string|null; conhecido_por_id:string|null
 }
 
 const ROLES = [
@@ -32,7 +33,7 @@ export default function Cadastros({ profile }: { profile: Profile }) {
   const [erro, setErro]       = useState('')
   const [busca, setBusca]     = useState('')
   const [filtroRole, setFiltroRole] = useState('todos')
-  const [form, setForm]       = useState<{name:string;phone:string;church:string;role_type:string;photo_url:string|null}>({ name:'', phone:'', church:'', role_type:'encounterer', photo_url:null })
+  const [form, setForm]       = useState<{name:string;phone:string;church:string;role_type:string;photo_url:string|null;conhecido_por_id:string|null}>({ name:'', phone:'', church:'', role_type:'encounterer', photo_url:null, conhecido_por_id:null })
   const [editando, setEditando] = useState<Pessoa|null>(null)
   const [copiadoId, setCopiadoId] = useState<string|null>(null)
   const [imprimir, setImprimir] = useState(false)
@@ -54,7 +55,7 @@ export default function Cadastros({ profile }: { profile: Profile }) {
   async function carregar() {
     if (!evento) return
     setLoading(true)
-    const { data } = await supabase.from('people').select('id,name,phone,church,role_type,status,photo_url,invite_code,user_id')
+    const { data } = await supabase.from('people').select('id,name,phone,church,role_type,status,photo_url,invite_code,user_id,conhecido_por_id')
       .eq('event_id', evento.id).order('name')
     setLista(data ?? [])
     setLoading(false)
@@ -78,6 +79,7 @@ export default function Cadastros({ profile }: { profile: Profile }) {
         church: form.church || null,
         role_type: form.role_type,
         photo_url: form.photo_url || null,
+        conhecido_por_id: form.role_type==='encounterer' ? (form.conhecido_por_id || null) : null,
       }).eq('id', editando.id)
       error = r.error
     } else {
@@ -87,6 +89,7 @@ export default function Cadastros({ profile }: { profile: Profile }) {
         church: form.church || null,
         role_type: form.role_type,
         photo_url: form.photo_url || null,
+        conhecido_por_id: form.role_type==='encounterer' ? (form.conhecido_por_id || null) : null,
         status: 'inscrito',
         event_id: evento.id,
         invite_code: code,
@@ -95,7 +98,7 @@ export default function Cadastros({ profile }: { profile: Profile }) {
     }
     if (error) { setErro('Erro: ' + error.message); setSalvando(false); return }
     setModal(false); setSalvando(false); setEditando(null)
-    setForm({ name:'', phone:'', church:'', role_type:'encounterer', photo_url:null })
+    setForm({ name:'', phone:'', church:'', role_type:'encounterer', photo_url:null, conhecido_por_id:null })
     carregar()
   }
 
@@ -206,7 +209,7 @@ export default function Cadastros({ profile }: { profile: Profile }) {
             {/* Ações */}
             {canEdit && (
               <div style={{display:'flex',flexShrink:0}}>
-                <button onClick={()=>{setErro('');setEditando(p);setForm({name:p.name,phone:p.phone??'',church:(p as any).church??'',role_type:p.role_type,photo_url:p.photo_url??null});setModal(true)}}
+                <button onClick={()=>{setErro('');setEditando(p);setForm({name:p.name,phone:p.phone??'',church:(p as any).church??'',role_type:p.role_type,photo_url:p.photo_url??null,conhecido_por_id:p.conhecido_por_id??null});setModal(true)}}
                   style={{background:'none',border:'none',color:'var(--primary)',cursor:'pointer',padding:'8px 10px',fontFamily:'inherit',display:'flex',alignItems:'center'}}
                   title="Editar">
                   <span className="icon icon-sm">edit</span>
@@ -223,7 +226,7 @@ export default function Cadastros({ profile }: { profile: Profile }) {
       })}
 
       {/* FAB */}
-      {canEdit && <button className="fab" onClick={()=>{setErro('');setEditando(null);setForm({name:'',phone:'',church:'',role_type:'encounterer',photo_url:null});setModal(true)}}><span className="icon">add</span></button>}
+      {canEdit && <button className="fab" onClick={()=>{setErro('');setEditando(null);setForm({name:'',phone:'',church:'',role_type:'encounterer',photo_url:null,conhecido_por_id:null});setModal(true)}}><span className="icon">add</span></button>}
 
       {/* Modal pré-cadastro */}
       {modal && (
@@ -286,6 +289,20 @@ export default function Cadastros({ profile }: { profile: Profile }) {
                   <input className="form-input" value={form.church} onChange={e=>setForm(f=>({...f,church:e.target.value}))} placeholder="Nome da igreja"/>
                 </div>
               </div>
+
+              {/* Encontreiro que conhece o encontrista (só p/ encontrista) */}
+              {form.role_type==='encounterer' && (
+                <div className="form-group">
+                  <PersonSelect
+                    label="Encontreiro que conhece"
+                    pessoas={lista.filter(p=>p.role_type==='worker' && p.id!==editando?.id)}
+                    value={form.conhecido_por_id ?? ''}
+                    onChange={id=>setForm(f=>({...f,conhecido_por_id:id||null}))}
+                    placeholder="Selecionar encontreiro..."
+                  />
+                  <p className="form-hint" style={{marginTop:6}}>Opcional. Um encontreiro que já conhece este encontrista.</p>
+                </div>
+              )}
 
               <div style={{background:'var(--primary-light)',borderRadius:10,padding:'10px 12px',marginBottom:16,display:'flex',alignItems:'center',gap:8}}>
                 <span className="icon icon-sm" style={{color:'var(--primary)'}}>key</span>
