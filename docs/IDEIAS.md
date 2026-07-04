@@ -149,3 +149,27 @@ Limitações assumidas (melhor alternativa feita):
 - **[FUTURO] Alguns testes de fumaça** (build/rotas) p/ não quebrar em mudanças futuras.
 - **#3b tecla fantasma "2"/"W"** ao abrir/fechar teclado criando equipe: sem causa no código; precisa repro no
   celular (qual tela, campo e teclado).
+
+### 2026-07-04 — IDEIAS CRIATIVAS DA CLAUDE (sugestões próprias, p/ discutir)
+Pensadas pro contexto real (evento ao vivo, retiro, público variado). Reaproveitam módulos que já existem.
+- **Modo Painel/Projetor (tela cheia):** juntar cronômetro grande + "acontecendo agora/próximo" + carrossel numa
+  tela pra por num telão/TV do evento. (Reusa Cronograma + HomeCarousel.)
+- **Barra "Acontecendo agora":** faixa fixa mostrando o bloco atual do cronograma p/ todos ("agora: Louvor · depois:
+  Ministração"). Corta a pergunta "o que é agora?".
+- **Check-in/presença por atividade e refeição:** marcar presença (lista rápida ou QR do crachá). Cozinha sabe
+  quantos vão comer; segurança sabe quem está. (Reusa Crachá + Cozinha.)
+- **Restrições alimentares → resumo automático p/ Cozinha:** a Saúde já coleta alergias/restrições; gerar contagem
+  automática (X vegetarianos, Y alérgicos) p/ a equipe da cozinha.
+- **Carta/áudio do padrinho p/ afilhado (Correio digital):** além do checklist, permitir uma mensagem/áudio entregue
+  no fim — muito no espírito do encontro.
+- **Botão SOS/emergência:** líder/enfermaria dispara alerta rápido (pessoa + local). Reusa alertas críticos.
+- **Galeria/retrospectiva do evento:** equipe de mídia sobe fotos; no fim, uma retrospectiva. Valor emocional.
+- **Modelo de evento (1 clique):** além de duplicar, ter um "template" de cronograma/equipes p/ montar evento novo
+  em minutos.
+- **[ENGENHARIA — dívida técnica importante] Unificar permissões:** existem DUAS tabelas (`permissions` inglês no
+  RLS vs `permissoes` português no app) e ações divergentes (`edit/create` vs `editar`). Foi a causa do bug do
+  "criar". Unificar de vez evita novos bugs. É a melhoria técnica mais valiosa.
+- **Toasts + erros amigáveis:** trocar alerts crus por avisos bonitos e mensagens claras ("Salvo!", "Sem internet").
+- **Offline de verdade:** em sítio de retiro o sinal é ruim; melhorar o cache do PWA p/ ver cronograma/crachá/ficha
+  sem internet.
+- **Acessibilidade:** modo fonte grande + alto contraste p/ público mais velho.
