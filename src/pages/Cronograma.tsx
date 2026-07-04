@@ -215,6 +215,12 @@ export default function Cronograma({ profile }: { profile?: Profile }) {
       extra.cron_estado = 'encerrado'
     }
     await supabase.from('cronograma_eventos').update(extra).eq('id', id)
+    // Conclusão de teatro/ministração acontece SÓ pelo cronograma → propaga
+    if (status === 'concluido') {
+      const item = itens.find(i => i.id === id)
+      try { if (item?.theater_id)     await supabase.from('theaters').update({ status:'concluido' }).eq('id', item.theater_id) } catch {}
+      try { if (item?.ministracao_id) await supabase.from('ministrações').update({ status:'concluido' }).eq('id', item.ministracao_id) } catch {}
+    }
     setItens(prev => prev.map(i => i.id === id ? { ...i, ...extra } : i))
     setDetalhe(prev => prev?.id === id ? { ...prev, ...extra } : prev)
   }
@@ -267,16 +273,24 @@ export default function Cronograma({ profile }: { profile?: Profile }) {
   }
 
   const mesmodia = (iso: string) => new Date(iso).toDateString() === dataSel.toDateString()
-  // "todos" mostra itens não concluídos de todos os dias; concluídos só no filtro
-  const filtrados = filtro === 'todos'
-    ? itens.filter(i => i.status !== 'concluido' && i.cron_estado !== 'encerrado')
-    : itens.filter(i => mesmodia(i.hora_inicio) && i.status === filtro)
+  // Concluído = por qualquer via (botão Concluir OU cronômetro encerrado)
+  const ehConcluido = (i: Item) => i.status === 'concluido' || i.cron_estado === 'encerrado'
+  // "todos": não concluídos de todos os dias.
+  // "concluido": TODOS os concluídos, de QUALQUER dia e por qualquer via.
+  // "planejado"/"em_andamento": só do dia selecionado.
+  const filtrados =
+    filtro === 'todos'     ? itens.filter(i => !ehConcluido(i))
+    : filtro === 'concluido' ? itens.filter(ehConcluido)
+    : itens.filter(i => mesmodia(i.hora_inicio) && i.status === filtro && !ehConcluido(i))
+
+  // Filtros que juntam vários dias mostram a data no cabeçalho do grupo
+  const multiDia = filtro === 'todos' || filtro === 'concluido'
 
   // Agrupar por hora
   const grupos: Record<string, Item[]> = {}
   filtrados.forEach(item => {
     const d = new Date(item.hora_inicio)
-    const key = filtro === 'todos'
+    const key = multiDia
       ? `${d.toLocaleDateString('pt-BR', {day:'2-digit',month:'short'})} · ${d.getHours()}h`
       : `${d.getHours()}h`
     if (!grupos[key]) grupos[key] = []
@@ -347,7 +361,7 @@ export default function Cronograma({ profile }: { profile?: Profile }) {
                 <div className="sched-bar" style={{background: tiposDB.find(t=>t.nome.toLowerCase()===item.tipo.toLowerCase())?.cor ?? TIPO_COR_FALLBACK[item.tipo] ?? 'var(--primary)'}} />
                 <div className="sched-body">
                   <div className="sched-time">{fmtHora(item.hora_inicio)} — {fmtHora(item.hora_fim)}</div>
-                  <div className="sched-title" style={item.status==='concluido'?{textDecoration:'line-through',opacity:0.6}:undefined}>{min?.titulo ?? item.titulo}{item.status==='concluido' && <span style={{marginLeft:6,fontSize:11,color:'var(--success)'}}>✓ concluído</span>}</div>
+                  <div className="sched-title" style={ehConcluido(item)?{textDecoration:'line-through',opacity:0.6}:undefined}>{min?.titulo ?? item.titulo}{ehConcluido(item) && <span style={{marginLeft:6,fontSize:11,color:'var(--success)'}}>✓ concluído</span>}</div>
                   <div className="sched-desc">
                     {tiposDB.find(t=>t.nome.toLowerCase()===item.tipo.toLowerCase())?.nome ?? item.tipo}
                     {item.local ? ` · ${item.local}` : ''}
@@ -575,7 +589,7 @@ export default function Cronograma({ profile }: { profile?: Profile }) {
                       <div style={{width:5,background:cor,flexShrink:0}}/>
                       <div style={{padding:'8px 12px',flex:1}}>
                         <p style={{fontSize:12,color:'#6b7280'}}>{fmtHora(item.hora_inicio)} — {fmtHora(item.hora_fim)}</p>
-                        <p style={{fontWeight:700,fontSize:14,...(item.status==='concluido'?{textDecoration:'line-through',opacity:0.6}:{})}}>{min?.titulo ?? item.titulo}</p>
+                        <p style={{fontWeight:700,fontSize:14,...(ehConcluido(item)?{textDecoration:'line-through',opacity:0.6}:{})}}>{min?.titulo ?? item.titulo}</p>
                         {/* linha resumo: no modo "com detalhes" não repete ministrante/teatro (evita duplicidade) */}
                         <p style={{fontSize:12,color:'#6b7280'}}>
                           {tipoNome}{item.local?` · ${item.local}`:''}{!det&&ministrante?` · ${ministrante.name.split(' ')[0]}`:''}{!det&&tea?` · ${tea.nome}`:''}

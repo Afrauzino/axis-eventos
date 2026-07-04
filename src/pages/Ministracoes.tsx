@@ -91,7 +91,10 @@ export default function Ministracoes({ profile }: { profile?: Profile }) {
   }
 
   async function mudarStatusMin(id: string, statusAtual: string) {
-    const ordem = ['planejado','em_andamento','concluido','cancelado']
+    // Concluir ministração é SÓ pela tela de Cronograma. Aqui o clique só alterna
+    // planejado → em andamento → cancelado, sem passar por "concluído".
+    if (statusAtual === 'concluido') { toast.info('A conclusão da ministração é feita pela tela de Cronograma.'); return }
+    const ordem = ['planejado','em_andamento','cancelado']
     const idx   = ordem.indexOf(statusAtual)
     const prox  = ordem[(idx + 1) % ordem.length]
     await supabase.from('ministrações').update({ status: prox }).eq('id', id)

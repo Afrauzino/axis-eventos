@@ -5,6 +5,13 @@ type Item = {
   id:string; titulo:string; hora_inicio:string; hora_fim:string
   duracao_minutos?:number|null; cron_iniciado_em?:string|null
   cron_ajuste_segundos?:number|null; cron_estado?:string|null; cron_decorrido_segundos?:number|null
+  theater_id?:string|null; ministracao_id?:string|null
+}
+
+// Conclusão de teatro/ministração acontece SÓ pelo cronograma → propaga o "concluído"
+async function concluirVinculados(item: Item) {
+  try { if (item.theater_id)     await supabase.from('theaters').update({ status:'concluido' }).eq('id', item.theater_id) } catch {}
+  try { if (item.ministracao_id) await supabase.from('ministrações').update({ status:'concluido' }).eq('id', item.ministracao_id) } catch {}
 }
 
 function duracaoBaseSeg(item: Item): number {
@@ -74,7 +81,7 @@ export default function CronometroPopup({ item, podeControlar, onClose, onUpdate
   async function reiniciar(){ setIniciadoEm(null); setAjuste(0); setAcumulado(0); setEstado('parado'); setAgora(Date.now()); await salvar({cron_iniciado_em:null, cron_estado:'parado', cron_ajuste_segundos:0, cron_decorrido_segundos:0}) }
   async function ajustar(deltaSeg:number){ const novo=ajuste+deltaSeg; setAjuste(novo); await salvar({cron_ajuste_segundos:novo}) }
   async function adicionarDigitado(){ const m=Number(addMin); if(!m) return; const novo=ajuste+m*60; setAjuste(novo); setAddMin(''); await salvar({cron_ajuste_segundos:novo}) }
-  async function encerrar(){ setEstado('encerrado'); await salvar({cron_estado:'encerrado', status:'concluido'}); onClose() }
+  async function encerrar(){ setEstado('encerrado'); await salvar({cron_estado:'encerrado', status:'concluido'}); await concluirVinculados(item); onClose() }
 
   let cor = 'var(--primary)'
   if (pct >= 95) cor = '#C53030'

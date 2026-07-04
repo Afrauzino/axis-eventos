@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase'
 import SubTabs from '../components/SubTabs'
 import EmojiGrid from '../components/EmojiGrid'
 import Seletor from '../components/Seletor'
+import { toast } from '../components/Toast'
 import { isAdmin } from '../utils'
 import { useEvento } from '../hooks/useEvento'
 import { usePermissao } from '../hooks/usePermissao'
@@ -65,7 +66,10 @@ export default function TeatroLista({ profile }: { profile?: Profile }) {
   }
 
   async function mudarStatusTeatro(id: string, statusAtual: string) {
-    const ordem = ['planejamento','ensaio','pronto','concluido']
+    // Concluir teatro é SÓ pela tela de Cronograma. Aqui o clique só avança
+    // ensaio (planejamento → ensaio → pronto) e não chega em "concluído".
+    if (statusAtual === 'concluido') { toast.info('A conclusão do teatro é feita pela tela de Cronograma.'); return }
+    const ordem = ['planejamento','ensaio','pronto']
     const idx   = ordem.indexOf(statusAtual)
     const prox  = ordem[(idx + 1) % ordem.length]
     await supabase.from('theaters').update({ status: prox }).eq('id', id)
