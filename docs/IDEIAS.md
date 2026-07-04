@@ -70,18 +70,18 @@ _Detalhes e "onde mexer" em `docs/HANDOFF.md`._
    global no código; precisa REPRO no celular (qual tela, qual campo, qual teclado). PENDENTE repro.
 4. [x] **Boas-vindas**: 1 botão liga/desliga que controla as DUAS telas. [feito — switch no card de boas-vindas]
 5. [x] **Dashboard**: removido "Acesso rápido"; indicadores só p/ Admin e Financeiro. [feito]
-6. [ ] **Central de notificações (sino)**: escalas, alterações, avisos, mensagens, comunicados, "você foi
-   escalado p/ teatro", "adicionado em equipe", "atividade alterada" + lembretes automáticos antes das
-   atividades (ex.: 1h antes). (Aviso de aprovação já ok.)
-7. [ ] **Medicamentos**: 1º acesso sem nada de saúde (já feito); botão "Adicionar alarmes ao celular" que gera
-   lembretes (nome, medicamento, dose, horário) ~5–10 min antes. Android/iPhone/PWA (ICS/calendário se nativo
-   não der).
+6. [x] **Central de notificações (sino)**: painel junta escalas, cronograma (ministrante/elenco), equipes,
+   avisos e aprovações; lembrete "começa em breve" (≤1h); "lido" no aparelho; badge de não-lidas. [feito]
+   OBS: lembrete/push automático real (fora do app) exige backend/cron — feito o melhor sem servidor.
+7. [x] **Medicamentos**: botão "Adicionar alarmes ao celular" gera .ics (nome/medicamento/dose/horário),
+   alarme ~8 min antes; abre no calendário do Android/iPhone. [feito]
 8. [x] **Tela de visitante**: logo aparece na tela de boas-vindas + 3ª variante "Visitante" configurável;
    visitante sem cadastro cai na tela própria. [feito]
 9. [x] **Ministrantes**: só Encontreiro pode ser ministrante. [feito — PersonSelect filtra role_type=worker]
-10. [ ] **Ministrações**: remover data/horário/horário final/duração (agenda só no Cronograma).
-11. [ ] **Cronograma → atividades pessoais**: ministrante/elenco entram automaticamente nas atividades pessoais
-    da pessoa, com horário vindo do Cronograma.
+10. [x] **Ministrações**: sem data/horário/fim/duração no form/lista/detalhe/impressão; agenda só no Cronograma
+    (mantém hora-base interna p/ não quebrar o banco). [feito]
+11. [x] **Cronograma → atividades pessoais**: ministrante/elenco aparecem em "Minha agenda" (Minhas Atividades)
+    com o horário do Cronograma. [feito]
 12. [x] **Cronograma**: botão "Adicionar" ok [feito]; sincronização em tempo real (Supabase Realtime em
     cronograma_eventos; popup de quem acompanha sincroniza). **Rodar sql/22_realtime_cronograma.sql**. [feito]
 13. [x] **Tema**: barra superior do celular segue a cor do sistema (theme-color dinâmico em tema.ts). [feito]
@@ -95,3 +95,15 @@ _Detalhes e "onde mexer" em `docs/HANDOFF.md`._
     "Copiar msg" monta a mensagem. [feito]
 19. [x] **Encontristas → "conheço esta pessoa"**: encontreiro marca (nome+foto+WhatsApp); vários marcam; lista
     no perfil. **Rodar sql/23_encontrista_conhecidos.sql**. [feito]
+
+### ✅ FECHAMENTO 2026-07-03 — tudo publicado online
+SQLs pra rodar no Supabase (SQL Editor) quando puder — o app NÃO quebra sem eles, só as partes esperam:
+- `sql/21_storage_buckets.sql`  → foto de ícone da equipe (#3a)
+- `sql/22_realtime_cronograma.sql` → cronômetro em tempo real (#12)
+- `sql/23_encontrista_conhecidos.sql` → "conheço esta pessoa" (#19)
+Pendências que dependem do Anderson:
+- #3b tecla fantasma "2"/"W": sem causa no código; precisa reproduzir no celular (tela/campo/teclado).
+- #15: DESCARTADO (não fazer).
+Limitações assumidas (melhor alternativa feita):
+- #6 push/lembrete que toca com o app FECHADO precisa de backend/cron (não tem servidor) — no app mostra tudo + "começa em breve".
+- #7 alarme nativo em lote não existe na web — geramos .ics (calendário) que funciona em Android/iPhone.
