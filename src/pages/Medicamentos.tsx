@@ -4,6 +4,7 @@ import SubTabs from '../components/SubTabs'
 import PessoaSaudeResumo from '../components/PessoaSaudeResumo'
 import { getInitials, fmtHora, fmtDataHora } from '../utils'
 import { useEvento } from '../hooks/useEvento'
+import { gerarICS, baixarICS, type EventoICS } from '../lib/ics'
 import type { Profile } from '../App'
 
 // Doses vêm AUTOMÁTICAS da Ficha Médica (med_agenda). Sem agendamento manual.
@@ -35,6 +36,26 @@ export default function Medicamentos({ profile }: { profile?: Profile }) {
   }
 
   function getPessoa(id:string) { return pessoas.find(p=>p.id===id) }
+
+  // #7 — gera alarmes (.ics) de TODAS as doses pendentes; toca ~8 min antes
+  function exportarAlarmes() {
+    const pend = doses.filter(d => !d.entregue)
+    if (pend.length === 0) { alert('Não há doses pendentes para gerar alarmes.'); return }
+    const eventos: EventoICS[] = pend.map(d => {
+      const pessoa = getPessoa(d.person_id)?.name ?? 'Participante'
+      const hora = fmtHora(d.horario)
+      return {
+        uid: `med-${d.id}@axis-eventos`,
+        inicio: new Date(d.horario),
+        duracaoMin: 15,
+        alarmeAntesMin: 8,
+        titulo: `💊 ${d.nome}${d.dosagem ? ` (${d.dosagem})` : ''} — ${pessoa}`,
+        descricao: `Pessoa: ${pessoa}\nMedicamento: ${d.nome}${d.dosagem ? `\nDose: ${d.dosagem}` : ''}\nHorário: ${hora}`,
+      }
+    })
+    baixarICS('alarmes-medicamentos', gerarICS(eventos))
+    alert(`Gerados ${eventos.length} alarme(s).\n\nAbra o arquivo baixado para adicioná-los ao calendário do celular — eles tocam ~8 min antes de cada horário.`)
+  }
 
   async function entregar(d: Dose) {
     if (!confirm(`Confirmar entrega?\n\n${getPessoa(d.person_id)?.name} · ${d.nome}${d.dosagem?` · ${d.dosagem}`:''} · ${fmtHora(d.horario)}`)) return
@@ -86,6 +107,14 @@ export default function Medicamentos({ profile }: { profile?: Profile }) {
             <div style={{height:'100%',width:`${pct}%`,background:'white',borderRadius:99,transition:'width 0.4s'}}/>
           </div>
         </div>
+      )}
+
+      {/* #7 — Adicionar alarmes ao celular (gera .ics com lembrete ~8 min antes) */}
+      {aba==='agenda' && doses.filter(d=>!d.entregue).length>0 && (
+        <button onClick={exportarAlarmes}
+          style={{width:'100%',display:'flex',alignItems:'center',justifyContent:'center',gap:8,background:'var(--primary)',color:'white',border:'none',borderRadius:12,padding:'12px 16px',fontFamily:'inherit',fontSize:14,fontWeight:700,cursor:'pointer',marginBottom:12}}>
+          <span className="icon icon-sm">alarm_add</span> Adicionar alarmes ao celular
+        </button>
       )}
 
       {/* AGENDA — cards por pessoa (design da Logística) */}
