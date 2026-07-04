@@ -55,9 +55,14 @@ export default function Cadastros({ profile }: { profile: Profile }) {
   async function carregar() {
     if (!evento) return
     setLoading(true)
-    const { data } = await supabase.from('people').select('id,name,phone,church,role_type,status,photo_url,invite_code,user_id,conhecido_por_id')
-      .eq('event_id', evento.id).order('name')
-    setLista(data ?? [])
+    const base = 'id,name,phone,church,role_type,status,photo_url,invite_code,user_id'
+    let res: any = await supabase.from('people').select(base + ',conhecido_por_id').eq('event_id', evento.id).order('name')
+    if (res.error) {
+      // coluna conhecido_por_id ainda não existe (sql/28 não rodado) — busca sem ela p/ não sumir a lista
+      const r = await supabase.from('people').select(base).eq('event_id', evento.id).order('name')
+      res = { data: (r.data ?? []).map((p:any)=>({ ...p, conhecido_por_id: null })) }
+    }
+    setLista(res.data ?? [])
     setLoading(false)
   }
 
@@ -70,33 +75,25 @@ export default function Cadastros({ profile }: { profile: Profile }) {
     let code = ''
     for (let i=0; i<8; i++) code += chars[Math.floor(Math.random()*chars.length)]
 
-    let error
-    if (editando) {
-      // Edição: atualiza sem mexer no código
-      const r = await supabase.from('people').update({
-        name: formatName(form.name),
-        phone: form.phone || null,
-        church: form.church || null,
-        role_type: form.role_type,
-        photo_url: form.photo_url || null,
-        conhecido_por_id: form.role_type==='encounterer' ? (form.conhecido_por_id || null) : null,
-      }).eq('id', editando.id)
-      error = r.error
-    } else {
-      const r = await supabase.from('people').insert({
-        name: formatName(form.name),
-        phone: form.phone || null,
-        church: form.church || null,
-        role_type: form.role_type,
-        photo_url: form.photo_url || null,
-        conhecido_por_id: form.role_type==='encounterer' ? (form.conhecido_por_id || null) : null,
-        status: 'inscrito',
-        event_id: evento.id,
-        invite_code: code,
-      })
-      error = r.error
+    const dadosBase: any = {
+      name: formatName(form.name),
+      phone: form.phone || null,
+      church: form.church || null,
+      role_type: form.role_type,
+      photo_url: form.photo_url || null,
     }
-    if (error) { setErro('Erro: ' + error.message); setSalvando(false); return }
+    const conhecido = form.role_type==='encounterer' ? (form.conhecido_por_id || null) : null
+
+    async function gravar(comColuna: boolean) {
+      const payload = comColuna ? { ...dadosBase, conhecido_por_id: conhecido } : { ...dadosBase }
+      if (editando) return supabase.from('people').update(payload).eq('id', editando.id)
+      return supabase.from('people').insert({ ...payload, status: 'inscrito', event_id: evento!.id, invite_code: code })
+    }
+
+    let r = await gravar(true)
+    // se a coluna conhecido_por_id não existir (sql/28 não rodado), grava sem ela
+    if (r.error && /conhecido_por_id/.test(r.error.message)) r = await gravar(false)
+    if (r.error) { setErro('Erro: ' + r.error.message); setSalvando(false); return }
     setModal(false); setSalvando(false); setEditando(null)
     setForm({ name:'', phone:'', church:'', role_type:'encounterer', photo_url:null, conhecido_por_id:null })
     carregar()
