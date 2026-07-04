@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Manual de Design AXIS Eventos</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; background:#f0f2f5; color:#1a202c; line-height:1.5; padding:0 0 60px; }
+  .hero { background:linear-gradient(135deg,#00635C,#00A99D); color:#fff; padding:40px 24px 32px; text-align:center; }
+  .hero h1 { font-size:26px; font-weight:800; letter-spacing:-0.5px; }
+  .hero p { font-size:14px; opacity:.9; margin-top:6px; }
+  .wrap { max-width:520px; margin:0 auto; padding:0 16px; }
+  .sec { background:#fff; border-radius:16px; box-shadow:0 1px 6px rgba(0,0,0,.08); margin-top:20px; overflow:hidden; }
+  .sec-head { padding:16px 18px; border-bottom:1px solid #eee; display:flex; align-items:center; gap:10px; }
+  .sec-num { width:28px; height:28px; border-radius:8px; background:#00A99D; color:#fff; font-weight:800; font-size:13px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .sec-title { font-size:15px; font-weight:800; }
+  .sec-body { padding:18px; }
+  .lbl { font-size:11px; font-weight:700; color:#00897d; text-transform:uppercase; letter-spacing:.05em; margin-bottom:10px; }
+  .note { background:#EAF4EF; border:1px solid #c4e0d2; border-radius:10px; padding:12px; font-size:12.5px; color:#1a5e42; line-height:1.6; margin-top:14px; }
+  .spec { font-size:12.5px; color:#555; margin:4px 0; padding-left:16px; position:relative; }
+  .spec:before { content:'•'; position:absolute; left:4px; color:#00A99D; font-weight:800; }
+  .spec b { color:#1a202c; }
+
+  /* CARD PADRÃO */
+  .card { background:#fff; border-radius:12px; box-shadow:0 1px 5px rgba(0,0,0,.12); display:flex; overflow:hidden; margin-bottom:10px; }
+  .card-bar { width:6px; align-self:stretch; flex-shrink:0; }
+  .card-body { padding:16px 15px; flex:1; min-width:0; display:flex; gap:14px; align-items:center; }
+  .card-av { width:58px; height:58px; border-radius:50%; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:18px; overflow:hidden; }
+  .card-main { flex:1; min-width:0; }
+  .card-t { font-size:15px; font-weight:700; color:#222; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .card-s { font-size:12px; color:#999; margin-top:2px; }
+  .card-teams { display:flex; gap:6px; margin-top:8px; }
+  .card-team { width:30px; height:30px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:15px; }
+  .card-edit { width:34px; height:34px; border-radius:8px; background:#f3f3f3; display:flex; align-items:center; justify-content:center; font-size:16px; flex-shrink:0; align-self:flex-start; margin-top:2px; }
+
+  .callout { position:relative; }
+  .tag { display:inline-block; background:#1a202c; color:#fff; font-size:10px; font-weight:700; padding:2px 8px; border-radius:6px; margin:2px 4px 2px 0; }
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <h1>⚡ Manual de Design AXIS</h1>
+  <p>Todos os padrões aprovados · referência oficial</p>
+</div>
+
+<div class="wrap">
+
+  <!-- 1. CARD -->
+  <div class="sec">
+    <div class="sec-head"><div class="sec-num">1</div><div class="sec-title">Card padrão</div></div>
+    <div class="sec-body">
+      <div class="lbl">Como fica</div>
+      <div class="card">
+        <div class="card-bar" style="background:#2F855A"></div>
+        <div class="card-body">
+          <div class="card-av" style="background:#cdddee;color:#5a7a99">AF</div>
+          <div class="card-main">
+            <div class="card-t">Anderson Frauzino</div>
+            <div class="card-s">Batista Central</div>
+            <div class="card-teams"><div class="card-team" style="background:rgba(107,70,193,.14)">🎤</div></div>
+          </div>
+          <div class="card-edit">✏️</div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-bar" style="background:#6B46C1"></div>
+        <div class="card-body">
+          <div class="card-av" style="background:#6B46C1;color:#fff">MC</div>
+          <div class="card-main">
+            <div class="card-t">Maria Clara Santos</div>
+            <div class="card-s">Assembleia de Deus</div>
+            <div class="card-teams">
+              <div class="card-team" style="background:rgba(107,70,193,.14)">🎤</div>
+              <div class="card-team" style="background:rgba(214,158,46,.14)">🎭</div>
+            </div>
+          </div>
+          <div class="card-edit">✏️</div>
+        </div>
+      </div>
+      <div class="lbl" style="margin-top:16px">Especificações</div>
+      <div class="spec"><b>Barra de cor:</b> 6px, lateral esquerda, preenche a caixa toda (cima a baixo)</div>
+      <div class="spec"><b>Avatar:</b> 58px redondo — foto, emoji ou iniciais</div>
+      <div class="spec"><b>Título:</b> 15px, negrito · <b>Subtítulo:</b> 12px, cinza</div>
+      <div class="spec"><b>Emoji da equipe:</b> bolinha 30px, embaixo do subtítulo, na cor da equipe (nunca tampa a foto)</div>
+      <div class="spec"><b>Lápis ✏️:</b> canto direito, para editar</div>
+      <div class="spec"><b>Largura e altura:</b> IGUAIS em todos (regra de ouro)</div>
+      <div class="lbl" style="margin-top:16px">3 ações do card</div>
+      <div class="spec"><b>Clicar na foto</b> → amplia a foto (só pessoa: encontrista/encontreiro)</div>
+      <div class="spec"><b>Clicar no nome/corpo</b> → ver informações (com itens relacionados clicáveis)</div>
+      <div class="spec"><b>Clicar no lápis</b> → editar</div>
+      <div class="note">Exceções: Cronograma e Financeiro ganham uma barra de progresso embaixo, ficando um pouco mais altos — só por causa da barra.</div>
+    </div>
+  </div>
+
+  <!-- 2. AVATAR -->
+  <div class="sec">
+    <div class="sec-head"><div class="sec-num">2</div><div class="sec-title">Avatar (emoji ou foto)</div></div>
+    <div class="sec-body">
+      <div class="lbl">Seletor</div>
+      <div style="display:flex;gap:10px;margin-bottom:14px">
+        <div style="flex:1;padding:9px;border-radius:9px;border:2px solid #00A99D;background:#E8F8F7;color:#00635C;font-size:13px;font-weight:600;text-align:center">😀 Emoji</div>
+        <div style="flex:1;padding:9px;border-radius:9px;border:1px solid #ddd;color:#888;font-size:13px;font-weight:600;text-align:center">📷 Foto</div>
+      </div>
+      <div style="display:flex;gap:7px;flex-wrap:wrap">
+        <div style="width:38px;height:38px;border-radius:9px;border:2px solid #00A99D;display:flex;align-items:center;justify-content:center;font-size:19px">🍴</div>
+        <div style="width:38px;height:38px;border-radius:9px;background:#f4f4f4;display:flex;align-items:center;justify-content:center;font-size:19px">💰</div>
+        <div style="width:38px;height:38px;border-radius:9px;background:#f4f4f4;display:flex;align-items:center;justify-content:center;font-size:19px">🎤</div>
+        <div style="width:38px;height:38px;border-radius:9px;background:#f4f4f4;display:flex;align-items:center;justify-content:center;font-size:19px">🎭</div>
+        <div style="width:38px;height:38px;border-radius:9px;background:#f4f4f4;display:flex;align-items:center;justify-content:center;font-size:19px">⛑️</div>
+        <div style="width:38px;height:38px;border-radius:9px;background:#f4f4f4;display:flex;align-items:center;justify-content:center;font-size:19px">🎸</div>
+        <div style="width:38px;height:38px;border-radius:9px;background:#f4f4f4;display:flex;align-items:center;justify-content:center;font-size:19px">⛪</div>
+        <div style="width:38px;height:38px;border-radius:9px;background:#f4f4f4;display:flex;align-items:center;justify-content:center;font-size:19px">🙏</div>
+      </div>
+      <div class="lbl" style="margin-top:16px">Especificações</div>
+      <div class="spec"><b>92 emojis coloridos</b> organizados por categoria (comida, música, teatro, religião, dinheiro, saúde, organização, limpeza, transporte, pessoas, destaque)</div>
+      <div class="spec"><b>Emoji</b> para grupos/coisas (equipe, teatro) · <b>Foto/iniciais</b> para pessoas</div>
+      <div class="spec">Grade com rolagem quando há muitos</div>
+    </div>
+  </div>
+
+  <!-- 3. POPUP -->
+  <div class="sec">
+    <div class="sec-head"><div class="sec-num">3</div><div class="sec-title">Popup / Modal → de baixo</div></div>
+    <div class="sec-body">
+      <div class="lbl">Como fica</div>
+      <div style="background:#e8e8e6;border-radius:12px;padding:0;display:flex;align-items:flex-end;justify-content:center;min-height:150px;position:relative;overflow:hidden">
+        <div style="position:absolute;inset:0;background:rgba(0,0,0,.45)"></div>
+        <div style="background:#fff;border-radius:20px 20px 0 0;padding:18px;width:100%;box-shadow:0 -6px 24px rgba(0,0,0,.18);position:relative;z-index:1">
+          <div style="width:36px;height:4px;background:#ddd;border-radius:99px;margin:0 auto 12px"></div>
+          <div style="font-size:14px;font-weight:700;margin-bottom:10px">Novo item</div>
+          <div style="height:34px;background:#f3f3f3;border-radius:8px;margin-bottom:8px"></div>
+          <div style="background:#00A99D;color:#fff;border-radius:10px;padding:10px;font-size:13px;font-weight:600;text-align:center">Salvar</div>
+        </div>
+      </div>
+      <div class="lbl" style="margin-top:16px">Especificações</div>
+      <div class="spec"><b>Sobe da base</b> da tela, com alcinha (barrinha) no topo</div>
+      <div class="spec"><b>Fundo escurecido</b> atrás · cantos superiores arredondados (20px)</div>
+      <div class="spec">Vale para <b>TODOS</b> os popups (formulários, avisos, seleções)</div>
+    </div>
+  </div>
+
+  <!-- 4. CAIXA SELEÇÃO -->
+  <div class="sec">
+    <div class="sec-head"><div class="sec-num">4</div><div class="sec-title">Caixa de seleção</div></div>
+    <div class="sec-body">
+      <div class="lbl">Poucas opções → botões lado a lado</div>
+      <div style="display:flex;gap:8px;margin-bottom:16px">
+        <div style="flex:1;padding:10px;border-radius:9px;border:2px solid #00A99D;background:#E8F8F7;color:#00635C;font-size:12px;font-weight:600;text-align:center">💠 PIX</div>
+        <div style="flex:1;padding:10px;border-radius:9px;border:1px solid #ddd;color:#888;font-size:12px;font-weight:600;text-align:center">💵 Dinheiro</div>
+        <div style="flex:1;padding:10px;border-radius:9px;border:1px solid #ddd;color:#888;font-size:12px;font-weight:600;text-align:center">💳 Cartão</div>
+      </div>
+      <div class="lbl">Com descrição → lista vertical</div>
+      <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:16px">
+        <div style="padding:11px 13px;border-radius:9px;border:2px solid #00A99D;background:#E8F8F7;display:flex;align-items:center;gap:10px">
+          <span style="font-size:18px">👑</span><div><div style="font-size:13px;font-weight:700;color:#00635C">Administrador</div><div style="font-size:11px;color:#888">Acesso total</div></div>
+        </div>
+        <div style="padding:11px 13px;border-radius:9px;border:1px solid #eee;display:flex;align-items:center;gap:10px">
+          <span style="font-size:18px">💰</span><div><div style="font-size:13px;font-weight:600">Financeiro</div><div style="font-size:11px;color:#888">Módulo financeiro</div></div>
+        </div>
+      </div>
+      <div class="lbl">Muitas opções → abre lista de baixo</div>
+      <div style="border:1.5px solid #00A99D;border-radius:10px;padding:12px 14px;display:flex;align-items:center;justify-content:space-between">
+        <span style="font-size:13px;color:#333">🍴 Almoço</span><span style="color:#00A99D;font-size:16px">⌄</span>
+      </div>
+      <div class="note">Combina pela quantidade. NUNCA a caixa nativa cinza do celular. Sempre segue a cor do sistema.</div>
+    </div>
+  </div>
+
+  <!-- 5. SELETOR PESSOA -->
+  <div class="sec">
+    <div class="sec-head"><div class="sec-num">5</div><div class="sec-title">Seletor de pessoa</div></div>
+    <div class="sec-body">
+      <div class="lbl">Campo que abre busca de baixo</div>
+      <div style="border:1.5px solid #00A99D;border-radius:10px;padding:10px 12px;display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <div style="display:flex;align-items:center;gap:8px">
+          <div style="width:28px;height:28px;border-radius:50%;background:#6B46C1;color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700">MC</div>
+          <span style="font-size:13px;color:#333">Maria Clara</span>
+        </div>
+        <span style="color:#00A99D;font-size:16px">⌄</span>
+      </div>
+      <div style="border:1px solid #eee;border-radius:10px;overflow:hidden">
+        <div style="padding:10px 12px;display:flex;align-items:center;gap:10px;background:#E8F8F7">
+          <div style="width:32px;height:32px;border-radius:50%;background:#6B46C1;color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700">MC</div>
+          <span style="font-size:13px">Maria Clara Santos</span>
+        </div>
+        <div style="padding:10px 12px;display:flex;align-items:center;gap:10px;border-top:1px solid #f3f3f3">
+          <div style="width:32px;height:32px;border-radius:50%;background:#2F855A;color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700">JP</div>
+          <span style="font-size:13px">João Pedro Lima</span>
+        </div>
+      </div>
+      <div class="lbl" style="margin-top:16px">Especificações</div>
+      <div class="spec">Mostra quem está escolhido · ao tocar, abre busca de baixo com <b>fotos</b></div>
+      <div class="spec">Serve para escolher <b>1 pessoa</b> ou <b>vários</b></div>
+    </div>
+  </div>
+
+  <!-- 6. DATA E HORA -->
+  <div class="sec">
+    <div class="sec-head"><div class="sec-num">6</div><div class="sec-title">Data e hora → calendário visual</div></div>
+    <div class="sec-body">
+      <div style="background:#fff;border-radius:14px;box-shadow:0 1px 4px rgba(0,0,0,.1);border:1px solid #eee;padding:14px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><span style="color:#00A99D">‹</span><span style="font-size:13px;font-weight:700">Junho 2026</span><span style="color:#00A99D">›</span></div>
+        <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px;font-size:11px;text-align:center">
+          <span style="color:#bbb">D</span><span style="color:#bbb">S</span><span style="color:#bbb">T</span><span style="color:#bbb">Q</span><span style="color:#bbb">Q</span><span style="color:#bbb">S</span><span style="color:#bbb">S</span>
+          <span style="padding:5px">26</span><span style="padding:5px">27</span><span style="padding:5px">28</span><span style="padding:5px">29</span><span style="background:#00A99D;color:#fff;border-radius:50%;padding:5px">30</span><span style="padding:5px">31</span><span style="padding:5px;color:#ccc">1</span>
+        </div>
+        <div style="border-top:1px solid #eee;margin-top:10px;padding-top:10px;display:flex;align-items:center;justify-content:center;gap:8px">
+          <span style="font-size:12px;color:#888">Hora:</span>
+          <div style="background:#E8F8F7;color:#00635C;border-radius:8px;padding:6px 12px;font-size:14px;font-weight:700">14 : 00</div>
+        </div>
+      </div>
+      <div class="lbl" style="margin-top:16px">Especificações</div>
+      <div class="spec">Calendário próprio (não o nativo do celular) · igual em todo aparelho</div>
+      <div class="spec">Toca no dia + escolhe a hora · segue a cor do sistema</div>
+    </div>
+  </div>
+
+  <!-- 7. BUSCA + FILTRO -->
+  <div class="sec">
+    <div class="sec-head"><div class="sec-num">7</div><div class="sec-title">Busca + filtro</div></div>
+    <div class="sec-body">
+      <div style="display:flex;gap:8px">
+        <div style="flex:1;background:#f4f4f2;border-radius:10px;padding:11px 12px;display:flex;align-items:center;gap:8px"><span style="color:#bbb">🔍</span><span style="font-size:13px;color:#bbb">Buscar por nome...</span></div>
+        <div style="width:44px;background:#00A99D;border-radius:10px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:18px;position:relative">⚙️<span style="position:absolute;top:-4px;right:-4px;background:#E8821A;color:#fff;font-size:9px;width:16px;height:16px;border-radius:50%;display:flex;align-items:center;justify-content:center">2</span></div>
+      </div>
+      <div class="lbl" style="margin-top:16px">Especificações</div>
+      <div class="spec">Barra de busca + botão de filtro ⚙️ pequeno ao lado</div>
+      <div class="spec">O filtro <b>abre de baixo</b> · numerozinho mostra filtros ativos</div>
+      <div class="spec">Acaba com os filtros verticais/horizontais antigos</div>
+    </div>
+  </div>
+
+  <!-- 8. TOPO -->
+  <div class="sec">
+    <div class="sec-head"><div class="sec-num">8</div><div class="sec-title">Topo das páginas</div></div>
+    <div class="sec-body">
+      <div style="background:#fff;border-radius:12px;box-shadow:0 1px 4px rgba(0,0,0,.1);overflow:hidden;border:1px solid #eee">
+        <div style="background:#00A99D;height:48px;display:flex;align-items:center;padding:0 14px;color:#fff;font-weight:700;font-size:14px">☰ &nbsp; Encontristas</div>
+        <div style="padding:12px 14px 4px;display:flex;gap:8px">
+          <div style="flex:1;background:#f4f4f2;border-radius:10px;padding:10px 12px;display:flex;align-items:center;gap:8px"><span style="color:#bbb">🔍</span><span style="font-size:12px;color:#bbb">Buscar...</span></div>
+          <div style="width:42px;background:#00A99D;border-radius:10px;display:flex;align-items:center;justify-content:center;color:#fff">⚙️</div>
+        </div>
+        <div style="padding:4px 16px 12px;font-size:11px;color:#999">81 encontristas</div>
+      </div>
+      <div class="lbl" style="margin-top:16px">Especificações</div>
+      <div class="spec">Busca colada logo abaixo do cabeçalho</div>
+      <div class="spec"><b>1 contador discreto</b> ("81 encontristas") — sem os 3 totais repetidos</div>
+      <div class="spec">Sem o espaço gigante vazio de antes</div>
+    </div>
+  </div>
+
+  <!-- 9. MENU -->
+  <div class="sec">
+    <div class="sec-head"><div class="sec-num">9</div><div class="sec-title">Menu lateral (branco + emoji)</div></div>
+    <div class="sec-body">
+      <div style="background:#fff;border:1px solid #eee;border-radius:12px;overflow:hidden">
+        <div style="background:#00635C;padding:16px 14px;color:#fff"><div style="font-size:14px;font-weight:700">Anderson F.</div><div style="font-size:11px;opacity:.8">admin</div></div>
+        <div style="padding:8px 0">
+          <div style="padding:11px 16px;display:flex;align-items:center;gap:12px;background:#E8F8F7;border-left:3px solid #00A99D"><span style="font-size:19px">🏠</span><span style="font-size:13px;font-weight:700;color:#00635C">Início</span></div>
+          <div style="padding:11px 16px;display:flex;align-items:center;gap:12px;border-left:3px solid transparent"><span style="font-size:19px">📅</span><span style="font-size:13px;color:#444">Cronograma</span></div>
+          <div style="padding:11px 16px;display:flex;align-items:center;gap:12px;border-left:3px solid transparent"><span style="font-size:19px">👥</span><span style="font-size:13px;color:#444">Encontristas</span></div>
+          <div style="padding:11px 16px;display:flex;align-items:center;gap:12px;border-left:3px solid transparent"><span style="font-size:19px">⛑️</span><span style="flex:1;font-size:13px;color:#444">Saúde</span><span style="color:#bbb">⌄</span></div>
+          <div style="padding:9px 16px 9px 52px;font-size:12px;color:#666;background:#fafafa">Atendimentos</div>
+          <div style="padding:9px 16px 9px 52px;font-size:12px;color:#666;background:#fafafa">Fichas Médicas</div>
+          <div style="padding:11px 16px;display:flex;align-items:center;gap:12px;border-left:3px solid transparent"><span style="font-size:19px">💰</span><span style="font-size:13px;color:#444">Financeiro</span></div>
+        </div>
+      </div>
+      <div class="lbl" style="margin-top:16px">Especificações</div>
+      <div class="spec"><b>Fundo branco</b> · cada item com <b>emoji colorido</b></div>
+      <div class="spec"><b>Cor de seleção = cor do sistema</b> (definida no Admin, não fixa)</div>
+      <div class="spec"><b>Submenus</b> expandem em acordeão, indentados</div>
+      <div class="spec">Desliza da esquerda</div>
+    </div>
+  </div>
+
+  <!-- 10. COR -->
+  <div class="sec">
+    <div class="sec-head"><div class="sec-num">10</div><div class="sec-title">Cor principal trocável</div></div>
+    <div class="sec-body">
+      <div class="lbl">Paleta + personalizada</div>
+      <div style="display:flex;gap:9px;flex-wrap:wrap;margin-bottom:14px">
+        <div style="width:40px;height:40px;border-radius:11px;background:#00A99D;box-shadow:0 0 0 3px #fff,0 0 0 5px #00A99D"></div>
+        <div style="width:40px;height:40px;border-radius:11px;background:#3182CE"></div>
+        <div style="width:40px;height:40px;border-radius:11px;background:#6B46C1"></div>
+        <div style="width:40px;height:40px;border-radius:11px;background:#E53E3E"></div>
+        <div style="width:40px;height:40px;border-radius:11px;background:#DD6B20"></div>
+        <div style="width:40px;height:40px;border-radius:11px;background:#2F855A"></div>
+        <div style="width:40px;height:40px;border-radius:11px;background:#D69E2E"></div>
+        <div style="width:40px;height:40px;border-radius:11px;background:#D53F8C"></div>
+      </div>
+      <div class="lbl" style="margin-top:16px">Especificações</div>
+      <div class="spec">No Admin → aba <b>Aparência</b></div>
+      <div class="spec">12 cores prontas + campo de cor personalizada</div>
+      <div class="spec"><b>Prévia ao vivo</b> antes de aplicar · muda o sistema inteiro</div>
+    </div>
+  </div>
+
+  <!-- REGRAS DE OURO -->
+  <div class="sec">
+    <div class="sec-head"><div class="sec-num">★</div><div class="sec-title">Regras de ouro</div></div>
+    <div class="sec-body">
+      <div class="spec"><b>Tudo igual</b> — mesma largura/altura em todos os cards (exceto pequenas exceções que você apontar)</div>
+      <div class="spec"><b>Sem 3 pontinhos</b> — usa o lápis ✏️</div>
+      <div class="spec"><b>Emojis coloridos</b> — nunca ícones de linha</div>
+      <div class="spec"><b>Tudo segue a cor do sistema</b> — nada fixo</div>
+      <div class="spec"><b>Nunca a caixa nativa</b> feia do celular</div>
+      <div class="spec"><b>Preview antes de construir</b> — sempre votar primeiro</div>
+    </div>
+  </div>
+
+  <div style="text-align:center;padding:24px 0 0;color:#aaa;font-size:12px">AXIS Eventos · Manual de Design · Referência oficial</div>
+
+</div>
+</body>
+</html>
