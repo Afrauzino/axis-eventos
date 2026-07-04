@@ -69,6 +69,19 @@ Lista de 19 pedidos + follow-ups, **todos feitos e publicados**. Detalhe item a 
   `locais`/`cronograma` pode ter o mesmo problema do `people` (criar bloqueado p/ granular). Ver IDEIAS "[ALTA]".
 - Fora de propósito (risco baixo): bucket-listing e "leaked password protection" (dashboard).
 
+### 🎯 TAREFAS ESCOLHIDAS PELO ANDERSON (fazer a seguir) — 2026-07-04
+1. **Unificar o sistema de permissões** (dívida técnica raiz — causou o bug do "criar"). Há DUAS fontes:
+   RLS usa `public.permissions` (EN: user_id/event_id/resource/action/allowed) via `has_permission(resource,action,event_id)`;
+   o app usa `public.permissoes` (PT: role/person_id/team_id/modulo/acao/permitido) via `usePermissao.pode(modulo,acao)`.
+   Nomes divergem: módulo `cadastros`/`encontristas`→tabela `people`, `equipes`→`teams`, `escalas`→`schedules`, etc.;
+   ação `editar` (app) precisa cobrir `create`+`edit`(+`delete`) do RLS. `sql/24` só remendou o INSERT de `people`.
+   → Escolher UMA fonte de verdade (recomendo `permissoes`), reescrever o RLS p/ ler ela, e auditar TODOS os módulos.
+   Como a Claude NÃO roda SQL (só chave anon), comece por um SQL de DIAGNÓSTICO (listar policies + estrutura das
+   tabelas) p/ o Anderson colar o resultado; depois planeje (AskUserQuestion) e entregue migrações + ajustes no app.
+2. **Toasts/avisos amigáveis** ("Salvo!", "Sem internet", erros em PT) no lugar de `alert()` cru e saves silenciosos.
+NÃO FAZER: **modo offline** — o Anderson NÃO quer (várias pessoas mexem ao mesmo tempo, inclusive no 3G; manter
+sempre online/ao vivo; o realtime do cronograma pode continuar).
+
 ### 🔮 Próximos passos sugeridos (backlog priorizado)
 Ver `docs/IDEIAS.md` (bloco "IDEIAS DE MELHORIA 2026-07-04"). Destaques: [ALTA] auditar RLS de INSERT dos outros
 módulos (mesmo fix do sql/24); [ALTA] guardas de rota; [MÉDIA] publicar Edge Function admin-delete-user,
