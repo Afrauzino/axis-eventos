@@ -3,29 +3,68 @@
 > Documento para retomar o trabalho. Leia junto com: `docs/PADRAO-VISUAL.md` (regras visuais),
 > `docs/AUDITORIA.md` (menus/permissões), `docs/PENDENCIAS.md` (roadmap).
 
-## Estado da sessão
-- **Branch:** `feat/axis-melhorias-sessao` — **PR #1** aberto: https://github.com/Afrauzino/axis-eventos/pull/1
-- Working tree limpo; tudo commitado e empurrado. Build (`npx vite build`) passa.
-- **App:** React + Vite + Supabase (PWA "AXIS Eventos"). Rodar: `npm run dev` (localhost:5173).
-- **Edito direto no PC do Anderson** — ele não copia/cola nem descompacta zip.
-- **Autonomia total** concedida: proceder e commitar sem pedir confirmação a cada passo.
-  Para decisões de produto, usar **caixa de seleção** (AskUserQuestion), não texto aberto.
+## 🟢 ESTADO ATUAL (2026-07-04) — leia isto primeiro
 
-## ⚠️ SQLs a rodar no Supabase (senão as telas abrem mas não gravam)
-Arquivo único: **`sql/RODAR_TUDO.sql`** (junta 05–13). Depois, individualmente:
-`14_med_corte_hora.sql`, `15_crachas.sql`. Todos idempotentes (IF NOT EXISTS). Os inserts no app são
-resilientes (não quebram antes das migrações). Limpeza de teste: `sql/LIMPAR_MEDS_TESTE.sql`.
+**App:** React + Vite + Supabase, PWA "AXIS Eventos" (gestão de encontros religiosos).
+**Rodar local:** `npm run dev` (localhost:5173). Validar: `npx vite build` + `npx tsc --noEmit` (ambos passam).
 
-## O que já foi feito nesta sessão (resumo)
+### Como o Anderson trabalha (regras que valem sempre)
+- **Responder 100% em português**, simples. Ele não é dev — explicar sem jargão.
+- **Listas numeradas curtas** para as ações DELE, separadas do que a Claude já fez.
+- **Decisões de produto → caixa de seleção** (AskUserQuestion), nunca texto aberto.
+- **Autonomia total**: proceder e commitar sem pedir confirmação a cada passo. Cadência **2-a-2** (fazer, checar bug, seguir).
+- **Edito direto no PC dele** (não manda zip). Toda ideia nova vai pra `docs/IDEIAS.md`.
+- Ele é **admin, mas também encontreiro e pode ser líder** (papéis acumulam).
+
+### Deploy (ele já autorizou publicar; publicar só quando tudo ok)
+- Fluxo: **push na branch `main`** → **Vercel** builda e publica sozinho. Supabase é o backend sempre online.
+- Branch de trabalho: `feat/axis-melhorias-sessao`. Publicar = `git checkout main` → `git merge --ff-only feat/...` → `git push origin main` → voltar pra branch.
+- **Produção:** https://axis-eventos-sage.vercel.app · Repo: https://github.com/Afrauzino/axis-eventos
+- **Confirmar deploy sem abrir o site** (este ambiente BLOQUEIA acessar sites externos, mas a API do GitHub funciona):
+  `GET https://api.github.com/repos/Afrauzino/axis-eventos/commits/<sha>/status` → achar `context:"Vercel"` com `state:"success"`.
+- Não dá pra rodar SQL daqui (só chave anon pública em `src/lib/supabase.ts`, ref `vxhowdmzssvvmgonwoud`). SQL = Anderson cola no SQL Editor.
+
+### O que foi entregue na sessão grande (2026-07-03/04) — TUDO no ar
+Lista de 19 pedidos + follow-ups, **todos feitos e publicados**. Detalhe item a item em `docs/IDEIAS.md`
+(bloco "LISTA GRANDE (pré-lançamento)"). Resumo do que mexeu:
+- #1 Admin edita 100% do cadastro (`Admin.tsx` reusa `CadastroPessoa`) + abas rolam sozinhas (`.tabs` overflow-x em `index.css`).
+- #2 PWA instalável: `public/manifest.webmanifest`, `public/sw.js` (network-first), `InstallPWA.tsx` (Android 1 toque/passo a passo; iPhone guiado), registro em `main.tsx`.
+- #3 Equipes: color picker (`Equipes.tsx`) + `sql/21_storage_buckets.sql` (foto-ícone). #3b tecla fantasma = PENDENTE (ver abaixo).
+- #4 1 botão liga/desliga boas-vindas (`BoasVindas.tsx`, config `boasvindas_ativo`).
+- #5 Dashboard sem "Acesso rápido"; indicadores só admin/financeiro (`Dashboard.tsx`).
+- #6 Central de notificações no sino (`NotificacoesCenter.tsx` + `App.tsx`) — derivada, "lido" em localStorage.
+- #7 "Adicionar alarmes ao celular" (`Medicamentos.tsx` + `src/lib/ics.ts`) — gera .ics, alarme ~8min antes.
+- #8 Logo na tela de boas-vindas + 3ª variante "Visitante" (`BoasVindas.tsx`, `Dashboard.tsx`).
+- #9 Só encontreiro é ministrante (`Ministracoes.tsx` filtra `role_type='worker'`).
+- #10 Ministração sem data/hora (agenda só no cronograma; mantém hora-base interna p/ não quebrar o banco).
+- #11 Cronograma → atividades pessoais (ministrante/elenco em `MinhasAtividades.tsx`, seção "Minha agenda").
+- #12 Cronograma tempo real (Supabase Realtime em `Cronograma.tsx` + `CronometroPopup.tsx`) + `sql/22_realtime_cronograma.sql`.
+- #13 Barra do celular segue a cor (theme-color dinâmico em `src/lib/tema.ts`).
+- #14 Impressão preserva cores (`print-color-adjust` em `PrintOverlay.tsx`).
+- #15 DESCARTADO (não fazer — ele confirmou 2x).
+- #16 Ministrante restrito (`Ministracoes.tsx`, `restrito = user_role==='coordenador' && !admin`: só a própria ministração + notas, volta sempre pro cronograma).
+- #17 Playlist YouTube limpa (`YouTubePlayer.tsx` IFrame API, avança no fim; `HomeCarousel.tsx`).
+- #18 Aba MSG no Admin (mensagem editável do código de acesso, `{nome}`/`{codigo}`, botão "Copiar msg").
+- #19 "Conheço esta pessoa" em Encontristas (`Encontristas.tsx`) + `sql/23_encontrista_conhecidos.sql`.
+- Follow-up: barra de progresso de Minhas Atividades agora inclui cronograma, mas só sobe quando o item está 'concluido' ou 'cancelado'.
+
+### SQLs — Anderson disse que **JÁ RODOU** os 3 (2026-07-04): `sql/21`, `sql/22`, `sql/23`. (Idempotentes; pode reconferir se algo falhar.)
+
+### ⏳ PENDÊNCIAS reais
+- **#3b — tecla fantasma "2"/"W"** ao abrir/fechar teclado criando equipe: **não há causa no código** (nenhum listener global de teclado). Precisa REPRO no celular dele: qual tela, qual campo, qual teclado (Gboard/SwiftKey/iPhone). Não fixar às cegas.
+- **Opcional:** ícone PNG bonito pro PWA (hoje usa `favicon.svg`). Limitações assumidas: #6 push com app fechado precisa backend/cron (não tem servidor); #7 alarme nativo em lote não existe na web (por isso .ics).
+
+---
+
+## 📜 HISTÓRICO (sessões anteriores) — abaixo é contexto antigo, já concluído
+
+## O que já foi feito em sessões anteriores (resumo)
 - Correções: Ministrações (excluir/bugs), Ranking (votação inline por estrelas), Correio (padrinho só equipe Correio),
   Cadastros (código copia/WhatsApp), foto do admin, aprovação 3 cargos.
-- Módulos novos: Logs/Auditoria; Eventos como raiz (auto-seed + export/import seletivo); Teatro Mídia; menu Mídia;
-  **Crachá**; **Saúde/Medicamento contínuo** (ficha reutilizável fonte única, motor de doses, Agenda/Histórico,
-  Logística inline, tela rápida da pessoa, hora de corte configurável em Saúde → Configuração).
-- Padrão visual virou regra (EmojiGrid, modal bottom-sheet, cards padrão Equipe, SubTabs, cor do sistema na barra lateral,
-  "tudo que fecha volta pra origem"). Auditoria de menus/telas/permissões.
-- **Impressão/PDF (via PrintOverlay):** lista de pessoas com foto (Cadastros); teatro individual; ministração individual;
-  Logística → PDF por pessoa como **formulário de preenchimento manual** (marca o que existe, deixa em branco o resto).
+- Módulos: Logs/Auditoria; Eventos como raiz (auto-seed + export/import seletivo); Teatro Mídia; menu Mídia;
+  **Crachá**; **Saúde/Medicamento contínuo** (ficha fonte única, motor de doses, Agenda/Histórico, hora de corte).
+- Padrão visual virou regra (EmojiGrid, modal bottom-sheet, cards padrão Equipe, SubTabs, cor do sistema, "fechar volta pra origem").
+- **Impressão/PDF (via PrintOverlay):** pessoas com foto; teatro; ministração; Logística como formulário manual.
 
 ---
 
