@@ -3,6 +3,8 @@ import { supabase } from '../lib/supabase'
 import SubTabs from '../components/SubTabs'
 import PessoaSaudeResumo from '../components/PessoaSaudeResumo'
 import { toast } from '../components/Toast'
+import CardItem from '../components/CardItem'
+import FotoAmpliada from '../components/FotoAmpliada'
 import { getInitials, fmtHora, fmtDataHora } from '../utils'
 import { useEvento } from '../hooks/useEvento'
 import { gerarICS, baixarICS, type EventoICS } from '../lib/ics'
@@ -21,6 +23,7 @@ export default function Medicamentos({ profile }: { profile?: Profile }) {
   const [entregando, setEntregando] = useState<string|null>(null)
   const [resumoId, setResumoId] = useState<string|null>(null)
   const [pessoaDoses, setPessoaDoses] = useState<string|null>(null)
+  const [fotoAmpliada, setFotoAmpliada] = useState<string|null>(null)
 
   useEffect(() => { if (evLoading) return; if (!evento) { setLoading(false); return }; carregar() }, [evento, evLoading])
 
@@ -130,25 +133,21 @@ export default function Medicamentos({ profile }: { profile?: Profile }) {
           const pctP = total ? Math.round((entregues/total)*100) : 0
           const atrasado = proxima ? new Date(proxima).getTime() < agora : false
           const cor = atrasado ? 'var(--danger)' : 'var(--primary)'
+          const sub = [proxima?`Próxima ${fmtHora(proxima)}`:'', atrasado?'ATRASADO':'', `${pend.length} pendente${pend.length===1?'':'s'}`].filter(Boolean).join(' · ')
           return (
-            <div key={p.id} style={{background:'white',borderRadius:12,boxShadow:'0 1px 5px rgba(0,0,0,0.12)',marginBottom:10,overflow:'hidden',display:'flex'}}>
-              <div style={{width:6,alignSelf:'stretch',background:cor,flexShrink:0}}/>
-              <button onClick={()=>setPessoaDoses(p.id)} style={{flex:1,minWidth:0,textAlign:'left',fontFamily:'inherit',background:'none',border:'none',padding:'14px 15px',cursor:'pointer'}}>
-                <div style={{display:'flex',alignItems:'center',gap:14,marginBottom:10}}>
-                  <div style={{width:52,height:52,borderRadius:'50%',background:atrasado?'var(--danger-bg)':'var(--primary-light)',display:'flex',alignItems:'center',justifyContent:'center',overflow:'hidden',flexShrink:0}}>
-                    {p.photo_url?<img src={p.photo_url} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}}/>:<span style={{fontSize:18,fontWeight:700,color:cor}}>{getInitials(p.name)}</span>}
-                  </div>
-                  <div style={{flex:1,minWidth:0}}>
-                    <p style={{fontWeight:700,fontSize:15,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{p.name}</p>
-                    <p style={{fontSize:12,fontWeight:700,color:cor}}>{proxima?`Próxima ${fmtHora(proxima)}`:''} {atrasado?'· ATRASADO':''} · {pend.length} pendente{pend.length===1?'':'s'}</p>
-                  </div>
-                  <span style={{fontSize:15,fontWeight:800,color:'var(--primary)',flexShrink:0}}>{pctP}%</span>
-                </div>
-                <div style={{height:6,background:'var(--bg)',borderRadius:99,overflow:'hidden'}}>
-                  <div style={{height:'100%',width:`${pctP}%`,background:'var(--primary)',borderRadius:99,transition:'width 0.3s'}}/>
-                </div>
-              </button>
-            </div>
+            <CardItem
+              key={p.id}
+              cor={cor}
+              ehPessoa
+              fotoUrl={p.photo_url}
+              iniciais={getInitials(p.name)}
+              titulo={p.name}
+              subtitulo={sub}
+              direita={<span style={{fontSize:15,fontWeight:800,color:'var(--primary)'}}>{pctP}%</span>}
+              progresso={pctP}
+              onVer={()=>setPessoaDoses(p.id)}
+              onFoto={()=>p.photo_url && setFotoAmpliada(p.photo_url)}
+            />
           )
         })
       )}
@@ -165,29 +164,24 @@ export default function Medicamentos({ profile }: { profile?: Profile }) {
           const quem = d.entregue_por ? getPessoa(d.entregue_por) : null
           const atraso = d.entregue_em && new Date(d.entregue_em).getTime() > new Date(d.horario).getTime() + 5*60000
           return (
-            <div key={d.id} style={{background:'white',borderRadius:12,boxShadow:'0 1px 5px rgba(0,0,0,0.12)',marginBottom:10,overflow:'hidden',display:'flex'}}>
-              <div style={{width:6,alignSelf:'stretch',background:'var(--success)',flexShrink:0}}/>
-              <div style={{flex:1,minWidth:0,padding:'14px 15px'}}>
-                <div style={{display:'flex',alignItems:'center',gap:14}}>
-                  <div style={{width:48,height:48,borderRadius:'50%',background:'var(--success-bg)',display:'flex',alignItems:'center',justifyContent:'center',overflow:'hidden',flexShrink:0}}>
-                    {p?.photo_url?<img src={p.photo_url} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}}/>:<span style={{fontSize:16,fontWeight:700,color:'var(--success)'}}>{getInitials(p?.name??'?')}</span>}
-                  </div>
-                  <div style={{flex:1,minWidth:0}}>
-                    <p style={{fontWeight:700,fontSize:15,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{p?.name}</p>
-                    <p style={{fontSize:12,color:'var(--muted)'}}>{d.nome}{d.dosagem?` · ${d.dosagem}`:''}</p>
-                  </div>
-                  <span className={`badge ${atraso?'badge-warning':'badge-success'}`} style={{fontSize:9,flexShrink:0}}>{atraso?'Com atraso':'No horário'}</span>
-                </div>
-                <div style={{background:'var(--bg)',borderRadius:8,padding:'8px 10px',fontSize:11,color:'var(--muted)',marginTop:10}}>
-                  Previsto: {fmtHora(d.horario)} · Entregue: {d.entregue_em?fmtDataHora(d.entregue_em):'—'}{quem?` · por ${quem.name.split(' ')[0]}`:''}
-                </div>
-              </div>
-            </div>
+            <CardItem
+              key={d.id}
+              cor="var(--success)"
+              ehPessoa
+              fotoUrl={p?.photo_url ?? null}
+              iniciais={getInitials(p?.name??'?')}
+              titulo={p?.name ?? '—'}
+              subtitulo={`${d.nome}${d.dosagem?` · ${d.dosagem}`:''}`}
+              direita={<span className={`badge ${atraso?'badge-warning':'badge-success'}`} style={{fontSize:9}}>{atraso?'Com atraso':'No horário'}</span>}
+              extra={<div style={{background:'var(--bg)',borderRadius:8,padding:'8px 10px',fontSize:11,color:'var(--muted)'}}>Previsto: {fmtHora(d.horario)} · Entregue: {d.entregue_em?fmtDataHora(d.entregue_em):'—'}{quem?` · por ${quem.name.split(' ')[0]}`:''}</div>}
+              onFoto={()=>p?.photo_url && setFotoAmpliada(p.photo_url)}
+            />
           )
         })
       )}
 
       {resumoId && evento && <PessoaSaudeResumo personId={resumoId} eventId={evento.id} onClose={()=>setResumoId(null)}/>}
+      <FotoAmpliada url={fotoAmpliada} onClose={()=>setFotoAmpliada(null)} />
 
       {/* Doses pendentes de uma pessoa */}
       {pessoaDoses && (() => {

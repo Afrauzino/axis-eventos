@@ -2,6 +2,8 @@ import { useEffect, useState, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import PrintOverlay from '../components/PrintOverlay'
 import { toast } from '../components/Toast'
+import CardItem from '../components/CardItem'
+import FotoAmpliada from '../components/FotoAmpliada'
 import { getInitials, isAdmin, formatName } from '../utils'
 import { useEvento } from '../hooks/useEvento'
 import type { Profile } from '../App'
@@ -46,6 +48,7 @@ export default function Correio({ profile }: { profile?: Profile }) {
   const [novoItem, setNovoItem] = useState('')
   const [modalPadrinho, setModalPadrinho] = useState<Pessoa|null>(null) // afiliado a quem atribuir padrinhos
   const [buscaPadrinho, setBuscaPadrinho] = useState('') // filtro de nome no modal de padrinhos
+  const [fotoAmpliada, setFotoAmpliada] = useState<string|null>(null)
 
   // Admin e Líder veem tudo. Membro da equipe Correio vê só "Meus Afilhados".
   const podeVerTudo = isAdmin(profile?.user_role) || souLider
@@ -319,17 +322,17 @@ export default function Correio({ profile }: { profile?: Profile }) {
           {encontristas.map(af => {
             const qtd = padrinhos.filter(p=>p.afiliado_id===af.id).length
             return (
-              <div key={af.id} style={{background:'white',borderRadius:12,boxShadow:'0 1px 5px rgba(0,0,0,0.12)',marginBottom:10,overflow:'hidden',display:'flex'}}>
-                <div style={{width:6,alignSelf:'stretch',background:'var(--primary)',flexShrink:0}}/>
-                <button onClick={()=>{setBuscaPadrinho('');setModalPadrinho(af)}} style={{flex:1,minWidth:0,display:'flex',alignItems:'center',gap:14,padding:'16px 15px',background:'none',border:'none',cursor:'pointer',fontFamily:'inherit',textAlign:'left'}}>
-                  <Avatar p={af} size={52}/>
-                  <div style={{flex:1,minWidth:0}}>
-                    <p style={{fontWeight:700,fontSize:15,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{formatName(af.name)}</p>
-                    <p style={{fontSize:12,color:qtd>0?'var(--success)':'var(--muted)'}}>{qtd>0?`${qtd} padrinho(s)`:'Sem padrinho'}</p>
-                  </div>
-                  <span className="icon" style={{color:'var(--muted)'}}>chevron_right</span>
-                </button>
-              </div>
+              <CardItem
+                key={af.id}
+                cor="var(--primary)"
+                ehPessoa
+                fotoUrl={(af as any).photo_url ?? null}
+                iniciais={getInitials(af.name)}
+                titulo={formatName(af.name)}
+                subtitulo={qtd>0?`${qtd} padrinho(s)`:'Sem padrinho'}
+                onVer={()=>{setBuscaPadrinho('');setModalPadrinho(af)}}
+                onFoto={()=>(af as any).photo_url && setFotoAmpliada((af as any).photo_url)}
+              />
             )
           })}
         </>
@@ -471,6 +474,7 @@ export default function Correio({ profile }: { profile?: Profile }) {
           })}
         </PrintOverlay>
       )}
+      <FotoAmpliada url={fotoAmpliada} onClose={()=>setFotoAmpliada(null)} />
     </div>
   )
 }
@@ -485,22 +489,17 @@ function Avatar({ p, size=40 }: { p:{name:string;photo_url:string|null}; size?:n
 function CardAfiliado({ af, pct, status, onClick }: { af:any; pct:number; status:string; onClick:()=>void }) {
   const st = STATUS_LABEL[status] ?? STATUS_LABEL.em_processo
   return (
-    <div style={{background:'white',borderRadius:12,boxShadow:'0 1px 5px rgba(0,0,0,0.12)',marginBottom:10,overflow:'hidden',display:'flex'}}>
-      <div style={{width:6,alignSelf:'stretch',background:'var(--primary)',flexShrink:0}}/>
-      <div onClick={onClick} style={{flex:1,minWidth:0,padding:'14px 15px',cursor:'pointer'}}>
-        <div style={{display:'flex',alignItems:'center',gap:14,marginBottom:10}}>
-          <Avatar p={af} size={52}/>
-          <div style={{flex:1,minWidth:0}}>
-            <p style={{fontWeight:700,fontSize:15,marginBottom:3,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{formatName(af.name)}</p>
-            <span style={{fontSize:10,fontWeight:700,color:'white',background:st.cor,padding:'2px 8px',borderRadius:99}}>{st.label}</span>
-          </div>
-          <span style={{fontSize:15,fontWeight:800,color:'var(--primary)',flexShrink:0}}>{pct}%</span>
-        </div>
-        <div style={{height:6,background:'var(--bg)',borderRadius:99,overflow:'hidden'}}>
-          <div style={{height:'100%',width:`${pct}%`,background:'var(--primary)',borderRadius:99,transition:'width 0.3s'}}/>
-        </div>
-      </div>
-    </div>
+    <CardItem
+      cor="var(--primary)"
+      ehPessoa
+      fotoUrl={af.photo_url ?? null}
+      iniciais={getInitials(af.name)}
+      titulo={formatName(af.name)}
+      direita={<span style={{fontSize:15,fontWeight:800,color:'var(--primary)'}}>{pct}%</span>}
+      progresso={pct}
+      extra={<span style={{fontSize:10,fontWeight:700,color:'white',background:st.cor,padding:'2px 8px',borderRadius:99,display:'inline-block'}}>{st.label}</span>}
+      onVer={onClick}
+    />
   )
 }
 
