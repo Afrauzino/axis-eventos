@@ -8,6 +8,8 @@ import CriticalAlert from './components/CriticalAlert'
 import NotificacoesCenter, { contarNaoLidas } from './components/NotificacoesCenter'
 import InstallPWA from './components/InstallPWA'
 import { ToastHost } from './components/Toast'
+import BotaoConfig from './components/BotaoConfig'
+import { ChromeProvider } from './lib/chrome'
 import { useEvento } from './hooks/useEvento'
 import Login from './pages/Login'
 import Pending from './pages/Pending'
@@ -251,6 +253,7 @@ export default function App() {
 
   return (
     <BrowserRouter>
+     <ChromeProvider>
       <div className="app-root">
         {/* Header */}
         <header style={{height:56,background:'var(--primary)',display:'flex',alignItems:'center',padding:'0 16px',gap:12,flexShrink:0,zIndex:100,boxShadow:'0 2px 8px rgba(0,169,157,0.2)'}}>
@@ -258,6 +261,7 @@ export default function App() {
             <span style={{fontFamily:"'Material Symbols Outlined'",fontSize:22,color:'white',fontVariationSettings:"'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24",fontWeight:'normal',fontStyle:'normal',lineHeight:1,letterSpacing:'normal',textTransform:'none',display:'inline-block',whiteSpace:'nowrap',userSelect:'none'}}>menu</span>
           </button>
           <HeaderTitle />
+          <BotaoConfig />
           <button onClick={()=>setNotifOpen(true)} style={{background:'none',border:'none',cursor:'pointer',color:'white',display:'flex',alignItems:'center',justifyContent:'center',width:36,height:36,borderRadius:8,fontFamily:'inherit',position:'relative'}}>
             <span style={{fontFamily:"'Material Symbols Outlined'",fontSize:22,color:'white',fontVariationSettings:"'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24",fontWeight:'normal',fontStyle:'normal',lineHeight:1,letterSpacing:'normal',textTransform:'none',display:'inline-block',whiteSpace:'nowrap',userSelect:'none'}}>notifications</span>
             {notifUnread > 0 && (
@@ -296,6 +300,7 @@ export default function App() {
         <CriticalAlert profile={profile}/>
         <ToastHost />
       </div>
+     </ChromeProvider>
     </BrowserRouter>
   )
 }

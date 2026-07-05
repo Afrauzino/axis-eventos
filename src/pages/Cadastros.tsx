@@ -10,7 +10,7 @@ import UploadFoto from '../components/UploadFoto'
 import PersonSelect from '../components/PersonSelect'
 import CardItem from '../components/CardItem'
 import FotoAmpliada from '../components/FotoAmpliada'
-import BuscaFiltro from '../components/BuscaFiltro'
+import { useRegistrarChrome } from '../lib/chrome'
 import { formatName, getInitials, isAdmin, canEditPessoas } from '../utils'
 import { useEvento } from '../hooks/useEvento'
 import { usePermissao } from '../hooks/usePermissao'
@@ -137,24 +137,21 @@ export default function Cadastros({ profile }: { profile: Profile }) {
     return matchBusca && matchRole
   })
 
+  // ⚙️ do topo: busca + filtro de tipo + opções de imprimir
+  useRegistrarChrome({
+    busca: { value: busca, onChange: setBusca, placeholder: 'Buscar por nome, celular ou igreja...' },
+    grupos: [{ chave:'role', label:'Tipo', opcoes:[{value:'todos',label:'Todos'},{value:'encounterer',label:'Encontristas'},{value:'worker',label:'Encontreiros'}] }],
+    valores: { role: filtroRole },
+    onFiltro: (_,v)=>setFiltroRole(v),
+    impressoes: canEdit ? [
+      { label:'Lista com fotos — os dois', onClick:()=>{setImpScope('ambos');setImprimir(true)} },
+      { label:'Só encontristas', onClick:()=>{setImpScope('encounterer');setImprimir(true)} },
+      { label:'Só encontreiros', onClick:()=>{setImpScope('worker');setImprimir(true)} },
+    ] : undefined,
+  }, [busca, filtroRole, canEdit])
+
   return (
     <div className="page">
-      {/* Busca + filtro (padrão item 7) */}
-      <BuscaFiltro
-        busca={busca} onBusca={setBusca} placeholder="Buscar por nome, celular ou igreja..."
-        valores={{ role: filtroRole }}
-        onFiltro={(_,v)=>setFiltroRole(v)}
-        grupos={[{ chave:'role', label:'Tipo', opcoes:[{value:'todos',label:'Todos'},{value:'encounterer',label:'Encontristas'},{value:'worker',label:'Encontreiros'}] }]}
-      />
-      <div style={{display:'flex',gap:6,marginBottom:12}}>
-        <span style={{fontSize:12,color:'var(--muted)',alignSelf:'center'}}>Imprimir:</span>
-        {([['ambos','Os dois'],['encounterer','Encontristas'],['worker','Encontreiros']] as const).map(([v,l])=>(
-          <button key={v} className="btn btn-outline btn-sm" style={{flex:1,padding:'6px 4px'}} onClick={()=>{setImpScope(v);setImprimir(true)}}>
-            <span className="icon icon-sm">print</span> {l}
-          </button>
-        ))}
-      </div>
-
       {/* Lista */}
       {loading ? [1,2,3,4].map(i=><div key={i} className="skeleton" style={{height:72,marginBottom:8,borderRadius:14}}/>) :
       filtrados.length === 0 ? (
