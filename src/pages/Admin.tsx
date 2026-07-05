@@ -9,6 +9,8 @@ import SubTabs from '../components/SubTabs'
 import { toast } from '../components/Toast'
 import Seletor from '../components/Seletor'
 import DataHora from '../components/DataHora'
+import CardItem from '../components/CardItem'
+import FotoAmpliada from '../components/FotoAmpliada'
 import type { Profile } from '../App'
 import EmojiGrid from '../components/EmojiGrid'
 import { PERM_CATALOGO, MENUS_CATALOGO } from '../lib/permCatalog'
@@ -131,6 +133,7 @@ export default function Admin({ profile }: { profile?: Profile }) {
   }[]>([])
   const [gerandoCodigos, setGerandoCodigos] = useState(false)
   const [pessoaDetalhe, setPessoaDetalhe] = useState<typeof pessoas[0]|null>(null)
+  const [fotoAmpliada, setFotoAmpliada] = useState<string|null>(null)
   // #1 — admin edita 100% do cadastro de qualquer pessoa (reusa CadastroPessoa)
   const [editPessoaId, setEditPessoaId] = useState<string|null>(null)
   const [editEventoId, setEditEventoId] = useState<string|undefined>(undefined)
@@ -883,67 +886,48 @@ export default function Admin({ profile }: { profile?: Profile }) {
               — defina o cargo abaixo para liberar o acesso
             </div>
           )}
-          {pessoas.map(p => (
-            <div key={p.id} onClick={()=>{setPessoaDetalhe(p);setPermsAba('liberacoes');carregarPermsPessoa(p)}} style={{background:'white',borderRadius:14,boxShadow:'var(--shadow-sm)',marginBottom:8,overflow:'hidden',borderLeft:`3px solid ${p.role_type==='worker'?'var(--primary)':'#6B46C1'}`,cursor:'pointer'}}>
-              <div style={{display:'flex',alignItems:'center',gap:12,padding:'10px 14px'}}>
-                {/* Avatar */}
-                <div style={{width:42,height:42,borderRadius:'50%',background:p.role_type==='worker'?'var(--primary-light)':'#F3F0FF',flexShrink:0,overflow:'hidden',display:'flex',alignItems:'center',justifyContent:'center'}}>
-                  {p.photo_url
-                    ? <img src={p.photo_url} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}}/>
-                    : <span style={{fontWeight:700,fontSize:14,color:p.role_type==='worker'?'var(--primary)':'#6B46C1'}}>{p.name.slice(0,2).toUpperCase()}</span>
-                  }
-                </div>
-
-                {/* Info */}
-                <div style={{flex:1,minWidth:0}}>
-                  <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:2}}>
-                    <p style={{fontWeight:700,fontSize:14,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{p.name}</p>
-                    <span style={{fontSize:10,fontWeight:700,padding:'1px 6px',borderRadius:99,background:p.role_type==='worker'?'var(--primary-light)':'#F3F0FF',color:p.role_type==='worker'?'var(--primary)':'#6B46C1',flexShrink:0}}>
-                      {p.role_type==='worker'?'Encontreiro':'Encontrista'}
-                    </span>
-                  </div>
-                  <p style={{fontSize:11,color:'var(--muted)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
-                    {p.church||'Igreja não informada'}
-                    {p.user_role && p.user_role !== 'visitante' && (
-                      <span style={{marginLeft:6,color:'var(--primary)',fontWeight:600}}>
-                        · {cargos.find(cg=>cg.role===p.user_role)?.label ?? p.user_role}
-                      </span>
-                    )}
-                  </p>
-                </div>
-
-                {/* Status de conta */}
-                <div style={{flexShrink:0,display:'flex',flexDirection:'column',alignItems:'flex-end',gap:4}}>
-                  {p.user_id ? (
-                    <>
-                      <button
-                        onClick={e=>{e.stopPropagation(); if(p.role_status==='pending') aprovarPessoa(p)}}
-                        title={p.role_status==='pending'?'Clique para aprovar':'Ativo'}
-                        className={`badge ${p.role_status==='pending'?'badge-warning':'badge-success'}`}
-                        style={{fontSize:9,border:'none',cursor:p.role_status==='pending'?'pointer':'default',fontFamily:'inherit'}}>
-                        {p.role_status==='pending'?'⏳ Aprovar':'✓ Ativo'}
-                      </button>
-                      <div onClick={e=>e.stopPropagation()}>
-                        <Seletor sheet compact titulo="Cargo / Nível de acesso"
-                          value={p.user_role??'visitante'} onChange={v=>alterarRole(p.user_id!,v)}
-                          opcoes={CARGOS_APROVACAO.map(cg=>({value:cg.role, label:cg.label}))}/>
-                      </div>
-                    </>
-                  ) : p.invite_code ? (
-                    <div style={{display:'flex',alignItems:'center',gap:4}}>
-                      <span style={{fontFamily:'monospace',fontSize:13,fontWeight:800,letterSpacing:'0.1em',color:'var(--primary)',background:'var(--primary-light)',padding:'3px 8px',borderRadius:6}}>{p.invite_code}</span>
-                      <button onClick={e=>{e.stopPropagation();copiarComMsg(p.name, p.invite_code??'')}} title="Copiar mensagem com o código"
-                        style={{background:'none',border:'none',cursor:'pointer',color:'var(--muted)',padding:0,fontFamily:'inherit',display:'flex',alignItems:'center'}}>
-                        <span className="icon" style={{fontSize:16}}>content_copy</span>
-                      </button>
-                    </div>
-                  ) : (
-                    <span className="badge badge-neutral" style={{fontSize:9}}>Sem código</span>
-                  )}
-                </div>
+          {pessoas.map(p => {
+            const corPessoa = p.role_type==='worker' ? 'var(--primary)' : '#6B46C1'
+            const sub = [p.role_type==='worker'?'Encontreiro':'Encontrista', p.church||'Igreja não informada', (p.user_role && p.user_role!=='visitante') ? (cargos.find(cg=>cg.role===p.user_role)?.label ?? p.user_role) : ''].filter(Boolean).join(' · ')
+            const direita = p.user_id ? (
+              <>
+                <button
+                  onClick={e=>{e.stopPropagation(); if(p.role_status==='pending') aprovarPessoa(p)}}
+                  title={p.role_status==='pending'?'Clique para aprovar':'Ativo'}
+                  className={`badge ${p.role_status==='pending'?'badge-warning':'badge-success'}`}
+                  style={{fontSize:9,border:'none',cursor:p.role_status==='pending'?'pointer':'default',fontFamily:'inherit'}}>
+                  {p.role_status==='pending'?'⏳ Aprovar':'✓ Ativo'}
+                </button>
+                <Seletor sheet compact titulo="Cargo / Nível de acesso"
+                  value={p.user_role??'visitante'} onChange={v=>alterarRole(p.user_id!,v)}
+                  opcoes={CARGOS_APROVACAO.map(cg=>({value:cg.role, label:cg.label}))}/>
+              </>
+            ) : p.invite_code ? (
+              <div style={{display:'flex',alignItems:'center',gap:4}}>
+                <span style={{fontFamily:'monospace',fontSize:13,fontWeight:800,letterSpacing:'0.1em',color:'var(--primary)',background:'var(--primary-light)',padding:'3px 8px',borderRadius:6}}>{p.invite_code}</span>
+                <button onClick={()=>copiarComMsg(p.name, p.invite_code??'')} title="Copiar mensagem com o código"
+                  style={{background:'none',border:'none',cursor:'pointer',color:'var(--muted)',padding:0,fontFamily:'inherit',display:'flex',alignItems:'center'}}>
+                  <span className="icon" style={{fontSize:16}}>content_copy</span>
+                </button>
               </div>
-            </div>
-          ))}
+            ) : (
+              <span className="badge badge-neutral" style={{fontSize:9}}>Sem código</span>
+            )
+            return (
+              <CardItem
+                key={p.id}
+                cor={corPessoa}
+                ehPessoa
+                fotoUrl={p.photo_url}
+                iniciais={p.name.slice(0,2).toUpperCase()}
+                titulo={p.name}
+                subtitulo={sub}
+                direita={direita}
+                onVer={()=>{setPessoaDetalhe(p);setPermsAba('liberacoes');carregarPermsPessoa(p)}}
+                onFoto={()=>p.photo_url && setFotoAmpliada(p.photo_url)}
+              />
+            )
+          })}
           </>
           }
         </>
@@ -1605,6 +1589,7 @@ export default function Admin({ profile }: { profile?: Profile }) {
           </div>
         </div>
       )}
+      <FotoAmpliada url={fotoAmpliada} onClose={()=>setFotoAmpliada(null)} />
     </div>
   )
 }

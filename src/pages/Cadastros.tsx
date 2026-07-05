@@ -8,6 +8,8 @@ import { supabase } from '../lib/supabase'
 import PrintOverlay from '../components/PrintOverlay'
 import UploadFoto from '../components/UploadFoto'
 import PersonSelect from '../components/PersonSelect'
+import CardItem from '../components/CardItem'
+import FotoAmpliada from '../components/FotoAmpliada'
 import { formatName, getInitials, isAdmin, canEditPessoas } from '../utils'
 import { useEvento } from '../hooks/useEvento'
 import { usePermissao } from '../hooks/usePermissao'
@@ -38,6 +40,7 @@ export default function Cadastros({ profile }: { profile: Profile }) {
   const [copiadoId, setCopiadoId] = useState<string|null>(null)
   const [imprimir, setImprimir] = useState(false)
   const [impScope, setImpScope] = useState<'ambos'|'encounterer'|'worker'>('ambos')
+  const [fotoAmpliada, setFotoAmpliada] = useState<string|null>(null)
 
   async function copiarCodigo(p: Pessoa) {
     if (!p.invite_code) return
@@ -166,61 +169,44 @@ export default function Cadastros({ profile }: { profile: Profile }) {
         </div>
       ) : filtrados.map(p => {
         const role = ROLES.find(r=>r.value===p.role_type)
-        return (
-          <div key={p.id} style={{background:'white',borderRadius:12,boxShadow:'0 1px 5px rgba(0,0,0,0.12)',marginBottom:10,display:'flex',alignItems:'center',overflow:'hidden'}}>
-            <div style={{width:6,background:role?.cor??'var(--primary)',alignSelf:'stretch',flexShrink:0}}/>
-            {/* Avatar */}
-            <div style={{width:50,height:50,borderRadius:'50%',background:role?.bg??'var(--primary-light)',margin:'0 12px 0 14px',flexShrink:0,overflow:'hidden',display:'flex',alignItems:'center',justifyContent:'center'}}>
-              {p.photo_url
-                ? <img src={p.photo_url} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}}/>
-                : <span style={{fontWeight:700,fontSize:16,color:role?.cor}}>{getInitials(p.name)}</span>
-              }
-            </div>
-            {/* Info */}
-            <div style={{flex:1,minWidth:0,padding:'12px 0'}}>
-              <p style={{fontWeight:700,fontSize:15,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{p.name}</p>
-              <p style={{fontSize:11,color:'var(--muted)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
-                {role?.label} {p.church ? `· ${p.church}` : ''}
-              </p>
-              {/* Status da conta */}
-              <div style={{marginTop:3,display:'flex',alignItems:'center',gap:6}}>
-                {p.user_id
-                  ? <span className="badge badge-success" style={{fontSize:9}}>✓ Conta criada</span>
-                  : p.invite_code
-                    ? <>
-                        <button onClick={()=>copiarCodigo(p)} title="Toque para copiar"
-                          style={{fontFamily:'monospace',fontSize:11,fontWeight:800,letterSpacing:'0.08em',color:copiadoId===p.id?'var(--success)':'var(--primary)',background:copiadoId===p.id?'var(--success-bg)':'var(--primary-light)',padding:'2px 8px',borderRadius:6,border:'none',cursor:'pointer'}}>
-                          {copiadoId===p.id ? '✓ Copiado!' : p.invite_code}
-                        </button>
-                        <button onClick={()=>compartilharCodigo(p)}
-                          style={{background:'#25D366',border:'none',borderRadius:6,padding:'2px 8px',cursor:'pointer',fontFamily:'inherit',display:'inline-flex',alignItems:'center',gap:3,color:'white',fontSize:10,fontWeight:700}}
-                          title="Enviar por WhatsApp (também copia o código)">
-                          <span className="icon" style={{fontSize:12,color:'white'}}>share</span>
-                          Enviar
-                        </button>
-                      </>
-                    : <span className="badge badge-neutral" style={{fontSize:9}}>Sem código</span>
-                }
-              </div>
-            </div>
-            {/* Ações */}
-            {canEdit && (
-              <div style={{display:'flex',flexShrink:0}}>
-                <button onClick={()=>{setErro('');setEditando(p);setForm({name:p.name,phone:p.phone??'',church:(p as any).church??'',role_type:p.role_type,photo_url:p.photo_url??null,conhecido_por_id:p.conhecido_por_id??null});setModal(true)}}
-                  style={{background:'none',border:'none',color:'var(--primary)',cursor:'pointer',padding:'8px 10px',fontFamily:'inherit',display:'flex',alignItems:'center'}}
-                  title="Editar">
-                  <span className="icon icon-sm">edit</span>
-                </button>
-                <button onClick={()=>excluirPessoa(p)}
-                  style={{background:'none',border:'none',color:'var(--muted-light)',cursor:'pointer',padding:'8px 10px',fontFamily:'inherit',display:'flex',alignItems:'center'}}
-                  title="Excluir">
-                  <span className="icon icon-sm">delete</span>
-                </button>
-              </div>
-            )}
+        const statusRow = (
+          <div style={{display:'flex',alignItems:'center',gap:6,flexWrap:'wrap'}}>
+            {p.user_id
+              ? <span className="badge badge-success" style={{fontSize:9}}>✓ Conta criada</span>
+              : p.invite_code
+                ? <>
+                    <button onClick={()=>copiarCodigo(p)} title="Toque para copiar"
+                      style={{fontFamily:'monospace',fontSize:11,fontWeight:800,letterSpacing:'0.08em',color:copiadoId===p.id?'var(--success)':'var(--primary)',background:copiadoId===p.id?'var(--success-bg)':'var(--primary-light)',padding:'2px 8px',borderRadius:6,border:'none',cursor:'pointer'}}>
+                      {copiadoId===p.id ? '✓ Copiado!' : p.invite_code}
+                    </button>
+                    <button onClick={()=>compartilharCodigo(p)}
+                      style={{background:'#25D366',border:'none',borderRadius:6,padding:'2px 8px',cursor:'pointer',fontFamily:'inherit',display:'inline-flex',alignItems:'center',gap:3,color:'white',fontSize:10,fontWeight:700}}
+                      title="Enviar por WhatsApp (também copia o código)">
+                      <span className="icon" style={{fontSize:12,color:'white'}}>share</span>
+                      Enviar
+                    </button>
+                  </>
+                : <span className="badge badge-neutral" style={{fontSize:9}}>Sem código</span>
+            }
           </div>
         )
+        return (
+          <CardItem
+            key={p.id}
+            cor={role?.cor ?? 'var(--primary)'}
+            ehPessoa
+            fotoUrl={p.photo_url}
+            iniciais={getInitials(p.name)}
+            titulo={p.name}
+            subtitulo={`${role?.label ?? ''}${p.church ? ' · ' + p.church : ''}`}
+            extra={statusRow}
+            onFoto={()=>p.photo_url && setFotoAmpliada(p.photo_url)}
+            onEditar={canEdit ? ()=>{setErro('');setEditando(p);setForm({name:p.name,phone:p.phone??'',church:(p as any).church??'',role_type:p.role_type,photo_url:p.photo_url??null,conhecido_por_id:p.conhecido_por_id??null});setModal(true)} : undefined}
+          />
+        )
       })}
+
+      <FotoAmpliada url={fotoAmpliada} onClose={()=>setFotoAmpliada(null)} />
 
       {/* FAB */}
       {canEdit && <button className="fab" onClick={()=>{setErro('');setEditando(null);setForm({name:'',phone:'',church:'',role_type:'encounterer',photo_url:null,conhecido_por_id:null});setModal(true)}}><span className="icon">add</span></button>}
@@ -307,8 +293,14 @@ export default function Cadastros({ profile }: { profile: Profile }) {
               </div>
 
               <button type="submit" className="btn btn-primary btn-full" disabled={salvando}>
-                {salvando ? 'Cadastrando...' : 'Cadastrar e gerar código'}
+                {salvando ? 'Cadastrando...' : (editando ? 'Salvar' : 'Cadastrar e gerar código')}
               </button>
+              {editando && (
+                <button type="button" className="btn btn-ghost btn-full" style={{marginTop:8,color:'var(--danger)'}}
+                  onClick={()=>{ const p=editando; setModal(false); excluirPessoa(p) }}>
+                  <span className="icon icon-sm">delete</span> Excluir cadastro
+                </button>
+              )}
             </form>
           </div>
         </div>
