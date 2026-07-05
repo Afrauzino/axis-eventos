@@ -4,6 +4,8 @@ import SubTabs from '../components/SubTabs'
 import { getInitials, isAdmin, fmtData, fmtDataHora, fmtBRL } from '../utils'
 import { useEvento } from '../hooks/useEvento'
 import PersonSelect from '../components/PersonSelect'
+import CardItem from '../components/CardItem'
+import FotoAmpliada from '../components/FotoAmpliada'
 import type { Profile } from '../App'
 
 type Doacao = { id:string; person_id:string|null; valor:number; descricao:string|null; forma_pagamento:string|null; data_doacao:string; anonima:boolean; created_at:string }
@@ -15,6 +17,7 @@ export default function Doacoes({ profile }: { profile?: Profile }) {
   const [pessoas, setPessoas] = useState<Pessoa[]>([])
   const [loading, setLoading] = useState(true)
   const [modal, setModal]     = useState(false)
+  const [fotoAmpliada, setFotoAmpliada] = useState<string|null>(null)
   const [salvando, setSalvando] = useState(false)
   const [form, setForm] = useState({ person_id:'', valor:'', descricao:'', forma_pagamento:'pix', anonima:false })
 
@@ -84,30 +87,24 @@ export default function Doacoes({ profile }: { profile?: Profile }) {
       ) : doacoes.map(d => {
         const p = getPessoa(d.person_id)
         return (
-          <div key={d.id} style={{background:'white',borderRadius:14,boxShadow:'var(--shadow-sm)',marginBottom:8,display:'flex',alignItems:'center',gap:0,overflow:'hidden'}}>
-            <div style={{width:4,background:'var(--success)',alignSelf:'stretch',flexShrink:0}}/>
-            <div style={{display:'flex',alignItems:'center',gap:12,flex:1,padding:'12px 14px'}}>
-              <div style={{width:42,height:42,borderRadius:'50%',background:d.anonima?'var(--bg)':'var(--success-bg)',display:'flex',alignItems:'center',justifyContent:'center',overflow:'hidden',flexShrink:0}}>
-                {d.anonima
-                  ? <span className="icon" style={{color:'var(--muted-light)'}}>person</span>
-                  : p?.photo_url
-                    ? <img src={p.photo_url} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}}/>
-                    : <span style={{fontSize:15,fontWeight:700,color:'var(--success)'}}>{getInitials(p?.name??'?')}</span>
-                }
-              </div>
-              <div style={{flex:1}}>
-                <p style={{fontWeight:700,fontSize:14}}>{d.anonima ? 'Doação anônima' : (p?.name ?? 'Pessoa')}</p>
-                <p style={{fontSize:12,color:'var(--muted)'}}>{d.forma_pagamento}{d.descricao?` · ${d.descricao}`:''}</p>
-                <p style={{fontSize:11,color:'var(--muted)'}}>{fmtDataHora(d.data_doacao)}</p>
-              </div>
-              <div style={{textAlign:'right',flexShrink:0}}>
-                <p style={{fontWeight:800,fontSize:16,color:'var(--success)'}}>{fmtBRL(d.valor)}</p>
-                {admin && (
-                  <button onClick={()=>excluir(d.id)} style={{background:'none',border:'none',cursor:'pointer',color:'var(--danger)',fontSize:11,fontFamily:'inherit',marginTop:4}}>excluir</button>
-                )}
-              </div>
-            </div>
-          </div>
+          <CardItem
+            key={d.id}
+            cor="#2F855A"
+            ehPessoa={!d.anonima}
+            emoji={d.anonima ? '🎁' : undefined}
+            fotoUrl={d.anonima ? null : (p?.photo_url ?? null)}
+            iniciais={getInitials(p?.name??'?')}
+            titulo={d.anonima ? 'Doação anônima' : (p?.name ?? 'Pessoa')}
+            subtitulo={`${d.forma_pagamento}${d.descricao?` · ${d.descricao}`:''}`}
+            extra={<p style={{fontSize:11,color:'var(--muted)'}}>{fmtDataHora(d.data_doacao)}</p>}
+            direita={
+              <>
+                <span style={{fontWeight:800,fontSize:16,color:'var(--success)'}}>{fmtBRL(d.valor)}</span>
+                {admin && <button onClick={()=>excluir(d.id)} style={{background:'none',border:'none',cursor:'pointer',color:'var(--danger)',fontSize:11,fontFamily:'inherit'}}>excluir</button>}
+              </>
+            }
+            onFoto={()=>!d.anonima && p?.photo_url && setFotoAmpliada(p.photo_url)}
+          />
         )
       })}
 
@@ -167,6 +164,7 @@ export default function Doacoes({ profile }: { profile?: Profile }) {
           </div>
         </div>
       )}
+      <FotoAmpliada url={fotoAmpliada} onClose={()=>setFotoAmpliada(null)} />
     </div>
   )
 }

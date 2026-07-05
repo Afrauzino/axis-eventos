@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import FichaMedica from '../components/FichaMedica'
 import PrintOverlay from '../components/PrintOverlay'
+import CardItem from '../components/CardItem'
+import FotoAmpliada from '../components/FotoAmpliada'
 import { getInitials, isAdmin, formatName } from '../utils'
 import { useEvento } from '../hooks/useEvento'
 import type { Profile } from '../App'
@@ -23,6 +25,7 @@ export default function Logistica({ profile }: { profile?: Profile }) {
   const [pessoas, setPessoas] = useState<PessoaLog[]>([])
   const [aba, setAba] = useState<'encontristas'|'config'>('encontristas')
   const [aberto, setAberto] = useState<Pessoa|null>(null)
+  const [fotoAmpliada, setFotoAmpliada] = useState<string|null>(null)
   const [novoItem, setNovoItem] = useState('')
   const [busca, setBusca] = useState('')
   const [imprimir, setImprimir] = useState(false)
@@ -147,25 +150,24 @@ export default function Logistica({ profile }: { profile?: Profile }) {
           filtrados.map(e=>{
             const pct = progresso(e.id); const inf = info(e.id)
             return (
-              <div key={e.id} style={{background:'white',borderRadius:12,boxShadow:'0 1px 5px rgba(0,0,0,0.12)',marginBottom:10,overflow:'hidden',display:'flex'}}>
-                <div style={{width:6,alignSelf:'stretch',background:'var(--primary)',flexShrink:0}}/>
-                <button onClick={()=>setAberto(e)} style={{flex:1,minWidth:0,textAlign:'left',fontFamily:'inherit',background:'none',border:'none',padding:'14px 15px',cursor:'pointer'}}>
-                  <div style={{display:'flex',alignItems:'center',gap:14,marginBottom:10}}>
-                    <Avatar p={e} size={52}/>
-                    <div style={{flex:1,minWidth:0}}>
-                      <p style={{fontWeight:700,fontSize:15,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{formatName(e.name)}</p>
-                      <div style={{display:'flex',gap:6,marginTop:3}}>
-                        {inf.concluido && <span style={{fontSize:10,fontWeight:700,color:'white',background:'var(--success)',padding:'2px 8px',borderRadius:99}}>Concluído</span>}
-                        {inf.toma_controlado && <span style={{fontSize:14}} title="Medicamento contínuo">💊</span>}
-                      </div>
-                    </div>
-                    <span style={{fontSize:15,fontWeight:800,color:'var(--primary)',flexShrink:0}}>{pct}%</span>
+              <CardItem
+                key={e.id}
+                cor="var(--primary)"
+                ehPessoa
+                fotoUrl={e.photo_url}
+                iniciais={getInitials(e.name)}
+                titulo={formatName(e.name)}
+                direita={<span style={{fontSize:15,fontWeight:800,color:'var(--primary)'}}>{pct}%</span>}
+                progresso={pct}
+                extra={(inf.concluido || inf.toma_controlado) ? (
+                  <div style={{display:'flex',gap:6,alignItems:'center'}}>
+                    {inf.concluido && <span style={{fontSize:10,fontWeight:700,color:'white',background:'var(--success)',padding:'2px 8px',borderRadius:99}}>Concluído</span>}
+                    {inf.toma_controlado && <span style={{fontSize:14}} title="Medicamento contínuo">💊</span>}
                   </div>
-                  <div style={{height:6,background:'var(--bg)',borderRadius:99,overflow:'hidden'}}>
-                    <div style={{height:'100%',width:`${pct}%`,background:'var(--primary)',borderRadius:99,transition:'width 0.3s'}}/>
-                  </div>
-                </button>
-              </div>
+                ) : undefined}
+                onVer={()=>setAberto(e)}
+                onFoto={()=>e.photo_url && setFotoAmpliada(e.photo_url)}
+              />
             )
           })}
         </>
@@ -308,6 +310,7 @@ export default function Logistica({ profile }: { profile?: Profile }) {
           })}
         </PrintOverlay>
       )}
+      <FotoAmpliada url={fotoAmpliada} onClose={()=>setFotoAmpliada(null)} />
     </div>
   )
 }

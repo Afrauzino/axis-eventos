@@ -4,6 +4,7 @@ import SubTabs from '../components/SubTabs'
 import { getInitials, isAdmin } from '../utils'
 import UploadFoto from '../components/UploadFoto'
 import EmojiGrid from '../components/EmojiGrid'
+import CardItem from '../components/CardItem'
 import { usePermissao } from '../hooks/usePermissao'
 import type { Profile } from '../App'
 
@@ -82,29 +83,19 @@ export default function TeatroPersonagens({ profile }: { profile?: Profile }) {
   }
 
   function PersonCard({ p }: { p: Personagem }) {
-    // Sem cor própria → usa a cor do sistema (muda junto com Administração → Aparência)
+    const foto = p.icone?.startsWith('http') ? p.icone : null
+    const emoji = (!foto && p.icone && !/^[a-z0-9_]+$/.test(p.icone)) ? p.icone : (foto ? undefined : '🎭')
     return (
-      <div style={{background:'white',borderRadius:12,boxShadow:'0 1px 5px rgba(0,0,0,0.12)',marginBottom:10,overflow:'hidden',display:'flex'}}>
-        <div style={{width:6,alignSelf:'stretch',background:'var(--primary)',flexShrink:0}}/>
-        <div style={{flex:1,minWidth:0,display:'flex',alignItems:'center',gap:14,padding:'16px 15px'}}>
-          <div style={{width:58,height:58,borderRadius:'50%',background:'var(--primary-light)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,overflow:'hidden'}}>
-            {renderIcone(p)}
-          </div>
-          <div style={{flex:1,minWidth:0}}>
-            <div style={{display:'flex',alignItems:'center',gap:6}}>
-              <p style={{fontWeight:700,fontSize:15,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{p.nome}</p>
-              {p.multiplo && <span className="badge badge-info" style={{fontSize:9}}>múltiplo</span>}
-            </div>
-            {p.descricao && <p style={{fontSize:12,color:'var(--muted)',marginTop:2}}>{p.descricao}</p>}
-          </div>
-          {canEdit && (
-            <div style={{display:'flex',gap:8,flexShrink:0}}>
-              <button onClick={()=>abrirEdicao(p)} aria-label="Editar" style={{width:34,height:34,borderRadius:8,background:'var(--bg)',border:'none',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',color:'var(--muted)',fontFamily:'inherit'}}><MatIcon name="edit" size={18}/></button>
-              <button onClick={()=>excluir(p.id)} aria-label="Excluir" style={{width:34,height:34,borderRadius:8,background:'var(--danger-bg)',border:'none',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',fontFamily:'inherit'}}><MatIcon name="delete" size={18} color="var(--danger)"/></button>
-            </div>
-          )}
-        </div>
-      </div>
+      <CardItem
+        cor="var(--primary)"
+        emoji={emoji}
+        fotoUrl={foto}
+        titulo={p.nome}
+        subtitulo={p.descricao || undefined}
+        direita={p.multiplo ? <span className="badge badge-info" style={{fontSize:9}}>múltiplo</span> : undefined}
+        onVer={canEdit ? ()=>abrirEdicao(p) : undefined}
+        onEditar={canEdit ? ()=>abrirEdicao(p) : undefined}
+      />
     )
   }
 
@@ -186,6 +177,12 @@ export default function TeatroPersonagens({ profile }: { profile?: Profile }) {
               <button type="submit" className="btn btn-primary btn-full" disabled={salvando}>
                 {salvando?'Salvando...':editando?'Salvar':'Criar'}
               </button>
+              {editando && (
+                <button type="button" className="btn btn-ghost btn-full" style={{marginTop:8,color:'var(--danger)'}}
+                  onClick={()=>{const id=editando.id;setModal(false);excluir(id)}}>
+                  <span className="icon icon-sm">delete</span> Excluir personagem
+                </button>
+              )}
             </form>
           </div>
         </div>

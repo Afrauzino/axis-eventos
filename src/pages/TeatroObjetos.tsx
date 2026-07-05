@@ -4,6 +4,7 @@ import SubTabs from '../components/SubTabs'
 import { isAdmin } from '../utils'
 import UploadFoto from '../components/UploadFoto'
 import EmojiGrid from '../components/EmojiGrid'
+import CardItem from '../components/CardItem'
 import { usePermissao } from '../hooks/usePermissao'
 import type { Profile } from '../App'
 
@@ -85,25 +86,19 @@ export default function TeatroObjetos({ profile }: { profile?: Profile }) {
       </div>
       {loading ? [1,2,3].map(i=><div key={i} className="skeleton" style={{height:60,marginBottom:8,borderRadius:14}}/>) :
       filtrados.map(o => {
+        const foto = o.imagem_url ?? (o.icone?.startsWith('http') ? o.icone : null)
+        const emoji = (!foto && o.icone && !/^[a-z0-9_]+$/.test(o.icone)) ? o.icone : (foto ? undefined : '📦')
         return (
-        <div key={o.id} style={{background:'white',borderRadius:12,boxShadow:'0 1px 5px rgba(0,0,0,0.12)',marginBottom:10,overflow:'hidden',display:'flex'}}>
-          <div style={{width:6,alignSelf:'stretch',background:'var(--primary)',flexShrink:0}}/>
-          <div style={{flex:1,minWidth:0,display:'flex',alignItems:'center',gap:14,padding:'16px 15px'}}>
-            <div style={{width:58,height:58,borderRadius:'50%',background:'var(--primary-light)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,overflow:'hidden'}}>
-              {renderMedia(o)}
-            </div>
-            <div style={{flex:1,minWidth:0}}>
-              <p style={{fontWeight:700,fontSize:15,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{o.nome}</p>
-              {o.descricao && <p style={{fontSize:12,color:'var(--muted)'}}>{o.descricao}</p>}
-            </div>
-            {canEdit && (
-              <div style={{display:'flex',gap:8,flexShrink:0}}>
-                <button onClick={()=>abrirEdicao(o)} aria-label="Editar" style={{width:34,height:34,borderRadius:8,background:'var(--bg)',border:'none',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',color:'var(--muted)',fontFamily:'inherit'}}><MatIcon name="edit" size={18}/></button>
-                <button onClick={()=>excluir(o.id)} aria-label="Excluir" style={{width:34,height:34,borderRadius:8,background:'var(--danger-bg)',border:'none',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',fontFamily:'inherit'}}><MatIcon name="delete" size={18} color="var(--danger)"/></button>
-              </div>
-            )}
-          </div>
-        </div>
+          <CardItem
+            key={o.id}
+            cor="var(--primary)"
+            emoji={emoji}
+            fotoUrl={foto}
+            titulo={o.nome}
+            subtitulo={o.descricao || undefined}
+            onVer={canEdit ? ()=>abrirEdicao(o) : undefined}
+            onEditar={canEdit ? ()=>abrirEdicao(o) : undefined}
+          />
         )
       })}
 
@@ -141,6 +136,12 @@ export default function TeatroObjetos({ profile }: { profile?: Profile }) {
               <button type="submit" className="btn btn-primary btn-full" disabled={salvando}>
                 {salvando?'Salvando...':editando?'Salvar':'Criar'}
               </button>
+              {editando && (
+                <button type="button" className="btn btn-ghost btn-full" style={{marginTop:8,color:'var(--danger)'}}
+                  onClick={()=>{const id=editando.id;setModal(false);excluir(id)}}>
+                  <span className="icon icon-sm">delete</span> Excluir objeto
+                </button>
+              )}
             </form>
           </div>
         </div>
