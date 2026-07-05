@@ -2,8 +2,9 @@ import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { isAdmin } from '../utils'
-import { useEvento } from '../hooks/useEvento'
+import { useEvento, invalidarEventoAtivo } from '../hooks/useEvento'
 import { usePermissao } from '../hooks/usePermissao'
+import { toast } from '../components/Toast'
 import { carregarConfig, salvarConfig } from '../lib/tema'
 import HomeCarousel from '../components/HomeCarousel'
 import BoasVindas, { type BVVariante } from '../components/BoasVindas'
@@ -46,6 +47,37 @@ export default function Dashboard({ profile }: { profile: Profile }) {
   const [stats,    setStats]    = useState<Stats|null>(null)
   const [progresso, setProgresso] = useState<{pct:number;total:number;feitos:number}|null>(null)
   const [loading,  setLoading]  = useState(true)
+
+  // Personalização da caixa "Evento atual" (admin): cor + imagem de fundo
+  const [cardCor, setCardCor] = useState('')
+  const [cardBg, setCardBg]   = useState('')
+  const [personalizando, setPersonalizando] = useState(false)
+  const [salvandoCard, setSalvandoCard]     = useState(false)
+  const bgFileRef = useRef<HTMLInputElement>(null)
+  useEffect(() => { if (evento) { setCardCor((evento as any).home_cor || ''); setCardBg((evento as any).home_bg_url || '') } }, [evento?.id]) // eslint-disable-line
+
+  async function enviarBgEvento(file: File) {
+    if (!evento) return
+    setSalvandoCard(true)
+    const ext = (file.name.split('.').pop() || 'jpg').toLowerCase()
+    const path = `evento-bg/${evento.id}.${ext}`
+    const { error } = await supabase.storage.from('pessoas').upload(path, file, { upsert: true })
+    if (error) { setSalvandoCard(false); toast.falha('Não foi possível enviar a imagem.', error); return }
+    const { data } = supabase.storage.from('pessoas').getPublicUrl(path)
+    setCardBg(`${data.publicUrl}?t=${Date.now()}`)
+    setSalvandoCard(false)
+  }
+
+  async function salvarVisualCard() {
+    if (!evento) return
+    setSalvandoCard(true)
+    const { error } = await supabase.from('events').update({ home_cor: cardCor || null, home_bg_url: cardBg || null }).eq('id', evento.id)
+    setSalvandoCard(false)
+    if (error) { toast.falha('Não foi possível salvar.', error); return }
+    invalidarEventoAtivo()
+    setPersonalizando(false)
+    toast.sucesso('Caixa personalizada!')
+  }
 
   // #tela-inicial — ordem dos blocos + modo "arrastar" (admin)
   const [ordem, setOrdem] = useState<string[]>(ORDEM_PADRAO)
@@ -136,18 +168,30 @@ export default function Dashboard({ profile }: { profile: Profile }) {
   const renderSecao = (id:string) => {
     if (!evento) return null
     switch (id) {
-      case 'evento':
+      case 'evento': {
+        const corCard = cardCor || 'var(--primary)'
+        const cardStyle: React.CSSProperties = cardBg
+          ? { backgroundImage:`linear-gradient(rgba(0,0,0,0.38),rgba(0,0,0,0.52)), url(${cardBg})`, backgroundSize:'cover', backgroundPosition:'center', borderRadius:14, padding:'16px 20px', marginBottom:16, boxShadow:'0 4px 14px rgba(0,0,0,0.28)', position:'relative' }
+          : { background:corCard, borderRadius:14, padding:'16px 20px', marginBottom:16, boxShadow:'0 4px 14px rgba(0,0,0,0.15)', position:'relative' }
         return (
-          <div style={{background:'var(--primary)',borderRadius:14,padding:'16px 20px',marginBottom:16,boxShadow:'0 4px 14px rgba(0,169,157,0.3)'}}>
+          <div style={cardStyle}>
             <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',marginBottom:10}}>
               <div>
                 <p style={{fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.08em',color:'rgba(255,255,255,0.7)',marginBottom:4}}>Evento atual</p>
                 <p style={{fontSize:17,fontWeight:700,color:'white'}}>{evento.name}</p>
-                {evento.location && <p style={{fontSize:12,color:'rgba(255,255,255,0.65)',marginTop:2}}>{evento.location}</p>}
+                {evento.location && <p style={{fontSize:12,color:'rgba(255,255,255,0.75)',marginTop:2}}>{evento.location}</p>}
               </div>
-              <span style={{fontSize:11,fontWeight:700,padding:'4px 10px',borderRadius:99,background:'rgba(255,255,255,0.2)',color:'white',flexShrink:0}}>
-                {evento.status==='active'?'Em andamento':'Encerrado'}
-              </span>
+              <div style={{display:'flex',alignItems:'center',gap:8,flexShrink:0}}>
+                <span style={{fontSize:11,fontWeight:700,padding:'4px 10px',borderRadius:99,background:'rgba(255,255,255,0.2)',color:'white'}}>
+                  {evento.status==='active'?'Em andamento':'Encerrado'}
+                </span>
+                {admin && !reordenando && (
+                  <button onClick={()=>setPersonalizando(true)} title="Personalizar caixa"
+                    style={{background:'rgba(255,255,255,0.2)',border:'none',borderRadius:8,width:30,height:30,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',color:'white',fontFamily:'inherit'}}>
+                    <span className="icon icon-sm">palette</span>
+                  </button>
+                )}
+              </div>
             </div>
             {progresso && (
               <div style={{marginTop:6}}>
@@ -162,6 +206,7 @@ export default function Dashboard({ profile }: { profile: Profile }) {
             )}
           </div>
         )
+      }
       case 'ranking':
         return (
           <div style={{marginBottom:16}}>
@@ -249,6 +294,49 @@ export default function Dashboard({ profile }: { profile: Profile }) {
           })}
         </>
       )}
+
+      {/* Personalizar a caixa "Evento atual" (admin) */}
+      {personalizando && (
+        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.5)',zIndex:400,display:'flex',flexDirection:'column',justifyContent:'flex-end'}} onClick={e=>e.target===e.currentTarget&&setPersonalizando(false)}>
+          <div style={{background:'white',borderRadius:'20px 20px 0 0',padding:'8px 20px 28px',maxWidth:480,width:'100%',margin:'0 auto',maxHeight:'88vh',overflowY:'auto'}}>
+            <div style={{width:36,height:4,background:'var(--border)',borderRadius:2,margin:'12px auto 16px'}}/>
+            <p style={{fontSize:16,fontWeight:800,marginBottom:14}}>Personalizar caixa do evento</p>
+
+            {/* Prévia */}
+            <div style={cardBg
+              ? { backgroundImage:`linear-gradient(rgba(0,0,0,0.38),rgba(0,0,0,0.52)), url(${cardBg})`, backgroundSize:'cover', backgroundPosition:'center', borderRadius:14, padding:'14px 16px', marginBottom:16 }
+              : { background: cardCor||'var(--primary)', borderRadius:14, padding:'14px 16px', marginBottom:16 }}>
+              <p style={{fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.08em',color:'rgba(255,255,255,0.7)'}}>Evento atual</p>
+              <p style={{fontSize:16,fontWeight:700,color:'white'}}>{evento?.name}</p>
+            </div>
+
+            <label className="form-label">Cor de fundo</label>
+            <div style={{display:'flex',gap:8,flexWrap:'wrap',marginBottom:16}}>
+              {['#00A99D','#1565C0','#6B46C1','#2F855A','#C53030','#D69E2E','#E8821A','#0F766E','#B83280','#1A202C'].map(c=>(
+                <button key={c} type="button" onClick={()=>setCardCor(c)} aria-label={c}
+                  style={{width:34,height:34,borderRadius:8,background:c,border:cardCor===c?'3px solid var(--text)':'2px solid white',boxShadow:'0 0 0 1px var(--border)',cursor:'pointer'}}/>
+              ))}
+            </div>
+
+            <label className="form-label">Imagem de fundo</label>
+            <p className="form-hint mb-2">Se colocar uma imagem, ela cobre a cor. Fica escurecida um pouco pra o texto ler bem.</p>
+            <div style={{display:'flex',gap:8,marginBottom:16,flexWrap:'wrap'}}>
+              <button type="button" className="btn btn-ghost btn-sm" onClick={()=>bgFileRef.current?.click()} disabled={salvandoCard}>
+                <span className="icon icon-sm">image</span> {salvandoCard?'Enviando...':'Enviar imagem'}
+              </button>
+              {cardBg && <button type="button" className="btn btn-ghost btn-sm" style={{color:'var(--danger)'}} onClick={()=>setCardBg('')}>
+                <span className="icon icon-sm">delete</span> Remover imagem
+              </button>}
+            </div>
+
+            <button className="btn btn-primary btn-full" onClick={salvarVisualCard} disabled={salvandoCard} style={{marginBottom:8}}>
+              {salvandoCard?'Salvando...':'Salvar'}
+            </button>
+            <button className="btn btn-ghost btn-full" onClick={()=>setPersonalizando(false)}>Cancelar</button>
+          </div>
+        </div>
+      )}
+      <input ref={bgFileRef} type="file" accept="image/*" style={{display:'none'}} onChange={e=>{const f=e.target.files?.[0]; if(f) enviarBgEvento(f); e.target.value=''}}/>
 
     </div>
   )
