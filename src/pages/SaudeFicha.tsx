@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import SubTabs from '../components/SubTabs'
 import FichaMedica from '../components/FichaMedica'
+import CardItem from '../components/CardItem'
+import FotoAmpliada from '../components/FotoAmpliada'
 import { getInitials } from '../utils'
 import { useEvento } from '../hooks/useEvento'
 import type { Profile } from '../App'
@@ -28,6 +30,7 @@ export default function SaudeFicha({ profile }: { profile?: Profile }) {
   const [filtro, setFiltro]     = useState<'todos'|'com'|'sem'>('todos')
   const [busca, setBusca]       = useState('')
   const [aberta, setAberta]     = useState<Pessoa|null>(null)
+  const [fotoAmpliada, setFotoAmpliada] = useState<string|null>(null)
 
   useEffect(() => { if (evLoading) return; if (!evento) { setLoading(false); return }; carregar() }, [evento, evLoading])
 
@@ -90,22 +93,22 @@ export default function SaudeFicha({ profile }: { profile?: Profile }) {
         const f = fichas.find(x=>x.person_id===p.id)
         const fl = flagsFicha(f)
         return (
-        <div key={p.id} style={{background:'white',borderRadius:12,boxShadow:'0 1px 5px rgba(0,0,0,0.12)',marginBottom:10,overflow:'hidden',display:'flex'}}>
-          <div style={{width:6,alignSelf:'stretch',background:'var(--primary)',flexShrink:0}}/>
-          <button onClick={()=>setAberta(p)} style={{flex:1,minWidth:0,display:'flex',alignItems:'center',gap:14,padding:'16px 15px',background:'none',border:'none',cursor:'pointer',fontFamily:'inherit',textAlign:'left'}}>
-            <div style={{width:58,height:58,borderRadius:'50%',background:'var(--primary-light)',display:'flex',alignItems:'center',justifyContent:'center',overflow:'hidden',flexShrink:0}}>
-              {p.photo_url?<img src={p.photo_url} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}}/>:<span style={{fontSize:20,fontWeight:700,color:'var(--primary)'}}>{getInitials(p.name)}</span>}
-            </div>
-            <div style={{flex:1,minWidth:0}}>
-              <p style={{fontWeight:700,fontSize:15,marginBottom:2,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{p.name}</p>
-              <p style={{fontSize:12,color:'var(--muted)',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{!f ? 'Sem ficha' : fl.length ? fl.join(' · ') : 'Sem alertas'}</p>
-            </div>
-            {badgePessoa(p.id)}
-            <span className="icon icon-sm" style={{color:'var(--muted-light)'}}>chevron_right</span>
-          </button>
-        </div>
+        <CardItem
+          key={p.id}
+          cor="var(--primary)"
+          ehPessoa
+          fotoUrl={p.photo_url}
+          iniciais={getInitials(p.name)}
+          titulo={p.name}
+          subtitulo={!f ? 'Sem ficha' : fl.length ? fl.join(' · ') : 'Sem alertas'}
+          direita={badgePessoa(p.id)}
+          onVer={()=>setAberta(p)}
+          onFoto={()=>p.photo_url && setFotoAmpliada(p.photo_url)}
+        />
         )
       })}
+
+      <FotoAmpliada url={fotoAmpliada} onClose={()=>setFotoAmpliada(null)} />
 
       {/* Ficha médica (componente reutilizável, fonte única) */}
       {aberta && evento && (

@@ -7,6 +7,7 @@ import EmojiGrid from '../components/EmojiGrid'
 import Seletor from '../components/Seletor'
 import { useEvento } from '../hooks/useEvento'
 import { usePermissao } from '../hooks/usePermissao'
+import CardItem from '../components/CardItem'
 import type { Profile } from '../App'
 
 function MatIcon({ name, size=22, color='var(--primary)' }: { name:string; size?:number; color?:string }) {
@@ -110,22 +111,20 @@ export default function Locais({ profile }: { profile?: Profile }) {
       ) : filtrados.map(l => {
         const eq  = equipes.find(e=>e.id===l.equipe_responsavel_id)
         const cor = (l as any).cor ?? TIPO_COR[l.tipo] ?? 'var(--primary)'
+        const sub = [TIPOS.find(t=>t[0]===l.tipo)?.[1]??l.tipo, l.capacidade?`Cap: ${l.capacidade}`:'', eq?.name??''].filter(Boolean).join(' · ')
+        const emojiLocal = (l.icone && !/^[a-z0-9_]+$/.test(l.icone)) ? l.icone : (TIPO_EMOJI_PADRAO[l.tipo] ?? '📍')
         return (
-          <button key={l.id} className="list-card" onClick={()=>canEdit?abrirEdicao(l):undefined}>
-            <div className="list-card-bar" style={{background:cor}}/>
-            <div className="list-card-media" style={{background:cor+'22',overflow:'hidden'}}>
-              {renderMedia(l)}
-            </div>
-            <div className="list-card-body">
-              <div className="list-card-title">{l.nome}</div>
-              <div className="list-card-desc">
-                {TIPOS.find(t=>t[0]===l.tipo)?.[1]??l.tipo}
-                {l.capacidade ? ` · Cap: ${l.capacidade}` : ''}
-                {eq ? ` · ${eq.name}` : ''}
-              </div>
-            </div>
-            {canEdit && <div className="list-card-chevron"><span className="icon icon-sm">chevron_right</span></div>}
-          </button>
+          <CardItem
+            key={l.id}
+            cor={cor}
+            emoji={l.foto_url ? undefined : emojiLocal}
+            fotoUrl={l.foto_url}
+            iniciais={(l.nome||'?').slice(0,2).toUpperCase()}
+            titulo={l.nome}
+            subtitulo={sub}
+            onVer={canEdit ? () => abrirEdicao(l) : undefined}
+            onEditar={canEdit ? () => abrirEdicao(l) : undefined}
+          />
         )
       })}
 

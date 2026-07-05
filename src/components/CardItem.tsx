@@ -21,6 +21,7 @@ type Props = {
   onVer?: () => void          // clicar no corpo/nome = ver informacoes
   onEditar?: () => void       // clicar no lapis = editar
   onFoto?: () => void         // clicar na foto = ampliar (so pessoa)
+  direita?: ReactNode         // conteudo no canto direito (selo/valor/status), antes do lapis
   extra?: ReactNode
 }
 
@@ -86,6 +87,11 @@ export default function CardItem(props: Props) {
               </div>
             )}
           </div>
+          {props.direita && (
+            <div className="card-item-direita" onClick={(ev) => ev.stopPropagation()}>
+              {props.direita}
+            </div>
+          )}
           {props.onEditar && (
             <button
               className="card-item-edit"
