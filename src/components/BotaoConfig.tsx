@@ -7,7 +7,7 @@ export default function BotaoConfig() {
   const { chrome } = useChrome()
   const [aberto, setAberto] = useState(false)
 
-  const temAlgo = !!chrome && (!!chrome.busca || (chrome.grupos?.length ?? 0) > 0 || (chrome.impressoes?.length ?? 0) > 0 || (chrome.configs?.length ?? 0) > 0)
+  const temAlgo = !!chrome && ((chrome.navegacao?.length ?? 0) > 0 || !!chrome.busca || (chrome.grupos?.length ?? 0) > 0 || (chrome.impressoes?.length ?? 0) > 0 || (chrome.configs?.length ?? 0) > 0)
   if (!temAlgo || !chrome) return null
 
   const padrao = chrome.padraoFiltro ?? 'todos'
@@ -30,6 +30,26 @@ export default function BotaoConfig() {
           onClick={e => e.target === e.currentTarget && setAberto(false)}>
           <div style={{ background: 'white', borderRadius: '20px 20px 0 0', padding: '8px 16px 24px', maxWidth: 480, width: '100%', margin: '0 auto', maxHeight: '82vh', overflowY: 'auto' }}>
             <div style={{ width: 36, height: 4, background: 'var(--border)', borderRadius: 2, margin: '12px auto 14px' }} />
+
+            {/* Navegação (sub-abas da tela) */}
+            {(chrome.navegacao?.length ?? 0) > 0 && (
+              <div style={{ marginBottom: 16 }}>
+                {chrome.navegacao!.map((g, gi) => (
+                  <div key={gi} style={{ marginBottom: 12 }}>
+                    <p style={{ fontSize: 12, color: 'var(--muted)', fontWeight: 600, marginBottom: 6 }}>{g.titulo}</p>
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                      {g.itens.map((it, ii) => (
+                        <button key={ii} onClick={() => { setAberto(false); it.onClick() }}
+                          style={{ padding: '8px 14px', borderRadius: 9, cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, fontWeight: 700, border: it.ativo ? '2px solid var(--primary)' : '1px solid var(--border)', background: it.ativo ? 'var(--primary-light)' : 'white', color: it.ativo ? 'var(--primary-dark)' : 'var(--text2)' }}>
+                          {it.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+                <div style={{ height: 1, background: 'var(--border)', margin: '2px 0 16px' }} />
+              </div>
+            )}
 
             {/* Busca */}
             {chrome.busca && (

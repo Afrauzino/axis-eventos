@@ -6,8 +6,11 @@ import type { ReactNode } from 'react'
 export type FiltroGrupo = { chave: string; label: string; opcoes: { value: string; label: string }[] }
 export type ItemImpressao = { label: string; onClick: () => void; icon?: string; disabled?: boolean }
 export type ItemConfig = { label: string; onClick: () => void; icon?: string }
+export type NavItem = { label: string; ativo?: boolean; onClick: () => void }
+export type NavGrupo = { titulo: string; itens: NavItem[] }
 
 export type Chrome = {
+  navegacao?: NavGrupo[]        // sub-abas da tela, organizadas em grupos
   busca?: { value: string; onChange: (v: string) => void; placeholder?: string }
   grupos?: FiltroGrupo[]
   valores?: Record<string, string>

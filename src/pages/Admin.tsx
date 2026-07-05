@@ -5,7 +5,8 @@ import { limparCachePermissoes } from '../hooks/usePermissao'
 import { fmtDataHora, isAdmin } from '../utils'
 import { invalidarEventoAtivo } from '../hooks/useEvento'
 import { registrarLog } from '../lib/audit'
-import SubTabs from '../components/SubTabs'
+import { useNavigate } from 'react-router-dom'
+import { NAV_GROUPS } from '../lib/navGroups'
 import { toast } from '../components/Toast'
 import Seletor from '../components/Seletor'
 import DataHora from '../components/DataHora'
@@ -137,6 +138,7 @@ export default function Admin({ profile }: { profile?: Profile }) {
   const [fotoAmpliada, setFotoAmpliada] = useState<string|null>(null)
   const [buscaUser, setBuscaUser]       = useState('')
   const [filtroUserTipo, setFiltroUserTipo] = useState('todos')  // todos | encounterer | worker
+  const navigate = useNavigate()
   // #1 — admin edita 100% do cadastro de qualquer pessoa (reusa CadastroPessoa)
   const [editPessoaId, setEditPessoaId] = useState<string|null>(null)
   const [editEventoId, setEditEventoId] = useState<string|undefined>(undefined)
@@ -843,31 +845,32 @@ export default function Admin({ profile }: { profile?: Profile }) {
   }
 
   // ⚙️ do topo — só a aba Usuários tem busca + filtro; nas outras o ⚙️ some.
-  useRegistrarChrome(
-    aba==='usuarios'
-      ? {
-          busca: { value: buscaUser, onChange: setBuscaUser, placeholder: 'Buscar usuário...' },
-          grupos: [{ chave:'tipo', label:'Tipo', opcoes:[{value:'todos',label:'Todos'},{value:'encounterer',label:'Encontristas'},{value:'worker',label:'Encontreiros'}] }],
-          valores: { tipo: filtroUserTipo },
-          onFiltro: (_,v)=>setFiltroUserTipo(v),
-        }
-      : {},
-    [aba, buscaUser, filtroUserTipo]
-  )
+  // ⚙️ do topo — navegação (2 níveis de abas) organizada + busca/filtro na aba Usuários
+  useRegistrarChrome({
+    navegacao: [
+      { titulo:'Administração', itens: NAV_GROUPS.admin.map(it => ({ label:it.label, ativo: it.rota==='/admin', onClick:()=>{ if (it.rota!=='/admin') navigate(it.rota) } })) },
+      { titulo:'Seção', itens: [
+        { label:'Usuários',  ativo:aba==='usuarios',     onClick:()=>setAba('usuarios') },
+        { label:'Equipes',   ativo:aba==='equipes_perm', onClick:()=>{setAba('equipes_perm');carregarEquipesPerm()} },
+        { label:'Eventos',   ativo:aba==='eventos',      onClick:()=>setAba('eventos') },
+        { label:'Tipos',     ativo:aba==='tipos',        onClick:()=>setAba('tipos') },
+        { label:'Backup',    ativo:aba==='backup',       onClick:()=>setAba('backup') },
+        { label:'Logs',      ativo:aba==='logs',         onClick:()=>{setAba('logs');carregarLogs()} },
+        { label:'Aparência', ativo:aba==='aparencia',    onClick:()=>setAba('aparencia') },
+        { label:'MSG',       ativo:aba==='msg',          onClick:()=>setAba('msg') },
+      ] },
+    ],
+    ...(aba==='usuarios' ? {
+      busca: { value: buscaUser, onChange: setBuscaUser, placeholder: 'Buscar usuário...' },
+      grupos: [{ chave:'tipo', label:'Tipo', opcoes:[{value:'todos',label:'Todos'},{value:'encounterer',label:'Encontristas'},{value:'worker',label:'Encontreiros'}] }],
+      valores: { tipo: filtroUserTipo },
+      onFiltro: (_:string,v:string)=>setFiltroUserTipo(v),
+    } : {}),
+  }, [aba, buscaUser, filtroUserTipo])
 
   return (
     <div className="page">
-      <SubTabs group="admin"/>
-      <div className="tabs">
-        <button className={`tab ${aba==='usuarios'?'active':''}`}  onClick={()=>setAba('usuarios')}>Usuários</button>
-        <button className={`tab ${aba==='equipes_perm'?'active':''}`} onClick={()=>{setAba('equipes_perm');carregarEquipesPerm()}}>Equipes</button>
-        <button className={`tab ${aba==='eventos'?'active':''}`}   onClick={()=>setAba('eventos')}>Eventos</button>
-        <button className={`tab ${aba==='tipos'?'active':''}`}     onClick={()=>setAba('tipos')}>Tipos</button>
-        <button className={`tab ${aba==='backup'?'active':''}`}    onClick={()=>setAba('backup')}>Backup</button>
-        <button className={`tab ${aba==='logs'?'active':''}`}      onClick={()=>{setAba('logs');carregarLogs()}}>Logs</button>
-        <button className={`tab ${aba==='aparencia'?'active':''}`} onClick={()=>setAba('aparencia')}>Aparência</button>
-        <button className={`tab ${aba==='msg'?'active':''}`}       onClick={()=>setAba('msg')}>MSG</button>
-      </div>
+      {/* Abas migradas pro ⚙️ do topo (Administração + Seção) — tela mais limpa */}
 
       {/* USUÁRIOS */}
       {aba==='usuarios' && (
