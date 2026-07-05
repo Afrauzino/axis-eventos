@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { useLocation } from 'react-router-dom'
 import { useChrome } from '../lib/chrome'
 
 // ⚙️ do topo (ao lado do sino). Mostra o que a página registrou:
@@ -6,6 +7,8 @@ import { useChrome } from '../lib/chrome'
 export default function BotaoConfig() {
   const { chrome } = useChrome()
   const [aberto, setAberto] = useState(false)
+  const loc = useLocation()
+  useEffect(() => { setAberto(false) }, [loc.pathname]) // fecha o menu ao trocar de página
 
   const temAlgo = !!chrome && ((chrome.navegacao?.length ?? 0) > 0 || !!chrome.busca || (chrome.grupos?.length ?? 0) > 0 || (chrome.impressoes?.length ?? 0) > 0 || (chrome.configs?.length ?? 0) > 0)
   if (!temAlgo || !chrome) return null
