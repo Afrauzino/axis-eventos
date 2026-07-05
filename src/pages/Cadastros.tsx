@@ -40,7 +40,6 @@ export default function Cadastros({ profile }: { profile: Profile }) {
   const [editando, setEditando] = useState<Pessoa|null>(null)
   const [copiadoId, setCopiadoId] = useState<string|null>(null)
   const [imprimir, setImprimir] = useState(false)
-  const [impScope, setImpScope] = useState<'ambos'|'encounterer'|'worker'>('ambos')
   const [fotoAmpliada, setFotoAmpliada] = useState<string|null>(null)
 
   async function copiarCodigo(p: Pessoa) {
@@ -144,9 +143,7 @@ export default function Cadastros({ profile }: { profile: Profile }) {
     valores: { role: filtroRole },
     onFiltro: (_,v)=>setFiltroRole(v),
     impressoes: canEdit ? [
-      { label:'Lista com fotos — os dois', onClick:()=>{setImpScope('ambos');setImprimir(true)} },
-      { label:'Só encontristas', onClick:()=>{setImpScope('encounterer');setImprimir(true)} },
-      { label:'Só encontreiros', onClick:()=>{setImpScope('worker');setImprimir(true)} },
+      { label:'Imprimir lista atual (com fotos)', onClick:()=>setImprimir(true) },
     ] : undefined,
   }, [busca, filtroRole, canEdit])
 
@@ -300,8 +297,9 @@ export default function Cadastros({ profile }: { profile: Profile }) {
 
       {imprimir && (
         <PrintOverlay titulo="Lista com fotos" onClose={()=>setImprimir(false)}>
-          {([['Encontristas','encounterer'],['Encontreiros','worker']] as const).filter(([,rt])=>impScope==='ambos'||impScope===rt).map(([tit,rt])=>{
-            const arr = lista.filter(p=>p.role_type===rt)
+          {([['Encontristas','encounterer'],['Encontreiros','worker']] as const).map(([tit,rt])=>{
+            const arr = filtrados.filter(p=>p.role_type===rt)   // imprime exatamente o que está no filtro/busca
+            if (arr.length===0) return null
             return (
               <div key={rt} className="print-break" style={{marginBottom:24}}>
                 <h2 style={{fontSize:18,fontWeight:800,marginBottom:12,borderBottom:'2px solid #111827',paddingBottom:4}}>{tit} ({arr.length})</h2>
