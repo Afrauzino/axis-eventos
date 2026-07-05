@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import EmojiGrid from '../components/EmojiGrid'
 import PrintOverlay from '../components/PrintOverlay'
+import CardItem from '../components/CardItem'
 import Seletor from '../components/Seletor'
 import { useEvento } from '../hooks/useEvento'
 import { usePermissao } from '../hooks/usePermissao'
@@ -128,23 +129,16 @@ export default function Cozinha({ profile }: { profile?: Profile }) {
             const tipo = tipos.find(t=>t.id===c.refeicao_tipo_id)
             const cor  = tipo?.cor ?? 'var(--primary)'
             return (
-              <div key={c.id} style={{background:'white',borderRadius:12,boxShadow:'0 1px 5px rgba(0,0,0,0.12)',marginBottom:10,overflow:'hidden',display:'flex'}}>
-                <div style={{width:6,alignSelf:'stretch',background:cor,flexShrink:0}}/>
-                <div style={{flex:1,minWidth:0,padding:'14px 15px'}}>
-                  <div style={{display:'flex',alignItems:'center',gap:14}}>
-                    <div style={{width:52,height:52,borderRadius:'50%',background:tipo?tipo.cor+'24':'var(--primary-light)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,fontSize:24,lineHeight:1}}>{tipo?.emoji || '🍽️'}</div>
-                    <div style={{flex:1,minWidth:0}}>
-                      <p style={{fontWeight:700,fontSize:15,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{c.titulo || 'Cardápio'}</p>
-                      {tipo && <p style={{fontSize:12,color:'var(--muted)'}}>{tipo.nome}</p>}
-                    </div>
-                    {canEdit && <div style={{display:'flex',gap:8,flexShrink:0}}>
-                      <button onClick={()=>abrirEditarCardapio(c)} aria-label="Editar" style={{width:34,height:34,borderRadius:8,background:'var(--bg)',border:'none',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',color:'var(--muted)',fontFamily:'inherit'}}><span className="icon icon-sm">edit</span></button>
-                      <button onClick={()=>excluirCardapio(c.id)} aria-label="Excluir" style={{width:34,height:34,borderRadius:8,background:'var(--danger-bg)',border:'none',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',fontFamily:'inherit'}}><span className="icon icon-sm" style={{color:'var(--danger)'}}>delete</span></button>
-                    </div>}
-                  </div>
-                  {c.itens && <p style={{fontSize:13,color:'var(--muted)',whiteSpace:'pre-wrap',marginTop:10}}>{c.itens}</p>}
-                </div>
-              </div>
+              <CardItem
+                key={c.id}
+                cor={cor}
+                emoji={tipo?.emoji || '🍽️'}
+                titulo={c.titulo || 'Cardápio'}
+                subtitulo={tipo?.nome}
+                extra={c.itens ? <p style={{fontSize:13,color:'var(--muted)',whiteSpace:'pre-wrap'}}>{c.itens}</p> : undefined}
+                onVer={canEdit ? ()=>abrirEditarCardapio(c) : undefined}
+                onEditar={canEdit ? ()=>abrirEditarCardapio(c) : undefined}
+              />
             )
           })
       )}
@@ -154,17 +148,14 @@ export default function Cozinha({ profile }: { profile?: Profile }) {
         tipos.length===0
           ? <div className="empty"><p className="empty-title">Nenhum tipo</p><p className="empty-sub">Toque no + para criar (Café, Almoço, Janta...).</p></div>
           : tipos.map(t=>(
-            <div key={t.id} style={{background:'white',borderRadius:12,boxShadow:'0 1px 5px rgba(0,0,0,0.12)',marginBottom:10,overflow:'hidden',display:'flex'}}>
-              <div style={{width:6,alignSelf:'stretch',background:t.cor,flexShrink:0}}/>
-              <div style={{flex:1,minWidth:0,display:'flex',alignItems:'center',gap:14,padding:'16px 15px'}}>
-                <div style={{width:58,height:58,borderRadius:'50%',background:t.cor+'24',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,fontSize:27,lineHeight:1}}>{t.emoji || '🍽️'}</div>
-                <p style={{flex:1,minWidth:0,fontWeight:700,fontSize:15,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{t.nome}</p>
-                {canEdit && <div style={{display:'flex',gap:8,flexShrink:0}}>
-                  <button onClick={()=>abrirEditarTipo(t)} aria-label="Editar" style={{width:34,height:34,borderRadius:8,background:'var(--bg)',border:'none',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',color:'var(--muted)',fontFamily:'inherit'}}><span className="icon icon-sm">edit</span></button>
-                  <button onClick={()=>excluirTipo(t.id)} aria-label="Excluir" style={{width:34,height:34,borderRadius:8,background:'var(--danger-bg)',border:'none',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',fontFamily:'inherit'}}><span className="icon icon-sm" style={{color:'var(--danger)'}}>delete</span></button>
-                </div>}
-              </div>
-            </div>
+            <CardItem
+              key={t.id}
+              cor={t.cor}
+              emoji={t.emoji || '🍽️'}
+              titulo={t.nome}
+              onVer={canEdit ? ()=>abrirEditarTipo(t) : undefined}
+              onEditar={canEdit ? ()=>abrirEditarTipo(t) : undefined}
+            />
           ))
       )}
 
@@ -191,6 +182,7 @@ export default function Cozinha({ profile }: { profile?: Profile }) {
               </div>
             </div>
             <button className="btn btn-primary btn-full" onClick={salvarTipo} style={{marginBottom:8}}>{editTipo?'Salvar':'Criar'}</button>
+            {editTipo && <button className="btn btn-ghost btn-full" style={{color:'var(--danger)',marginBottom:8}} onClick={()=>{const id=editTipo.id;setModalTipo(false);excluirTipo(id)}}><span className="icon icon-sm">delete</span> Excluir tipo</button>}
             <button className="btn btn-ghost btn-full" onClick={()=>setModalTipo(false)}>Cancelar</button>
           </div>
         </div>
@@ -212,6 +204,7 @@ export default function Cozinha({ profile }: { profile?: Profile }) {
             <label className="form-label">Itens do cardápio</label>
             <textarea className="form-input" placeholder="Arroz, feijão, salada..." rows={6} value={formCard.itens} onChange={e=>setFormCard(f=>({...f,itens:e.target.value}))} style={{resize:'vertical',marginBottom:16}}/>
             <button className="btn btn-primary btn-full" onClick={salvarCardapio} style={{marginBottom:8}}>Salvar</button>
+            {editCard && <button className="btn btn-ghost btn-full" style={{color:'var(--danger)',marginBottom:8}} onClick={()=>{const id=editCard.id;setModalCard(false);excluirCardapio(id)}}><span className="icon icon-sm">delete</span> Excluir cardápio</button>}
             <button className="btn btn-ghost btn-full" onClick={()=>setModalCard(false)}>Cancelar</button>
           </div>
         </div>

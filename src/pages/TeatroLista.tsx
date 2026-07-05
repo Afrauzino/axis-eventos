@@ -5,6 +5,7 @@ import SubTabs from '../components/SubTabs'
 import EmojiGrid from '../components/EmojiGrid'
 import Seletor from '../components/Seletor'
 import { toast } from '../components/Toast'
+import CardItem from '../components/CardItem'
 import { isAdmin } from '../utils'
 import { useEvento } from '../hooks/useEvento'
 import { usePermissao } from '../hooks/usePermissao'
@@ -120,33 +121,25 @@ export default function TeatroLista({ profile }: { profile?: Profile }) {
           <p className="empty-title">Nenhum teatro</p>
           <p className="empty-desc">Cadastre os teatros deste evento.</p>
         </div>
-      ) : filtrados.map(t => {
-        const cor = t.cor || 'var(--primary)'
-        const corBg = t.cor ? t.cor+'24' : 'var(--primary-light)'
-        return (
-          <div key={t.id} style={{background:'white',borderRadius:12,boxShadow:'0 1px 5px rgba(0,0,0,0.12)',marginBottom:10,overflow:'hidden',display:'flex'}}>
-            <div style={{width:6,alignSelf:'stretch',background:cor,flexShrink:0}}/>
-            <button style={{flex:1,minWidth:0,display:'flex',alignItems:'center',gap:14,padding:'16px 15px',background:'none',border:'none',cursor:'pointer',fontFamily:'inherit',textAlign:'left'}} onClick={()=>navigate('/teatro/'+t.id)}>
-              <div style={{width:58,height:58,borderRadius:'50%',flexShrink:0,display:'flex',alignItems:'center',justifyContent:'center',background:corBg}}>
-                <span style={{fontSize:27}}>{t.emoji || '🎭'}</span>
-              </div>
-              <div style={{flex:1,minWidth:0}}>
-                <p style={{fontWeight:700,fontSize:15,marginBottom:2,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{t.nome}</p>
-                {t.descricao && <p style={{fontSize:12,color:'var(--muted)',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{t.descricao}</p>}
-              </div>
-            </button>
-            <div style={{display:'flex',alignItems:'center',gap:8,paddingRight:14}}>
-              <button
-                onClick={e=>{e.stopPropagation();mudarStatusTeatro(t.id,t.status)}}
-                className={`badge ${STATUS_BADGE[t.status]??'badge-neutral'}`}
-                style={{flexShrink:0,fontSize:10,border:'none',cursor:'pointer',fontFamily:'inherit'}}
-                title="Clique para avançar status"
-              >{STATUS_LABEL[t.status]??t.status}</button>
-              {canEdit && <button onClick={()=>abrirEdicao(t)} aria-label="Editar" style={{width:34,height:34,borderRadius:8,background:'var(--bg)',border:'none',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',color:'var(--muted)',fontFamily:'inherit',flexShrink:0}}><span className="icon icon-sm">edit</span></button>}
-            </div>
-          </div>
-        )
-      })}
+      ) : filtrados.map(t => (
+        <CardItem
+          key={t.id}
+          cor={t.cor || 'var(--primary)'}
+          emoji={t.emoji || '🎭'}
+          titulo={t.nome}
+          subtitulo={t.descricao || undefined}
+          direita={
+            <button
+              onClick={()=>mudarStatusTeatro(t.id,t.status)}
+              className={`badge ${STATUS_BADGE[t.status]??'badge-neutral'}`}
+              style={{fontSize:10,border:'none',cursor:'pointer',fontFamily:'inherit'}}
+              title="Clique para avançar status"
+            >{STATUS_LABEL[t.status]??t.status}</button>
+          }
+          onVer={()=>navigate('/teatro/'+t.id)}
+          onEditar={canEdit ? ()=>abrirEdicao(t) : undefined}
+        />
+      ))}
 
       {canEdit && <button className="fab" onClick={abrirNovo}><span className="icon">add</span></button>}
 
