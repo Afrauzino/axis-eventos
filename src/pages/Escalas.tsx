@@ -8,6 +8,8 @@ import { usePermissao } from '../hooks/usePermissao'
 import PersonSelect from '../components/PersonSelect'
 import Seletor from '../components/Seletor'
 import DataHora from '../components/DataHora'
+import CardItem from '../components/CardItem'
+import FotoAmpliada from '../components/FotoAmpliada'
 import type { Profile } from '../App'
 
 type Escala  = { id:string; person_id:string; team_id:string|null; title:string; start_time:string; end_time:string; location:string|null; notes:string|null; status:string }
@@ -25,6 +27,7 @@ export default function Escalas({ profile }: { profile?: Profile }) {
   const [loading, setLoading]   = useState(true)
   const [modal, setModal]       = useState(false)
   const [editando, setEditando] = useState<Escala|null>(null)
+  const [fotoAmpliada, setFotoAmpliada] = useState<string|null>(null)
   const [salvando, setSalvando] = useState(false)
   const [erro, setErro]         = useState('')
   const [conflito, setConflito] = useState<string|null>(null)
@@ -215,25 +218,19 @@ export default function Escalas({ profile }: { profile?: Profile }) {
         const p  = getPessoa(e.person_id)
         const eq = getEquipe(e.team_id)
         return (
-          <div key={e.id} style={{background:'white',borderRadius:14,boxShadow:'var(--shadow-sm)',marginBottom:8,display:'flex',alignItems:'center',gap:0,overflow:'hidden'}}>
-            <div style={{width:4,background:eq?.color??'var(--primary)',alignSelf:'stretch',flexShrink:0}}/>
-            <div style={{display:'flex',alignItems:'center',gap:12,flex:1,padding:'12px 14px'}}>
-              <div style={{width:40,height:40,borderRadius:'50%',background:'var(--primary)',display:'flex',alignItems:'center',justifyContent:'center',overflow:'hidden',flexShrink:0}}>
-                {p?.photo_url ? <img src={p.photo_url} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}}/> : <span style={{fontSize:14,fontWeight:700,color:'white'}}>{getInitials(p?.name??'?')}</span>}
-              </div>
-              <div style={{flex:1,minWidth:0}}>
-                <p style={{fontSize:11,color:eq?.color??'var(--primary)',fontWeight:700,marginBottom:1}}>{fmtHora(e.start_time)} — {fmtHora(e.end_time)}{eq?` · ${eq.name}`:''}</p>
-                <p style={{fontWeight:700,fontSize:14}}>{p?.name}</p>
-                <p style={{fontSize:12,color:'var(--muted)'}}>{e.title}{e.location?` · ${e.location}`:''}</p>
-              </div>
-            </div>
-            {canEdit && (
-              <div style={{display:'flex',gap:6,padding:'0 12px',flexShrink:0}}>
-                <button onClick={()=>abrirEdicao(e)} style={{background:'var(--bg)',border:'1px solid var(--border)',borderRadius:6,padding:'5px 8px',cursor:'pointer',fontFamily:'inherit',fontSize:12}}>Editar</button>
-                <button onClick={()=>excluirEscala(e.id)} style={{background:'var(--danger-bg)',color:'var(--danger)',border:'none',borderRadius:6,padding:'5px 8px',cursor:'pointer',fontFamily:'inherit',fontSize:12}}>Excluir</button>
-              </div>
-            )}
-          </div>
+          <CardItem
+            key={e.id}
+            cor={eq?.color ?? 'var(--primary)'}
+            ehPessoa
+            fotoUrl={p?.photo_url ?? null}
+            iniciais={getInitials(p?.name??'?')}
+            titulo={p?.name ?? '—'}
+            subtitulo={`${fmtHora(e.start_time)}–${fmtHora(e.end_time)}${eq?` · ${eq.name}`:''}`}
+            extra={<p style={{fontSize:12,color:'var(--muted)'}}>{e.title}{e.location?` · ${e.location}`:''}</p>}
+            onVer={canEdit ? ()=>abrirEdicao(e) : undefined}
+            onEditar={canEdit ? ()=>abrirEdicao(e) : undefined}
+            onFoto={()=>p?.photo_url && setFotoAmpliada(p.photo_url)}
+          />
         )
       })}
 
@@ -336,10 +333,17 @@ export default function Escalas({ profile }: { profile?: Profile }) {
               <button type="submit" className="btn btn-primary btn-full" disabled={salvando}>
                 {salvando?'Verificando e salvando...':editando?'Salvar':'Criar escala'}
               </button>
+              {editando && (
+                <button type="button" className="btn btn-ghost btn-full" style={{marginTop:8,color:'var(--danger)'}}
+                  onClick={()=>{ const id=editando.id; setModal(false); excluirEscala(id) }}>
+                  <span className="icon icon-sm">delete</span> Excluir escala
+                </button>
+              )}
             </form>
           </div>
         </div>
       )}
+      <FotoAmpliada url={fotoAmpliada} onClose={()=>setFotoAmpliada(null)} />
     </div>
   )
 }

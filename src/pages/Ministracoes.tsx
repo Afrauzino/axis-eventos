@@ -6,6 +6,8 @@ import { useEvento } from '../hooks/useEvento'
 import { usePermissao } from '../hooks/usePermissao'
 import { toast } from '../components/Toast'
 import Seletor from '../components/Seletor'
+import CardItem from '../components/CardItem'
+import FotoAmpliada from '../components/FotoAmpliada'
 import PersonSelect from '../components/PersonSelect'
 import RichEditor from '../components/RichEditor'
 import ArquivosModulo from '../components/ArquivosModulo'
@@ -39,6 +41,7 @@ export default function Ministracoes({ profile }: { profile?: Profile }) {
   const [abaDetalhe, setAbaDetalhe] = useState<'info'|'sermao'|'anotacoes'>('info')
   const [nota, setNota]         = useState('')          // rascunho das "Minhas notas"
   const [salvandoNota, setSalvandoNota] = useState(false)
+  const [fotoAmpliada, setFotoAmpliada] = useState<string|null>(null)
   const [modal, setModal]       = useState(false)
   const [imprimir, setImprimir] = useState<Ministracao|null>(null)
   const [editando, setEditando] = useState<Ministracao|null>(null)
@@ -202,29 +205,31 @@ export default function Ministracoes({ profile }: { profile?: Profile }) {
       ) : mins.map(m => {
         const min = getPessoa(m.ministrante_id)
         return (
-          <button key={m.id} className="list-card" onClick={()=>{setDetalhe(m);setAbaDetalhe('info')}}>
-            <div className="list-card-bar" style={{background:(m as any).cor??'#6B46C1'}}/>
-            <div className="list-card-media" style={{background:min?.photo_url?'#eee':((m as any).cor??'#6B46C1')+'24'}}>
-              {min?.photo_url
-                ? <img src={min.photo_url} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}}/>
-                : <span style={{fontSize:26}}>{(m as any).emoji || '🎤'}</span>}
-            </div>
-            <div className="list-card-body">
-              <div className="list-card-title">{m.titulo}</div>
-              <div className="list-card-desc">{min?.name??'Sem ministrante'}{m.local?` · ${m.local}`:''}</div>
-            </div>
-            <button
-              onClick={e=>{e.stopPropagation();mudarStatusMin(m.id,m.status)}}
-              className={`badge ${STATUS_BADGE[m.status]??'badge-neutral'}`}
-              style={{flexShrink:0,marginRight:4,fontSize:10,border:'none',cursor:'pointer',fontFamily:'inherit'}}
-              title="Clique para avançar status"
-            >{STATUS_LABEL[m.status]??m.status}</button>
-            <div className="list-card-chevron"><span className="icon icon-sm">chevron_right</span></div>
-          </button>
+          <CardItem
+            key={m.id}
+            cor={(m as any).cor ?? '#6B46C1'}
+            ehPessoa={!!min?.photo_url}
+            emoji={min?.photo_url ? undefined : ((m as any).emoji || '🎤')}
+            fotoUrl={min?.photo_url ?? null}
+            titulo={m.titulo}
+            subtitulo={`${min?.name??'Sem ministrante'}${m.local?` · ${m.local}`:''}`}
+            direita={
+              <button
+                onClick={()=>mudarStatusMin(m.id,m.status)}
+                className={`badge ${STATUS_BADGE[m.status]??'badge-neutral'}`}
+                style={{fontSize:10,border:'none',cursor:'pointer',fontFamily:'inherit'}}
+                title="Clique para avançar status"
+              >{STATUS_LABEL[m.status]??m.status}</button>
+            }
+            onVer={()=>{setDetalhe(m);setAbaDetalhe('info')}}
+            onFoto={()=>min?.photo_url && setFotoAmpliada(min.photo_url)}
+          />
         )
       })}
 
       {canEdit && <button className="fab" onClick={abrirNovo}><span className="icon">add</span></button>}
+
+      <FotoAmpliada url={fotoAmpliada} onClose={()=>setFotoAmpliada(null)} />
 
       {/* ===== DETALHE ===== */}
       {detalhe && (() => {
