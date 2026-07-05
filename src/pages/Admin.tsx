@@ -11,6 +11,7 @@ import Seletor from '../components/Seletor'
 import DataHora from '../components/DataHora'
 import CardItem from '../components/CardItem'
 import FotoAmpliada from '../components/FotoAmpliada'
+import { useRegistrarChrome } from '../lib/chrome'
 import type { Profile } from '../App'
 import EmojiGrid from '../components/EmojiGrid'
 import { PERM_CATALOGO, MENUS_CATALOGO } from '../lib/permCatalog'
@@ -134,6 +135,8 @@ export default function Admin({ profile }: { profile?: Profile }) {
   const [gerandoCodigos, setGerandoCodigos] = useState(false)
   const [pessoaDetalhe, setPessoaDetalhe] = useState<typeof pessoas[0]|null>(null)
   const [fotoAmpliada, setFotoAmpliada] = useState<string|null>(null)
+  const [buscaUser, setBuscaUser]       = useState('')
+  const [filtroUserTipo, setFiltroUserTipo] = useState('todos')  // todos | encounterer | worker
   // #1 — admin edita 100% do cadastro de qualquer pessoa (reusa CadastroPessoa)
   const [editPessoaId, setEditPessoaId] = useState<string|null>(null)
   const [editEventoId, setEditEventoId] = useState<string|undefined>(undefined)
@@ -839,6 +842,19 @@ export default function Admin({ profile }: { profile?: Profile }) {
     setGerandoCodigos(false); carregar()
   }
 
+  // ⚙️ do topo — só a aba Usuários tem busca + filtro; nas outras o ⚙️ some.
+  useRegistrarChrome(
+    aba==='usuarios'
+      ? {
+          busca: { value: buscaUser, onChange: setBuscaUser, placeholder: 'Buscar usuário...' },
+          grupos: [{ chave:'tipo', label:'Tipo', opcoes:[{value:'todos',label:'Todos'},{value:'encounterer',label:'Encontristas'},{value:'worker',label:'Encontreiros'}] }],
+          valores: { tipo: filtroUserTipo },
+          onFiltro: (_,v)=>setFiltroUserTipo(v),
+        }
+      : {},
+    [aba, buscaUser, filtroUserTipo]
+  )
+
   return (
     <div className="page">
       <SubTabs group="admin"/>
@@ -886,7 +902,10 @@ export default function Admin({ profile }: { profile?: Profile }) {
               — defina o cargo abaixo para liberar o acesso
             </div>
           )}
-          {pessoas.map(p => {
+          {pessoas
+            .filter(p => filtroUserTipo==='todos' || p.role_type===filtroUserTipo)
+            .filter(p => !buscaUser || p.name.toLowerCase().includes(buscaUser.toLowerCase()))
+            .map(p => {
             const corPessoa = p.role_type==='worker' ? 'var(--primary)' : '#6B46C1'
             const sub = [p.role_type==='worker'?'Encontreiro':'Encontrista', p.church||'Igreja não informada', (p.user_role && p.user_role!=='visitante') ? (cargos.find(cg=>cg.role===p.user_role)?.label ?? p.user_role) : ''].filter(Boolean).join(' · ')
             const direita = p.user_id ? (
