@@ -4,6 +4,7 @@ import SubTabs from '../components/SubTabs'
 import FichaMedica from '../components/FichaMedica'
 import CardItem from '../components/CardItem'
 import FotoAmpliada from '../components/FotoAmpliada'
+import BuscaFiltro from '../components/BuscaFiltro'
 import { getInitials } from '../utils'
 import { useEvento } from '../hooks/useEvento'
 import type { Profile } from '../App'
@@ -77,16 +78,12 @@ export default function SaudeFicha({ profile }: { profile?: Profile }) {
   return (
     <div className="page">
       <SubTabs group="saude"/>
-      <div className="search-bar mb-2">
-        <span className="icon icon-sm" style={{color:'var(--muted-light)'}}>search</span>
-        <input placeholder="Buscar pessoa..." value={busca} onChange={e=>setBusca(e.target.value)}/>
-      </div>
-
-      <div className="filter-bar mb-3">
-        {([['todos','Todos'],['com','Com ficha'],['sem','Sem ficha']] as const).map(([v,l])=>(
-          <button key={v} className={`chip ${filtro===v?'active':''}`} onClick={()=>setFiltro(v)}>{l}</button>
-        ))}
-      </div>
+      <BuscaFiltro
+        busca={busca} onBusca={setBusca} placeholder="Buscar pessoa..."
+        valores={{ ficha: filtro }}
+        onFiltro={(_,v)=>setFiltro(v as any)}
+        grupos={[{ chave:'ficha', label:'Ficha', opcoes:[{value:'todos',label:'Todos'},{value:'com',label:'Com ficha'},{value:'sem',label:'Sem ficha'}] }]}
+      />
 
       {loading ? [1,2,3].map(i=><div key={i} className="skeleton" style={{height:68,marginBottom:8,borderRadius:14}}/>) :
       listagem.map(p => {

@@ -8,6 +8,7 @@ import Seletor from '../components/Seletor'
 import { useEvento } from '../hooks/useEvento'
 import { usePermissao } from '../hooks/usePermissao'
 import CardItem from '../components/CardItem'
+import BuscaFiltro from '../components/BuscaFiltro'
 import type { Profile } from '../App'
 
 function MatIcon({ name, size=22, color='var(--primary)' }: { name:string; size?:number; color?:string }) {
@@ -32,6 +33,7 @@ export default function Locais({ profile }: { profile?: Profile }) {
   const [salvando, setSalvando] = useState(false)
   const [erro, setErro]       = useState('')
   const [filtro, setFiltro]   = useState('todos')
+  const [busca, setBusca]     = useState('')
   const [abaMedia, setAbaMedia] = useState<'emoji'|'foto'>('emoji')
   const [fotoUrl, setFotoUrl] = useState<string|null>(null)
   const [form, setForm] = useState({ nome:'', tipo:'trabalho', capacidade:'', observacoes:'', equipe_responsavel_id:'', icone:'', cor:'#00A99D' })
@@ -90,16 +92,19 @@ export default function Locais({ profile }: { profile?: Profile }) {
     return <span style={{fontSize:24,lineHeight:1}}>{TIPO_EMOJI_PADRAO[l.tipo] ?? '📍'}</span>
   }
 
-  const filtrados = filtro==='todos' ? lista : lista.filter(l=>l.tipo===filtro)
+  const filtrados = lista
+    .filter(l => filtro==='todos' || l.tipo===filtro)
+    .filter(l => !busca || l.nome.toLowerCase().includes(busca.toLowerCase()))
 
   return (
     <div className="page">
       <SubTabs group="evento"/>
-      <div className="filter-bar">
-        {[['todos','Todos'],...TIPOS].map(([v,l])=>(
-          <button key={v} className={`chip ${filtro===v?'active':''}`} onClick={()=>setFiltro(v)}>{l}</button>
-        ))}
-      </div>
+      <BuscaFiltro
+        busca={busca} onBusca={setBusca} placeholder="Buscar local..."
+        valores={{ tipo: filtro }}
+        onFiltro={(_,v)=>setFiltro(v)}
+        grupos={[{ chave:'tipo', label:'Tipo', opcoes:[{value:'todos',label:'Todos'}, ...TIPOS.map(([v,l])=>({value:v as string,label:l as string}))] }]}
+      />
 
       {loading ? [1,2,3].map(i=><div key={i} className="skeleton" style={{height:72,marginBottom:8,borderRadius:14}}/>) :
       filtrados.length===0 ? (

@@ -10,6 +10,7 @@ import UploadFoto from '../components/UploadFoto'
 import PersonSelect from '../components/PersonSelect'
 import CardItem from '../components/CardItem'
 import FotoAmpliada from '../components/FotoAmpliada'
+import BuscaFiltro from '../components/BuscaFiltro'
 import { formatName, getInitials, isAdmin, canEditPessoas } from '../utils'
 import { useEvento } from '../hooks/useEvento'
 import { usePermissao } from '../hooks/usePermissao'
@@ -138,19 +139,13 @@ export default function Cadastros({ profile }: { profile: Profile }) {
 
   return (
     <div className="page">
-      {/* Busca */}
-      <div className="search-bar mb-3">
-        <span className="icon icon-sm" style={{color:'var(--muted-light)'}}>search</span>
-        <input placeholder="Buscar por nome, celular ou igreja..." value={busca} onChange={e=>setBusca(e.target.value)}/>
-        {busca && <button onClick={()=>setBusca('')} style={{background:'none',border:'none',cursor:'pointer',color:'var(--muted-light)',padding:0,fontFamily:'inherit'}}><span className="icon icon-sm">close</span></button>}
-      </div>
-
-      {/* Filtros */}
-      <div className="filter-bar">
-        {[['todos','Todos'],['encounterer','Encontristas'],['worker','Encontreiros']].map(([v,l])=>(
-          <button key={v} className={`chip ${filtroRole===v?'active':''}`} onClick={()=>setFiltroRole(v)}>{l}</button>
-        ))}
-      </div>
+      {/* Busca + filtro (padrão item 7) */}
+      <BuscaFiltro
+        busca={busca} onBusca={setBusca} placeholder="Buscar por nome, celular ou igreja..."
+        valores={{ role: filtroRole }}
+        onFiltro={(_,v)=>setFiltroRole(v)}
+        grupos={[{ chave:'role', label:'Tipo', opcoes:[{value:'todos',label:'Todos'},{value:'encounterer',label:'Encontristas'},{value:'worker',label:'Encontreiros'}] }]}
+      />
       <div style={{display:'flex',gap:6,marginBottom:12}}>
         <span style={{fontSize:12,color:'var(--muted)',alignSelf:'center'}}>Imprimir:</span>
         {([['ambos','Os dois'],['encounterer','Encontristas'],['worker','Encontreiros']] as const).map(([v,l])=>(
