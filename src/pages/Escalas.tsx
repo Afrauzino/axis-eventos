@@ -39,6 +39,15 @@ export default function Escalas({ profile }: { profile?: Profile }) {
   const [form, setForm] = useState({ person_id:'', title:'', start_time:nowLocalInput(), end_time:nowLocalInput(), location:'', notes:'' })
   const [modoGrupo, setModoGrupo]     = useState(false)
   const [pessoasSel, setPessoasSel]   = useState<string[]>([])
+  // Fontes de conflito: cronograma (ministração/teatro) + elenco
+  const [cronograma, setCronograma]   = useState<{id:string;hora_inicio:string;hora_fim:string;ministracao_id:string|null;theater_id:string|null}[]>([])
+  const [ministracoes, setMinistracoes] = useState<{id:string;ministrante_id:string|null;titulo:string}[]>([])
+  const [teatros, setTeatros]         = useState<{id:string;nome:string}[]>([])
+  const [elenco, setElenco]           = useState<{person_id:string;theater_id:string}[]>([])
+  // Checklist da atividade
+  const [checklist, setChecklist]     = useState<{id:string;escala_id:string;texto:string;ordem:number;feito:boolean}[]>([])
+  const [tipoAtiv, setTipoAtiv]       = useState<'texto'|'checklist'>('texto')
+  const [itensCheck, setItensCheck]   = useState<{id?:string;texto:string;feito:boolean}[]>([])
 
   const { pode } = usePermissao(profile ?? null)
   // Admin/líder OU liberação (individual/equipe) "ver e editar Escalas" na tela do Admin
@@ -54,12 +63,16 @@ export default function Escalas({ profile }: { profile?: Profile }) {
   async function carregar() {
     if (!evento) return
     setLoading(true)
-    const [es, pe, eq, vi, lo] = await Promise.all([
+    const [es, pe, eq, vi, lo, cr, mi, te, el] = await Promise.all([
       supabase.from('escalas').select('*').eq('event_id', evento.id).order('start_time'),
       supabase.from('people').select('id,name,photo_url').eq('event_id', evento.id).order('name'),
       supabase.from('teams').select('id,name,color,leader_id,co_leader_id').eq('event_id', evento.id).order('name'),
       supabase.from('people_teams').select('person_id,team_id'),
       supabase.from('locais').select('id,nome').eq('event_id', evento.id).order('nome'),
+      supabase.from('cronograma_eventos').select('id,hora_inicio,hora_fim,ministracao_id,theater_id').eq('event_id', evento.id),
+      supabase.from('ministrações').select('id,ministrante_id,titulo').eq('event_id', evento.id),
+      supabase.from('theaters').select('id,nome').eq('event_id', evento.id),
+      supabase.from('teatro_elenco').select('person_id,theater_id'),
     ])
     const allEquipes = eq.data ?? []
     setEscalas(es.data ?? [])
@@ -67,6 +80,16 @@ export default function Escalas({ profile }: { profile?: Profile }) {
     setEquipes(allEquipes)
     setVinculos(vi.data ?? [])
     setLocais(lo.data ?? [])
+    setCronograma(cr.data ?? [])
+    setMinistracoes(mi.data ?? [])
+    setTeatros(te.data ?? [])
+    setElenco(el.data ?? [])
+    // Checklist das escalas do evento
+    const escalaIds = (es.data ?? []).map((x:any)=>x.id)
+    if (escalaIds.length) {
+      const { data: ck } = await supabase.from('escala_checklist').select('*').in('escala_id', escalaIds)
+      setChecklist(ck ?? [])
+    } else setChecklist([])
 
     // Find my person and my led teams (for role-based filtering)
     if (profile && !isAdmin(profile.user_role)) {
@@ -93,20 +116,60 @@ export default function Escalas({ profile }: { profile?: Profile }) {
     ? pessoas.filter(p => vinculos.some(v => v.person_id === p.id && v.team_id === formEquipeId))
     : pessoas
 
-  async function verificarConflito(personId:string, startTime:string, endTime:string, excludeId?:string): Promise<string|null> {
+  const fmtMs = (ms:number) => fmtHora(new Date(ms).toISOString())
+
+  // Todas as janelas em que a pessoa já está ocupada: Escala + Ministração + Teatro
+  function janelasOcupadas(personId:string, excludeEscalaId?:string): {ini:number;fim:number;label:string}[] {
+    const out: {ini:number;fim:number;label:string}[] = []
+    // Escalas
+    escalas.forEach(e => {
+      if (e.person_id !== personId || (excludeEscalaId && e.id === excludeEscalaId)) return
+      out.push({ ini:new Date(e.start_time).getTime(), fim:new Date(e.end_time).getTime(), label:`Escala: ${e.title}` })
+    })
+    // Ministração (pessoa é o ministrante) — horário vem do cronograma
+    const minhasMin = new Set(ministracoes.filter(m => m.ministrante_id === personId).map(m => m.id))
+    // Teatro (pessoa está no elenco) — horário vem do cronograma
+    const meusTeatros = new Set(elenco.filter(el => el.person_id === personId).map(el => el.theater_id))
+    cronograma.forEach(c => {
+      if (c.ministracao_id && minhasMin.has(c.ministracao_id)) {
+        const m = ministracoes.find(x => x.id === c.ministracao_id)
+        out.push({ ini:new Date(c.hora_inicio).getTime(), fim:new Date(c.hora_fim).getTime(), label:`Ministração: ${m?.titulo ?? ''}` })
+      }
+      if (c.theater_id && meusTeatros.has(c.theater_id)) {
+        const t = teatros.find(x => x.id === c.theater_id)
+        out.push({ ini:new Date(c.hora_inicio).getTime(), fim:new Date(c.hora_fim).getTime(), label:`Teatro: ${t?.nome ?? ''}` })
+      }
+    })
+    return out
+  }
+
+  function verificarConflito(personId:string, startTime:string, endTime:string, excludeId?:string): string|null {
     const inicio = new Date(startTime).getTime()
     const fim    = new Date(endTime).getTime()
-    const conflitos = escalas.filter(e => {
-      if (e.person_id !== personId) return false
-      if (excludeId && e.id === excludeId) return false
-      const eIni = new Date(e.start_time).getTime()
-      const eFim = new Date(e.end_time).getTime()
-      return inicio < eFim && fim > eIni
-    })
-    if (!conflitos.length) return null
-    const c  = conflitos[0]
-    const p  = pessoas.find(x => x.id === c.person_id)
-    return `${p?.name} já está escalado das ${fmtHora(c.start_time)} às ${fmtHora(c.end_time)} em "${c.title}"`
+    const c = janelasOcupadas(personId, excludeId).find(j => inicio < j.fim && fim > j.ini)
+    if (!c) return null
+    const p = pessoas.find(x => x.id === personId)
+    return `${p?.name ?? 'A pessoa'} já está ocupado(a) das ${fmtMs(c.ini)} às ${fmtMs(c.fim)} — ${c.label}`
+  }
+
+  // Horários livres da pessoa no dia (exibição), respeitando o limite visual das 22h.
+  function livresNoDia(personId:string, refISO:string): {ini:number;fim:number}[] {
+    const base = new Date(refISO); if (isNaN(base.getTime())) return []
+    const ini = new Date(base); ini.setHours(6,0,0,0)
+    const fim = new Date(base); fim.setHours(22,0,0,0)  // 22h = limite só de exibição
+    let livres: {ini:number;fim:number}[] = [{ ini:ini.getTime(), fim:fim.getTime() }]
+    janelasOcupadas(personId)
+      .filter(b => b.fim > ini.getTime() && b.ini < fim.getTime())
+      .forEach(b => {
+        livres = livres.flatMap(l => {
+          if (b.ini >= l.fim || b.fim <= l.ini) return [l]
+          const partes: {ini:number;fim:number}[] = []
+          if (b.ini > l.ini) partes.push({ ini:l.ini, fim:b.ini })
+          if (b.fim < l.fim) partes.push({ ini:b.fim, fim:l.fim })
+          return partes
+        })
+      })
+    return livres.filter(l => l.fim - l.ini >= 15*60000)  // ignora buracos < 15 min
   }
 
   async function salvar(e:React.FormEvent) {
@@ -119,13 +182,17 @@ export default function Escalas({ profile }: { profile?: Profile }) {
     if (modoGrupo && !editando) {
       if (pessoasSel.length === 0) { setErro('Selecione pelo menos uma pessoa.'); setSalvando(false); return }
       const grupoId = crypto.randomUUID()
+      const itens = tipoAtiv==='checklist' ? itensCheck.filter(i=>i.texto.trim()) : []
       for (const pid of pessoasSel) {
-        await supabase.from('escalas').insert({
+        const { data: nova } = await supabase.from('escalas').insert({
           event_id: evento.id, person_id: pid, team_id: formEquipeId||null,
           title: form.title, start_time: new Date(form.start_time).toISOString(),
           end_time: new Date(form.end_time).toISOString(), location: form.location||null,
-          notes: form.notes||null, status: 'confirmed', grupo_id: grupoId,
-        })
+          notes: form.notes||null, status: 'confirmed', grupo_id: grupoId, tipo: tipoAtiv,
+        }).select('id').single()
+        if (nova && itens.length) {
+          await supabase.from('escala_checklist').insert(itens.map((i,idx)=>({ escala_id:nova.id, texto:i.texto.trim(), ordem:idx, feito:false })))
+        }
       }
       setModal(false); setSalvando(false); resetForm(); carregar(); return
     }
@@ -138,12 +205,18 @@ export default function Escalas({ profile }: { profile?: Profile }) {
       event_id: evento.id, person_id: form.person_id, team_id: formEquipeId||null,
       title: form.title, start_time: new Date(form.start_time).toISOString(),
       end_time: new Date(form.end_time).toISOString(), location: form.location||null,
-      notes: form.notes||null, status: 'confirmed',
+      notes: form.notes||null, status: 'confirmed', tipo: tipoAtiv,
     }
-    let err
+    let err, escalaId = editando?.id
     if (editando) { const r = await supabase.from('escalas').update(payload).eq('id',editando.id); err = r.error }
-    else { const r = await supabase.from('escalas').insert(payload); err = r.error }
+    else { const r = await supabase.from('escalas').insert(payload).select('id').single(); err = r.error; escalaId = r.data?.id }
     if (err) { setErro('Erro: '+err.message); setSalvando(false); return }
+    // Sincroniza o checklist (apaga e regrava; preserva o "feito" de cada item)
+    if (escalaId) {
+      await supabase.from('escala_checklist').delete().eq('escala_id', escalaId)
+      const itens = tipoAtiv==='checklist' ? itensCheck.filter(i=>i.texto.trim()) : []
+      if (itens.length) await supabase.from('escala_checklist').insert(itens.map((i,idx)=>({ escala_id:escalaId, texto:i.texto.trim(), ordem:idx, feito:i.feito })))
+    }
     setModal(false); setSalvando(false); setEditando(null); resetForm(); carregar()
   }
 
@@ -156,6 +229,7 @@ export default function Escalas({ profile }: { profile?: Profile }) {
   function resetForm() {
     setFormEquipeId('')
     setForm({ person_id:'', title:'', start_time:nowLocalInput(), end_time:nowLocalInput(), location:'', notes:'' })
+    setTipoAtiv('texto'); setItensCheck([])
     setErro(''); setConflito(null)
   }
 
@@ -165,6 +239,8 @@ export default function Escalas({ profile }: { profile?: Profile }) {
     setEditando(e)
     setFormEquipeId(e.team_id ?? '')
     setForm({ person_id:e.person_id, title:e.title, start_time:new Date(e.start_time).toISOString().slice(0,16), end_time:new Date(e.end_time).toISOString().slice(0,16), location:e.location??'', notes:e.notes??'' })
+    setTipoAtiv((e as any).tipo === 'checklist' ? 'checklist' : 'texto')
+    setItensCheck(checklist.filter(c => c.escala_id === e.id).sort((a,b)=>a.ordem-b.ordem).map(c => ({ id:c.id, texto:c.texto, feito:c.feito })))
     setErro(''); setConflito(null); setModal(true)
   }
 
@@ -217,6 +293,9 @@ export default function Escalas({ profile }: { profile?: Profile }) {
       ) : escalasDia.map(e => {
         const p  = getPessoa(e.person_id)
         const eq = getEquipe(e.team_id)
+        const itens = checklist.filter(c => c.escala_id === e.id)
+        const ehCheck = (e as any).tipo === 'checklist' && itens.length > 0
+        const pct = ehCheck ? Math.round(itens.filter(i=>i.feito).length / itens.length * 100) : null
         return (
           <CardItem
             key={e.id}
@@ -226,7 +305,8 @@ export default function Escalas({ profile }: { profile?: Profile }) {
             iniciais={getInitials(p?.name??'?')}
             titulo={p?.name ?? '—'}
             subtitulo={`${fmtHora(e.start_time)}–${fmtHora(e.end_time)}${eq?` · ${eq.name}`:''}`}
-            extra={<p style={{fontSize:12,color:'var(--muted)'}}>{e.title}{e.location?` · ${e.location}`:''}</p>}
+            extra={<p style={{fontSize:12,color:'var(--muted)'}}>{e.title}{e.location?` · ${e.location}`:''}{ehCheck?` · ${itens.filter(i=>i.feito).length}/${itens.length} feito`:''}</p>}
+            progresso={pct}
             onVer={canEdit ? ()=>abrirEdicao(e) : undefined}
             onEditar={canEdit ? ()=>abrirEdicao(e) : undefined}
             onFoto={()=>p?.photo_url && setFotoAmpliada(p.photo_url)}
@@ -298,6 +378,20 @@ export default function Escalas({ profile }: { profile?: Profile }) {
                 />
               </div>
 
+              {/* Disponibilidade da pessoa (só orientação, até 22h) */}
+              {!modoGrupo && form.person_id && (() => {
+                const livres = livresNoDia(form.person_id, form.start_time)
+                return (
+                  <div className="alert-box alert-info mb-3" style={{fontSize:12,lineHeight:1.7}}>
+                    <strong>Disponível para trabalho</strong> em {new Date(form.start_time).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})} (até 22h):<br/>
+                    {livres.length === 0
+                      ? 'Sem horários livres neste dia entre 06h e 22h.'
+                      : livres.map((l,i)=><span key={i}>{i>0?' · ':''}{fmtMs(l.ini)}–{fmtMs(l.fim)}</span>)}
+                    <br/><span style={{color:'var(--muted)'}}>É só orientação — pode escalar a qualquer hora, desde que não haja outra atividade.</span>
+                  </div>
+                )
+              })()}
+
               {/* 3. Local dos locais cadastrados */}
               <div className="form-group">
                 <label className="form-label">3. Local</label>
@@ -324,11 +418,34 @@ export default function Escalas({ profile }: { profile?: Profile }) {
                 <input className="form-input" placeholder="Ex: Recepção, Louvor, Apoio na cozinha..." value={form.title} onChange={e=>setForm(f=>({...f,title:e.target.value}))} required/>
               </div>
 
-              {/* 6. Descrição */}
+              {/* 6. Detalhes: texto OU checklist */}
               <div className="form-group">
-                <label className="form-label">6. Descrição</label>
-                <textarea className="form-textarea" placeholder="Detalhes adicionais..." value={form.notes} onChange={e=>setForm(f=>({...f,notes:e.target.value}))} style={{minHeight:70}}/>
+                <label className="form-label">6. Detalhes da atividade</label>
+                <Seletor titulo="Tipo dos detalhes" value={tipoAtiv} onChange={v=>setTipoAtiv(v as any)}
+                  opcoes={[{value:'texto',label:'📝 Texto'},{value:'checklist',label:'✅ Checklist'}]}/>
               </div>
+              {tipoAtiv==='texto' ? (
+                <div className="form-group">
+                  <textarea className="form-textarea" placeholder="Detalhes adicionais..." value={form.notes} onChange={e=>setForm(f=>({...f,notes:e.target.value}))} style={{minHeight:70}}/>
+                </div>
+              ) : (
+                <div className="form-group">
+                  <label className="form-label">Itens do checklist</label>
+                  {itensCheck.map((it,idx)=>(
+                    <div key={idx} style={{display:'flex',alignItems:'center',gap:8,marginBottom:6}}>
+                      <button type="button" onClick={()=>setItensCheck(prev=>prev.map((x,i)=>i===idx?{...x,feito:!x.feito}:x))}
+                        style={{width:28,height:28,borderRadius:7,border:it.feito?'none':'1px solid var(--border)',background:it.feito?'var(--success)':'white',cursor:'pointer',flexShrink:0,display:'flex',alignItems:'center',justifyContent:'center',fontFamily:'inherit'}} title="Marcar como feito">
+                        {it.feito && <span className="icon icon-sm" style={{color:'white'}}>check</span>}
+                      </button>
+                      <input className="form-input" style={{flex:1}} placeholder={`Item ${idx+1}`} value={it.texto} onChange={e=>setItensCheck(prev=>prev.map((x,i)=>i===idx?{...x,texto:e.target.value}:x))}/>
+                      <button type="button" onClick={()=>setItensCheck(prev=>prev.filter((_,i)=>i!==idx))} style={{background:'none',border:'none',cursor:'pointer',color:'var(--muted-light)',flexShrink:0,fontFamily:'inherit',display:'flex'}} title="Remover"><span className="icon icon-sm">close</span></button>
+                    </div>
+                  ))}
+                  <button type="button" className="btn btn-ghost btn-sm" onClick={()=>setItensCheck(prev=>[...prev,{texto:'',feito:false}])}>
+                    <span className="icon icon-sm">add</span> Adicionar item
+                  </button>
+                </div>
+              )}
 
               <button type="submit" className="btn btn-primary btn-full" disabled={salvando}>
                 {salvando?'Verificando e salvando...':editando?'Salvar':'Criar escala'}
