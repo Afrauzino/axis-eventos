@@ -59,6 +59,21 @@ Lista de 19 pedidos + follow-ups, **todos feitos e publicados**. Detalhe item a 
 - **Dica p/ verificar telas logadas:** o dev server (`npm run dev`) do Anderson costuma ter a **sessão dele ativa**,
   então dá pra ver o app logado no preview. É DADO REAL — só observar, não alterar.
 
+### 🚧 EM ANDAMENTO (2026-07-05) — Padrão visual + Recurso Escala
+- **Padrão visual CONCLUÍDO e publicado:** componente `CardItem` agora usado em 15 telas (Cadastros, Admin>Usuários,
+  Cozinha, Teatro Lista/Atores/Objetos/Personagens, Medicamentos, Correio, Escalas, Ministrações, Logística,
+  Doações, Locais, Saúde>Fichas) + Encontristas. CardItem ganhou slot `direita` (selo/valor/status). Novo
+  `FotoAmpliada` (clicar foto amplia). "Excluir" saiu dos cards → foi pro modal de editar.
+  Exceções (sem avatar/especiais, NÃO migrar): Ocorrências, Mídia, Cronograma, Ranking, Equipes(sanfona).
+- **Filtro item 7 CONCLUÍDO:** novo `BuscaFiltro` (busca + ⚙️ abre de baixo + contador). Aplicado em Cadastros,
+  Saúde>Fichas, Locais. FALTA (opcional): Cronograma usa chips de status (sem busca) — deixado como está.
+- **Recurso ESCALA — PENDENTE (falta Anderson rodar `sql/30` + eu construir o app):**
+  1. Checklist individual por escala + barra de progresso no card (escala pode ser 'texto' OU 'checklist').
+  2. Bloqueio de CONFLITO ao escalar: pessoa ocupada = já tem escala OU é ministrante (cronograma) OU está no
+     elenco de teatro (cronograma) naquele intervalo. **Decisão do Anderson: contar os 3.**
+  3. Mostrar DISPONIBILIDADE (data/horário livre) da pessoa; limite visual 22h (só exibição, não trava — pode
+     escalar a qualquer hora se não houver atividade). Tabela `escala_checklist` + coluna `escalas.tipo` no sql/30.
+
 ### SQLs — 2026-07-04 (TODOS JÁ RODADOS pelo Anderson ✅) — MENOS o sql/27 (pendente)
 - `sql/21`, `sql/22`, `sql/23`, `sql/24_fix_criar_cadastro.sql`, `sql/25_seguranca.sql` — aplicados.
 - `sql/26_diagnostico_permissoes.sql` — só leitura, já rodado (revelou permissions EN inexistente, banco aberto).
