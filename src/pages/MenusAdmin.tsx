@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import SubTabs from '../components/SubTabs'
+import { useRegistrarChromeNav } from '../lib/chrome'
 import EmojiGrid from '../components/EmojiGrid'
 import type { Profile } from '../App'
 
@@ -11,6 +11,7 @@ function MatIcon({ name, size=20, color='var(--text2)' }: {name:string;size?:num
 }
 
 export default function MenusAdmin({ profile }: { profile?: Profile }) {
+  useRegistrarChromeNav('admin')
   const [menus, setMenus]       = useState<MenuItem[]>([])
   const [loading, setLoading]   = useState(true)
   const [editando, setEditando] = useState<MenuItem|null>(null)
@@ -65,7 +66,6 @@ export default function MenusAdmin({ profile }: { profile?: Profile }) {
 
   return (
     <div className="page">
-      <SubTabs group="admin"/>
       <div className="alert-box alert-info mb-3">
         Configure os menus do sistema. Alterações refletem imediatamente para todos os usuários. As rotas internas não podem ser alteradas.
       </div>

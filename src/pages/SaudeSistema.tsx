@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import SubTabs from '../components/SubTabs'
+import { useRegistrarChromeNav } from '../lib/chrome'
 import { isAdmin } from '../utils'
 import type { Profile } from '../App'
 
@@ -12,6 +12,7 @@ type Limites = {
 }
 
 export default function SaudeSistema({ profile }: { profile?: Profile }) {
+  useRegistrarChromeNav('admin')
   const [limites, setLimites] = useState<Limites>({ limite_arquivos_gb:4, limite_uso_mensal:100, limite_usuarios:100, uso_mensal_atual:0 })
   const [arquivosGb, setArquivosGb] = useState(0)
   const [usuariosAtivos, setUsuariosAtivos] = useState(0)
@@ -70,7 +71,6 @@ export default function SaudeSistema({ profile }: { profile?: Profile }) {
 
   return (
     <div className="page slide-up">
-      <SubTabs group="admin"/>
       {/* Status geral */}
       <div style={{background: statusVerde?'var(--success)':'#D69E2E', borderRadius:16, padding:'18px 20px', marginBottom:16, color:'white', boxShadow:'0 4px 14px rgba(0,0,0,0.15)'}}>
         <div style={{display:'flex',alignItems:'center',gap:12}}>

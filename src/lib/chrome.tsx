@@ -1,5 +1,9 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
+import { useNavigate, useLocation } from 'react-router-dom'
+import { NAV_GROUPS } from './navGroups'
+
+const TITULOS_NAV: Record<string, string> = { admin:'Administração', equipes:'Equipes e Escalas', teatro:'Teatro', evento:'Evento', saude:'Saúde', financeiro:'Financeiro' }
 
 // "Chrome" da página = o que a página entrega pro ⚙️ do topo:
 // busca + filtros + opções de imprimir + configurações da própria tela.
@@ -37,4 +41,20 @@ export function useRegistrarChrome(chrome: Chrome, deps: any[]) {
     setChrome(chrome)
     return () => setChrome(null)
   }, deps) // eslint-disable-line react-hooks/exhaustive-deps
+}
+
+// Atalho: registra a NAVEGAÇÃO de um grupo de sub-abas (SubTabs) no ⚙️.
+// A tela some com a fileira de abas e usa o ⚙️. `extra` acrescenta busca/filtro/imprimir/seções.
+export function useRegistrarChromeNav(group: keyof typeof NAV_GROUPS, extra: Chrome = {}, deps: any[] = []) {
+  const nav = useNavigate()
+  const loc = useLocation()
+  const grupo = NAV_GROUPS[group] ?? []
+  const chrome: Chrome = {
+    ...extra,
+    navegacao: [
+      { titulo: TITULOS_NAV[group] ?? 'Ir para', itens: grupo.map(it => ({ label: it.label, ativo: loc.pathname === it.rota, onClick: () => { if (loc.pathname !== it.rota) nav(it.rota) } })) },
+      ...(extra.navegacao ?? []),
+    ],
+  }
+  useRegistrarChrome(chrome, [loc.pathname, ...deps]) // eslint-disable-line react-hooks/exhaustive-deps
 }

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import SubTabs from '../components/SubTabs'
+import { useRegistrarChromeNav } from '../lib/chrome'
 import { fmtBRL } from '../utils'
 import type { Profile } from '../App'
 
@@ -25,6 +25,7 @@ const LINHAS: { key:keyof Metricas; label:string; money?:boolean }[] = [
 const STATUS_LABEL: Record<string,string> = { active:'Ativo', finished:'Encerrado', inactive:'Inativo' }
 
 export default function Relatorios({ profile }: { profile?: Profile }) {
+  useRegistrarChromeNav('admin')
   const [eventos, setEventos] = useState<Evento[]>([])
   const [sel, setSel] = useState<string[]>([])
   const [metricas, setMetricas] = useState<Record<string, Metricas>>({})
@@ -89,7 +90,6 @@ export default function Relatorios({ profile }: { profile?: Profile }) {
 
   return (
     <div className="page">
-      <SubTabs group="admin"/>
       <h1 style={{fontSize:20,fontWeight:800,marginBottom:4}}>📊 Comparativo entre eventos</h1>
       <p style={{fontSize:13,color:'var(--muted)',marginBottom:14}}>Selecione os eventos (inclusive inativos) para comparar números lado a lado.</p>
 
