@@ -37,6 +37,8 @@ export default function Ministracoes({ profile }: { profile?: Profile }) {
   const [teatros, setTeatros]   = useState<{id:string;nome:string;ministracao_id:string|null;cor:string|null}[]>([])
   const [detalhe, setDetalhe]   = useState<Ministracao|null>(null)
   const [abaDetalhe, setAbaDetalhe] = useState<'info'|'sermao'|'anotacoes'>('info')
+  const [nota, setNota]         = useState('')          // rascunho das "Minhas notas"
+  const [salvandoNota, setSalvandoNota] = useState(false)
   const [modal, setModal]       = useState(false)
   const [imprimir, setImprimir] = useState<Ministracao|null>(null)
   const [editando, setEditando] = useState<Ministracao|null>(null)
@@ -63,6 +65,8 @@ export default function Ministracoes({ profile }: { profile?: Profile }) {
 
   // #16 — ministrante nunca vê a lista geral: sem id na URL, volta pro cronograma
   useEffect(() => { if (restrito && !paramId) navigate('/cronograma', { replace: true }) }, [restrito, paramId])
+  // Sincroniza o rascunho das "Minhas notas" ao abrir uma ministração
+  useEffect(() => { setNota(detalhe?.anotacoes_pessoais ?? '') }, [detalhe?.id])
   // Fechar/voltar do ministrante SEMPRE volta pro cronograma (nunca pra lista de ministrações)
   const fecharDetalhe = () => { if (restrito) navigate('/cronograma'); else setDetalhe(null) }
 
@@ -169,7 +173,13 @@ export default function Ministracoes({ profile }: { profile?: Profile }) {
   }
 
   async function salvarAnotacoes(id:string, val:string) {
-    await supabase.from('ministrações').update({anotacoes_pessoais:val}).eq('id',id)
+    setSalvandoNota(true)
+    const { error } = await supabase.from('ministrações').update({anotacoes_pessoais:val}).eq('id',id)
+    setSalvandoNota(false)
+    if (error) { toast.falha('Não foi possível salvar as notas.', error); return }
+    setDetalhe(prev => prev?.id===id ? {...prev, anotacoes_pessoais:val} : prev)
+    setMins(prev => prev.map(m => m.id===id ? {...m, anotacoes_pessoais:val} : m))
+    toast.sucesso('Notas salvas!')
   }
 
   const STATUS_LABEL: Record<string,string> = { planejado:'Planejado', em_andamento:'Em andamento', concluido:'Concluído', cancelado:'Cancelado' }
@@ -328,11 +338,16 @@ export default function Ministracoes({ profile }: { profile?: Profile }) {
                   <div>
                     <p style={{fontSize:12,color:'var(--muted)',marginBottom:12}}>Visíveis apenas para você.</p>
                     <RichEditor
-                      value={detalhe.anotacoes_pessoais??''}
-                      onChange={v=>salvarAnotacoes(detalhe.id,v)}
+                      value={nota}
+                      onChange={setNota}
                       placeholder="Suas anotações privadas..."
                       minHeight={150}
                     />
+                    <button className="btn btn-primary btn-full" style={{marginTop:12}}
+                      disabled={salvandoNota || nota===(detalhe.anotacoes_pessoais??'')}
+                      onClick={()=>salvarAnotacoes(detalhe.id, nota)}>
+                      {salvandoNota ? 'Salvando...' : 'Salvar notas'}
+                    </button>
                   </div>
                 )}
               </div>
