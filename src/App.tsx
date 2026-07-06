@@ -276,8 +276,8 @@ export default function App() {
           </button>
         </header>
 
-        {/* Main content — translateZ(0) forca camada de GPU e evita o "fantasma" da tela anterior ao rolar no celular */}
-        <main style={{flex:1,overflowY:'auto',position:'relative',transform:'translateZ(0)',WebkitOverflowScrolling:'touch'}}>
+        {/* Main content — scroller principal (sem transform: senao FAB/modais position:fixed grudam no main em vez da tela) */}
+        <main style={{flex:1,overflowY:'auto',position:'relative',WebkitOverflowScrolling:'touch'}}>
           <CriticoWatcher profile={profile} />
           <AppRoutes profile={profile} onProfileUpdate={()=>loadProfile(profile.user_id)} />
           {/* #2 — Botão de instalar SEMPRE no final de tudo (aparece sozinho quando dá pra instalar) */}

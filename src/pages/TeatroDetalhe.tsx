@@ -774,21 +774,37 @@ export default function TeatroDetalhe({ profile }: { profile?: Profile }) {
           {/* Cenas — estilo dos cards do app */}
           <h2 style={{fontSize:14,fontWeight:800,textTransform:'uppercase',color:'#374151',margin:'8px 0 8px',borderBottom:'2px solid #111827',paddingBottom:4}}>Cenas ({cenas.length})</h2>
           {cenas.map(c=>{
-            const pg=getPersonagem(c.personagem_id); const pe=getPessoa(c.person_id); const obj=getObjeto(c.objeto_id)
+            const blocosView = (Array.isArray(c.blocos) && c.blocos.length) ? c.blocos : blocosDoLegado(c)
+            const pgsView: CenaPersonagem[] = (Array.isArray(c.personagens) && c.personagens.length)
+              ? c.personagens
+              : (c.personagem_id ? [{ personagem_id:c.personagem_id, person_ids: c.person_id ? [c.person_id] : [] }] : [])
+            const objsView: string[] = (Array.isArray(c.objetos) && c.objetos.length) ? c.objetos : (c.objeto_id ? [c.objeto_id] : [])
+            const tem = blocosView.length>0 || pgsView.length>0 || objsView.length>0
             return (
               <div key={c.id} style={{border:'1px solid #e5e7eb',borderRadius:10,overflow:'hidden',marginBottom:10,breakInside:'avoid'}}>
-                <div style={{display:'flex',alignItems:'center',gap:10,padding:'10px 14px',borderBottom:(c.deixa||c.acao||c.fala||pg||obj||c.trilha_sonora)?'1px solid #eee':'none'}}>
+                <div style={{display:'flex',alignItems:'center',gap:10,padding:'10px 14px',borderBottom:tem?'1px solid #eee':'none'}}>
                   <div style={{width:30,height:30,borderRadius:8,background:corHex,display:'flex',alignItems:'center',justifyContent:'center',fontSize:13,fontWeight:800,color:'white',flexShrink:0,WebkitPrintColorAdjust:'exact',printColorAdjust:'exact'} as any}>{c.ordem}</div>
                   <p style={{fontWeight:700,fontSize:14}}>{c.titulo ?? `Cena ${c.ordem}`}</p>
                 </div>
-                {(c.deixa||c.acao||c.fala||pg||obj||c.trilha_sonora) && (
+                {tem && (
                   <div style={{padding:'10px 14px',display:'flex',flexDirection:'column',gap:7}}>
-                    {c.deixa && <div style={{background:'#FFF3E0',borderRadius:8,padding:'8px 12px',borderLeft:`3px solid ${corHex}`}}><p style={{fontSize:10,fontWeight:700,color:corHex,textTransform:'uppercase'}}>Deixa</p><p style={{fontSize:13}}>{c.deixa}</p></div>}
-                    {c.acao && <p style={{fontSize:13}}><strong style={{color:'#6b7280'}}>AÇÃO </strong>{c.acao}</p>}
-                    {c.fala && <p style={{fontSize:13,fontStyle:'italic'}}>"{c.fala}"</p>}
-                    {pg && <p style={{fontSize:13,color:'#6B46C1',fontWeight:600}}>🎭 {pg.nome}{pe?` — ${pe.name}`:''}</p>}
-                    {obj && <p style={{fontSize:13,color:'#6b7280'}}>📦 {obj.nome}</p>}
-                    {c.trilha_sonora && <p style={{fontSize:13,color:'#6b7280'}}>🎵 {c.trilha_sonora}</p>}
+                    {blocosView.map((b,bi)=>{
+                      const info = infoBloco(b.tipo)
+                      if (b.tipo==='foto') return b.conteudo ? <img key={bi} src={b.conteudo} alt="" style={{width:'100%',borderRadius:8,display:'block'}}/> : null
+                      if (!b.conteudo) return null
+                      return (
+                        <div key={bi} style={{background:info.bg,borderRadius:8,padding:'8px 12px',borderLeft:`3px solid ${info.cor}`,WebkitPrintColorAdjust:'exact',printColorAdjust:'exact'} as any}>
+                          <p style={{fontSize:10,fontWeight:700,color:info.cor,textTransform:'uppercase',letterSpacing:'0.06em',marginBottom:3}}>{info.label}</p>
+                          <div style={{fontSize:13,lineHeight:1.5}} dangerouslySetInnerHTML={{__html:b.conteudo}}/>
+                        </div>
+                      )
+                    })}
+                    {pgsView.map((cp,pi)=>{
+                      const pgp=getPersonagem(cp.personagem_id); if(!pgp) return null
+                      const nomes = cp.person_ids.map(pid=>getPessoa(pid)?.name).filter(Boolean)
+                      return <p key={'pg'+pi} style={{fontSize:13,color:'#6B46C1',fontWeight:600}}>🎭 {pgp.nome}{nomes.length?` — ${nomes.join(', ')}`:''}</p>
+                    })}
+                    {objsView.map((oid,oi)=>{ const o=getObjeto(oid); return o ? <p key={'ob'+oi} style={{fontSize:13,color:'#6b7280'}}>📦 {o.nome}</p> : null })}
                   </div>
                 )}
               </div>
