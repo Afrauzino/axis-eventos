@@ -6,6 +6,7 @@ import { useEvento } from '../hooks/useEvento'
 import { usePermissao } from '../hooks/usePermissao'
 import { useRegistrarChrome } from '../lib/chrome'
 import DataHora from '../components/DataHora'
+import BarraData from '../components/BarraData'
 import PrintOverlay from '../components/PrintOverlay'
 import Seletor from '../components/Seletor'
 import CronometroPopup from '../components/CronometroPopup'
@@ -318,23 +319,8 @@ export default function Cronograma({ profile }: { profile?: Profile }) {
 
   return (
     <div className="page">
-      {/* Navegacao por data */}
-      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',background:'white',borderRadius:14,padding:'12px 16px',marginBottom:14,boxShadow:'var(--shadow-sm)'}}>
-        <button onClick={()=>{const d=new Date(dataSel);d.setDate(d.getDate()-1);setDataSel(d)}} style={{background:'var(--bg)',border:'1px solid var(--border)',borderRadius:8,width:36,height:36,display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',fontFamily:'inherit'}}>
-          <span className="icon icon-sm">chevron_left</span>
-        </button>
-        <div style={{textAlign:'center'}}>
-          <p style={{fontWeight:700,fontSize:15}}>{dataSel.toLocaleDateString('pt-BR',{weekday:'long',day:'numeric',month:'long'})}</p>
-          {dataSel.toDateString() !== hoje.toDateString() && (
-            <button onClick={()=>setDataSel(new Date(hoje))} style={{background:'none',border:'none',color:'var(--primary)',fontSize:12,cursor:'pointer',fontFamily:'inherit',fontWeight:500,marginTop:2}}>
-              Voltar para hoje
-            </button>
-          )}
-        </div>
-        <button onClick={()=>{const d=new Date(dataSel);d.setDate(d.getDate()+1);setDataSel(d)}} style={{background:'var(--bg)',border:'1px solid var(--border)',borderRadius:8,width:36,height:36,display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',fontFamily:'inherit'}}>
-          <span className="icon icon-sm">chevron_right</span>
-        </button>
-      </div>
+      {/* Navegacao por data — barra de semana (rola pro lado; so os dias do evento abrem) */}
+      <BarraData value={dataSel} onChange={setDataSel} inicio={evento?.start_date} fim={evento?.end_date} hoje={hoje} />
 
       {/* Lista */}
       {loading ? [1,2,3].map(i=><div key={i} className="skeleton" style={{height:80,marginBottom:8,borderRadius:14}}/>) :

@@ -1019,6 +1019,9 @@ body {
 
 .slide-up { animation: slideUp 0.3s ease; }
 
+/* Barra de data (semana) — esconde a barra de rolagem */
+.barra-data-scroll::-webkit-scrollbar { display: none; height: 0; }
+
 /* ── RESPONSIVE ─────────────────────────────────── */
 @media (min-width: 768px) {
   .page { max-width: 720px; padding: 20px 24px 80px; }
