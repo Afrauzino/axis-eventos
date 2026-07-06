@@ -1,6 +1,7 @@
 import PersonSelect from '../components/PersonSelect'
 import { useEffect, useState } from 'react'
 import AvatarPicker from '../components/AvatarPicker'
+import CardItem from '../components/CardItem'
 import { supabase } from '../lib/supabase'
 import { useRegistrarChromeNav } from '../lib/chrome'
 import PrintOverlay from '../components/PrintOverlay'
@@ -173,33 +174,23 @@ export default function Equipes({ profile }: { profile?: Profile }) {
         const aberta   = expandida===eq.id
 
         return (
-          <div key={eq.id} style={{background:'white',borderRadius:12,boxShadow:'0 1px 5px rgba(0,0,0,0.12)',marginBottom:10,overflow:'hidden',display:'flex'}}>
-            <div style={{width:6,alignSelf:'stretch',background:eq.color,flexShrink:0}}/>
-            <div style={{flex:1,minWidth:0}}>
-            {/* Cabecalho */}
-            <button style={{width:'100%',display:'flex',alignItems:'center',gap:14,padding:'16px 15px',background:'none',border:'none',cursor:'pointer',fontFamily:'inherit',textAlign:'left'}}
-              onClick={()=>setExpandida(aberta?null:eq.id)}>
-              <div style={{width:58,height:58,borderRadius:'50%',flexShrink:0,display:'flex',alignItems:'center',justifyContent:'center',overflow:'hidden',background:(eq as any).foto_url?'#eee':eq.color+'24'}}>
-                {(eq as any).foto_url
-                  ? <img src={(eq as any).foto_url} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}}/>
-                  : <span style={{fontSize:27}}>{(eq as any).emoji||'👥'}</span>}
-              </div>
-              <div style={{flex:1,minWidth:0}}>
-                <p style={{fontWeight:700,fontSize:15,marginBottom:2,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{eq.name}</p>
-                <p style={{fontSize:12,color:'var(--muted)'}}>{membros.length} {membros.length===1?'membro':'membros'}{lider?` · Lider: ${lider.name.split(' ')[0]}`:''}{eq.equipe_saude?' · Saude':''}</p>
-              </div>
-              {canEdit && (
-                <button onClick={e=>{e.stopPropagation();setEditando(eq);setForm({name:eq.name,color:eq.color,leader_id:eq.leader_id??'',co_leader_id:eq.co_leader_id??'',equipe_saude:eq.equipe_saude,equipe_cardapio:(eq as any).equipe_cardapio??false,emoji:(eq as any).emoji??'',foto_url:(eq as any).foto_url??null});setErro('');setModal(true)}}
-                  style={{width:34,height:34,borderRadius:8,background:'var(--bg)',border:'none',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',color:'var(--muted)',fontFamily:'inherit',flexShrink:0}} aria-label="Editar">
-                  <span className="icon icon-sm">edit</span>
-                </button>
-              )}
-              <span className="icon icon-sm" style={{color:'var(--muted-light)',transform:aberta?'rotate(90deg)':'none',transition:'transform 0.2s',flexShrink:0}}>chevron_right</span>
-            </button>
+          <div key={eq.id}>
+            <CardItem
+              cor={eq.color}
+              fotoUrl={(eq as any).foto_url}
+              emoji={(eq as any).emoji || '👥'}
+              iniciais={getInitials(eq.name)}
+              titulo={eq.name}
+              subtitulo={`${membros.length} ${membros.length===1?'membro':'membros'}${lider?` · Líder: ${formatName(lider.name).split(' ')[0]}`:''}${eq.equipe_saude?' · Saúde':''}`}
+              onVer={()=>setExpandida(aberta?null:eq.id)}
+              onEditar={canEdit ? ()=>{setEditando(eq);setForm({name:eq.name,color:eq.color,leader_id:eq.leader_id??'',co_leader_id:eq.co_leader_id??'',equipe_saude:eq.equipe_saude,equipe_cardapio:(eq as any).equipe_cardapio??false,emoji:(eq as any).emoji??'',foto_url:(eq as any).foto_url??null});setErro('');setModal(true)} : undefined}
+              onExcluir={canEdit ? ()=>excluirEquipe(eq.id) : undefined}
+              direita={<span className="icon icon-sm" style={{color:'var(--muted-light)',transform:aberta?'rotate(90deg)':'none',transition:'transform 0.2s'}}>chevron_right</span>}
+            />
 
-            {/* Expandido */}
+            {/* Expandido — conectado ao card pela cor da equipe */}
             {aberta && (
-              <div style={{borderTop:'1px solid var(--border)',padding:'14px 16px'}}>
+              <div style={{background:'white',borderRadius:12,boxShadow:'0 1px 5px rgba(0,0,0,0.12)',borderLeft:`6px solid ${eq.color}`,margin:'-6px 0 10px',padding:'14px 16px'}}>
                 {/* Lideranca */}
                 {(lider||colider) && (
                   <div style={{marginBottom:14}}>
@@ -245,19 +236,12 @@ export default function Equipes({ profile }: { profile?: Profile }) {
 
                 {/* Botao adicionar membro */}
                 {canEdit && (
-                  <button className="btn btn-outline btn-sm" style={{marginBottom:14}} onClick={()=>{setModalMembro(eq.id);setPessoasSel([])}}>
+                  <button className="btn btn-outline btn-sm" onClick={()=>{setModalMembro(eq.id);setPessoasSel([])}}>
                     <span className="icon icon-sm">person_add</span> Adicionar membro
-                  </button>
-                )}
-
-                {canEdit && (
-                  <button onClick={()=>excluir(eq.id)} style={{display:'block',background:'var(--danger-bg)',color:'var(--danger)',border:'none',borderRadius:8,padding:'8px 14px',cursor:'pointer',fontSize:13,fontWeight:600,fontFamily:'inherit'}}>
-                    Excluir equipe
                   </button>
                 )}
               </div>
             )}
-            </div>
           </div>
         )
       })}
