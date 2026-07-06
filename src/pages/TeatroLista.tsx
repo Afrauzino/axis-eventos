@@ -143,6 +143,7 @@ export default function TeatroLista({ profile }: { profile?: Profile }) {
           }
           onVer={()=>navigate('/teatro/'+t.id)}
           onEditar={canEdit ? ()=>abrirEdicao(t) : undefined}
+          onExcluir={canEdit ? ()=>excluir(t.id) : undefined}
         />
       ))}
 
