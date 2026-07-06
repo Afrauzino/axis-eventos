@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { getInitials } from '../utils'
 import { useEvento } from '../hooks/useEvento'
+import { useRegistrarChrome } from '../lib/chrome'
 import type { Profile } from '../App'
 
 type Categoria = { id:string; nome:string; descricao:string|null; icone:string; cor:string; ordem:number }
@@ -154,6 +155,13 @@ export default function Ranking({ profile }: { profile?: Profile }) {
     return votos.filter(v=>v.categoria_id===catId && v.votado_id===personId).length
   }
 
+  // ⚙️ do topo: escolher a categoria do ranking (padrao das outras telas)
+  useRegistrarChrome({
+    grupos: categorias.length ? [{ chave:'categoria', label:'Categoria', opcoes: categorias.map(c=>({ value:c.id, label:c.nome })) }] : undefined,
+    valores: { categoria: catSel?.id ?? '' },
+    onFiltro: (_k, v) => { const c = categorias.find(x=>x.id===v); if (c) setCatSel(c) },
+  }, [categorias, catSel])
+
   if (loading) return <div className="page">{[1,2,3].map(i=><div key={i} className="skeleton" style={{height:80,marginBottom:8,borderRadius:14}}/>)}</div>
 
   if (erro) return (
@@ -182,20 +190,18 @@ export default function Ranking({ profile }: { profile?: Profile }) {
 
   return (
     <div className="page">
-      {/* Chips de categoria */}
-      <div style={{display:'flex',gap:8,overflowX:'auto',paddingBottom:4,scrollbarWidth:'none',marginBottom:16}}>
-        {categorias.map(cat=>(
-          <button key={cat.id} onClick={()=>setCatSel(cat)}
-            style={{flexShrink:0,padding:'8px 14px',borderRadius:20,cursor:'pointer',fontFamily:'inherit',fontSize:12,fontWeight:600,
-              border:`2px solid ${catSel?.id===cat.id?cat.cor:'var(--border)'}`,
-              background:catSel?.id===cat.id?cat.cor+'22':'white',
-              color:catSel?.id===cat.id?cat.cor:'var(--text2)',
-              display:'flex',alignItems:'center',gap:6}}>
-            <MatIcon name={cat.icone||'star'} size={14} color={catSel?.id===cat.id?cat.cor:'var(--muted)'}/>
-            {cat.nome}
-          </button>
-        ))}
-      </div>
+      {/* Categoria atual (escolhida na ⚙️) */}
+      {catSel && (
+        <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:14}}>
+          <div style={{width:34,height:34,borderRadius:10,background:catSel.cor+'22',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+            <MatIcon name={catSel.icone||'star'} size={18} color={catSel.cor}/>
+          </div>
+          <div style={{flex:1,minWidth:0}}>
+            <p style={{fontSize:16,fontWeight:800,color:catSel.cor,lineHeight:1.2}}>{catSel.nome}</p>
+            <p style={{fontSize:11,color:'var(--muted)'}}>Toque na ⚙️ pra trocar de categoria</p>
+          </div>
+        </div>
+      )}
 
       {catSel && (
         <>
