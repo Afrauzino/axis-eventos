@@ -105,11 +105,13 @@ export default function TeatroLista({ profile }: { profile?: Profile }) {
 
   async function excluir(id: string) {
     if (!confirm('Excluir este teatro? Todas as cenas e elenco serão removidos.')) return
-    // Apaga os vínculos antes (senão o banco bloqueia a exclusão do teatro)
+    // Apaga/desvincula tudo que aponta pro teatro (senão o banco bloqueia por FK)
     await supabase.from('teatro_cenas').delete().eq('theater_id', id)
     await supabase.from('teatro_elenco').delete().eq('theater_id', id)
     await supabase.from('teatro_midias').delete().eq('theater_id', id)
     await supabase.from('arquivos_modulo').delete().eq('modulo','teatro').eq('referencia_id', id)
+    // Cronograma: NÃO apaga o horário, só desvincula o teatro dele
+    await supabase.from('cronograma_eventos').update({ theater_id: null }).eq('theater_id', id)
     const { error } = await supabase.from('theaters').delete().eq('id', id)
     if (error) { toast.erro('Não deu pra excluir: '+error.message); return }
     toast.sucesso('Teatro excluído.')
@@ -139,7 +141,6 @@ export default function TeatroLista({ profile }: { profile?: Profile }) {
           fotoUrl={t.foto_url || undefined}
           emoji={t.foto_url ? undefined : (t.emoji || '🎭')}
           titulo={t.nome}
-          subtitulo={t.descricao || undefined}
           direita={
             <button
               onClick={()=>mudarStatusTeatro(t.id,t.status)}
