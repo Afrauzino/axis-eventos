@@ -12,7 +12,7 @@ import { useEvento } from '../hooks/useEvento'
 import { usePermissao } from '../hooks/usePermissao'
 import type { Profile } from '../App'
 
-type Teatro     = { id:string; nome:string; descricao:string|null; data_hora:string|null; local:string|null; status:string; cor:string|null; ministracao_id:string|null; emoji?:string|null; foto_url?:string|null; capa_url?:string|null }
+type Teatro     = { id:string; nome:string; descricao:string|null; data_hora:string|null; local:string|null; status:string; cor:string|null; ministracao_id:string|null; emoji?:string|null; foto_url?:string|null; capa_url?:string|null; ordem?:number|null }
 type Ministracao = { id:string; titulo:string }
 
 const CORES = ['#E8821A','#6B46C1','#2F855A','#C53030','#2B6CB0','#D53F8C','#00A99D','#1A202C','#D69E2E','#C05621']
@@ -53,7 +53,7 @@ export default function TeatroLista({ profile }: { profile?: Profile }) {
     if (!evento) return
     setLoading(true)
     const [th, mi] = await Promise.all([
-      supabase.from('theaters').select('*').eq('event_id', evento.id).order('nome'),
+      supabase.from('theaters').select('*').eq('event_id', evento.id).order('ordem', { nullsFirst: false }).order('nome'),
       supabase.from('ministrações').select('id,titulo').eq('event_id', evento.id).order('titulo'),
     ])
     setLista(th.data ?? [])
@@ -118,6 +118,17 @@ export default function TeatroLista({ profile }: { profile?: Profile }) {
     setModal(false); carregar()
   }
 
+  // Reordenar teatros (subir/descer) — grava a ordem de todos pra ficar consistente
+  async function moverTeatro(id: string, dir: 'up'|'down') {
+    const arr = [...lista]
+    const i = arr.findIndex(t => t.id === id)
+    const j = dir === 'up' ? i - 1 : i + 1
+    if (i < 0 || j < 0 || j >= arr.length) return
+    const tmp = arr[i]; arr[i] = arr[j]; arr[j] = tmp
+    setLista(arr.map((t, idx) => ({ ...t, ordem: idx })))
+    await Promise.all(arr.map((t, idx) => supabase.from('theaters').update({ ordem: idx }).eq('id', t.id)))
+  }
+
   const filtrados = lista.filter(t => !busca || t.nome.toLowerCase().includes(busca.toLowerCase()))
 
   useRegistrarChromeNav('teatro', {
@@ -134,7 +145,7 @@ export default function TeatroLista({ profile }: { profile?: Profile }) {
           <p className="empty-title">Nenhum teatro</p>
           <p className="empty-desc">Cadastre os teatros deste evento.</p>
         </div>
-      ) : filtrados.map(t => (
+      ) : filtrados.map((t,i) => (
         <CardItem
           key={t.id}
           cor={t.cor || 'var(--primary)'}
@@ -151,6 +162,10 @@ export default function TeatroLista({ profile }: { profile?: Profile }) {
           }
           onVer={()=>navigate('/teatro/'+t.id)}
           onEditar={canEdit ? ()=>abrirEdicao(t) : undefined}
+          acoes={canEdit && !busca ? [
+            ...(i>0 ? [{ label:'Mover para cima', icon:'arrow_upward', onClick:()=>moverTeatro(t.id,'up') }] : []),
+            ...(i<filtrados.length-1 ? [{ label:'Mover para baixo', icon:'arrow_downward', onClick:()=>moverTeatro(t.id,'down') }] : []),
+          ] : undefined}
           onExcluir={canEdit ? ()=>excluir(t.id) : undefined}
         />
       ))}
