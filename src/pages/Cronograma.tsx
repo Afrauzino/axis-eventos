@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase'
 import { fmtHora, isAdmin, nowLocalInput, getInitials } from '../utils'
 import { useEvento } from '../hooks/useEvento'
 import { usePermissao } from '../hooks/usePermissao'
+import { useRegistrarChrome } from '../lib/chrome'
 import DataHora from '../components/DataHora'
 import PrintOverlay from '../components/PrintOverlay'
 import Seletor from '../components/Seletor'
@@ -305,6 +306,16 @@ export default function Cronograma({ profile }: { profile?: Profile }) {
     return { min, tea, ministrante }
   }
 
+  useRegistrarChrome({
+    grupos: [{ chave:'status', label:'Mostrar', opcoes:[{value:'todos',label:'Todos (todos os dias)'},{value:'planejado',label:'Planejados'},{value:'em_andamento',label:'Em andamento'},{value:'concluido',label:'Concluídos'}] }],
+    valores: { status: filtro },
+    onFiltro: (_,v)=>setFiltro(v),
+    impressoes: itens.length>0 ? [
+      { label:'Imprimir inteiro', onClick:()=>setImprimir('inteiro') },
+      { label:'Imprimir com detalhes', onClick:()=>setImprimir('detalhado') },
+    ] : undefined,
+  }, [filtro, itens.length])
+
   return (
     <div className="page">
       {/* Navegacao por data */}
@@ -324,24 +335,6 @@ export default function Cronograma({ profile }: { profile?: Profile }) {
           <span className="icon icon-sm">chevron_right</span>
         </button>
       </div>
-
-      {/* Filtros */}
-      <div className="filter-bar">
-        {[['todos','Todos (todos os dias)'],['planejado','Planejados'],['em_andamento','Em andamento'],['concluido','Concluidos']].map(([v,l])=>(
-          <button key={v} className={`chip ${filtro===v?'active':''}`} onClick={()=>setFiltro(v)}>{l}</button>
-        ))}
-      </div>
-
-      {itens.length>0 && (
-        <div style={{display:'flex',gap:8,marginBottom:12}}>
-          <button className="btn btn-outline btn-sm" style={{flex:1}} onClick={()=>setImprimir('inteiro')}>
-            <span className="icon icon-sm">print</span> Imprimir inteiro
-          </button>
-          <button className="btn btn-outline btn-sm" style={{flex:1}} onClick={()=>setImprimir('detalhado')}>
-            <span className="icon icon-sm">print</span> Com detalhes
-          </button>
-        </div>
-      )}
 
       {/* Lista */}
       {loading ? [1,2,3].map(i=><div key={i} className="skeleton" style={{height:80,marginBottom:8,borderRadius:14}}/>) :

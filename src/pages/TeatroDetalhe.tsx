@@ -8,6 +8,7 @@ import PersonSelect from '../components/PersonSelect'
 import Seletor from '../components/Seletor'
 import { toast } from '../components/Toast'
 import { usePermissao } from '../hooks/usePermissao'
+import { useRegistrarChrome } from '../lib/chrome'
 import type { Profile } from '../App'
 
 type Teatro     = { id:string; nome:string; descricao:string|null; data_hora:string|null; local:string|null; status:string; cor:string|null }
@@ -258,6 +259,8 @@ export default function TeatroDetalhe({ profile }: { profile?: Profile }) {
   function getPersonagem(pgid:string|null) { return pgid ? personagens.find(p=>p.id===pgid) : null }
   function getObjeto(oid:string|null) { return oid ? objetos.find(o=>o.id===oid) : null }
 
+  useRegistrarChrome({ impressoes:[{ label:'Imprimir este teatro', onClick:()=>setImprimir(true) }] }, [])
+
   if (loading) return <div className="page"><div className="skeleton" style={{height:120,borderRadius:14}}/></div>
   if (!teatro) return <div className="page"><div className="alert-box alert-error">Teatro não encontrado.</div></div>
 
@@ -289,9 +292,6 @@ export default function TeatroDetalhe({ profile }: { profile?: Profile }) {
         </button>
       )}
 
-      <button className="btn btn-outline btn-full btn-sm mb-3" onClick={()=>setImprimir(true)}>
-        <span className="icon icon-sm">print</span> Imprimir este teatro
-      </button>
       <div className="tabs mb-4">
         <button className={`tab ${aba==='cenas'?'active':''}`} onClick={()=>setAba('cenas')}>Cenas ({cenas.length})</button>
         <button className={`tab ${aba==='elenco'?'active':''}`} onClick={()=>setAba('elenco')}>Elenco ({elenco.length})</button>

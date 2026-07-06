@@ -4,6 +4,7 @@ import PrintOverlay from '../components/PrintOverlay'
 import { toast } from '../components/Toast'
 import CardItem from '../components/CardItem'
 import FotoAmpliada from '../components/FotoAmpliada'
+import { useRegistrarChrome } from '../lib/chrome'
 import { getInitials, isAdmin, formatName } from '../utils'
 import { useEvento } from '../hooks/useEvento'
 import type { Profile } from '../App'
@@ -49,6 +50,7 @@ export default function Correio({ profile }: { profile?: Profile }) {
   const [modalPadrinho, setModalPadrinho] = useState<Pessoa|null>(null) // afiliado a quem atribuir padrinhos
   const [buscaPadrinho, setBuscaPadrinho] = useState('') // filtro de nome no modal de padrinhos
   const [fotoAmpliada, setFotoAmpliada] = useState<string|null>(null)
+  useRegistrarChrome(aba==='todos' ? { impressoes:[{ label:'Imprimir com checklist', onClick:()=>setImprimir(true) }] } : {}, [aba])
 
   // Admin e Líder veem tudo. Membro da equipe Correio vê só "Meus Afilhados".
   const podeVerTudo = isAdmin(profile?.user_role) || souLider
@@ -280,11 +282,6 @@ export default function Correio({ profile }: { profile?: Profile }) {
       {aba==='todos' && (
         <>
           <BarraProgresso titulo="Conclusão de todos os encontristas" pct={progressoConjunto(encontristas)} />
-          {encontristas.length>0 && (
-            <button className="btn btn-outline btn-full btn-sm mb-3" onClick={()=>setImprimir(true)}>
-              <span className="icon icon-sm">print</span> Imprimir com checklist
-            </button>
-          )}
           {encontristas.length === 0
             ? <div className="empty"><p className="empty-title">Nenhum encontrista cadastrado</p></div>
             : ordenarPorStatus(encontristas).map(af => (

@@ -4,6 +4,7 @@ import FichaMedica from '../components/FichaMedica'
 import PrintOverlay from '../components/PrintOverlay'
 import CardItem from '../components/CardItem'
 import FotoAmpliada from '../components/FotoAmpliada'
+import { useRegistrarChrome } from '../lib/chrome'
 import { getInitials, isAdmin, formatName } from '../utils'
 import { useEvento } from '../hooks/useEvento'
 import type { Profile } from '../App'
@@ -32,6 +33,16 @@ export default function Logistica({ profile }: { profile?: Profile }) {
   const [gerando, setGerando] = useState(false)
   const [fichaMap, setFichaMap] = useState<Record<string,any>>({})
   const [medMap, setMedMap]     = useState<Record<string,any[]>>({})
+
+  useRegistrarChrome(
+    aba==='encontristas'
+      ? {
+          busca: { value: busca, onChange: setBusca, placeholder: 'Buscar encontrista...' },
+          impressoes: [{ label: gerando?'Gerando PDF...':'Gerar PDF de todos (checklist + ficha)', icon:'picture_as_pdf', onClick: gerarPdfTodos, disabled: gerando }],
+        }
+      : {},
+    [aba, busca, gerando]
+  )
 
   async function gerarPdfTodos() {
     if (!evento) return
@@ -139,13 +150,6 @@ export default function Logistica({ profile }: { profile?: Profile }) {
               Nenhum item de checklist ainda.{canConfig?' Vá em Configurar para criar os itens padrão.':''}
             </div>
           )}
-          <div className="search-bar mb-3">
-            <span className="icon icon-sm" style={{color:'var(--muted-light)'}}>search</span>
-            <input placeholder="Buscar encontrista..." value={busca} onChange={e=>setBusca(e.target.value)}/>
-          </div>
-          <button className="btn btn-outline btn-full btn-sm mb-3" onClick={gerarPdfTodos} disabled={gerando}>
-            <span className="icon icon-sm">picture_as_pdf</span> {gerando?'Gerando...':`Gerar PDF de todos (${filtrados.length}) — checklist + ficha`}
-          </button>
           {filtrados.length===0 ? <div className="empty"><p className="empty-desc">Nenhum encontrista.</p></div> :
           filtrados.map(e=>{
             const pct = progresso(e.id); const inf = info(e.id)

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { getInitials } from '../utils'
 import CardItem from '../components/CardItem'
+import { useRegistrarChrome } from '../lib/chrome'
 import { useEvento } from '../hooks/useEvento'
 import type { Profile } from '../App'
 
@@ -95,24 +96,12 @@ export default function Encontristas({ profile }: { profile: Profile }) {
     window.open(`https://wa.me/55${num}?text=${msg}`, '_blank')
   }
 
+  useRegistrarChrome({
+    busca: { value: busca, onChange: setBusca, placeholder: 'Buscar por nome ou igreja...' },
+  }, [busca])
+
   return (
     <div className="page">
-      {/* Busca */}
-      <div className="search-bar mb-3">
-        <span className="icon icon-sm" style={{ color: 'var(--muted-light)' }}>search</span>
-        <input
-          placeholder="Buscar por nome ou igreja..."
-          value={busca}
-          onChange={e => setBusca(e.target.value)}
-         
-        />
-        {busca && (
-          <button onClick={() => setBusca('')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted-light)', padding: 0 }}>
-            <span className="icon icon-sm">close</span>
-          </button>
-        )}
-      </div>
-
       {/* Contador */}
       <p style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 12 }}>
         {busca ? `${filtrados.length} resultado(s) para "${busca}"` : `${lista.length} encontrista(s)`}

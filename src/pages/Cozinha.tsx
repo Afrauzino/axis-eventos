@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase'
 import EmojiGrid from '../components/EmojiGrid'
 import PrintOverlay from '../components/PrintOverlay'
 import CardItem from '../components/CardItem'
+import { useRegistrarChrome } from '../lib/chrome'
 import Seletor from '../components/Seletor'
 import { useEvento } from '../hooks/useEvento'
 import { usePermissao } from '../hooks/usePermissao'
@@ -104,6 +105,10 @@ export default function Cozinha({ profile }: { profile?: Profile }) {
     setCardapios(prev=>prev.filter(c=>c.id!==id))
   }
 
+  useRegistrarChrome({
+    impressoes: cardapios.length>0 ? [{ label:'Imprimir cardápios (com detalhes)', onClick:()=>setImprimir(true) }] : undefined,
+  }, [cardapios.length])
+
   if (evLoading||loading) return <div className="page">{[1,2,3].map(i=><div key={i} className="skeleton" style={{height:80,marginBottom:10,borderRadius:14}}/>)}</div>
   if (!evento) return <div className="page"><div className="empty"><p className="empty-title">Nenhum evento ativo</p></div></div>
 
@@ -115,11 +120,6 @@ export default function Cozinha({ profile }: { profile?: Profile }) {
         <button className={`tab ${aba==='tipo'?'active':''}`} onClick={()=>setAba('tipo')}>Tipo</button>
       </div>
 
-      {cardapios.length>0 && (
-        <button className="btn btn-outline btn-full btn-sm mb-3" onClick={()=>setImprimir(true)}>
-          <span className="icon icon-sm">print</span> Imprimir cardápios (com detalhes)
-        </button>
-      )}
 
       {/* ABA CARDÁPIO */}
       {aba==='cardapio' && (
