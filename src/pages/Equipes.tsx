@@ -2,7 +2,7 @@ import PersonSelect from '../components/PersonSelect'
 import { useEffect, useState } from 'react'
 import AvatarPicker from '../components/AvatarPicker'
 import { supabase } from '../lib/supabase'
-import SubTabs from '../components/SubTabs'
+import { useRegistrarChromeNav } from '../lib/chrome'
 import PrintOverlay from '../components/PrintOverlay'
 import { getInitials, isAdmin, formatName } from '../utils'
 import { useEvento } from '../hooks/useEvento'
@@ -142,9 +142,12 @@ export default function Equipes({ profile }: { profile?: Profile }) {
   const totalVinculados = new Set(vinculos.map(v=>v.person_id)).size
   const semEquipe = pessoas.filter(p=>!vinculos.some(v=>v.person_id===p.id))
 
+  useRegistrarChromeNav('equipes', {
+    impressoes: equipes.length>0 ? [{ label:'Imprimir equipes (com fotos)', onClick:()=>{setPrintSel(equipes.map(e=>e.id));setModalPrint(true)} }] : undefined,
+  }, [equipes.length])
+
   return (
     <div className="page">
-      <SubTabs group="equipes"/>
       <div className="stats-grid mb-4">
         <div className="stat-card"><div className="stat-label">Equipes</div><div className="stat-value">{equipes.length}</div></div>
         <div className="stat-card">
@@ -154,12 +157,6 @@ export default function Equipes({ profile }: { profile?: Profile }) {
       </div>
 
       {semEquipe.length>0 && <div className="alert-box alert-warning mb-3">{semEquipe.length} encontreiro(s) sem equipe.</div>}
-
-      {equipes.length>0 && (
-        <button className="btn btn-outline btn-full btn-sm mb-3" onClick={()=>{setPrintSel(equipes.map(e=>e.id));setModalPrint(true)}}>
-          <span className="icon icon-sm">print</span> Imprimir equipes (com fotos)
-        </button>
-      )}
 
       {loading ? [1,2,3].map(i=><div key={i} className="skeleton" style={{height:72,marginBottom:8,borderRadius:14}}/>) :
       equipes.length===0 ? (

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import SubTabs from '../components/SubTabs'
+import { useRegistrarChromeNav } from '../lib/chrome'
 import PrintOverlay from '../components/PrintOverlay'
 import { getInitials, fmtHora, isAdmin, isLider, nowLocalInput } from '../utils'
 import { useEvento } from '../hooks/useEvento'
@@ -258,9 +258,12 @@ export default function Escalas({ profile }: { profile?: Profile }) {
   // Equipe selecionada atual (para exibir no PersonSelect de equipe)
   const equipeAtual = equipes.find(e => e.id === formEquipeId)
 
+  useRegistrarChromeNav('equipes', {
+    impressoes: escalasDia.length>0 ? [{ label:'Imprimir escala do dia', onClick:()=>setImprimir(true) }] : undefined,
+  }, [escalasDia.length])
+
   return (
     <div className="page">
-      <SubTabs group="equipes"/>
       {/* Navegação por data */}
       <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',background:'white',borderRadius:14,padding:'12px 16px',marginBottom:14,boxShadow:'var(--shadow-sm)'}}>
         <button onClick={()=>{const d=new Date(dataSel);d.setDate(d.getDate()-1);setDataSel(d)}} style={{background:'var(--bg)',border:'1px solid var(--border)',borderRadius:8,width:36,height:36,display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',fontFamily:'inherit'}}>
@@ -277,11 +280,6 @@ export default function Escalas({ profile }: { profile?: Profile }) {
         </button>
       </div>
 
-      {escalasDia.length>0 && (
-        <button className="btn btn-outline btn-full btn-sm mb-3" onClick={()=>setImprimir(true)}>
-          <span className="icon icon-sm">print</span> Imprimir escala do dia
-        </button>
-      )}
 
       {loading ? [1,2,3].map(i=><div key={i} className="skeleton" style={{height:68,marginBottom:8,borderRadius:14}}/>) :
       escalasDia.length === 0 ? (

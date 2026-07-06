@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import SubTabs from '../components/SubTabs'
+import { useRegistrarChromeNav } from '../lib/chrome'
 import { toast } from '../components/Toast'
 import DataHora from '../components/DataHora'
 import { getInitials, isAdmin, fmtData, fmtBRL } from '../utils'
@@ -90,10 +90,12 @@ export default function Financeiro({ profile }: { profile?: Profile }) {
     return true
   })
 
+  useRegistrarChromeNav('financeiro', {
+    busca: { value: busca, onChange: setBusca, placeholder: 'Buscar por nome...' },
+  }, [busca])
 
   return (
     <div className="page">
-      <SubTabs group="financeiro"/>
       {/* Contadores de status - sem valores monetários */}
       {(() => {
         const inscritos   = pessoas.filter(p=>getSituacao(p)==='inscrito').length
@@ -117,10 +119,6 @@ export default function Financeiro({ profile }: { profile?: Profile }) {
         )
       })()}
 
-      <div className="search-bar mb-2">
-        <span className="icon icon-sm" style={{color:'var(--muted-light)'}}>search</span>
-        <input placeholder="Buscar por nome..." value={busca} onChange={e=>setBusca(e.target.value)}/>
-      </div>
 
 
       {loading ? [1,2,3].map(i=><div key={i} className="skeleton" style={{height:72,marginBottom:8,borderRadius:14}}/>) :
