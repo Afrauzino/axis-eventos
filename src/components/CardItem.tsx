@@ -100,6 +100,7 @@ export default function CardItem(props: Props) {
                 ))}
               </div>
             )}
+            {props.extra && <div className="card-item-extra" onClick={(ev) => ev.stopPropagation()}>{props.extra}</div>}
           </div>
           {props.direita && (
             <div className="card-item-direita" onClick={(ev) => ev.stopPropagation()}>
@@ -112,7 +113,7 @@ export default function CardItem(props: Props) {
               onClick={(ev) => { ev.stopPropagation(); setMenu(true) }}
               aria-label="Opções"
             >
-              <span className="icon icon-sm">more_vert</span>
+              <span className="icon">more_vert</span>
             </button>
           )}
         </div>
@@ -126,7 +127,6 @@ export default function CardItem(props: Props) {
             )}
           </div>
         )}
-        {props.extra && <div className="card-item-extra">{props.extra}</div>}
       </div>
 
       {/* Menu ⋮ (abre de baixo) */}

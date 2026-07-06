@@ -159,23 +159,23 @@ export default function Cadastros({ profile }: { profile: Profile }) {
       ) : filtrados.map(p => {
         const role = ROLES.find(r=>r.value===p.role_type)
         const statusRow = (
-          <div style={{display:'flex',alignItems:'center',gap:6,flexWrap:'wrap'}}>
+          <div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
             {p.user_id
-              ? <span className="badge badge-success" style={{fontSize:9}}>✓ Conta criada</span>
+              ? <span className="badge badge-success" style={{fontSize:10}}>✓ Conta criada</span>
               : p.invite_code
                 ? <>
                     <button onClick={()=>copiarCodigo(p)} title="Toque para copiar"
-                      style={{fontFamily:'monospace',fontSize:11,fontWeight:800,letterSpacing:'0.08em',color:copiadoId===p.id?'var(--success)':'var(--primary)',background:copiadoId===p.id?'var(--success-bg)':'var(--primary-light)',padding:'2px 8px',borderRadius:6,border:'none',cursor:'pointer'}}>
+                      style={{fontFamily:'monospace',fontSize:11,fontWeight:800,letterSpacing:'0.08em',color:copiadoId===p.id?'var(--success)':'var(--primary)',background:copiadoId===p.id?'var(--success-bg)':'var(--primary-light)',padding:'3px 9px',borderRadius:6,border:'none',cursor:'pointer'}}>
                       {copiadoId===p.id ? '✓ Copiado!' : p.invite_code}
                     </button>
                     <button onClick={()=>compartilharCodigo(p)}
-                      style={{background:'#25D366',border:'none',borderRadius:6,padding:'2px 8px',cursor:'pointer',fontFamily:'inherit',display:'inline-flex',alignItems:'center',gap:3,color:'white',fontSize:10,fontWeight:700}}
+                      style={{background:'transparent',border:'1px solid var(--border)',borderRadius:6,padding:'3px 9px',cursor:'pointer',fontFamily:'inherit',display:'inline-flex',alignItems:'center',gap:4,color:'#128C7E',fontSize:11,fontWeight:600}}
                       title="Enviar por WhatsApp (também copia o código)">
-                      <span className="icon" style={{fontSize:12,color:'white'}}>share</span>
+                      <span className="icon icon-sm" style={{color:'#128C7E'}}>share</span>
                       Enviar
                     </button>
                   </>
-                : <span className="badge badge-neutral" style={{fontSize:9}}>Sem código</span>
+                : <span className="badge badge-neutral" style={{fontSize:10}}>Sem código</span>
             }
           </div>
         )

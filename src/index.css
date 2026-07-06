@@ -1078,9 +1078,9 @@ body {
 .card-item:active { box-shadow: 0 1px 4px rgba(0,0,0,0.12); }
 .card-item-bar { width: 6px; align-self: stretch; flex-shrink: 0; }
 .card-item-wrap { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-.card-item-body { padding: 16px 15px; flex: 1; min-width: 0; display: flex; gap: 14px; align-items: center; }
+.card-item-body { padding: 14px 10px 14px 14px; flex: 1; min-width: 0; display: flex; gap: 13px; align-items: center; min-height: 64px; }
 .card-item-avatar {
-  width: 58px; height: 58px; border-radius: 50%;
+  width: 64px; height: 64px; border-radius: 50%;
   flex-shrink: 0; display: flex; align-items: center; justify-content: center;
   overflow: hidden;
 }
@@ -1104,16 +1104,17 @@ body {
 }
 .card-item-edit:hover { background: var(--border); color: var(--primary); }
 .card-item-menu {
-  width: 34px; height: 34px; border-radius: 8px;
+  width: 40px; height: 40px; border-radius: 10px;
   background: transparent; border: none; cursor: pointer;
   display: flex; align-items: center; justify-content: center;
   flex-shrink: 0; align-self: center;
-  color: var(--muted); transition: background 0.15s;
+  color: var(--muted-light); transition: background 0.15s;
 }
+.card-item-menu .icon { font-size: 24px; }
 .card-item-menu:hover { background: var(--bg); color: var(--primary); }
 .card-item-direita { flex-shrink: 0; align-self: center; display: flex; flex-direction: column; align-items: flex-end; gap: 4px; text-align: right; }
 .card-item-barra { padding: 0 15px 14px 0; }
 .card-item-progress { height: 8px; background: #eee; border-radius: 99px; overflow: hidden; }
 .card-item-progress > div { height: 100%; border-radius: 99px; transition: width 0.3s; }
 .card-item-progress-label { font-size: 11px; font-weight: 600; margin-top: 5px; }
-.card-item-extra { padding: 0 15px 14px 0; }
+.card-item-extra { margin-top: 8px; }
