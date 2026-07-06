@@ -8,8 +8,9 @@ import type { Profile } from '../App'
 type Escala = {
   id:string; title:string; start_time:string; end_time:string
   location:string|null; notes:string|null
-  status:'confirmed'|'concluido'|'cancelado'|string; team_id:string|null
+  status:'confirmed'|'concluido'|'cancelado'|string; team_id:string|null; tipo?:string|null
 }
+type ItemChk = { id:string; escala_id:string; texto:string; ordem:number; feito:boolean }
 type Alerta = { id:string; title:string; priority:string }
 
 export default function MinhasAtividades({ profile }: { profile: Profile }) {
@@ -19,6 +20,7 @@ export default function MinhasAtividades({ profile }: { profile: Profile }) {
   const [alertas, setAlertas]   = useState<Alerta[]>([])
   const [loading, setLoading]   = useState(true)
   const [detalhe, setDetalhe]   = useState<Escala|null>(null)
+  const [escalaChk, setEscalaChk] = useState<ItemChk[]>([])
   const [filtro, setFiltro]     = useState<'todas'|'pendentes'|'concluidas'>('todas')
   const [myPersonId, setMyPersonId] = useState<string|null>(null)
   const [cardapios, setCardapios] = useState<{id:string;tipo_refeicao_nome:string|null;titulo:string|null;itens:string|null;data_servir:string|null}[]>([])
@@ -72,6 +74,15 @@ export default function MinhasAtividades({ profile }: { profile: Profile }) {
     ])
     setMinhas(es.data ?? [])
     setAlertas(al.data ?? [])
+
+    // Checklist das MINHAS escalas (o que faltava chegar pra pessoa)
+    const escalaIds = (es.data ?? []).map((e:any)=>e.id)
+    if (escalaIds.length) {
+      const { data: ck } = await supabase.from('escala_checklist').select('*').in('escala_id', escalaIds).order('ordem')
+      setEscalaChk(ck ?? [])
+    } else {
+      setEscalaChk([])
+    }
 
     // #11 — Cronograma → atividades pessoais (ministrante da ministração OU elenco do teatro)
     await carregarDoCronograma(myPerson.id)
@@ -150,6 +161,16 @@ export default function MinhasAtividades({ profile }: { profile: Profile }) {
     }
     setMinhas(prev => prev.map(a => a.id===id ? {...a, status: novoStatus} : a))
     setDetalhe(prev => prev?.id===id ? {...prev, status: novoStatus} : prev)
+  }
+
+  // A pessoa marca/desmarca um item do checklist da própria escala
+  async function toggleItemChk(itemId: string, feito: boolean) {
+    setEscalaChk(prev => prev.map(i => i.id===itemId ? {...i, feito} : i))
+    await supabase.from('escala_checklist').update({ feito }).eq('id', itemId)
+  }
+  // Itens do checklist de uma escala
+  function itensDaEscala(escalaId: string) {
+    return escalaChk.filter(c => c.escala_id === escalaId).sort((a,b)=>a.ordem-b.ordem)
   }
 
   const pendentes  = minhas.filter(a => a.status !== 'concluido').length
@@ -326,6 +347,20 @@ export default function MinhasAtividades({ profile }: { profile: Profile }) {
             <p style={{fontSize:11,color:'var(--muted)',marginBottom:2}}>{fmtHora(item.start_time)} — {fmtHora(item.end_time)}</p>
             <p style={{fontWeight:700,fontSize:14,textDecoration:item.status==='concluido'?'line-through':'none'}}>{item.title}</p>
             {item.location && <p style={{fontSize:12,color:'var(--muted)',marginTop:1}}>{item.location}</p>}
+            {(() => {
+              const itens = itensDaEscala(item.id)
+              if (!itens.length) return null
+              const feitos = itens.filter(i=>i.feito).length
+              const pct = Math.round(feitos/itens.length*100)
+              return (
+                <div style={{marginTop:7}}>
+                  <div style={{height:6,background:'#eee',borderRadius:99,overflow:'hidden'}}>
+                    <div style={{width:pct+'%',height:'100%',background:pct===100?'var(--success)':'var(--primary)',borderRadius:99}}/>
+                  </div>
+                  <p style={{fontSize:11,color:'var(--muted)',fontWeight:600,marginTop:3}}>{feitos}/{itens.length} do checklist</p>
+                </div>
+              )
+            })()}
           </div>
           {item.status === 'concluido'
             ? <span className="icon" style={{color:'var(--success)',marginRight:12,flexShrink:0}}>check_circle</span>
@@ -365,6 +400,32 @@ export default function MinhasAtividades({ profile }: { profile: Profile }) {
                 )}
               </div>
             )}
+
+            {/* Checklist da atividade — itens que o líder montou (a pessoa marca aqui) */}
+            {(() => {
+              const itens = itensDaEscala(detalhe.id)
+              if (!itens.length) return null
+              const feitos = itens.filter(i=>i.feito).length
+              const pct = Math.round(feitos/itens.length*100)
+              return (
+                <div style={{marginBottom:12}}>
+                  <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:8}}>
+                    <p className="section-label" style={{margin:0}}>Checklist</p>
+                    <span style={{fontSize:12,fontWeight:700,color:'var(--primary)'}}>{feitos}/{itens.length} · {pct}%</span>
+                  </div>
+                  <div style={{height:8,background:'#eee',borderRadius:99,overflow:'hidden',marginBottom:10}}>
+                    <div style={{width:pct+'%',height:'100%',background:pct===100?'var(--success)':'var(--primary)',borderRadius:99,transition:'width 0.3s'}}/>
+                  </div>
+                  {itens.map(it=>(
+                    <button key={it.id} type="button" onClick={()=>toggleItemChk(it.id,!it.feito)}
+                      style={{width:'100%',display:'flex',alignItems:'center',gap:10,padding:'10px 12px',borderRadius:10,marginBottom:6,cursor:'pointer',fontFamily:'inherit',textAlign:'left',border:'1px solid var(--border)',background:it.feito?'var(--success-bg)':'white'}}>
+                      <span className="icon" style={{color:it.feito?'var(--success)':'var(--muted-light)',flexShrink:0}}>{it.feito?'check_circle':'radio_button_unchecked'}</span>
+                      <span style={{flex:1,fontSize:14,color:it.feito?'var(--muted)':'var(--text)',textDecoration:it.feito?'line-through':'none'}}>{it.texto}</span>
+                    </button>
+                  ))}
+                </div>
+              )
+            })()}
 
             {detalhe.id.startsWith('cron-') ? (
               <div style={{textAlign:'center',padding:'10px',marginBottom:8,background:'var(--bg)',borderRadius:10}}>
