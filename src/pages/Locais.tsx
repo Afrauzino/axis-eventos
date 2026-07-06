@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import SubTabs from '../components/SubTabs'
 import { isAdmin } from '../utils'
 import UploadFoto from '../components/UploadFoto'
 import EmojiGrid from '../components/EmojiGrid'
@@ -8,7 +7,7 @@ import Seletor from '../components/Seletor'
 import { useEvento } from '../hooks/useEvento'
 import { usePermissao } from '../hooks/usePermissao'
 import CardItem from '../components/CardItem'
-import BuscaFiltro from '../components/BuscaFiltro'
+import { useRegistrarChromeNav } from '../lib/chrome'
 import type { Profile } from '../App'
 
 function MatIcon({ name, size=22, color='var(--primary)' }: { name:string; size?:number; color?:string }) {
@@ -96,16 +95,15 @@ export default function Locais({ profile }: { profile?: Profile }) {
     .filter(l => filtro==='todos' || l.tipo===filtro)
     .filter(l => !busca || l.nome.toLowerCase().includes(busca.toLowerCase()))
 
+  useRegistrarChromeNav('evento', {
+    busca: { value: busca, onChange: setBusca, placeholder: 'Buscar local...' },
+    grupos: [{ chave:'tipo', label:'Tipo', opcoes:[{value:'todos',label:'Todos'}, ...TIPOS.map(([v,l])=>({value:v as string,label:l as string}))] }],
+    valores: { tipo: filtro },
+    onFiltro: (_,v)=>setFiltro(v),
+  }, [busca, filtro])
+
   return (
     <div className="page">
-      <SubTabs group="evento"/>
-      <BuscaFiltro
-        busca={busca} onBusca={setBusca} placeholder="Buscar local..."
-        valores={{ tipo: filtro }}
-        onFiltro={(_,v)=>setFiltro(v)}
-        grupos={[{ chave:'tipo', label:'Tipo', opcoes:[{value:'todos',label:'Todos'}, ...TIPOS.map(([v,l])=>({value:v as string,label:l as string}))] }]}
-      />
-
       {loading ? [1,2,3].map(i=><div key={i} className="skeleton" style={{height:72,marginBottom:8,borderRadius:14}}/>) :
       filtrados.length===0 ? (
         <div className="empty">

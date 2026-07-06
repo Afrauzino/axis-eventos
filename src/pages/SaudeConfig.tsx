@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import SubTabs from '../components/SubTabs'
+import { useRegistrarChromeNav } from '../lib/chrome'
 import DataHora from '../components/DataHora'
 import { toast } from '../components/Toast'
 import { gerarDoses, type JanelaMed } from '../lib/doses'
@@ -15,6 +15,7 @@ export default function SaudeConfig({ profile }: { profile?: Profile }) {
   const [loading, setLoading] = useState(true)
   const [salvando, setSalvando] = useState(false)
   const canEdit = isAdmin(profile?.user_role)
+  useRegistrarChromeNav('saude')
 
   useEffect(() => { if (evLoading) return; if (!evento) { setLoading(false); return }; carregar() }, [evento, evLoading])
 
@@ -60,11 +61,10 @@ export default function SaudeConfig({ profile }: { profile?: Profile }) {
     toast.sucesso(`Salvo! ${total} dose(s) recalculada(s) no período.`)
   }
 
-  if (evLoading || loading) return <div className="page"><SubTabs group="saude"/><div className="skeleton" style={{height:160,borderRadius:14}}/></div>
+  if (evLoading || loading) return <div className="page"><div className="skeleton" style={{height:160,borderRadius:14}}/></div>
 
   return (
     <div className="page">
-      <SubTabs group="saude"/>
 
       <div className="section-label mb-2">Medicamento contínuo — período de doses</div>
       <div style={{background:'white',borderRadius:12,padding:'16px',boxShadow:'var(--shadow-sm)',marginBottom:16}}>

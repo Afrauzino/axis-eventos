@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
-import SubTabs from '../components/SubTabs'
+import { useRegistrarChromeNav } from '../lib/chrome'
 import EmojiGrid from '../components/EmojiGrid'
 import Seletor from '../components/Seletor'
 import { toast } from '../components/Toast'
@@ -106,13 +106,12 @@ export default function TeatroLista({ profile }: { profile?: Profile }) {
 
   const filtrados = lista.filter(t => !busca || t.nome.toLowerCase().includes(busca.toLowerCase()))
 
+  useRegistrarChromeNav('teatro', {
+    busca: { value: busca, onChange: setBusca, placeholder: 'Buscar teatro...' },
+  }, [busca])
+
   return (
     <div className="page">
-      <SubTabs group="teatro"/>
-      <div className="search-bar mb-3">
-        <span className="icon icon-sm" style={{color:'var(--muted-light)'}}>search</span>
-        <input placeholder="Buscar teatro..." value={busca} onChange={e=>setBusca(e.target.value)}/>
-      </div>
 
       {loading ? [1,2,3].map(i=><div key={i} className="skeleton" style={{height:80,marginBottom:8,borderRadius:14}}/>) :
       filtrados.length===0 ? (

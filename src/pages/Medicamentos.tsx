@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import SubTabs from '../components/SubTabs'
+import { useRegistrarChromeNav } from '../lib/chrome'
 import PessoaSaudeResumo from '../components/PessoaSaudeResumo'
 import { toast } from '../components/Toast'
 import CardItem from '../components/CardItem'
@@ -24,6 +24,7 @@ export default function Medicamentos({ profile }: { profile?: Profile }) {
   const [resumoId, setResumoId] = useState<string|null>(null)
   const [pessoaDoses, setPessoaDoses] = useState<string|null>(null)
   const [fotoAmpliada, setFotoAmpliada] = useState<string|null>(null)
+  useRegistrarChromeNav('saude')
 
   useEffect(() => { if (evLoading) return; if (!evento) { setLoading(false); return }; carregar() }, [evento, evLoading])
 
@@ -88,11 +89,10 @@ export default function Medicamentos({ profile }: { profile?: Profile }) {
   }).filter(x=>x.total>0)
   const agendaPessoas = porPessoa.filter(x=>x.pend.length>0).sort((a,b)=>(a.proxima??'').localeCompare(b.proxima??''))
 
-  if (evLoading || loading) return <div className="page"><SubTabs group="saude"/>{[1,2,3].map(i=><div key={i} className="skeleton" style={{height:80,marginBottom:10,borderRadius:14}}/>)}</div>
+  if (evLoading || loading) return <div className="page">{[1,2,3].map(i=><div key={i} className="skeleton" style={{height:80,marginBottom:10,borderRadius:14}}/>)}</div>
 
   return (
     <div className="page">
-      <SubTabs group="saude"/>
       <div className="tabs mb-4">
         <button className={`tab ${aba==='agenda'?'active':''}`} onClick={()=>setAba('agenda')}>
           Agenda {pendentes.length>0 && <span className="badge badge-warning" style={{marginLeft:4,fontSize:9}}>{pendentes.length}</span>}

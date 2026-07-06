@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import SubTabs from '../components/SubTabs'
 import { getInitials, isAdmin } from '../utils'
 import UploadFoto from '../components/UploadFoto'
 import EmojiGrid from '../components/EmojiGrid'
 import CardItem from '../components/CardItem'
+import { useRegistrarChromeNav } from '../lib/chrome'
 import { usePermissao } from '../hooks/usePermissao'
 import type { Profile } from '../App'
 
@@ -99,15 +99,13 @@ export default function TeatroPersonagens({ profile }: { profile?: Profile }) {
     )
   }
 
+  useRegistrarChromeNav('teatro', {
+    busca: { value: buscar, onChange: setBuscar, placeholder: 'Buscar personagem...' },
+  }, [buscar])
+
   return (
     <div className="page">
-      <SubTabs group="teatro"/>
       <div className="alert-box alert-info mb-3">Biblioteca global — disponíveis para todos os teatros. Personagens múltiplos permitem vários atores simultâneos (ex: Demônios, Multidão).</div>
-
-      <div className="search-bar mb-3">
-        <span className="icon icon-sm" style={{color:'var(--muted-light)'}}>search</span>
-        <input placeholder="Buscar personagem..." value={buscar} onChange={e=>setBuscar(e.target.value)}/>
-      </div>
 
       {loading ? [1,2,3].map(i=><div key={i} className="skeleton" style={{height:60,marginBottom:8,borderRadius:14}}/>) : (
         <>

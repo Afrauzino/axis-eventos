@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import SubTabs from '../components/SubTabs'
+import { useRegistrarChromeNav } from '../lib/chrome'
 import { getInitials, isAdmin } from '../utils'
 import { useEvento } from '../hooks/useEvento'
 import { usePermissao } from '../hooks/usePermissao'
@@ -68,9 +68,10 @@ export default function TeatroAtores({ profile }: { profile?: Profile }) {
   function getTeatro(id: string) { return teatros.find(t=>t.id===id) }
   function getPersonagem(id: string|null) { return id ? personagens.find(p=>p.id===id) : null }
 
+  useRegistrarChromeNav('teatro')
+
   return (
     <div className="page">
-      <SubTabs group="teatro"/>
       {loading ? [1,2,3].map(i=><div key={i} className="skeleton" style={{height:68,marginBottom:8,borderRadius:14}}/>) :
       elenco.length===0 ? (
         <div className="empty">

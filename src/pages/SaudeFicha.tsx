@@ -1,10 +1,9 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import SubTabs from '../components/SubTabs'
+import { useRegistrarChromeNav } from '../lib/chrome'
 import FichaMedica from '../components/FichaMedica'
 import CardItem from '../components/CardItem'
 import FotoAmpliada from '../components/FotoAmpliada'
-import BuscaFiltro from '../components/BuscaFiltro'
 import { getInitials } from '../utils'
 import { useEvento } from '../hooks/useEvento'
 import type { Profile } from '../App'
@@ -75,16 +74,15 @@ export default function SaudeFicha({ profile }: { profile?: Profile }) {
       : <span className="badge badge-success" style={{fontSize:10}}>Ok</span>
   }
 
+  useRegistrarChromeNav('saude', {
+    busca: { value: busca, onChange: setBusca, placeholder: 'Buscar pessoa...' },
+    grupos: [{ chave:'ficha', label:'Ficha', opcoes:[{value:'todos',label:'Todos'},{value:'com',label:'Com ficha'},{value:'sem',label:'Sem ficha'}] }],
+    valores: { ficha: filtro },
+    onFiltro: (_,v)=>setFiltro(v as any),
+  }, [busca, filtro])
+
   return (
     <div className="page">
-      <SubTabs group="saude"/>
-      <BuscaFiltro
-        busca={busca} onBusca={setBusca} placeholder="Buscar pessoa..."
-        valores={{ ficha: filtro }}
-        onFiltro={(_,v)=>setFiltro(v as any)}
-        grupos={[{ chave:'ficha', label:'Ficha', opcoes:[{value:'todos',label:'Todos'},{value:'com',label:'Com ficha'},{value:'sem',label:'Sem ficha'}] }]}
-      />
-
       {loading ? [1,2,3].map(i=><div key={i} className="skeleton" style={{height:68,marginBottom:8,borderRadius:14}}/>) :
       listagem.map(p => {
         const f = fichas.find(x=>x.person_id===p.id)
