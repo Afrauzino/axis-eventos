@@ -101,11 +101,6 @@ body {
   gap: 12px;
   z-index: 100;
   box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-  /* Camada de GPU propria — evita o "fantasma" da tela anterior ao rolar no celular */
-  transform: translateZ(0);
-  -webkit-backface-visibility: hidden;
-  backface-visibility: hidden;
-  will-change: transform;
 }
 
 .header-menu {
@@ -334,13 +329,11 @@ body {
 
 /* ── PAGE ───────────────────────────────────────── */
 .page {
-  padding: 16px;
-  padding-top: calc(var(--header-h) + 16px);
-  padding-bottom: 80px;
+  padding: 14px 16px 80px;
   max-width: 680px;
   margin: 0 auto;
   width: 100%;
-  min-height: 100vh;
+  min-height: 100%;
 }
 
 /* ── SEARCH ─────────────────────────────────────── */
@@ -1028,7 +1021,7 @@ body {
 
 /* ── RESPONSIVE ─────────────────────────────────── */
 @media (min-width: 768px) {
-  .page { max-width: 720px; padding: 24px; padding-top: calc(var(--header-h) + 24px); }
+  .page { max-width: 720px; padding: 20px 24px 80px; }
   .stats-grid { grid-template-columns: repeat(4, 1fr); }
 }
 
