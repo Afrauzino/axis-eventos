@@ -12,7 +12,7 @@ import { usePermissao } from '../hooks/usePermissao'
 import { useRegistrarChrome } from '../lib/chrome'
 import type { Profile } from '../App'
 
-type Teatro     = { id:string; nome:string; descricao:string|null; data_hora:string|null; local:string|null; status:string; cor:string|null }
+type Teatro     = { id:string; nome:string; descricao:string|null; data_hora:string|null; local:string|null; status:string; cor:string|null; emoji?:string|null; foto_url?:string|null; capa_url?:string|null }
 type Cena       = { id:string; ordem:number; titulo:string|null; deixa:string|null; acao:string|null; fala:string|null; trilha_sonora:string|null; personagem_id:string|null; person_id:string|null; objeto_id:string|null }
 type ElencoItem = { id:string; person_id:string; personagem_id:string|null; observacoes:string|null }
 type Pessoa     = { id:string; name:string; photo_url:string|null }
@@ -269,10 +269,19 @@ export default function TeatroDetalhe({ profile }: { profile?: Profile }) {
 
   return (
     <div className="page">
-      {/* Header */}
-      <div style={{background:cor,borderRadius:14,padding:'16px 20px',marginBottom:16,color:'white'}}>
+      {/* Header — capa de fundo (se houver) por baixo da cor */}
+      <div style={{
+        position:'relative', borderRadius:14, padding:'16px 20px', marginBottom:16, color:'white', overflow:'hidden',
+        background: teatro.capa_url
+          ? `linear-gradient(0deg, ${cor}E6, ${cor}99), url(${teatro.capa_url}) center/cover`
+          : cor,
+      }}>
         <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:teatro.descricao?8:0}}>
-          <div style={{width:48,height:48,borderRadius:'50%',background:'rgba(255,255,255,0.2)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,fontSize:26}}>🎭</div>
+          <div style={{width:48,height:48,borderRadius:'50%',background:teatro.foto_url?'#eee':'rgba(255,255,255,0.2)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,fontSize:26,overflow:'hidden'}}>
+            {teatro.foto_url
+              ? <img src={teatro.foto_url} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}}/>
+              : <span>{teatro.emoji || '🎭'}</span>}
+          </div>
           <div>
             <p style={{fontSize:18,fontWeight:800}}>{teatro.nome}</p>
             {teatro.local && <p style={{fontSize:13,opacity:0.85}}>{teatro.local}</p>}

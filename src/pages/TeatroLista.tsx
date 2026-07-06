@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useRegistrarChromeNav } from '../lib/chrome'
-import EmojiGrid from '../components/EmojiGrid'
+import AvatarPicker from '../components/AvatarPicker'
+import UploadFoto from '../components/UploadFoto'
 import Seletor from '../components/Seletor'
 import { toast } from '../components/Toast'
 import CardItem from '../components/CardItem'
@@ -11,7 +12,7 @@ import { useEvento } from '../hooks/useEvento'
 import { usePermissao } from '../hooks/usePermissao'
 import type { Profile } from '../App'
 
-type Teatro     = { id:string; nome:string; descricao:string|null; data_hora:string|null; local:string|null; status:string; cor:string|null; ministracao_id:string|null; emoji?:string|null }
+type Teatro     = { id:string; nome:string; descricao:string|null; data_hora:string|null; local:string|null; status:string; cor:string|null; ministracao_id:string|null; emoji?:string|null; foto_url?:string|null; capa_url?:string|null }
 type Ministracao = { id:string; titulo:string }
 
 const CORES = ['#E8821A','#6B46C1','#2F855A','#C53030','#2B6CB0','#D53F8C','#00A99D','#1A202C','#D69E2E','#C05621']
@@ -29,7 +30,7 @@ export default function TeatroLista({ profile }: { profile?: Profile }) {
   const [erro, setErro]         = useState('')
   const [busca, setBusca]       = useState('')
   const [ministracoes, setMinistracoes] = useState<Ministracao[]>([])
-  const [form, setForm] = useState({ nome:'', descricao:'', cor:'#E8821A', ministracao_id:'', emoji:'🎭' })
+  const [form, setForm] = useState({ nome:'', descricao:'', cor:'#E8821A', ministracao_id:'', emoji:'🎭', foto_url:null as string|null, capa_url:null as string|null })
   const [arqPend, setArqPend] = useState<File[]>([]) // arquivos escolhidos ao criar/editar
 
   const { pode } = usePermissao(profile ?? null)
@@ -62,7 +63,7 @@ export default function TeatroLista({ profile }: { profile?: Profile }) {
 
   function abrirNovo() {
     setEditando(null)
-    setForm({ nome:'', descricao:'', cor:'#E8821A', ministracao_id:'', emoji:'🎭' })
+    setForm({ nome:'', descricao:'', cor:'#E8821A', ministracao_id:'', emoji:'🎭', foto_url:null, capa_url:null })
     setArqPend([]); setErro(''); setModal(true)
   }
 
@@ -79,7 +80,7 @@ export default function TeatroLista({ profile }: { profile?: Profile }) {
 
   function abrirEdicao(t: Teatro) {
     setEditando(t)
-    setForm({ nome:t.nome, descricao:t.descricao??'', cor:t.cor??'#E8821A', ministracao_id:(t as any).ministracao_id??'', emoji:t.emoji??'🎭' })
+    setForm({ nome:t.nome, descricao:t.descricao??'', cor:t.cor??'#E8821A', ministracao_id:(t as any).ministracao_id??'', emoji:t.emoji??'🎭', foto_url:t.foto_url??null, capa_url:t.capa_url??null })
     setArqPend([]); setErro(''); setModal(true)
   }
 
@@ -92,8 +93,12 @@ export default function TeatroLista({ profile }: { profile?: Profile }) {
     if (editando) { const r=await supabase.from('theaters').update(payload).eq('id',editando.id); err=r.error }
     else { const r=await supabase.from('theaters').insert({...payload,event_id:evento.id,status:'planejamento'}).select('id').single(); err=r.error; teatroId=r.data?.id }
     if (err) { setErro('Erro: '+err.message); setSalvando(false); return }
-    // emoji separado (resiliente — funciona mesmo antes de rodar o SQL da coluna)
-    if (teatroId) await supabase.from('theaters').update({ emoji: form.emoji||null }).eq('id', teatroId)
+    // emoji/foto/capa separados (resiliente — se a coluna ainda não existe, ignora o erro)
+    if (teatroId) {
+      await supabase.from('theaters').update({ emoji: form.foto_url ? null : (form.emoji||null) }).eq('id', teatroId)
+      const r2 = await supabase.from('theaters').update({ foto_url: form.foto_url||null, capa_url: form.capa_url||null }).eq('id', teatroId)
+      if (r2.error) console.warn('foto/capa do teatro: rode o sql/32 para salvar', r2.error.message)
+    }
     if (teatroId && arqPend.length) { for (const f of arqPend) await uploadArquivo('teatro', teatroId, f) }
     setModal(false); setSalvando(false); setEditando(null); setArqPend([]); carregar()
   }
@@ -124,7 +129,8 @@ export default function TeatroLista({ profile }: { profile?: Profile }) {
         <CardItem
           key={t.id}
           cor={t.cor || 'var(--primary)'}
-          emoji={t.emoji || '🎭'}
+          fotoUrl={t.foto_url || undefined}
+          emoji={t.foto_url ? undefined : (t.emoji || '🎭')}
           titulo={t.nome}
           subtitulo={t.descricao || undefined}
           direita={
@@ -158,10 +164,34 @@ export default function TeatroLista({ profile }: { profile?: Profile }) {
               <div className="form-group"><label className="form-label">Descricao</label>
                 <textarea className="form-textarea" value={form.descricao} onChange={e=>setForm(f=>({...f,descricao:e.target.value}))} style={{minHeight:70}}/>
               </div>
-              {/* Emoji do teatro */}
+              {/* Capa do teatro: emoji OU foto */}
               <div className="form-group">
-                <label className="form-label">Emoji do teatro</label>
-                <EmojiGrid value={form.emoji} onChange={em=>setForm(f=>({...f,emoji:em}))}/>
+                <label className="form-label">Capa do teatro (emoji ou foto)</label>
+                <AvatarPicker
+                  emoji={form.emoji}
+                  fotoUrl={form.foto_url}
+                  cor={form.cor}
+                  bucket="team-photos"
+                  path={'teatro-'+(editando?.id ?? 'novo')}
+                  onChangeEmoji={(em)=>setForm(f=>({...f,emoji:em,foto_url:null}))}
+                  onChangeFoto={(url)=>setForm(f=>({...f,foto_url:url,emoji:url?'':f.emoji}))}
+                />
+              </div>
+
+              {/* Imagem de capa/fundo (banner) */}
+              <div className="form-group">
+                <label className="form-label">Imagem de fundo (opcional)</label>
+                <p className="form-hint mb-2">Aparece atrás do título quando você abre o teatro.</p>
+                {form.capa_url && (
+                  <div style={{position:'relative',marginBottom:8,borderRadius:12,overflow:'hidden'}}>
+                    <img src={form.capa_url} alt="" style={{width:'100%',height:110,objectFit:'cover',display:'block'}}/>
+                    <button type="button" onClick={()=>setForm(f=>({...f,capa_url:null}))}
+                      style={{position:'absolute',top:8,right:8,background:'rgba(0,0,0,0.55)',border:'none',borderRadius:'50%',width:30,height:30,cursor:'pointer',color:'white',display:'flex',alignItems:'center',justifyContent:'center',fontFamily:'inherit'}}>
+                      <span className="icon icon-sm">close</span>
+                    </button>
+                  </div>
+                )}
+                <UploadFoto bucket="team-photos" path={'teatro-capa-'+(editando?.id ?? 'novo')+'-'+Date.now()} currentUrl={form.capa_url} onUpload={(url:string)=>setForm(f=>({...f,capa_url:url}))} label={form.capa_url?'Trocar imagem de fundo':'Enviar imagem de fundo'}/>
               </div>
 
               {/* Cor do teatro */}
