@@ -104,8 +104,15 @@ export default function TeatroLista({ profile }: { profile?: Profile }) {
   }
 
   async function excluir(id: string) {
-    if (!confirm('Excluir este teatro? Todas as cenas e elenco serao removidos.')) return
-    await supabase.from('theaters').delete().eq('id', id)
+    if (!confirm('Excluir este teatro? Todas as cenas e elenco serão removidos.')) return
+    // Apaga os vínculos antes (senão o banco bloqueia a exclusão do teatro)
+    await supabase.from('teatro_cenas').delete().eq('theater_id', id)
+    await supabase.from('teatro_elenco').delete().eq('theater_id', id)
+    await supabase.from('teatro_midias').delete().eq('theater_id', id)
+    await supabase.from('arquivos_modulo').delete().eq('modulo','teatro').eq('referencia_id', id)
+    const { error } = await supabase.from('theaters').delete().eq('id', id)
+    if (error) { toast.erro('Não deu pra excluir: '+error.message); return }
+    toast.sucesso('Teatro excluído.')
     setModal(false); carregar()
   }
 
@@ -242,11 +249,6 @@ export default function TeatroLista({ profile }: { profile?: Profile }) {
                 {editando && <p className="form-hint mt-1">Mais arquivos aparecem também dentro do teatro, na aba Arquivos.</p>}
               </div>
 
-              {editando && (
-                <button type="button" onClick={()=>excluir(editando.id)} style={{background:'var(--danger-bg)',color:'var(--danger)',border:'none',borderRadius:8,padding:'8px 14px',cursor:'pointer',fontSize:13,fontWeight:600,fontFamily:'inherit',marginBottom:8,width:'100%'}}>
-                  Excluir teatro
-                </button>
-              )}
               <button type="submit" className="btn btn-primary btn-full" disabled={salvando}>
                 {salvando?'Salvando...':editando?'Salvar':'Criar teatro'}
               </button>

@@ -194,8 +194,9 @@ export default function TeatroDetalhe({ profile }: { profile?: Profile }) {
     
     // Colunas antigas: primeiro bloco de cada tipo vira texto puro (retrocompatível)
     const txtBloco = (tipo:string) => { const b = blocos.find(x=>x.tipo===tipo); return b ? stripHtml(b.conteudo)||null : null }
+    const objetosLimpos = cenaObjetos.filter(Boolean)
     const primPG  = cenaPersonagens[0]
-    const primObj = cenaObjetos[0]
+    const primObj = objetosLimpos[0]
     const payload = {
       theater_id:id, ordem:ordemNova,
       titulo: formCena.titulo||null,
@@ -220,7 +221,7 @@ export default function TeatroDetalhe({ profile }: { profile?: Profile }) {
     // Colunas novas (blocos + vários personagens/objetos) — resiliente: avisa se faltar sql/32
     if (cenaId) {
       const rNovo = await supabase.from('teatro_cenas')
-        .update({ blocos: blocos, personagens: cenaPersonagens, objetos: cenaObjetos })
+        .update({ blocos: blocos, personagens: cenaPersonagens, objetos: objetosLimpos })
         .eq('id', cenaId)
       if (rNovo.error) toast.info('Rode o sql/32 para salvar as caixas e vários personagens por cena.')
     }
@@ -303,11 +304,15 @@ export default function TeatroDetalhe({ profile }: { profile?: Profile }) {
   function removeAtor(idx: number, personId: string) {
     setCenaPersonagens(prev => prev.map((cp,i)=>i===idx?{...cp,person_ids:cp.person_ids.filter(p=>p!==personId)}:cp))
   }
-  function addObjeto(objetoId: string) {
-    if (!cenaObjetos.includes(objetoId)) setCenaObjetos(prev=>[...prev,objetoId])
+  // Objetos: caixas de seleção (igual personagem) — permite slot vazio até escolher
+  function addObjeto() {
+    setCenaObjetos(prev=>[...prev,''])
   }
-  function removeObjeto(objetoId: string) {
-    setCenaObjetos(prev=>prev.filter(o=>o!==objetoId))
+  function setObjetoId(idx: number, objetoId: string) {
+    setCenaObjetos(prev=>prev.map((o,i)=>i===idx?objetoId:o))
+  }
+  function removeObjeto(idx: number) {
+    setCenaObjetos(prev=>prev.filter((_,i)=>i!==idx))
   }
 
   function getPessoa(pid:string|null) { return pid ? pessoas.find(p=>p.id===pid) : null }
@@ -662,27 +667,28 @@ export default function TeatroDetalhe({ profile }: { profile?: Profile }) {
                 )
               })}
 
-              {/* OBJETOS - ilimitados */}
-              <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:10,marginTop:4}}>
+              {/* OBJETOS - ilimitados (caixa de seleção igual personagem) */}
+              <div style={{height:1,background:'var(--border)',margin:'4px 0 16px'}}/>
+              <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:12}}>
                 <p style={{fontSize:13,fontWeight:700}}>Objetos / Figurinos</p>
-                <div style={{flex:1,marginLeft:12}}>
-                  <Seletor titulo="Adicionar objeto" placeholder="+ Adicionar objeto" value="" onChange={v=>{ if(v) addObjeto(v) }}
-                    opcoes={objetos.filter(o=>!cenaObjetos.includes(o.id)).map(o=>({value:o.id,label:o.nome}))}/>
-                </div>
+                <button type="button" onClick={addObjeto} style={{background:'var(--primary-light)',color:'var(--primary)',border:'none',borderRadius:8,padding:'6px 12px',cursor:'pointer',fontSize:12,fontWeight:700,fontFamily:'inherit',display:'flex',alignItems:'center',gap:4}}>
+                  <span className="icon icon-sm">add</span> Objeto
+                </button>
               </div>
-              {cenaObjetos.length>0 && (
-                <div style={{display:'flex',flexWrap:'wrap',gap:6,marginBottom:12}}>
-                  {cenaObjetos.map(oid=>{
-                    const obj=getObjeto(oid)
-                    return obj ? (
-                      <div key={oid} style={{display:'flex',alignItems:'center',gap:4,background:'var(--bg)',borderRadius:8,padding:'4px 10px',border:'1px solid var(--border)'}}>
-                        <span style={{fontSize:13}}>{obj.nome}</span>
-                        <button type="button" onClick={()=>removeObjeto(oid)} style={{background:'none',border:'none',cursor:'pointer',color:'var(--muted-light)',padding:0,fontFamily:'inherit'}}><span className="icon" style={{fontSize:14}}>close</span></button>
-                      </div>
-                    ) : null
-                  })}
+              {cenaObjetos.map((oid,idx)=>(
+                <div key={idx} style={{background:'var(--bg)',borderRadius:12,padding:'12px 14px',marginBottom:10,border:'1px solid var(--border)'}}>
+                  <div style={{display:'flex',alignItems:'center',gap:8}}>
+                    <div style={{flex:1}}>
+                      <label className="form-label" style={{marginBottom:4}}>Objeto</label>
+                      <Seletor titulo="Objeto" placeholder="Selecionar objeto" value={oid} onChange={v=>setObjetoId(idx,v)}
+                        opcoes={[{value:'',label:'Selecionar objeto'}, ...objetos.filter(o=>o.id===oid || !cenaObjetos.includes(o.id)).map(o=>({value:o.id,label:o.nome}))]}/>
+                    </div>
+                    <button type="button" onClick={()=>removeObjeto(idx)} style={{background:'var(--danger-bg)',color:'var(--danger)',border:'none',borderRadius:8,padding:'6px',cursor:'pointer',fontFamily:'inherit',marginTop:20,flexShrink:0}}>
+                      <span className="icon icon-sm">delete</span>
+                    </button>
+                  </div>
                 </div>
-              )}
+              ))}
 
               {/* Arquivos da cena */}
               <div style={{marginTop:4,marginBottom:12}}>
