@@ -15,7 +15,7 @@ import type { Profile } from '../App'
 
 type TipoAtividade = { id:string; nome:string; cor:string; chave?:string|null; protegido?:boolean }
 type Ministracao = { id:string; titulo:string; ministrante_id:string|null; local:string|null; descricao:string|null; tema:string|null }
-type Teatro      = { id:string; nome:string; local:string|null; descricao:string|null }
+type Teatro      = { id:string; nome:string; local:string|null; descricao:string|null; ministracao_id?:string|null }
 type Local       = { id:string; nome:string; tipo:string }
 type Ministrante = { id:string; name:string }
 
@@ -133,7 +133,7 @@ export default function Cronograma({ profile }: { profile?: Profile }) {
     const [it, mi, te, lo, pe, ti, cd, peAll, pgAll] = await Promise.all([
       supabase.from('cronograma_eventos').select('*').eq('event_id', evento.id).order('hora_inicio'),
       supabase.from('ministrações').select('id,titulo,ministrante_id,local,descricao,tema').eq('event_id', evento.id).order('titulo'),
-      supabase.from('theaters').select('id,nome,local,descricao').eq('event_id', evento.id).order('nome'),
+      supabase.from('theaters').select('id,nome,local,descricao,ministracao_id').eq('event_id', evento.id).order('nome'),
       supabase.from('locais').select('id,nome,tipo').eq('event_id', evento.id).order('nome'),
       supabase.from('people').select('id,name').eq('event_id', evento.id).eq('role_type','worker').order('name'),
       supabase.from('cronograma_tipos').select('id,nome,cor,chave,protegido').eq('ativo',true).order('ordem'),
@@ -302,7 +302,9 @@ export default function Cronograma({ profile }: { profile?: Profile }) {
   // Info extra de um item
   function getInfo(item: Item) {
     const min = item.ministracao_id ? ministrações.find(m => m.id === item.ministracao_id) : null
-    const tea = item.theater_id     ? teatros.find(t => t.id === item.theater_id)           : null
+    // teatro direto do item OU o teatro vinculado à ministração
+    let tea = item.theater_id ? teatros.find(t => t.id === item.theater_id) : null
+    if (!tea && item.ministracao_id) tea = teatros.find(t => t.ministracao_id === item.ministracao_id) || null
     const ministrante = min?.ministrante_id ? ministrantes.find(p => p.id === min.ministrante_id) : null
     return { min, tea, ministrante }
   }
@@ -345,8 +347,16 @@ export default function Cronograma({ profile }: { profile?: Profile }) {
                     {tiposDB.find(t=>t.nome.toLowerCase()===item.tipo.toLowerCase())?.nome ?? item.tipo}
                     {item.local ? ` · ${item.local}` : ''}
                     {ministrante ? ` · ${ministrante.name.split(' ')[0]}` : ''}
-                    {tea ? ` · ${tea.nome}` : ''}
                   </div>
+                  {tea && (
+                    <button onClick={(e)=>{e.stopPropagation(); navigate('/teatro/'+tea.id)}}
+                      style={{marginTop:6,display:'inline-flex',alignItems:'center',gap:5,background:'#FFF3E0',border:'1px solid #F0993B55',borderRadius:8,padding:'3px 10px',cursor:'pointer',fontFamily:'inherit'}}
+                      title="Abrir teatro">
+                      <span style={{fontSize:13}}>🎭</span>
+                      <span style={{fontSize:11,fontWeight:700,color:'#9a5b12'}}>Teatro: {tea.nome}</span>
+                      <span className="icon" style={{fontSize:14,color:'#c07a2b'}}>chevron_right</span>
+                    </button>
+                  )}
                   <CronometroDisplay item={item} />
                 </div>
                 <button onClick={(e)=>{e.stopPropagation();setCronometro(item)}} title="Cronômetro" style={{background:'none',border:'none',cursor:'pointer',padding:'8px',display:'flex',alignItems:'center'}}>
