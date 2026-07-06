@@ -4,6 +4,7 @@ import { useRegistrarChromeNav } from '../lib/chrome'
 import { getInitials, fmtDataHora } from '../utils'
 import { useEvento } from '../hooks/useEvento'
 import PersonSelect from '../components/PersonSelect'
+import CardItem from '../components/CardItem'
 import type { Profile } from '../App'
 import { usePermissao } from '../hooks/usePermissao'
 
@@ -66,19 +67,16 @@ export default function Saude({ profile }: { profile?: Profile }) {
       ) : atendimentos.map(a => {
         const p = getPessoa(a.person_id)
         return (
-          <div key={a.id} style={{background:'white',borderRadius:12,boxShadow:'0 1px 5px rgba(0,0,0,0.12)',marginBottom:10,overflow:'hidden',display:'flex'}}>
-            <div style={{width:6,alignSelf:'stretch',background:'var(--primary)',flexShrink:0}}/>
-            <div style={{flex:1,minWidth:0,display:'flex',alignItems:'center',gap:14,padding:'16px 15px'}}>
-              <div style={{width:58,height:58,borderRadius:'50%',background:'var(--primary-light)',display:'flex',alignItems:'center',justifyContent:'center',overflow:'hidden',flexShrink:0}}>
-                {p?.photo_url?<img src={p.photo_url} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}}/>:<span style={{fontSize:20,fontWeight:700,color:'var(--primary)'}}>{getInitials(p?.name??'?')}</span>}
-              </div>
-              <div style={{flex:1,minWidth:0}}>
-                <p style={{fontSize:11,fontWeight:700,color:'var(--primary)',marginBottom:2}}>{fmtDataHora(a.timestamp)}</p>
-                <p style={{fontWeight:700,fontSize:15,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{p?.name}</p>
-                <p style={{fontSize:12,color:'var(--muted)',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{a.medicine_name}{a.reason?` · ${a.reason}`:''}</p>
-              </div>
-            </div>
-          </div>
+          <CardItem
+            key={a.id}
+            cor="var(--primary)"
+            ehPessoa
+            fotoUrl={p?.photo_url}
+            iniciais={getInitials(p?.name??'?')}
+            titulo={p?.name ?? '—'}
+            subtitulo={`${a.medicine_name}${a.reason?` · ${a.reason}`:''}`}
+            direita={<span style={{fontSize:11,fontWeight:700,color:'var(--primary)',whiteSpace:'nowrap'}}>{fmtDataHora(a.timestamp)}</span>}
+          />
         )
       })}
 
