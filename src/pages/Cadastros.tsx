@@ -191,6 +191,7 @@ export default function Cadastros({ profile }: { profile: Profile }) {
             extra={statusRow}
             onFoto={()=>p.photo_url && setFotoAmpliada(p.photo_url)}
             onEditar={canEdit ? ()=>{setErro('');setEditando(p);setForm({name:p.name,phone:p.phone??'',church:(p as any).church??'',role_type:p.role_type,photo_url:p.photo_url??null,conhecido_por_id:p.conhecido_por_id??null});setModal(true)} : undefined}
+            onExcluir={canEdit ? ()=>excluirPessoa(p) : undefined}
           />
         )
       })}

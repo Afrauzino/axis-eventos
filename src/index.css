@@ -1103,6 +1103,14 @@ body {
   color: var(--muted); transition: background 0.15s;
 }
 .card-item-edit:hover { background: var(--border); color: var(--primary); }
+.card-item-menu {
+  width: 34px; height: 34px; border-radius: 8px;
+  background: transparent; border: none; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; align-self: center;
+  color: var(--muted); transition: background 0.15s;
+}
+.card-item-menu:hover { background: var(--bg); color: var(--primary); }
 .card-item-direita { flex-shrink: 0; align-self: center; display: flex; flex-direction: column; align-items: flex-end; gap: 4px; text-align: right; }
 .card-item-barra { padding: 0 15px 14px 0; }
 .card-item-progress { height: 8px; background: #eee; border-radius: 99px; overflow: hidden; }

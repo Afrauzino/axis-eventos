@@ -1,3 +1,5 @@
+import { useState } from 'react'
+import { createPortal } from 'react-dom'
 import type { ReactNode } from 'react'
 
 export type EquipeTag = {
@@ -6,6 +8,8 @@ export type EquipeTag = {
   cor?: string
   titulo?: string
 }
+
+export type AcaoCard = { label: string; icon?: string; onClick: () => void; danger?: boolean }
 
 type Props = {
   cor?: string
@@ -19,9 +23,11 @@ type Props = {
   progresso?: number | null
   progressoLabel?: string
   onVer?: () => void          // clicar no corpo/nome = ver informacoes
-  onEditar?: () => void       // clicar no lapis = editar
+  onEditar?: () => void       // atalho: vira a ação "Editar" no menu ⋮
+  onExcluir?: () => void      // atalho: vira a ação "Excluir" no menu ⋮
+  acoes?: AcaoCard[]          // ações extras do menu ⋮
   onFoto?: () => void         // clicar na foto = ampliar (so pessoa)
-  direita?: ReactNode         // conteudo no canto direito (selo/valor/status), antes do lapis
+  direita?: ReactNode         // conteudo no canto direito (selo/valor/status), antes do menu
   extra?: ReactNode
 }
 
@@ -35,10 +41,18 @@ function tint(hex: string, a: number) {
 }
 
 export default function CardItem(props: Props) {
+  const [menu, setMenu] = useState(false)
   const cor = props.cor || '#00A99D'
   const corReal = cor.startsWith('var(') ? '#00A99D' : cor
   const equipes = props.equipes || []
   const temBarra = props.progresso != null
+
+  // Junta os atalhos (Editar/Excluir) com as ações extras num menu ⋮ único
+  const acoes: AcaoCard[] = [
+    ...(props.onEditar ? [{ label: 'Editar', icon: 'edit', onClick: props.onEditar }] : []),
+    ...(props.acoes ?? []),
+    ...(props.onExcluir ? [{ label: 'Excluir', icon: 'delete', onClick: props.onExcluir, danger: true }] : []),
+  ]
 
   function clickFoto(ev: any) {
     if (props.onFoto && props.ehPessoa && props.fotoUrl) {
@@ -92,13 +106,13 @@ export default function CardItem(props: Props) {
               {props.direita}
             </div>
           )}
-          {props.onEditar && (
+          {acoes.length > 0 && (
             <button
-              className="card-item-edit"
-              onClick={(ev) => { ev.stopPropagation(); props.onEditar!() }}
-              aria-label="Editar"
+              className="card-item-menu"
+              onClick={(ev) => { ev.stopPropagation(); setMenu(true) }}
+              aria-label="Opções"
             >
-              <span className="icon icon-sm">edit</span>
+              <span className="icon icon-sm">more_vert</span>
             </button>
           )}
         </div>
@@ -114,6 +128,27 @@ export default function CardItem(props: Props) {
         )}
         {props.extra && <div className="card-item-extra">{props.extra}</div>}
       </div>
+
+      {/* Menu ⋮ (abre de baixo) */}
+      {menu && createPortal(
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 700, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}
+          onClick={(ev) => { ev.stopPropagation(); setMenu(false) }}>
+          <div style={{ background: 'white', borderRadius: '20px 20px 0 0', padding: '8px 16px 22px', maxWidth: 480, width: '100%', margin: '0 auto' }} onClick={(ev) => ev.stopPropagation()}>
+            <div style={{ width: 36, height: 4, background: 'var(--border)', borderRadius: 2, margin: '12px auto 12px' }} />
+            <p style={{ fontSize: 15, fontWeight: 800, margin: '0 4px 12px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{props.titulo}</p>
+            {acoes.map((a, i) => (
+              <button key={i} type="button"
+                onClick={() => { setMenu(false); a.onClick() }}
+                style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: '13px 12px', borderRadius: 10, marginBottom: 4, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left', border: 'none', background: 'white' }}>
+                <span className="icon" style={{ color: a.danger ? 'var(--danger)' : 'var(--primary)' }}>{a.icon ?? 'chevron_right'}</span>
+                <span style={{ fontSize: 15, fontWeight: 600, color: a.danger ? 'var(--danger)' : 'var(--text)' }}>{a.label}</span>
+              </button>
+            ))}
+            <button type="button" className="btn btn-ghost btn-full" style={{ marginTop: 6 }} onClick={() => setMenu(false)}>Fechar</button>
+          </div>
+        </div>,
+        document.body,
+      )}
     </div>
   )
 }
