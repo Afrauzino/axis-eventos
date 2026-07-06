@@ -64,58 +64,42 @@ export default function CardItem(props: Props) {
   return (
     <div className="card-item" onClick={props.onVer}>
       <div className="card-item-bar" style={{ background: cor }} />
+      <div
+        className="card-item-avatar"
+        onClick={clickFoto}
+        style={{
+          background: props.fotoUrl ? '#eee' : tint(corReal, 0.14),
+          color: corReal,
+          cursor: (props.onFoto && props.ehPessoa && props.fotoUrl) ? 'pointer' : 'inherit',
+        }}
+      >
+        {props.fotoUrl
+          ? <img src={props.fotoUrl} alt="" />
+          : props.emoji
+            ? <span style={{ fontSize: 28 }}>{props.emoji}</span>
+            : <span style={{ fontWeight: 700, fontSize: 19 }}>{props.iniciais || ''}</span>}
+      </div>
       <div className="card-item-wrap">
-        <div className="card-item-body">
-          <div
-            className="card-item-avatar"
-            onClick={clickFoto}
-            style={{
-              background: props.fotoUrl ? '#eee' : tint(corReal, 0.14),
-              color: corReal,
-              cursor: (props.onFoto && props.ehPessoa && props.fotoUrl) ? 'pointer' : 'inherit',
-            }}
-          >
-            {props.fotoUrl
-              ? <img src={props.fotoUrl} alt="" />
-              : props.emoji
-                ? <span style={{ fontSize: 27 }}>{props.emoji}</span>
-                : <span style={{ fontWeight: 700, fontSize: 18 }}>{props.iniciais || ''}</span>}
-          </div>
-          <div className="card-item-main">
-            <div className="card-item-title">{props.titulo}</div>
-            {props.subtitulo && <div className="card-item-sub">{props.subtitulo}</div>}
-            {equipes.length > 0 && (
-              <div className="card-item-teams">
-                {equipes.map((e, i) => (
-                  <div
-                    key={i}
-                    className="card-item-team"
-                    title={e.titulo || ''}
-                    style={{ background: tint(e.cor || corReal, 0.16) }}
-                  >
-                    {e.fotoUrl
-                      ? <img src={e.fotoUrl} alt="" />
-                      : <span>{e.emoji || '👥'}</span>}
-                  </div>
-                ))}
-              </div>
-            )}
-            {props.extra && <div className="card-item-extra" onClick={(ev) => ev.stopPropagation()}>{props.extra}</div>}
-          </div>
-          {props.direita && (
-            <div className="card-item-direita" onClick={(ev) => ev.stopPropagation()}>
-              {props.direita}
+        <div className="card-item-main">
+          <div className="card-item-title">{props.titulo}</div>
+          {props.subtitulo && <div className="card-item-sub">{props.subtitulo}</div>}
+          {equipes.length > 0 && (
+            <div className="card-item-teams">
+              {equipes.map((e, i) => (
+                <div
+                  key={i}
+                  className="card-item-team"
+                  title={e.titulo || ''}
+                  style={{ background: tint(e.cor || corReal, 0.16) }}
+                >
+                  {e.fotoUrl
+                    ? <img src={e.fotoUrl} alt="" />
+                    : <span>{e.emoji || '👥'}</span>}
+                </div>
+              ))}
             </div>
           )}
-          {acoes.length > 0 && (
-            <button
-              className="card-item-menu"
-              onClick={(ev) => { ev.stopPropagation(); setMenu(true) }}
-              aria-label="Opções"
-            >
-              <span className="icon">more_vert</span>
-            </button>
-          )}
+          {props.extra && <div className="card-item-extra" onClick={(ev) => ev.stopPropagation()}>{props.extra}</div>}
         </div>
         {temBarra && (
           <div className="card-item-barra">
@@ -128,6 +112,20 @@ export default function CardItem(props: Props) {
           </div>
         )}
       </div>
+      {props.direita && (
+        <div className="card-item-direita" onClick={(ev) => ev.stopPropagation()}>
+          {props.direita}
+        </div>
+      )}
+      {acoes.length > 0 && (
+        <button
+          className="card-item-menu"
+          onClick={(ev) => { ev.stopPropagation(); setMenu(true) }}
+          aria-label="Opções"
+        >
+          <span className="icon">more_vert</span>
+        </button>
+      )}
 
       {/* Menu ⋮ (abre de baixo) */}
       {menu && createPortal(

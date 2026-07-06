@@ -1065,6 +1065,7 @@ body {
   border-radius: 12px;
   box-shadow: 0 1px 5px rgba(0,0,0,0.12);
   display: flex;
+  align-items: center;
   overflow: hidden;
   margin: 0 0 10px 0;
   cursor: pointer;
@@ -1072,20 +1073,21 @@ body {
   border: none;
   text-align: left;
   font-family: inherit;
+  min-height: 92px;
   transition: box-shadow 0.15s;
 }
 .card-item:hover { box-shadow: 0 2px 9px rgba(0,0,0,0.16); }
 .card-item:active { box-shadow: 0 1px 4px rgba(0,0,0,0.12); }
 .card-item-bar { width: 6px; align-self: stretch; flex-shrink: 0; }
-.card-item-wrap { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-.card-item-body { padding: 14px 10px 14px 14px; flex: 1; min-width: 0; display: flex; gap: 13px; align-items: center; min-height: 64px; }
 .card-item-avatar {
   width: 64px; height: 64px; border-radius: 50%;
-  flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; align-self: center; margin: 14px 13px 14px 14px;
+  display: flex; align-items: center; justify-content: center;
   overflow: hidden;
 }
 .card-item-avatar img { width: 100%; height: 100%; object-fit: cover; }
-.card-item-main { flex: 1; min-width: 0; }
+.card-item-wrap { flex: 1; min-width: 0; padding: 14px 0; display: flex; flex-direction: column; justify-content: center; }
+.card-item-main { min-width: 0; }
 .card-item-title { font-size: 15px; font-weight: 700; color: var(--text); line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .card-item-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
 .card-item-teams { display: flex; gap: 6px; margin-top: 8px; }
@@ -1107,13 +1109,13 @@ body {
   width: 40px; height: 40px; border-radius: 10px;
   background: transparent; border: none; cursor: pointer;
   display: flex; align-items: center; justify-content: center;
-  flex-shrink: 0; align-self: center;
+  flex-shrink: 0; align-self: center; margin-right: 6px;
   color: var(--muted-light); transition: background 0.15s;
 }
 .card-item-menu .icon { font-size: 24px; }
 .card-item-menu:hover { background: var(--bg); color: var(--primary); }
-.card-item-direita { flex-shrink: 0; align-self: center; display: flex; flex-direction: column; align-items: flex-end; gap: 4px; text-align: right; }
-.card-item-barra { padding: 0 15px 14px 0; }
+.card-item-direita { flex-shrink: 0; align-self: center; margin-right: 12px; display: flex; flex-direction: column; align-items: flex-end; gap: 4px; text-align: right; }
+.card-item-barra { margin-top: 10px; padding-right: 14px; }
 .card-item-progress { height: 8px; background: #eee; border-radius: 99px; overflow: hidden; }
 .card-item-progress > div { height: 100%; border-radius: 99px; transition: width 0.3s; }
 .card-item-progress-label { font-size: 11px; font-weight: 600; margin-top: 5px; }
