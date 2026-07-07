@@ -1,5 +1,5 @@
 import { useEffect, useState, lazy, Suspense } from 'react'
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { supabase } from './lib/supabase'
 import { carregarCorSalva, carregarConfig, aplicarIconesApp } from './lib/tema'
 import { formatName } from './utils'
@@ -149,6 +149,18 @@ function HeaderTitle() {
   const titulo = TITULOS_ROTA[loc.pathname] ?? 'AXIS Eventos'
   return <span style={{flex:1,fontSize:16,fontWeight:700,color:'white'}}>{titulo}</span>
 }
+// Botão de voltar universal — aparece em todas as telas (menos a inicial) e volta de onde veio
+function BotaoVoltar() {
+  const loc = useLocation()
+  const navigate = useNavigate()
+  if (loc.pathname === '/' || loc.pathname === '') return null
+  return (
+    <button onClick={()=>{ if (window.history.length > 1) navigate(-1); else navigate('/') }} aria-label="Voltar"
+      style={{background:'rgba(255,255,255,0.15)',border:'none',cursor:'pointer',color:'white',display:'flex',alignItems:'center',justifyContent:'center',width:36,height:36,borderRadius:8,fontFamily:'inherit',flexShrink:0}}>
+      <span style={{fontFamily:"'Material Symbols Outlined'",fontSize:22,color:'white',fontVariationSettings:"'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24",lineHeight:1}}>arrow_back</span>
+    </button>
+  )
+}
 
 export default function App() {
   const [session, setSession]   = useState<any>(null)
@@ -260,6 +272,7 @@ export default function App() {
           <button onClick={()=>setMenuOpen(true)} style={{background:'none',border:'none',cursor:'pointer',color:'white',display:'flex',alignItems:'center',justifyContent:'center',width:36,height:36,borderRadius:8,fontFamily:'inherit'}}>
             <span style={{fontFamily:"'Material Symbols Outlined'",fontSize:22,color:'white',fontVariationSettings:"'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24",fontWeight:'normal',fontStyle:'normal',lineHeight:1,letterSpacing:'normal',textTransform:'none',display:'inline-block',whiteSpace:'nowrap',userSelect:'none'}}>menu</span>
           </button>
+          <BotaoVoltar />
           <HeaderTitle />
           <BotaoConfig />
           <button onClick={()=>setNotifOpen(true)} style={{background:'none',border:'none',cursor:'pointer',color:'white',display:'flex',alignItems:'center',justifyContent:'center',width:36,height:36,borderRadius:8,fontFamily:'inherit',position:'relative'}}>
