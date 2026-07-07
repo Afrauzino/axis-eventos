@@ -236,6 +236,9 @@ export default function Admin({ profile }: { profile?: Profile }) {
     const { data } = await supabase.from('teams').select('id,name,color,emoji').eq('event_id', activeId).order('name')
     setEquipesPerm(data ?? [])
   }
+  // Rebusca as equipes quando a aba abre OU quando os eventos terminam de carregar
+  // (antes só buscava no clique; se os eventos ainda não tinham vindo, ficava vazio)
+  useEffect(() => { if (aba === 'equipes_perm' && eventos.length) carregarEquipesPerm() }, [aba, eventos])
   async function carregarPermsEquipe(team_id: string) {
     const { data } = await supabase.from('permissoes').select('*').eq('team_id', team_id).is('person_id', null).is('role', null)
     setPermsEquipe(data ?? [])
