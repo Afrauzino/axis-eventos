@@ -28,6 +28,11 @@ type Pessoa = { id:string; name:string; photo_url:string|null; user_id?:string|n
 
 const STATUS_BADGE: Record<string,string> = { planejado:'badge-neutral', em_andamento:'badge-warning', concluido:'badge-success', cancelado:'badge-danger' }
 const FORM_VAZIO = { titulo:'', ministrante_id:'', hora_inicio:'', hora_fim:'', local:'', conteudo_sermao:'', continuacao_sermao:'', anotacoes_pessoais:'', teatro_id:'', emoji:'', cor:'#6B46C1' }
+
+// Bloco "Arquivo" (PDF/Word): conteudo guarda JSON {url, nome}
+function arqInfo(conteudo:string){ try{ const o=JSON.parse(conteudo); return { url:o.url as string, nome:(o.nome as string)||'arquivo' } }catch{ return { url:conteudo, nome:'arquivo' } } }
+function ehPdf(url:string){ return /\.pdf($|\?)/i.test(url||'') }
+function iconeArq(nome:string){ const n=(nome||'').toLowerCase(); if(n.endsWith('.pdf'))return 'picture_as_pdf'; if(n.endsWith('.doc')||n.endsWith('.docx'))return 'description'; return 'insert_drive_file' }
 const TIPOS_BLOCO = ['Esboço','Teatro','Continuação','Anotação pastoral','Oração','Referência bíblica','Outro']
 
 export default function Ministracoes({ profile }: { profile?: Profile }) {
@@ -50,7 +55,9 @@ export default function Ministracoes({ profile }: { profile?: Profile }) {
   const [form, setForm]         = useState({ ...FORM_VAZIO })
   const [abaForm, setAbaForm]   = useState<'basico'|'conteudo'>('basico')
   const [blocos, setBlocos]     = useState<{tipo:string;conteudo:string}[]>([])
+  const [visor, setVisor]       = useState<{url:string;pdf:boolean}|null>(null)
   const blocoImgRef = useRef<HTMLInputElement>(null)
+  const blocoArqRef = useRef<HTMLInputElement>(null)
 
   const { pode } = usePermissao(profile ?? null)
   // Admin OU liberação (individual/equipe) "ver e editar Ministrações" na tela do Admin
@@ -328,8 +335,16 @@ export default function Ministracoes({ profile }: { profile?: Profile }) {
                         <div key={i} style={{marginBottom:16}}>
                           <p style={{fontSize:11,fontWeight:700,color:'var(--primary)',textTransform:'uppercase',letterSpacing:'0.06em',marginBottom:8}}>{bl.tipo}</p>
                           {bl.tipo==='Imagem'
-                            ? <img src={bl.conteudo} alt="" style={{width:'100%',borderRadius:8,display:'block'}}/>
-                            : <div style={{fontSize:14,lineHeight:1.7,color:'var(--text)'}} dangerouslySetInnerHTML={{__html:bl.conteudo}}/>
+                            ? <img src={bl.conteudo} alt="" onClick={()=>setVisor({url:bl.conteudo,pdf:false})} style={{width:'100%',borderRadius:8,display:'block',cursor:'zoom-in'}}/>
+                            : bl.tipo==='Arquivo'
+                              ? (()=>{ const a=arqInfo(bl.conteudo); const pdf=ehPdf(a.url); return (
+                                  <button type="button" onClick={()=> pdf ? setVisor({url:a.url,pdf:true}) : window.open(a.url,'_blank')}
+                                    style={{width:'100%',display:'flex',alignItems:'center',gap:10,padding:'12px 14px',border:'1px solid var(--border)',borderRadius:10,background:'var(--bg)',cursor:'pointer',fontFamily:'inherit',textAlign:'left'}}>
+                                    <span className="icon" style={{color: pdf?'#C53030':'#2B6CB0',fontSize:26,flexShrink:0}}>{iconeArq(a.nome)}</span>
+                                    <span style={{flex:1,minWidth:0,fontSize:14,fontWeight:600,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{a.nome}</span>
+                                    <span className="icon icon-sm" style={{color:'var(--muted)'}}>{pdf?'open_in_full':'open_in_new'}</span>
+                                  </button>) })()
+                              : <div style={{fontSize:14,lineHeight:1.7,color:'var(--text)'}} dangerouslySetInnerHTML={{__html:bl.conteudo}}/>
                           }
                           {i<bls.length-1 && <div style={{height:1,background:'var(--border)',marginTop:16}}/>}
                         </div>
@@ -424,8 +439,8 @@ export default function Ministracoes({ profile }: { profile?: Profile }) {
                     {blocos.map((bloco,idx)=>(
                       <div key={idx} style={{marginBottom:16,border:'1px solid var(--border)',borderRadius:12,overflow:'hidden'}}>
                         <div style={{display:'flex',alignItems:'center',gap:8,padding:'8px 12px',background:'var(--bg)',borderBottom:'1px solid var(--border)'}}>
-                          <span style={{flex:1,fontSize:13,fontWeight:700,color:'var(--primary)'}}>{bloco.tipo==='Imagem'?'🖼️ Imagem':bloco.tipo}</span>
-                          {bloco.tipo!=='Imagem' && (
+                          <span style={{flex:1,fontSize:13,fontWeight:700,color:'var(--primary)'}}>{bloco.tipo==='Imagem'?'🖼️ Imagem':bloco.tipo==='Arquivo'?'📎 Arquivo':bloco.tipo}</span>
+                          {bloco.tipo!=='Imagem' && bloco.tipo!=='Arquivo' && (
                             <Seletor sheet compact titulo="Tipo do bloco"
                               value={bloco.tipo} onChange={v=>setBlocos(prev=>prev.map((b,i)=>i===idx?{...b,tipo:v}:b))}
                               opcoes={TIPOS_BLOCO.map(t=>({value:t, label:t}))}/>
@@ -438,7 +453,13 @@ export default function Ministracoes({ profile }: { profile?: Profile }) {
                           ? (bloco.conteudo
                               ? <img src={bloco.conteudo} alt="" style={{width:'100%',display:'block'}}/>
                               : <div style={{padding:16,textAlign:'center',color:'var(--muted)',fontSize:12}}>Imagem não carregada</div>)
-                          : <RichEditor value={bloco.conteudo} onChange={v=>setBlocos(prev=>prev.map((b,i)=>i===idx?{...b,conteudo:v}:b))} placeholder="Escreva o conteúdo aqui..." minHeight={100}/>
+                          : bloco.tipo==='Arquivo'
+                            ? (()=>{ const a=arqInfo(bloco.conteudo); return (
+                                <div style={{display:'flex',alignItems:'center',gap:10,padding:'14px'}}>
+                                  <span className="icon" style={{color: ehPdf(a.url)?'#C53030':'#2B6CB0',fontSize:26,flexShrink:0}}>{iconeArq(a.nome)}</span>
+                                  <span style={{flex:1,minWidth:0,fontSize:14,fontWeight:600,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{a.nome}</span>
+                                </div>) })()
+                            : <RichEditor value={bloco.conteudo} onChange={v=>setBlocos(prev=>prev.map((b,i)=>i===idx?{...b,conteudo:v}:b))} placeholder="Escreva o conteúdo aqui..." minHeight={100}/>
                         }
                       </div>
                     ))}
@@ -449,7 +470,21 @@ export default function Ministracoes({ profile }: { profile?: Profile }) {
                       <button type="button" onClick={()=>blocoImgRef.current?.click()} style={{flex:1,padding:'12px',border:'2px dashed var(--border)',borderRadius:12,background:'none',cursor:'pointer',fontSize:13,fontWeight:600,color:'var(--primary)',fontFamily:'inherit',display:'flex',alignItems:'center',justifyContent:'center',gap:6}}>
                         <span className="icon icon-sm">image</span> Foto
                       </button>
+                      <button type="button" onClick={()=>blocoArqRef.current?.click()} style={{flex:1,padding:'12px',border:'2px dashed var(--border)',borderRadius:12,background:'none',cursor:'pointer',fontSize:13,fontWeight:600,color:'var(--primary)',fontFamily:'inherit',display:'flex',alignItems:'center',justifyContent:'center',gap:6}}>
+                        <span className="icon icon-sm">attach_file</span> Arquivo
+                      </button>
                     </div>
+                    <input ref={blocoArqRef} type="file" accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" multiple style={{display:'none'}} onChange={async e=>{
+                      const fs=Array.from(e.target.files??[])
+                      for(const f of fs){
+                        const ext=f.name.split('.').pop()
+                        const path=`ministracao/blocos/${Date.now()}_${Math.random().toString(36).slice(2,7)}.${ext}`
+                        const {error}=await supabase.storage.from('arquivos').upload(path,f,{upsert:true})
+                        if(!error){const {data:u}=supabase.storage.from('arquivos').getPublicUrl(path); setBlocos(prev=>[...prev,{tipo:'Arquivo',conteudo:JSON.stringify({url:u.publicUrl,nome:f.name})}])}
+                        else toast.falha('Não foi possível enviar o arquivo.', error)
+                      }
+                      e.target.value=''
+                    }}/>
                     <input ref={blocoImgRef} type="file" accept="image/*" multiple style={{display:'none'}} onChange={async e=>{
                       const fs=Array.from(e.target.files??[])
                       for(const f of fs){
@@ -468,6 +503,20 @@ export default function Ministracoes({ profile }: { profile?: Profile }) {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Visor em tela cheia (imagem/PDF) */}
+      {visor && (
+        <div onClick={()=>setVisor(null)} style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.9)',zIndex:800,display:'flex',flexDirection:'column'}}>
+          <div style={{display:'flex',justifyContent:'flex-end',padding:10}}>
+            <button onClick={()=>setVisor(null)} style={{background:'rgba(255,255,255,0.15)',border:'none',borderRadius:'50%',width:40,height:40,cursor:'pointer',color:'white',display:'flex',alignItems:'center',justifyContent:'center',fontFamily:'inherit'}}><span className="icon">close</span></button>
+          </div>
+          <div style={{flex:1,minHeight:0,display:'flex',alignItems:'center',justifyContent:'center',padding:'0 10px 10px'}} onClick={e=>e.stopPropagation()}>
+            {visor.pdf
+              ? <iframe src={visor.url} title="PDF" style={{width:'100%',height:'100%',border:'none',borderRadius:8,background:'white'}}/>
+              : <img src={visor.url} alt="" style={{maxWidth:'100%',maxHeight:'100%',objectFit:'contain',borderRadius:8}}/>}
           </div>
         </div>
       )}
@@ -501,7 +550,9 @@ export default function Ministracoes({ profile }: { profile?: Profile }) {
             blocos.map((bl,i)=>(
               <div key={i} style={{marginBottom:16}}>
                 <p style={{fontSize:12,fontWeight:800,textTransform:'uppercase',color:'#374151',marginBottom:6}}>{bl.tipo}</p>
-                {bl.tipo==='Imagem' ? <img src={bl.conteudo} alt="" style={{maxWidth:'100%'}}/> : <div style={{fontSize:14,lineHeight:1.7}} dangerouslySetInnerHTML={{__html:bl.conteudo}}/>}
+                {bl.tipo==='Imagem' ? <img src={bl.conteudo} alt="" style={{maxWidth:'100%'}}/>
+                  : bl.tipo==='Arquivo' ? <p style={{fontSize:14}}>📎 {arqInfo(bl.conteudo).nome}</p>
+                  : <div style={{fontSize:14,lineHeight:1.7}} dangerouslySetInnerHTML={{__html:bl.conteudo}}/>}
               </div>
             ))}
           </PrintOverlay>
