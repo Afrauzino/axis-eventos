@@ -328,8 +328,8 @@ export default function TeatroDetalhe({ profile }: { profile?: Profile }) {
 
   return (
     <div className="page">
-      {/* Voltar para a lista de teatros */}
-      <button onClick={()=>navigate('/teatro')}
+      {/* Voltar para a origem (Cronograma, lista de teatros, etc.) */}
+      <button onClick={()=>{ if (window.history.length > 1) navigate(-1); else navigate('/teatro') }}
         style={{display:'flex',alignItems:'center',gap:6,background:'none',border:'none',cursor:'pointer',fontFamily:'inherit',color:'var(--muted)',fontSize:14,fontWeight:600,padding:'0 0 10px',marginTop:-2}}>
         <span className="icon icon-sm">arrow_back</span> Voltar
       </button>

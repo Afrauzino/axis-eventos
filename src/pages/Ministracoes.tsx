@@ -79,7 +79,12 @@ export default function Ministracoes({ profile }: { profile?: Profile }) {
   // Sincroniza o rascunho das "Minhas notas" ao abrir uma ministração
   useEffect(() => { setNota(detalhe?.anotacoes_pessoais ?? '') }, [detalhe?.id])
   // Fechar/voltar do ministrante SEMPRE volta pro cronograma (nunca pra lista de ministrações)
-  const fecharDetalhe = () => { if (restrito) navigate('/cronograma'); else setDetalhe(null) }
+  const fecharDetalhe = () => {
+    if (restrito) { navigate('/cronograma'); return }
+    // Se abriu por link direto (ex: veio do Cronograma/Teatro), fechar volta pra origem
+    if (paramId) { if (window.history.length > 1) navigate(-1); else navigate('/ministracoes'); return }
+    setDetalhe(null)
+  }
 
   // Auto-open ministração when navigating from cronograma
   useEffect(() => {

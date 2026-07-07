@@ -19,6 +19,14 @@ export default function Login() {
   const [logoUrl, setLogoUrl] = useState<string|null>(null)
   useEffect(() => { carregarConfig('logo_url').then(setLogoUrl) }, [])
 
+  // Link do "Primeiro acesso": ?codigo=XXX abre direto nessa aba com o código preenchido
+  useEffect(() => {
+    const p = new URLSearchParams(window.location.search)
+    const c = p.get('codigo')
+    if (c) { setCodigo(c.toUpperCase()); setModo('codigo') }
+    else if (p.get('acesso') === '1') { setModo('codigo') }
+  }, [])
+
   // Formulário unificado
   const [form, setForm]   = useState<PessoaForm>({...FORM_VAZIO})
   const [usaMed, setUsaMed] = useState(false)

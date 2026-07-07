@@ -81,7 +81,10 @@ const MSG_CODIGO_PADRAO =
 
 Seu código de acesso ao AXIS Eventos é: {codigo}
 
-Como entrar:
+👉 Acesse direto por este link (já abre no "Primeiro acesso" com o código preenchido):
+{link}
+
+Ou faça manual:
 1) Abra o app
 2) Toque em "Primeiro acesso"
 3) Digite o código {codigo}
@@ -93,6 +96,7 @@ const montarMsg = (template:string, nome:string, codigo:string) =>
   (template || MSG_CODIGO_PADRAO)
     .split('{nome}').join((nome||'').split(' ')[0] || 'participante')
     .split('{codigo}').join(codigo || '')
+    .split('{link}').join(`${window.location.origin}/?codigo=${codigo || ''}`)
 
 export default function Admin({ profile }: { profile?: Profile }) {
   const [aba, setAba]               = useState<'usuarios'|'equipes_perm'|'eventos'|'tipos'|'backup'|'logs'|'aparencia'|'msg'>('usuarios')

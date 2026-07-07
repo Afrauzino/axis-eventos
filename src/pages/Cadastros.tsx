@@ -104,7 +104,8 @@ export default function Cadastros({ profile }: { profile: Profile }) {
 
   async function compartilharCodigo(p: Pessoa) {
     if (!p.invite_code) return
-    const msg = `Olá ${p.name.split(' ')[0]}! Seu código de acesso para o Encontro com Deus é: ${p.invite_code}\n\nAbra o app, toque em "Primeiro acesso" e digite o código para criar sua conta.`
+    const link = `${window.location.origin}/?codigo=${p.invite_code}`
+    const msg = `Olá ${p.name.split(' ')[0]}! Seu código de acesso para o Encontro com Deus é: ${p.invite_code}\n\nAcesse pelo link (já abre no "Primeiro acesso" com o código preenchido):\n${link}\n\nOu abra o app, toque em "Primeiro acesso" e digite o código para criar sua conta.`
     // copia o código também (garante que a pessoa consiga colar)
     try { await navigator.clipboard.writeText(p.invite_code) } catch {}
     // abre o WhatsApp direto com a mensagem (mais confiável que navigator.share no PC)
