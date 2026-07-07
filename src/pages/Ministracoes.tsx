@@ -98,12 +98,20 @@ export default function Ministracoes({ profile }: { profile?: Profile }) {
     if (!evento) return
     setLoading(true)
     const [mi, pe, lo, te] = await Promise.all([
-      supabase.from('ministrações').select('*').eq('event_id',evento.id).order('ordem',{nullsFirst:false}).order('titulo'),
+      supabase.from('ministrações').select('*').eq('event_id',evento.id).order('titulo'),
       supabase.from('people').select('id,name,photo_url,user_id,role_type').eq('event_id',evento.id).order('name'),
       supabase.from('locais').select('id,nome').eq('event_id',evento.id).order('nome'),
       supabase.from('theaters').select('id,nome,ministracao_id,cor').eq('event_id',evento.id).order('nome'),
     ])
-    setMins(mi.data ?? [])
+    // Ordena por 'ordem' no cliente (nulos por último) — resiliente mesmo sem o sql/34
+    const minsOrd = (mi.data ?? []).slice().sort((a:any,b:any)=>{
+      const ao=a.ordem, bo=b.ordem
+      if (ao==null && bo==null) return (a.titulo||'').localeCompare(b.titulo||'')
+      if (ao==null) return 1
+      if (bo==null) return -1
+      return ao-bo
+    })
+    setMins(minsOrd)
     setPessoas(pe.data ?? [])
     setLocais(lo.data ?? [])
     setTeatros(te.data ?? [])
