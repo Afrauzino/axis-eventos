@@ -23,6 +23,7 @@ type Ministracao = {
   conteudo_teatro:string|null        // texto do teatro vinculado
   continuacao_sermao:string|null     // continuação do sermão
   anotacoes_pessoais:string|null     // só o ministrante vê
+  ordem?:number|null
 }
 type Pessoa = { id:string; name:string; photo_url:string|null; user_id?:string|null }
 
@@ -92,7 +93,7 @@ export default function Ministracoes({ profile }: { profile?: Profile }) {
     if (!evento) return
     setLoading(true)
     const [mi, pe, lo, te] = await Promise.all([
-      supabase.from('ministrações').select('*').eq('event_id',evento.id).order('hora_inicio'),
+      supabase.from('ministrações').select('*').eq('event_id',evento.id).order('ordem',{nullsFirst:false}).order('titulo'),
       supabase.from('people').select('id,name,photo_url,user_id,role_type').eq('event_id',evento.id).order('name'),
       supabase.from('locais').select('id,nome').eq('event_id',evento.id).order('nome'),
       supabase.from('theaters').select('id,nome,ministracao_id,cor').eq('event_id',evento.id).order('nome'),
@@ -182,6 +183,17 @@ export default function Ministracoes({ profile }: { profile?: Profile }) {
     setDetalhe(null); carregar(); toast.sucesso('Excluído.')
   }
 
+  // Reordenar ministrações (subir/descer) — grava a ordem de todas
+  async function moverMin(id:string, dir:'up'|'down') {
+    const arr = [...mins]
+    const i = arr.findIndex(m => m.id === id)
+    const j = dir === 'up' ? i - 1 : i + 1
+    if (i < 0 || j < 0 || j >= arr.length) return
+    const tmp = arr[i]; arr[i] = arr[j]; arr[j] = tmp
+    setMins(arr.map((m, idx) => ({ ...m, ordem: idx })))
+    await Promise.all(arr.map((m, idx) => supabase.from('ministrações').update({ ordem: idx }).eq('id', m.id)))
+  }
+
   async function salvarAnotacoes(id:string, val:string) {
     setSalvandoNota(true)
     const { error } = await supabase.from('ministrações').update({anotacoes_pessoais:val}).eq('id',id)
@@ -209,7 +221,7 @@ export default function Ministracoes({ profile }: { profile?: Profile }) {
           <p className="empty-title">Nenhuma ministração</p>
           {canEdit && <button className="btn btn-primary btn-sm" onClick={abrirNovo}>Cadastrar</button>}
         </div>
-      ) : mins.map(m => {
+      ) : mins.map((m,i) => {
         const min = getPessoa(m.ministrante_id)
         return (
           <CardItem
@@ -230,6 +242,12 @@ export default function Ministracoes({ profile }: { profile?: Profile }) {
             }
             onVer={()=>{setDetalhe(m);setAbaDetalhe('info')}}
             onFoto={()=>min?.photo_url && setFotoAmpliada(min.photo_url)}
+            onEditar={canEdit ? ()=>abrirEdicao(m) : undefined}
+            acoes={canEdit ? [
+              ...(i>0 ? [{ label:'Mover para cima', icon:'arrow_upward', onClick:()=>moverMin(m.id,'up') }] : []),
+              ...(i<mins.length-1 ? [{ label:'Mover para baixo', icon:'arrow_downward', onClick:()=>moverMin(m.id,'down') }] : []),
+            ] : undefined}
+            onExcluir={canEdit ? ()=>excluir(m.id) : undefined}
           />
         )
       })}
