@@ -1,0 +1,101 @@
+# HANDOFF — AXIS Eventos (para a próxima IA assumir)
+
+> Atualizado no fim da sessão de 06/07/2026. Leia tudo antes de agir.
+
+## 0. Como trabalhar aqui (REGRAS do usuário — Anderson)
+- **Não programador.** Fale 100% em **português**, simples, sem jargão. Listas numeradas curtas para as ações DELE; caixa de seleção (AskUserQuestion) para decisões de produto.
+- **App é 98% MOBILE.** Sempre mobile-first.
+- **Autonomia total:** pode editar e commitar sem pedir a cada passo. Salvar/commitar com frequência.
+- **Preview antes de construir** componente novo (mostrar mockup e aprovar).
+- **Padrão visual:** ver `docs/PADRAO-VISUAL.md`. Cards = componente `CardItem`. Modais = bottom-sheet. "Fechar volta pra origem".
+- **Ideias** vão em `docs/IDEIAS.md`.
+
+## 1. Stack e deploy
+- React + Vite + TypeScript + Supabase (Postgres/Auth/Storage) + Vercel. PWA.
+- **Branch de trabalho:** `feat/axis-melhorias-sessao` (está SINCRONIZADA com `main` — fast-forward).
+- **Deploy = push na `main`** → Vercel publica sozinho. Fluxo que usei:
+  ```
+  git add ... && git commit -m "..."
+  git checkout main && git merge feat/axis-melhorias-sessao --ff-only && git push origin main
+  git checkout feat/axis-melhorias-sessao
+  ```
+- **Confirmar deploy:** `curl -s https://api.github.com/repos/Afrauzino/axis-eventos/commits/<SHA>/status` → procurar `"context":"Vercel"` com `"state":"success"`.
+- Produção: **axis-eventos-sage.vercel.app** (aliases: axis-eventos-axis-eventos.vercel.app). Preview da branch: axis-eventos-git-feat-axis-melhorias-sessao-axis-eventos.vercel.app
+- Commits terminam com `Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>`.
+
+## 2. Banco / SQL (IMPORTANTE)
+- **A IA NÃO roda SQL** (só chave anon). Entregue arquivos em `sql/NN_nome.sql` e peça pro Anderson rodar no **Supabase → SQL Editor**.
+- SQLs já entregues nesta sessão e o status:
+  - `sql/32_teatro_blocos_capa.sql` — **RODADO** (theaters.foto_url, capa_url; teatro_cenas.blocos/personagens/objetos jsonb).
+  - `sql/33_teatro_ordem.sql` — **RODADO** (theaters.ordem).
+  - `sql/34_ministracao_ordem.sql` — **provavelmente NÃO rodado** (o código já é resiliente sem ele; a coluna `ministrações.ordem` só é necessária pra gravar a reordenação). Tabela é `public."ministrações"` (com acento).
+- Sempre use `add column if not exists`. Código deve ser **resiliente** se o SQL não foi rodado (ver o caso das ministrações que sumiram — item 6).
+
+## 3. Como criei dados em massa (teatros) — padrão reutilizável
+Não dá pra rodar SQL, mas dá pra **inserir via a sessão logada do Anderson no navegador** (preview MCP tools). Padrão:
+```js
+// preview_eval no serverId ativo (mcp__Claude_Preview__preview_eval)
+const m = await import('/src/lib/supabase.ts'); const s = m.supabase;
+await s.from('theaters').insert({...}) // RLS admin permite
+```
+- **event_id ativo:** `c51931b1-029f-472b-93a4-42af430ca58e` ("Encontro 2026", 24–26/jul/2026).
+- **serverId do preview** muda por sessão — pegar com `mcp__Claude_Preview__preview_list`.
+- Screenshots do preview às vezes dão timeout; use `preview_eval` lendo `document.body.innerText` pra verificar.
+- **Cuidado:** isso mexe em dados REAIS de produção (mesmo banco). Confirme antes de deletar.
+
+## 4. O que foi feito nesta sessão (tudo em produção)
+1. **CardItem** padronizado (foto 64px centralizada, ⋮ com Editar/Excluir, barra de progresso). Migrado Equipes, Saúde, TeatroDetalhe, etc.
+2. **Barra de data (semana)** — componente `src/components/BarraData.tsx`: fita de dias, abre **centralizada no evento**, dias do evento habilitados, resto travado. Aplicada em **Cronograma** e **Escalas** (únicas com navegador de dia).
+3. **Ranking** ganhou a ⚙️ (filtro de categoria).
+4. **Correções de layout:** vão header→conteúdo (era `.page` com padding-top de header fixo, mas header é flex); rolagem "fantasma"; FAB/modais que grudavam no `<main>` (removido `transform:translateZ(0)` do main).
+5. **Escala/checklist:** MinhasAtividades agora busca `escala_checklist` (não buscava) → o liderado vê e marca os itens, com barra de progresso dentro e fora.
+6. **Teatro:** capa/foto (AvatarPicker + capa), cenas em **blocos** tipados (Fala/Deixa/Ação/Trilha/Observação/Foto) com RichEditor, vários personagens/objetos por cena, Excluir (desvincula cronograma_eventos/cenas/elenco/midias antes), reordenar teatros (⋮), impressão renderiza os blocos.
+7. **Ministração:** bloco **Arquivo** (PDF/Word) — PDF/imagem abrem em **tela cheia** (visor), Word abre em nova aba. Reordenar ministrações (⋮).
+8. **Cronograma:** selo **🎭 Teatro: X** clicável quando o item tem teatro (puxa pela ministração ou direto).
+9. **Padronização do VÍNCULO ministração↔teatro:** agora **SÓ no Cronograma**. Removidos os seletores de vínculo das telas de Teatro e Ministração. No Cronograma, ministração+teatro convivem no mesmo item; cada um só entra 1x (os já usados somem da lista). Handlers `onSelectMinistracao/onSelectTeatro` NÃO trocam mais o `tipo`.
+10. **Primeiro acesso por link:** mensagem do código (Cadastros + template Admin via `{link}`) inclui `${origin}/?codigo=CODE`; Login lê `?codigo=` e abre na aba "Primeiro acesso" preenchido.
+11. **Botão Voltar universal** no cabeçalho (`BotaoVoltar` em `src/App.tsx`) — aparece em todas as telas menos a inicial, faz `navigate(-1)`.
+12. **10 teatros criados** do PDF "TEATROS - ENCONTRO (COMPLETO)" com cenas fiéis (blocos + personagens sem ator). event_id acima. Personagens globais reaproveitados (IDs em `personagens_globais`).
+
+## 5. ⚠️ TAREFA EM ANDAMENTO (parei no meio) — data/hora amarrada ao evento
+**Pedido do Anderson (3 partes):**
+1. Toda data/hora amarrada ao período do evento (start_date/end_date), incl. telas com calendário.
+2. Telas de calendário centralizam no evento.
+3. **Ao editar, trazer a hora SALVA, não a hora atual.**
+
+**O que já descobri:**
+- Componente central: `src/components/DataHora.tsx` (date/time picker próprio; modos date/time/datetime; valor 'YYYY-MM-DDTHH:MM' LOCAL).
+- **BUG da parte 3 (achado, NÃO corrigido ainda):** em `src/pages/Cronograma.tsx` função `abrirEdicao` (~linha 240-241):
+  ```js
+  hora_inicio: new Date(item.hora_inicio).toISOString().slice(0,16),  // ❌ toISOString = UTC, desloca a hora
+  ```
+  **Correção:** montar em horário LOCAL, ex.:
+  ```js
+  const toLocal = (iso) => { const d=new Date(iso); const p=(n)=>String(n).padStart(2,'0');
+    return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}` }
+  ```
+  **Verificar `Escalas.tsx` (abrirEdicao de escala)** — provavelmente tem o MESMO `toISOString().slice(0,16)`. Corrigir igual.
+  (Obs.: procurei `nowLocalInput` em Cronograma e não achei definição local — ver se vem de `utils` ou está inline; Cronograma usa `nowLocalInput()` no FAB ~linha 373.)
+
+**O que FALTA fazer (partes 1 e 2):**
+- Adicionar props opcionais `min?` e `max?` (YYYY-MM-DD) no `DataHora`, e:
+  - Desabilitar dias fora de [min,max] no calendário.
+  - `view` inicial e dia padrão (quando sem valor) = **início do evento** (não `hoje`). Hoje o `abrir()` usa `new Date()` (linha 78-81) — trocar pra clampar no evento quando min/max existir.
+- Passar `min={evento.start_date} max={evento.end_date}` **só nas telas de AGENDA**: `Cronograma.tsx` (~linha 522) e `Escalas.tsx` (~linhas 393/397). Ambas já têm `evento` do hook `useEvento`.
+- **NÃO amarrar** onde não é agenda: `CadastroPessoa.tsx` (birth_date = aniversário!), `Financeiro` (data_pagamento), `SaudeConfig`, `FichaMedica`, e o próprio `Admin` (start/end do evento — é a definição do evento). Ou seja: manter opt-in por prop.
+- Telas de calendário "centralizam no evento": o `BarraData` já faz. O `DataHora` passa a abrir no mês do evento com min/max.
+
+## 6. Bug recente resolvido (aprender com ele)
+As ministrações "sumiram" porque mudei a query pra `.order('ordem')` e a coluna (sql/34) não existia → a consulta dava erro e voltava vazia. **Lição:** não ordene por coluna de migração não garantida na query; ordene por coluna segura e faça o sort no cliente. Já corrigido em `Ministracoes.tsx` (ordena por titulo na query, por `ordem` no cliente com nulos por último). **O mesmo risco existe no TeatroLista** (usa `.order('ordem')` na query) — funciona porque sql/33 foi rodado, mas se quiser blindar, aplicar o mesmo padrão.
+
+## 7. Pendências / ideias soltas
+- Terminar a tarefa do item 5 (data/hora amarrada + editar traz salvo).
+- Nomes de ministrações com **espaço no início** (" Ampliamos...", " Cura interior") e duas de "Batismo" — Anderson pode querer limpar/juntar (perguntar).
+- Vínculos antigos teatro↔ministração (theaters.ministracao_id) continuam no banco; se quiser 100% pelo cronograma, limpar (perguntar antes).
+- Impressão do Teatro/Ministração: revisar se os blocos novos saem 100% na impressão.
+
+## 8. Arquivos-chave
+- `src/components/CardItem.tsx`, `BarraData.tsx`, `DataHora.tsx`, `RichEditor.tsx`, `AvatarPicker.tsx`
+- `src/lib/chrome.tsx` (⚙️ do topo: `useRegistrarChrome`/`useRegistrarChromeNav`), `BotaoConfig.tsx`
+- `src/App.tsx` (shell + header + `BotaoVoltar`), `src/pages/Cronograma.tsx`, `Escalas.tsx`, `Ministracoes.tsx`, `TeatroLista.tsx`, `TeatroDetalhe.tsx`, `MinhasAtividades.tsx`, `Login.tsx`, `Cadastros.tsx`, `Admin.tsx`
+- Memória do usuário (padrões/regras): `~/.claude/projects/.../memory/` (índice em MEMORY.md).
