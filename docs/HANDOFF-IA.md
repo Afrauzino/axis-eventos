@@ -94,6 +94,18 @@ As ministrações "sumiram" porque mudei a query pra `.order('ordem')` e a colun
 - Vínculos antigos teatro↔ministração (theaters.ministracao_id) continuam no banco; se quiser 100% pelo cronograma, limpar (perguntar antes).
 - Impressão do Teatro/Ministração: revisar se os blocos novos saem 100% na impressão.
 
+## 7b. 🔴 BUGS REPORTADOS NO FIM DA SESSÃO (corrigir PRIMEIRO — afetam cadastro real durante o evento)
+
+### Bug A — "Menor de idade trava na tela de cadastro" (ALTA prioridade)
+- Tela: **Primeiro acesso → completar cadastro** (`src/pages/Login.tsx`, função `criarConta`, usa `components/CadastroPessoa.tsx`).
+- **Causa diagnosticada:** `criarConta` valida campos obrigatórios (Login.tsx ~linhas 98-104): **foto obrigatória** (`if (!form.photo_url) setErro('A foto é obrigatória.')`), nome, celular, email, senha. Quando falha, faz `setErro(...)` mas o **erro aparece no TOPO do formulário**. Como o usuário está rolado lá embaixo (endereço/evento/observações), ele **não vê o erro** e parece que o botão "não faz nada" (trava).
+- **Não é exclusivo do menor** — é qualquer submit sem foto/campo obrigatório; só foi notado no fluxo do menor.
+- **Correção sugerida:** ao falhar validação, **rolar até o erro** (ou mostrar um `toast`), e/ou colocar a mensagem de erro perto do botão Enviar. Confirmar que o fluxo do menor (dados do responsável) salva certo. Testar o cadastro inteiro de um menor de ponta a ponta.
+
+### Bug B — "Correio não traz imagem"
+- O **Correio** (`src/pages/Correio.tsx`) JÁ usa `photo_url` (componente `Avatar` ~linha 480 e `CardItem fotoUrl`) — mostra foto de quem tem. Provável que o usuário se refira à lista **"Adicionar membro" da Equipe** (`src/pages/Equipes.tsx`, modal `modalMembro`), que renderiza **só as iniciais** (`getInitials`), sem `photo_url`.
+- **Correção sugerida:** no modal "Adicionar membro" da Equipes, trocar o avatar de iniciais por foto quando `p.photo_url` existir (igual ao `Avatar` do Correio). Confirmar com o Anderson QUAL tela exatamente ("correio" pode ser o módulo Correio ou a lista de pessoas) — mas o mais provável é a lista de adicionar membro mostrando iniciais em vez de foto.
+
 ## 8. Arquivos-chave
 - `src/components/CardItem.tsx`, `BarraData.tsx`, `DataHora.tsx`, `RichEditor.tsx`, `AvatarPicker.tsx`
 - `src/lib/chrome.tsx` (⚙️ do topo: `useRegistrarChrome`/`useRegistrarChromeNav`), `BotaoConfig.tsx`
