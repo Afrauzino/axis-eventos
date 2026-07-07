@@ -236,13 +236,7 @@ export default function TeatroLista({ profile }: { profile?: Profile }) {
                 </div>
               </div>
 
-              {/* Ministração vinculada */}
-              <div className="form-group">
-                <label className="form-label">Ministração vinculada</label>
-                <p className="form-hint mb-2">Ao vincular, teatro e ministração se abrem mutuamente.</p>
-                <Seletor titulo="Ministração vinculada" placeholder="Nenhuma" value={form.ministracao_id} onChange={v=>setForm(f=>({...f,ministracao_id:v}))}
-                  opcoes={[{value:'',label:'Nenhuma'}, ...ministracoes.map(m=>({value:m.id,label:m.titulo}))]}/>
-              </div>
+              {/* Vínculo teatro↔ministração agora é feito SÓ no Cronograma */}
 
               {/* Arquivos (roteiro, trilha, etc.) */}
               <div className="form-group">

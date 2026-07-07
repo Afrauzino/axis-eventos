@@ -458,12 +458,7 @@ export default function Ministracoes({ profile }: { profile?: Profile }) {
                       <Seletor titulo="Local" placeholder="Selecionar local..." value={form.local} onChange={v=>setForm(f=>({...f,local:v}))}
                         opcoes={[{value:'',label:'Sem local'}, ...locais.map(l=>({value:l.nome,label:l.nome}))]}/>
                     </div>
-                    <div className="form-group">
-                      <label className="form-label">Teatro vinculado</label>
-                      <p className="form-hint mb-2">Ao vincular, teatro e ministração se abrem mutuamente. Cada teatro só pode ser vinculado a uma ministração.</p>
-                      <Seletor titulo="Teatro vinculado" placeholder="Nenhum" value={form.teatro_id} onChange={v=>setForm(f=>({...f,teatro_id:v}))}
-                        opcoes={[{value:'',label:'Nenhum'}, ...teatros.map(t=>({value:t.id,label:t.nome}))]}/>
-                    </div>
+                    {/* Vínculo teatro↔ministração agora é feito SÓ no Cronograma */}
                   </>
                 ) : (
                   <>

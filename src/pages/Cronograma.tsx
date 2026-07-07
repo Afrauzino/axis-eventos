@@ -249,7 +249,7 @@ export default function Cronograma({ profile }: { profile?: Profile }) {
     setErro(''); setModal(true)
   }
 
-  // Ao selecionar ministracao, preenche horario e local automaticamente
+  // Ao vincular ministração, preenche título/local (NÃO troca o tipo — os dois vínculos convivem)
   function onSelectMinistracao(id: string) {
     const min = ministrações.find(m => m.id === id)
     setForm(f => ({
@@ -258,19 +258,16 @@ export default function Cronograma({ profile }: { profile?: Profile }) {
       titulo: min ? min.titulo : f.titulo,
       local: min?.local ?? f.local,
       descricao: min?.descricao ?? f.descricao,
-      tipo: 'ministracao',
     }))
   }
 
-  // Ao selecionar teatro, preenche nome automaticamente
+  // Ao vincular teatro, só preenche o título se estiver vazio (não sobrescreve o da ministração)
   function onSelectTeatro(id: string) {
     const te = teatros.find(t => t.id === id)
     setForm(f => ({
       ...f,
       theater_id: id,
-      titulo: te ? te.nome : f.titulo,
-      local: te?.local ?? f.local,
-      tipo: 'teatro',
+      titulo: f.titulo?.trim() ? f.titulo : (te ? te.nome : f.titulo),
     }))
   }
 
@@ -308,6 +305,10 @@ export default function Cronograma({ profile }: { profile?: Profile }) {
     const ministrante = min?.ministrante_id ? ministrantes.find(p => p.id === min.ministrante_id) : null
     return { min, tea, ministrante }
   }
+
+  // Ministrações/teatros já usados em OUTROS itens do cronograma (não reutilizáveis)
+  const minUsadas = new Set(itens.filter(i => i.id !== editando?.id && i.ministracao_id).map(i => i.ministracao_id))
+  const teaUsados = new Set(itens.filter(i => i.id !== editando?.id && i.theater_id).map(i => i.theater_id))
 
   useRegistrarChrome({
     grupos: [{ chave:'status', label:'Mostrar', opcoes:[{value:'todos',label:'Todos (todos os dias)'},{value:'planejado',label:'Planejados'},{value:'em_andamento',label:'Em andamento'},{value:'concluido',label:'Concluídos'}] }],
@@ -477,19 +478,21 @@ export default function Cronograma({ profile }: { profile?: Profile }) {
                   opcoes={tiposDB.map(t=>({value:t.nome.toLowerCase(),label:t.nome}))}/>
               </div>
 
-              {/* 2. Se MINISTRAÇÃO: vincular ministração (e teatro, que só existe dentro dela) */}
-              {ehTipoChave('ministracao') && (
+              {/* 2. Vínculo (feito SÓ aqui no cronograma): ministração + teatro juntos.
+                     Cada ministração/teatro só entra uma vez — os já usados somem da lista. */}
+              {(ehTipoChave('ministracao') || ehTipoChave('teatro')) && (
                 <>
                   <div className="form-group">
                     <label className="form-label">Vincular Ministração</label>
-                    <p className="form-hint mb-2">O título seguirá o nome da ministração.</p>
+                    <p className="form-hint mb-2">O título seguirá o nome da ministração. Cada ministração só pode ser usada uma vez.</p>
                     <Seletor titulo="Ministração" placeholder="Nenhuma" value={form.ministracao_id} onChange={onSelectMinistracao}
-                      opcoes={[{value:'',label:'Nenhuma'}, ...ministrações.map(m=>({value:m.id,label:m.titulo}))]}/>
+                      opcoes={[{value:'',label:'Nenhuma'}, ...ministrações.filter(m=>!minUsadas.has(m.id)||m.id===form.ministracao_id).map(m=>({value:m.id,label:m.titulo}))]}/>
                   </div>
                   <div className="form-group">
                     <label className="form-label">Vincular Teatro (opcional)</label>
+                    <p className="form-hint mb-2">Cada teatro só pode ser usado uma vez.</p>
                     <Seletor titulo="Teatro" placeholder="Nenhum" value={form.theater_id} onChange={onSelectTeatro}
-                      opcoes={[{value:'',label:'Nenhum'}, ...teatros.map(t=>({value:t.id,label:t.nome}))]}/>
+                      opcoes={[{value:'',label:'Nenhum'}, ...teatros.filter(t=>!teaUsados.has(t.id)||t.id===form.theater_id).map(t=>({value:t.id,label:t.nome}))]}/>
                   </div>
                 </>
               )}
