@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
-import { fmtHora, fmtDataLonga } from '../utils'
+import { fmtHora, fmtDataLonga, getInitials, isAdmin } from '../utils'
 import { useEvento } from '../hooks/useEvento'
+import { toast } from '../components/Toast'
 import type { Profile } from '../App'
 
 type Escala = {
@@ -28,12 +29,36 @@ export default function MinhasAtividades({ profile }: { profile: Profile }) {
   const [meusAfilhados, setMeusAfilhados] = useState<{id:string;name:string;photo_url:string|null;pct:number;status:string}[]>([])
   // #11 — atividades vindas do Cronograma (sou ministrante / estou no elenco)
   const [cronoAtividades, setCronoAtividades] = useState<(Escala & { tipo:'ministracao'|'teatro' })[]>([])
+  // Admin: aprovações pendentes caem aqui e somem ao aprovar
+  const admin = isAdmin(profile.user_role) || profile.is_admin
+  const [aprovacoes, setAprovacoes] = useState<{user_id:string;name:string;user_role:string|null;photo_url:string|null;church:string|null}[]>([])
 
   useEffect(() => {
     if (evLoading) return
     if (!evento) { setLoading(false); return }
     carregar()
   }, [evento, evLoading])
+
+  useEffect(() => { if (admin) carregarAprovacoes() }, [admin])
+
+  async function carregarAprovacoes() {
+    const { data: profs } = await supabase.from('profiles').select('user_id,name,user_role').eq('role_status','pending')
+    const ids = (profs ?? []).map(p => p.user_id)
+    const fotos: Record<string,{photo_url:string|null;church:string|null}> = {}
+    if (ids.length) {
+      const { data: pe } = await supabase.from('people').select('user_id,photo_url,church').in('user_id', ids)
+      for (const p of pe ?? []) if (p.user_id) fotos[p.user_id] = { photo_url: p.photo_url, church: p.church }
+    }
+    setAprovacoes((profs ?? []).map(p => ({ user_id: p.user_id, name: p.name || 'Sem nome', user_role: p.user_role ?? null, photo_url: fotos[p.user_id]?.photo_url ?? null, church: fotos[p.user_id]?.church ?? null })))
+  }
+
+  async function aprovar(u: {user_id:string; name:string; user_role:string|null}) {
+    const cargo = (u.user_role && u.user_role !== 'visitante') ? u.user_role : 'encontreiro'
+    const { error } = await supabase.from('profiles').update({ role_status: 'approved', user_role: cargo }).eq('user_id', u.user_id)
+    if (error) { toast.erro('Não foi possível aprovar.'); return }
+    setAprovacoes(prev => prev.filter(x => x.user_id !== u.user_id))  // some da lista
+    toast.sucesso(`${u.name.split(' ')[0]} aprovado!`)
+  }
 
   async function carregar() {
     if (!evento) return
@@ -204,6 +229,27 @@ export default function MinhasAtividades({ profile }: { profile: Profile }) {
   return (
     <div className="page slide-up">
       <p className="text-sm text-muted mb-2">{fmtDataLonga(new Date().toISOString())}</p>
+
+      {/* Admin: aprovações pendentes (some ao aprovar) */}
+      {admin && aprovacoes.length > 0 && (
+        <div style={{marginBottom:14}}>
+          <div className="section-label" style={{marginBottom:8}}>🙋 Aprovações pendentes ({aprovacoes.length})</div>
+          {aprovacoes.map(a => (
+            <div key={a.user_id} style={{background:'white',borderRadius:14,boxShadow:'var(--shadow-sm)',marginBottom:8,display:'flex',alignItems:'center',gap:12,padding:'12px 14px',borderLeft:'3px solid var(--warning)'}}>
+              <div onClick={()=>navigate('/admin')} style={{width:42,height:42,borderRadius:'50%',background:'var(--primary-light)',overflow:'hidden',flexShrink:0,display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer'}}>
+                {a.photo_url ? <img src={a.photo_url} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}}/> : <span style={{fontWeight:700,fontSize:14,color:'var(--primary)'}}>{getInitials(a.name)}</span>}
+              </div>
+              <div onClick={()=>navigate('/admin')} style={{flex:1,minWidth:0,cursor:'pointer'}}>
+                <p style={{fontWeight:700,fontSize:14,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{a.name}</p>
+                <p style={{fontSize:12,color:'var(--muted)'}}>{a.church || 'Aguardando aprovação'}</p>
+              </div>
+              <button onClick={()=>aprovar(a)} style={{background:'var(--success)',color:'white',border:'none',borderRadius:10,padding:'8px 14px',cursor:'pointer',fontSize:13,fontWeight:700,fontFamily:'inherit',flexShrink:0,display:'flex',alignItems:'center',gap:4}}>
+                <span className="icon icon-sm">check</span> Aprovar
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Barra de progresso GERAL (escalas + afilhados) */}
       {totalGeral > 0 && (
