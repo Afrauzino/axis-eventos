@@ -17,6 +17,9 @@ type Post = {
   texto: string; mencionados: string[]; created_at: string
 }
 type Pessoa = { id: string; name: string; photo_url: string | null }
+type Curtida = { post_id: string; user_id: string }
+type Comentario = { id: string; post_id: string; user_id: string | null; autor_nome: string | null; autor_foto: string | null; texto: string; created_at: string }
+const LIM_COMENT = 200
 
 function haQuanto(iso: string): string {
   const s = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 1000))
@@ -36,18 +39,26 @@ export default function MuralGratidao({ eventoId, profile, fundo, onEditar }: { 
   const [pickerAberto, setPickerAberto] = useState(false)
   const [busca, setBusca] = useState('')
   const [carregado, setCarregado] = useState(false)
+  const [curtidas, setCurtidas] = useState<Curtida[]>([])
+  const [comentarios, setComentarios] = useState<Comentario[]>([])
+  const [expandidos, setExpandidos] = useState<Set<string>>(new Set())
+  const [novoComent, setNovoComent] = useState<Record<string, string>>({})
   useVoltarFecha(pickerAberto, () => setPickerAberto(false))
 
   const admin = isAdmin(profile.user_role) || profile.is_admin
   const pMap = new Map(pessoas.map(p => [p.id, p]))
 
   async function carregar(eid: string) {
-    const [po, pe] = await Promise.all([
+    const [po, pe, cu, co] = await Promise.all([
       supabase.from('mural_posts').select('*').eq('event_id', eid).order('created_at', { ascending: false }).limit(50),
       supabase.from('people').select('id,name,photo_url').eq('event_id', eid).order('name'),
+      supabase.from('mural_curtidas').select('post_id,user_id').eq('event_id', eid),
+      supabase.from('mural_comentarios').select('*').eq('event_id', eid).order('created_at'),
     ])
     setPosts((po.data as Post[]) ?? [])
     setPessoas(pe.data ?? [])
+    setCurtidas((cu.data as Curtida[]) ?? [])
+    setComentarios((co.data as Comentario[]) ?? [])
     setCarregado(true)
   }
 
@@ -56,6 +67,8 @@ export default function MuralGratidao({ eventoId, profile, fundo, onEditar }: { 
     carregar(eventoId)
     const canal = supabase.channel('mural-' + eventoId)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'mural_posts', filter: `event_id=eq.${eventoId}` }, () => carregar(eventoId))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'mural_curtidas', filter: `event_id=eq.${eventoId}` }, () => carregar(eventoId))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'mural_comentarios', filter: `event_id=eq.${eventoId}` }, () => carregar(eventoId))
       .subscribe()
     return () => { supabase.removeChannel(canal) }
   }, [eventoId])
@@ -83,6 +96,40 @@ export default function MuralGratidao({ eventoId, profile, fundo, onEditar }: { 
 
   function toggleSel(id: string) {
     setSelecionados(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
+  }
+
+  async function toggleCurtida(postId: string) {
+    if (!eventoId) return
+    const jaCurtiu = curtidas.some(c => c.post_id === postId && c.user_id === profile.user_id)
+    if (jaCurtiu) {
+      setCurtidas(prev => prev.filter(c => !(c.post_id === postId && c.user_id === profile.user_id)))  // otimista
+      await supabase.from('mural_curtidas').delete().eq('post_id', postId).eq('user_id', profile.user_id)
+    } else {
+      setCurtidas(prev => [...prev, { post_id: postId, user_id: profile.user_id }])  // otimista
+      const { error } = await supabase.from('mural_curtidas').insert({ post_id: postId, event_id: eventoId, user_id: profile.user_id })
+      if (error) toast.falha('Não foi possível curtir. Rode o SQL 40_mural_interacoes.sql.', error)
+    }
+  }
+
+  async function enviarComent(postId: string) {
+    const t = (novoComent[postId] || '').trim()
+    if (!t || !eventoId) return
+    const { error } = await supabase.from('mural_comentarios').insert({
+      post_id: postId, event_id: eventoId, user_id: profile.user_id,
+      autor_nome: profile.full_name, autor_foto: profile.avatar_url, texto: t.slice(0, LIM_COMENT),
+    })
+    if (error) { toast.falha('Não foi possível comentar. Rode o SQL 40_mural_interacoes.sql.', error); return }
+    setNovoComent(prev => ({ ...prev, [postId]: '' }))
+    carregar(eventoId)
+  }
+
+  async function excluirComent(c: Comentario) {
+    await supabase.from('mural_comentarios').delete().eq('id', c.id)
+    if (eventoId) carregar(eventoId)
+  }
+
+  function toggleExpandir(id: string) {
+    setExpandidos(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n })
   }
 
   if (!carregado) return null
@@ -155,16 +202,20 @@ export default function MuralGratidao({ eventoId, profile, fundo, onEditar }: { 
         </div>
       </div>
 
-      {/* Feed */}
-      <div style={{ maxHeight: 460, overflowY: 'auto' }}>
+      {/* Feed — tamanho fixo com rolagem */}
+      <div style={{ height: 380, overflowY: 'auto' }}>
         {posts.length === 0 ? (
-          <div style={{ padding: '24px 16px', textAlign: 'center' }}>
+          <div style={{ padding: '40px 16px', textAlign: 'center' }}>
             <p style={{ fontSize: 26, marginBottom: 6 }}>💬</p>
             <p style={{ fontSize: 13, color: 'var(--muted)' }}>Seja o primeiro a deixar uma mensagem de gratidão!</p>
           </div>
         ) : posts.map(p => {
           const nomes = (p.mencionados ?? []).map(id => pMap.get(id)?.name).filter(Boolean) as string[]
           const podeApagar = p.user_id === profile.user_id || admin
+          const curtiu = curtidas.some(c => c.post_id === p.id && c.user_id === profile.user_id)
+          const nCurtidas = curtidas.filter(c => c.post_id === p.id).length
+          const comentsPost = comentarios.filter(c => c.post_id === p.id)
+          const aberto = expandidos.has(p.id)
           return (
             <div key={p.id} style={{ display: 'flex', gap: 10, padding: '12px 14px', borderBottom: '1px solid var(--border)' }}>
               <div style={{ width: 38, height: 38, borderRadius: '50%', overflow: 'hidden', flexShrink: 0, background: 'var(--primary-light)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -181,6 +232,48 @@ export default function MuralGratidao({ eventoId, profile, fundo, onEditar }: { 
                 <p style={{ fontSize: 14, color: 'var(--text)', marginTop: 2, lineHeight: 1.45, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{p.texto}</p>
                 {nomes.length > 0 && (
                   <p style={{ fontSize: 12, color: 'var(--primary)', fontWeight: 700, marginTop: 4 }}>🙌 {nomes.map(n => `@${n.split(' ')[0]}`).join(' ')}</p>
+                )}
+
+                {/* Rodapé: curtir + comentar */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 20, marginTop: 8 }}>
+                  <button onClick={() => toggleCurtida(p.id)} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', padding: 0 }}>
+                    <span className="icon icon-sm" style={{ color: curtiu ? '#E53E3E' : 'var(--muted)' }}>{curtiu ? 'favorite' : 'favorite_border'}</span>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: curtiu ? '#E53E3E' : 'var(--muted)' }}>{nCurtidas > 0 ? nCurtidas : 'Curtir'}</span>
+                  </button>
+                  <button onClick={() => toggleExpandir(p.id)} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', padding: 0 }}>
+                    <span className="icon icon-sm" style={{ color: 'var(--muted)' }}>mode_comment</span>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--muted)' }}>{comentsPost.length > 0 ? comentsPost.length : 'Comentar'}</span>
+                  </button>
+                </div>
+
+                {/* Comentários */}
+                {aberto && (
+                  <div style={{ marginTop: 10, borderTop: '1px solid var(--border)', paddingTop: 10 }}>
+                    {comentsPost.map(c => (
+                      <div key={c.id} style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+                        <div style={{ width: 28, height: 28, borderRadius: '50%', overflow: 'hidden', flexShrink: 0, background: 'var(--primary-light)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          {c.autor_foto ? <img src={c.autor_foto} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--primary)' }}>{getInitials(c.autor_nome ?? '?')}</span>}
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0, background: 'var(--bg)', borderRadius: 12, padding: '6px 10px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <span style={{ fontSize: 12, fontWeight: 800, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.autor_nome ?? 'Alguém'}</span>
+                            <span style={{ fontSize: 10, color: 'var(--muted)', flexShrink: 0 }}>· {haQuanto(c.created_at)}</span>
+                            {(c.user_id === profile.user_id || admin) && <button onClick={() => excluirComent(c)} title="Apagar" style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted)', display: 'flex', padding: 0 }}><span className="icon" style={{ fontSize: 15 }}>close</span></button>}
+                          </div>
+                          <p style={{ fontSize: 13, color: 'var(--text)', marginTop: 1, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{c.texto}</p>
+                        </div>
+                      </div>
+                    ))}
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 4 }}>
+                      <input value={novoComent[p.id] || ''} onChange={e => setNovoComent(prev => ({ ...prev, [p.id]: e.target.value.slice(0, LIM_COMENT) }))}
+                        onKeyDown={e => { if (e.key === 'Enter') enviarComent(p.id) }}
+                        placeholder="Escreva um comentário..." style={{ flex: 1, border: '1px solid var(--border)', borderRadius: 99, padding: '7px 12px', fontFamily: 'inherit', fontSize: 13, boxSizing: 'border-box', minWidth: 0 }} />
+                      <button onClick={() => enviarComent(p.id)} disabled={!(novoComent[p.id] || '').trim()}
+                        style={{ background: (novoComent[p.id] || '').trim() ? 'var(--primary)' : 'var(--border)', color: 'white', border: 'none', borderRadius: '50%', width: 34, height: 34, cursor: (novoComent[p.id] || '').trim() ? 'pointer' : 'default', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <span className="icon icon-sm">send</span>
+                      </button>
+                    </div>
+                  </div>
                 )}
               </div>
             </div>
