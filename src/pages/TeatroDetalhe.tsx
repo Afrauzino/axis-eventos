@@ -657,10 +657,10 @@ export default function TeatroDetalhe({ profile }: { profile?: Profile }) {
                         {(pg?.multiplo || cp.person_ids.length===0) && (
                           <div style={{marginTop:4}}>
                             <PersonSelect
-                              pessoas={pessoas.filter(p=>!cp.person_ids.includes(p.id))}
+                              pessoas={pessoas.filter(p=>elenco.some(e=>e.person_id===p.id) && !cp.person_ids.includes(p.id))}
                               value=""
                               onChange={pid=>{ if(pid) addAtor(idx,pid) }}
-                              placeholder="Adicionar ator..."
+                              placeholder={elenco.length===0 ? 'Adicione atores no Elenco primeiro' : 'Adicionar ator...'}
                             />
                           </div>
                         )}
