@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { useVoltarFecha } from '../hooks/useVoltarFecha'
 import { getInitials, fmtHora, fmtData, isAdmin, hasRole, toLocalInput } from '../utils'
 import { useEvento } from '../hooks/useEvento'
 import { usePermissao } from '../hooks/usePermissao'
@@ -44,11 +45,13 @@ export default function Ministracoes({ profile }: { profile?: Profile }) {
   const [locais, setLocais]     = useState<{id:string;nome:string}[]>([])
   const [teatros, setTeatros]   = useState<{id:string;nome:string;ministracao_id:string|null;cor:string|null}[]>([])
   const [detalhe, setDetalhe]   = useState<Ministracao|null>(null)
+  useVoltarFecha(!!detalhe, () => setDetalhe(null))
   const [abaDetalhe, setAbaDetalhe] = useState<'info'|'sermao'|'anotacoes'>('info')
   const [nota, setNota]         = useState('')          // rascunho das "Minhas notas"
   const [salvandoNota, setSalvandoNota] = useState(false)
   const [fotoAmpliada, setFotoAmpliada] = useState<string|null>(null)
   const [modal, setModal]       = useState(false)
+  useVoltarFecha(modal, () => setModal(false))
   const [imprimir, setImprimir] = useState<Ministracao|null>(null)
   const [editando, setEditando] = useState<Ministracao|null>(null)
   const [salvando, setSalvando] = useState(false)

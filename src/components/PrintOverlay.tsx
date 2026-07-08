@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import type { ReactNode } from 'react'
+import { useVoltarFecha } from '../hooks/useVoltarFecha'
 
 /**
  * Overlay de impressão reutilizável: botão Imprimir/PDF + Fechar + CSS de impressão.
@@ -12,6 +13,7 @@ import type { ReactNode } from 'react'
  * o celular imprimia na largura estreita da tela (layout diferente do PC).
  */
 export default function PrintOverlay({ titulo, onClose, children }: { titulo?:string; onClose:()=>void; children:ReactNode }) {
+  useVoltarFecha(true, onClose)  // voltar do celular fecha a impressão
   useEffect(() => {
     document.body.classList.add('print-overlay-open')
     return () => document.body.classList.remove('print-overlay-open')

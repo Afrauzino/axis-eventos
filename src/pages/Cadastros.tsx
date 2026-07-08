@@ -5,6 +5,7 @@
  */
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { useVoltarFecha } from '../hooks/useVoltarFecha'
 import PrintOverlay from '../components/PrintOverlay'
 import UploadFoto from '../components/UploadFoto'
 import PersonSelect from '../components/PersonSelect'
@@ -32,6 +33,7 @@ export default function Cadastros({ profile }: { profile: Profile }) {
   const [lista, setLista]     = useState<Pessoa[]>([])
   const [loading, setLoading] = useState(true)
   const [modal, setModal]     = useState(false)
+  useVoltarFecha(modal, () => setModal(false))
   const [salvando, setSalvando] = useState(false)
   const [erro, setErro]       = useState('')
   const [busca, setBusca]     = useState('')

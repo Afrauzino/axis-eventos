@@ -39,7 +39,16 @@ export default function MinhasAtividades({ profile }: { profile: Profile }) {
     carregar()
   }, [evento, evLoading])
 
-  useEffect(() => { if (admin) carregarAprovacoes() }, [admin])
+  // #5 — aprovações atualizam sozinhas: recarrega a cada 12s e ao voltar pra tela/aba
+  useEffect(() => {
+    if (!admin) return
+    carregarAprovacoes()
+    const t = setInterval(() => { if (document.visibilityState === 'visible') carregarAprovacoes() }, 12000)
+    const onFoco = () => { if (document.visibilityState === 'visible') carregarAprovacoes() }
+    document.addEventListener('visibilitychange', onFoco)
+    window.addEventListener('focus', onFoco)
+    return () => { clearInterval(t); document.removeEventListener('visibilitychange', onFoco); window.removeEventListener('focus', onFoco) }
+  }, [admin])
 
   async function carregarAprovacoes() {
     const { data: profs } = await supabase.from('profiles').select('user_id,name,user_role').eq('role_status','pending')

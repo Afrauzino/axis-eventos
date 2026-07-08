@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { useVoltarFecha } from '../hooks/useVoltarFecha'
 import { getInitials } from '../utils'
 import CardItem from '../components/CardItem'
 import { useRegistrarChrome } from '../lib/chrome'
@@ -23,6 +24,7 @@ export default function Encontristas({ profile }: { profile: Profile }) {
   const [fotoAmpliada, setFotoAmpliada] = useState<string|null>(null)
   const [loading, setLoading]     = useState(true)
   const [selecionado, setSelecionado] = useState<Pessoa | null>(null)
+  useVoltarFecha(!!selecionado, () => setSelecionado(null))
   // #19 — "conheço esta pessoa"
   type Marca = { id:string; worker_user_id:string|null; worker_name:string|null; worker_photo:string|null; worker_phone:string|null }
   const [meuP, setMeuP] = useState<{id:string;name:string;photo_url:string|null;phone:string|null;role_type:string}|null>(null)

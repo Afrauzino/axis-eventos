@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useVoltarFecha } from '../hooks/useVoltarFecha'
 import { supabase } from '../lib/supabase'
 import { useEvento } from '../hooks/useEvento'
 import type { Profile } from '../App'
@@ -120,6 +121,7 @@ function lembrete(quando?: string | null): string | null {
 }
 
 export default function NotificacoesCenter({ profile, onClose, onUnread }: { profile: Profile; onClose: () => void; onUnread?: (n: number) => void }) {
+  useVoltarFecha(true, onClose)  // voltar do celular fecha as notificações
   const navigate = useNavigate()
   const { evento } = useEvento()
   const [itens, setItens] = useState<Notif[]>([])

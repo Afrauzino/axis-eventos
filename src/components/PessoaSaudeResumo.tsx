@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { getInitials, fmtHora } from '../utils'
+import { useVoltarFecha } from '../hooks/useVoltarFecha'
 
 /**
  * Tela rápida da pessoa (saúde) — resolve dúvidas em segundos.
@@ -19,6 +20,7 @@ function waLink(phone: string|null): string|null {
 }
 
 export default function PessoaSaudeResumo({ personId, eventId, onClose }: Props) {
+  useVoltarFecha(true, onClose)  // voltar do celular fecha o resumo
   const [loading, setLoading] = useState(true)
   const [pessoa, setPessoa]   = useState<Pessoa|null>(null)
   const [ficha, setFicha]     = useState<any>(null)

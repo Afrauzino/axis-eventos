@@ -1,7 +1,9 @@
 import { createPortal } from 'react-dom'
+import { useVoltarFecha } from '../hooks/useVoltarFecha'
 
 // Ampliar foto (clicar na foto de uma pessoa → tela cheia). Padrão do card (item 4).
 export default function FotoAmpliada({ url, onClose }: { url: string | null; onClose: () => void }) {
+  useVoltarFecha(!!url, onClose)  // voltar do celular fecha a foto ampliada
   if (!url) return null
   return createPortal(
     <div onClick={onClose}

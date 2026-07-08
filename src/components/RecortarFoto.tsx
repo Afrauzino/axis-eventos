@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { useVoltarFecha } from '../hooks/useVoltarFecha'
 
 // Ajustar/reposicionar foto: arrastar para posicionar + controle de zoom.
 // Recorta num quadrado e devolve um Blob (JPEG) pronto pra enviar.
@@ -14,6 +15,7 @@ type Props = {
 const V = 280 // tamanho do visor (px)
 
 export default function RecortarFoto({ src, crossOrigin, onCancel, onConfirm, saida = 400 }: Props) {
+  useVoltarFecha(true, onCancel)  // voltar do celular fecha o recorte de foto
   const imgRef = useRef<HTMLImageElement | null>(null)
   const [carregada, setCarregada] = useState(false)
   const [erro, setErro] = useState('')

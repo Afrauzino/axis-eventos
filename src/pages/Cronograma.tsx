@@ -62,11 +62,9 @@ export default function Cronograma({ profile }: { profile?: Profile }) {
   const [salvando, setSalvando]       = useState(false)
   const [erro, setErro]               = useState('')
 
-  // Botão VOLTAR do celular fecha a janela aberta (em vez de sair da tela)
+  // Botão VOLTAR do celular fecha a janela aberta (cronômetro/impressão têm o próprio)
   useVoltarFecha(!!detalhe, () => setDetalhe(null))
-  useVoltarFecha(!!cronometro, () => setCronometro(null))
   useVoltarFecha(modal, () => { setModal(false); setEditando(null) })
-  useVoltarFecha(!!imprimir, () => setImprimir(null))
   const hoje = new Date()
   const [dataSel, setDataSel]         = useState(hoje)
   const [form, setForm] = useState({

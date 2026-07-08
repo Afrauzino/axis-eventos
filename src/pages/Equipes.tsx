@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import AvatarPicker from '../components/AvatarPicker'
 import CardItem from '../components/CardItem'
 import { supabase } from '../lib/supabase'
+import { useVoltarFecha } from '../hooks/useVoltarFecha'
 import { useRegistrarChromeNav } from '../lib/chrome'
 import PrintOverlay from '../components/PrintOverlay'
 import { getInitials, isAdmin, formatName } from '../utils'
@@ -25,16 +26,19 @@ export default function Equipes({ profile }: { profile?: Profile }) {
   const [expandida, setExpandida] = useState<string|null>(null)
   const [modal, setModal]       = useState(false)
   const [editando, setEditando] = useState<Equipe|null>(null)
+  useVoltarFecha(modal, () => setModal(false))
   const [salvando, setSalvando] = useState(false)
   const [erro, setErro]         = useState('')
   const [form, setForm] = useState({ name:'', color:'#00A99D', leader_id:'', co_leader_id:'', equipe_saude:false, equipe_cardapio:false, emoji:'', foto_url:null })
 
   // Modal de adicionar membro — multipla selecao
   const [modalMembro, setModalMembro] = useState<string|null>(null) // team_id
+  useVoltarFecha(!!modalMembro, () => setModalMembro(null))
   const [pessoasSel, setPessoasSel]   = useState<string[]>([])
 
   // Impressão modular
   const [modalPrint, setModalPrint] = useState(false)
+  useVoltarFecha(modalPrint, () => setModalPrint(false))
   const [printSel, setPrintSel]     = useState<string[]>([])
   const [imprimir, setImprimir]     = useState(false)
   function togglePrint(id:string){ setPrintSel(prev=>prev.includes(id)?prev.filter(x=>x!==id):[...prev,id]) }

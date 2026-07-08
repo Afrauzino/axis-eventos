@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useVoltarFecha } from '../hooks/useVoltarFecha'
 
 // DataHora — calendário/hora próprio no padrão AXIS (item 6 do manual).
 // Substitui os inputs nativos type="date" | "time" | "datetime-local".
@@ -60,6 +61,7 @@ function rotulo(value: string, modo: ModoDataHora): string {
 
 export default function DataHora({ value, onChange, modo = 'date', disabled, placeholder, titulo, min, max }: Props) {
   const [aberto, setAberto] = useState(false)
+  useVoltarFecha(aberto, () => setAberto(false))  // voltar do celular fecha o calendário
   const [work, setWork] = useState<Partes>(() => parse(value, modo))
   // sem valor, o calendário centraliza no INÍCIO do evento (min) em vez de "hoje"
   const baseView = () => {

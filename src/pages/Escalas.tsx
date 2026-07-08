@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { useVoltarFecha } from '../hooks/useVoltarFecha'
 import { useRegistrarChromeNav } from '../lib/chrome'
 import PrintOverlay from '../components/PrintOverlay'
 import { getInitials, fmtHora, isAdmin, isLider, nowLocalInput, toLocalInput } from '../utils'
@@ -28,6 +29,7 @@ export default function Escalas({ profile }: { profile?: Profile }) {
   const [loading, setLoading]   = useState(true)
   const [modal, setModal]       = useState(false)
   const [editando, setEditando] = useState<Escala|null>(null)
+  useVoltarFecha(modal, () => setModal(false))
   const [fotoAmpliada, setFotoAmpliada] = useState<string|null>(null)
   const [salvando, setSalvando] = useState(false)
   const [erro, setErro]         = useState('')

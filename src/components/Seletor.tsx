@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useVoltarFecha } from '../hooks/useVoltarFecha'
 
 // Seletor no padrão AXIS (substitui o <select> nativo cinza).
 // - Poucas opções (<=3, sem descrição) → botões lado a lado.
@@ -19,6 +20,7 @@ type Props = {
 
 export default function Seletor({ value, onChange, opcoes, titulo = 'Selecione', placeholder = 'Selecione...', disabled, inline, sheet, compact }: Props) {
   const [aberto, setAberto] = useState(false)
+  useVoltarFecha(aberto, () => setAberto(false))  // voltar do celular fecha a lista
   const atual = opcoes.find(o => o.value === value)
   const usarBotoes = inline ?? (!sheet && opcoes.length <= 3 && !opcoes.some(o => o.descricao))
 

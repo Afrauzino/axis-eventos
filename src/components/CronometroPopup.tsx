@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { useVoltarFecha } from '../hooks/useVoltarFecha'
 
 type Item = {
   id:string; titulo:string; hora_inicio:string; hora_fim:string
@@ -29,6 +30,7 @@ function fmt(seg:number): string {
 }
 
 export default function CronometroPopup({ item, podeControlar, onClose, onUpdate }: { item:Item; podeControlar:boolean; onClose:()=>void; onUpdate?:()=>void }) {
+  useVoltarFecha(true, onClose)  // voltar do celular fecha o cronômetro
   const [estado, setEstado] = useState(item.cron_estado ?? 'parado')
   const [iniciadoEm, setIniciadoEm] = useState<string|null>(item.cron_iniciado_em ?? null)
   const [ajuste, setAjuste] = useState(item.cron_ajuste_segundos ?? 0)
