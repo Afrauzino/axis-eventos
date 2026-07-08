@@ -346,42 +346,50 @@ export default function Dashboard({ profile }: { profile: Profile }) {
   )
 }
 
+type LinhaCat = {
+  cat: { id:string; nome:string; icone:string; cor:string }
+  winner: { id:string; name:string; photo_url:string|null; media:number; total:number }
+}
 function RankingMini({ eventoId, navigate }: { eventoId:string; navigate:(to:string)=>void }) {
-  const [top, setTop] = useState<{id:string;name:string;photo_url:string|null;media:number;total:number}[]>([])
+  const [linhas, setLinhas] = useState<LinhaCat[]>([])
   const [carregado, setCarregado] = useState(false)
 
   useEffect(() => { if (eventoId) load() }, [eventoId])
 
   async function load() {
-    // Busca TODOS os votos do evento (todas as categorias juntas)
-    const [vo, pe] = await Promise.all([
-      supabase.from('ranking_votos').select('votado_id,estrelas').eq('event_id', eventoId),
+    const [ca, vo, pe] = await Promise.all([
+      supabase.from('ranking_categorias').select('id,nome,icone,cor,ordem').eq('event_id', eventoId).order('ordem'),
+      supabase.from('ranking_votos').select('categoria_id,votado_id,estrelas').eq('event_id', eventoId),
       supabase.from('people').select('id,name,photo_url').eq('event_id', eventoId).eq('role_type','encounterer'),
     ])
-    if (vo.error || pe.error) return
+    if (ca.error || vo.error || pe.error) { setCarregado(true); return }
 
-    // Calcular média geral de cada pessoa (todas as categorias combinadas)
-    const notas: Record<string, number[]> = {}
-    for (const v of vo.data ?? []) {
-      if (!notas[v.votado_id]) notas[v.votado_id] = []
-      notas[v.votado_id].push(v.estrelas)
+    const pMap = new Map((pe.data ?? []).map(p => [p.id, p]))
+    const votos = vo.data ?? []
+    const out: LinhaCat[] = []
+
+    // Para cada categoria: o encontrista com mais estrelas (maior média; desempate por nº de votos)
+    for (const cat of ca.data ?? []) {
+      const notas: Record<string, number[]> = {}
+      for (const v of votos) {
+        if (v.categoria_id !== cat.id) continue
+        ;(notas[v.votado_id] = notas[v.votado_id] || []).push(v.estrelas)
+      }
+      let best: { id:string; media:number; total:number } | null = null
+      for (const [pid, ns] of Object.entries(notas)) {
+        const media = +(ns.reduce((s,n)=>s+n,0) / ns.length).toFixed(1)
+        const cand = { id:pid, media, total:ns.length }
+        if (!best || cand.media > best.media || (cand.media === best.media && cand.total > best.total)) best = cand
+      }
+      if (!best) continue
+      const person = pMap.get(best.id)
+      if (!person) continue
+      out.push({ cat: { id:cat.id, nome:cat.nome, icone:cat.icone, cor:cat.cor }, winner: { ...person, media:best.media, total:best.total } })
     }
 
-    const ranked = (pe.data ?? [])
-      .map(p => {
-        const ns = notas[p.id] ?? []
-        const media = ns.length ? ns.reduce((s,n) => s+n, 0) / ns.length : 0
-        return { ...p, media: +media.toFixed(1), total: ns.length }
-      })
-      .filter(p => p.total > 0)
-      .sort((a, b) => b.media - a.media || b.total - a.total)
-      .slice(0, 3)
-
-    setTop(ranked)
+    setLinhas(out)
     setCarregado(true)
   }
-
-  const MEDALHAS = ['🥇','🥈','🥉']
 
   return (
     <div style={{background:'white',borderRadius:14,boxShadow:'var(--shadow-sm)',overflow:'hidden',marginBottom:20}}>
@@ -390,8 +398,8 @@ function RankingMini({ eventoId, navigate }: { eventoId:string; navigate:(to:str
         <div style={{display:'flex',alignItems:'center',gap:8}}>
           <span style={{fontSize:22}}>🏆</span>
           <div>
-            <p style={{fontWeight:800,fontSize:15,color:'white'}}>Ranking Geral</p>
-            <p style={{fontSize:11,color:'rgba(255,255,255,0.8)'}}>Média de todas as categorias</p>
+            <p style={{fontWeight:800,fontSize:15,color:'white'}}>Ranking</p>
+            <p style={{fontSize:11,color:'rgba(255,255,255,0.8)'}}>Destaque de cada categoria</p>
           </div>
         </div>
         <button onClick={()=>navigate('/ranking')}
@@ -400,10 +408,10 @@ function RankingMini({ eventoId, navigate }: { eventoId:string; navigate:(to:str
         </button>
       </div>
 
-      {/* Lista */}
+      {/* Lista: um campeão por categoria */}
       {!carregado ? (
         <div style={{padding:'16px',textAlign:'center'}}><p style={{fontSize:13,color:'var(--muted)'}}>Carregando...</p></div>
-      ) : top.length === 0 ? (
+      ) : linhas.length === 0 ? (
         <div style={{padding:'20px 16px',textAlign:'center'}}>
           <p style={{fontSize:28,marginBottom:8}}>🗳️</p>
           <p style={{fontSize:13,color:'var(--muted)',marginBottom:12}}>Nenhum voto ainda. Seja o primeiro!</p>
@@ -414,24 +422,29 @@ function RankingMini({ eventoId, navigate }: { eventoId:string; navigate:(to:str
         </div>
       ) : (
         <>
-          {top.map((p, i) => (
-            <div key={p.id} style={{display:'flex',alignItems:'center',gap:12,padding:'12px 16px',borderBottom:i<top.length-1?'1px solid var(--border)':'none',background:i===0?'#FFFBEB':'white'}}>
-              <span style={{fontSize:24,flexShrink:0,width:28,textAlign:'center'}}>{MEDALHAS[i]}</span>
-              <div style={{width:40,height:40,borderRadius:'50%',background:'var(--primary-light)',overflow:'hidden',flexShrink:0,display:'flex',alignItems:'center',justifyContent:'center'}}>
-                {p.photo_url
-                  ? <img src={p.photo_url} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}}/>
-                  : <span style={{fontSize:14,fontWeight:700,color:'var(--primary)'}}>{p.name.slice(0,2).toUpperCase()}</span>
-                }
+          {linhas.map((l, i) => (
+            <div key={l.cat.id} style={{display:'flex',alignItems:'center',gap:12,padding:'11px 16px',borderBottom:i<linhas.length-1?'1px solid var(--border)':'none'}}>
+              {/* Foto do campeão com anel na cor da categoria */}
+              <div style={{position:'relative',flexShrink:0}}>
+                <div style={{width:44,height:44,borderRadius:'50%',background:'var(--primary-light)',overflow:'hidden',display:'flex',alignItems:'center',justifyContent:'center',border:`2px solid ${l.cat.cor}`}}>
+                  {l.winner.photo_url
+                    ? <img src={l.winner.photo_url} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}}/>
+                    : <span style={{fontSize:14,fontWeight:700,color:'var(--primary)'}}>{l.winner.name.slice(0,2).toUpperCase()}</span>
+                  }
+                </div>
+                <div style={{position:'absolute',bottom:-3,right:-3,width:20,height:20,borderRadius:'50%',background:l.cat.cor,display:'flex',alignItems:'center',justifyContent:'center',border:'2px solid white'}}>
+                  <span className="icon" style={{fontSize:12,color:'white'}}>{l.cat.icone || 'star'}</span>
+                </div>
               </div>
               <div style={{flex:1,minWidth:0}}>
-                <p style={{fontWeight:700,fontSize:14,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{p.name}</p>
-                <p style={{fontSize:11,color:'var(--muted)'}}>{p.total} voto{p.total!==1?'s':''}</p>
+                <p style={{fontSize:10,fontWeight:800,textTransform:'uppercase',letterSpacing:'0.04em',color:l.cat.cor,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{l.cat.nome}</p>
+                <p style={{fontWeight:700,fontSize:14,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{l.winner.name}</p>
               </div>
               <div style={{textAlign:'right',flexShrink:0}}>
-                <p style={{fontSize:18,fontWeight:800,color:i===0?'#D69E2E':'var(--text)'}}>{p.media.toFixed(1)}</p>
-                <div style={{display:'flex',gap:1}}>
+                <p style={{fontSize:17,fontWeight:800,color:'#D69E2E'}}>{l.winner.media.toFixed(1)}</p>
+                <div style={{display:'flex',gap:1,justifyContent:'flex-end'}}>
                   {[1,2,3,4,5].map(n=>(
-                    <span key={n} style={{fontSize:11,color:n<=Math.round(p.media)?'#F6AD55':'var(--border)'}}>★</span>
+                    <span key={n} style={{fontSize:10,color:n<=Math.round(l.winner.media)?'#F6AD55':'var(--border)'}}>★</span>
                   ))}
                 </div>
               </div>

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useVoltarFecha } from '../hooks/useVoltarFecha'
-import { useRegistrarChromeNav } from '../lib/chrome'
+import { useRegistrarChrome } from '../lib/chrome'
 import PrintOverlay from '../components/PrintOverlay'
 import { getInitials, fmtHora, isAdmin, isLider, nowLocalInput, toLocalInput } from '../utils'
 import { useEvento } from '../hooks/useEvento'
@@ -261,7 +261,7 @@ export default function Escalas({ profile }: { profile?: Profile }) {
   // Equipe selecionada atual (para exibir no PersonSelect de equipe)
   const equipeAtual = equipes.find(e => e.id === formEquipeId)
 
-  useRegistrarChromeNav('equipes', {
+  useRegistrarChrome({
     impressoes: escalasDia.length>0 ? [{ label:'Imprimir escala do dia', onClick:()=>setImprimir(true) }] : undefined,
   }, [escalasDia.length])
 

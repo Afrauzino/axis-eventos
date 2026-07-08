@@ -4,7 +4,7 @@ import AvatarPicker from '../components/AvatarPicker'
 import CardItem from '../components/CardItem'
 import { supabase } from '../lib/supabase'
 import { useVoltarFecha } from '../hooks/useVoltarFecha'
-import { useRegistrarChromeNav } from '../lib/chrome'
+import { useRegistrarChrome } from '../lib/chrome'
 import PrintOverlay from '../components/PrintOverlay'
 import { getInitials, isAdmin, formatName } from '../utils'
 import { useEvento } from '../hooks/useEvento'
@@ -147,7 +147,7 @@ export default function Equipes({ profile }: { profile?: Profile }) {
   const totalVinculados = new Set(vinculos.map(v=>v.person_id)).size
   const semEquipe = pessoas.filter(p=>!vinculos.some(v=>v.person_id===p.id))
 
-  useRegistrarChromeNav('equipes', {
+  useRegistrarChrome({
     impressoes: equipes.length>0 ? [{ label:'Imprimir equipes (com fotos)', onClick:()=>{setPrintSel(equipes.map(e=>e.id));setModalPrint(true)} }] : undefined,
   }, [equipes.length])
 

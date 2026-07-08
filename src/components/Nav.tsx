@@ -8,7 +8,7 @@ import type { Profile } from '../App'
 type Override = { emoji?:string|null; label?:string|null; visivel?:boolean; ordem?:number|null }
 
 type Sub = { label:string; rota:string }
-type Item = { id:string; label:string; icon:string; emoji?:string; rota?:string; sub?:Sub[]; perm:string }
+type Item = { id:string; label:string; icon:string; emoji?:string; rota?:string; sub?:Sub[]; perm:string; cfg?:string }
 
 function buildMenu(): Item[] {
   return [
@@ -25,8 +25,8 @@ function buildMenu(): Item[] {
     { id:'cracha',  label:'Crachá',               icon:'badge',           emoji:'🪪', rota:'/cracha',            perm:'menu_cracha' },
     { id:'alertlid',label:'Alertas',                icon:'campaign',       emoji:'📢', rota:'/alertas-lideres',   perm:'menu_alertas_lideres' },
     { id:'cozinha', label:'Cozinha',              icon:'restaurant',     emoji:'🍴', rota:'/cozinha',           perm:'menu_cozinha' },
-    { id:'equipes', label:'Equipes & Escalas',    icon:'shield',          emoji:'🛡️', perm:'menu_equipes',
-      sub:[ { label:'Equipes', rota:'/equipes' }, { label:'Escalas', rota:'/escalas' } ] },
+    { id:'equipes', label:'Equipes',              icon:'shield',          emoji:'🛡️', rota:'/equipes',  perm:'menu_equipes' },
+    { id:'escalas', label:'Escalas',              icon:'event_note',      emoji:'🗓️', rota:'/escalas',  perm:'menu_equipes', cfg:'menu_escalas' },
     { id:'teatro',  label:'Teatro',               icon:'theater_comedy',  emoji:'🎭', perm:'menu_teatro',
       sub:[ { label:'Teatros', rota:'/teatro' }, { label:'Atores', rota:'/teatro/atores' }, { label:'Personagens', rota:'/teatro/personagens' }, { label:'Objetos', rota:'/teatro/objetos' } ] },
     { id:'evento',  label:'Evento',               icon:'event',           emoji:'📍', perm:'menu_evento',
@@ -63,9 +63,9 @@ export default function Nav({ profile, onClose }: { profile: Profile; onClose: (
   // cada menu só aparece se admin OU a permissão liberar; menu_config pode ocultar/renomear/reordenar
   const menu = buildMenu()
     .filter(item => admin || pode(item.perm))
-    .filter(item => ovr[item.perm]?.visivel !== false)
+    .filter(item => ovr[item.cfg ?? item.perm]?.visivel !== false)
     .map(item => {
-      const o = ovr[item.perm]
+      const o = ovr[item.cfg ?? item.perm]
       return o ? { ...item, emoji:o.emoji || item.emoji, label:o.label || item.label, _ordem:o.ordem ?? undefined } : item
     })
     .sort((a:any, b:any) => (a._ordem ?? 999) - (b._ordem ?? 999))
