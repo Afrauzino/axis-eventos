@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase'
 import { invalidarEventoAtivo } from '../hooks/useEvento'
 import { useVoltarFecha } from '../hooks/useVoltarFecha'
 import { toast } from './Toast'
+import Confete from './Confete'
 
 // Relógio digital de contagem regressiva para o 1º dia do evento.
 //  - dias / horas / min / seg + barra de progresso (janela de 30 dias);
@@ -26,6 +27,7 @@ export default function ContagemRegressiva({ evento, admin }: { evento: any; adm
   const [bg, setBg] = useState('')
   const [ativa, setAtiva] = useState(true)
   const [salvando, setSalvando] = useState(false)
+  const [confete, setConfete] = useState(0)
   const bgFileRef = useRef<HTMLInputElement>(null)
   const ctxRef = useRef<AudioContext | null>(null)
   const bufRef = useRef<AudioBuffer | null>(null)
@@ -70,14 +72,20 @@ export default function ContagemRegressiva({ evento, admin }: { evento: any; adm
     return () => window.removeEventListener('pointerdown', desbloquear)
   }, [])
 
-  // Toca a buzina UMA vez quando é o dia
+  // Toca a buzina UMA vez quando é o dia (+ confete)
   useEffect(() => {
     if (estado === 'hoje' && eventoAtiva && !tocouRef.current) {
       tocouRef.current = true
       tocarBuzina()
+      setConfete(c => c + 1)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [estado, eventoAtiva])
+
+  function testar() {
+    tocarBuzina()
+    setConfete(c => c + 1)
+  }
 
   async function tocarBuzina() {
     // Web Audio com ganho alto (mais alto que o volume padrão do arquivo)
@@ -179,6 +187,11 @@ export default function ContagemRegressiva({ evento, admin }: { evento: any; adm
             </button>}
           </div>
 
+          {/* Teste da buzina + confete (sem esperar o dia do evento) */}
+          <button type="button" className="btn btn-ghost btn-full" onClick={testar} style={{ marginBottom: 10, border: '1px dashed var(--border)' }}>
+            <span className="icon icon-sm">volume_up</span> Testar buzina + confete
+          </button>
+
           <button className="btn btn-primary btn-full" onClick={salvar} disabled={salvando} style={{ marginBottom: 8 }}>
             {salvando ? 'Salvando...' : 'Salvar'}
           </button>
@@ -199,6 +212,7 @@ export default function ContagemRegressiva({ evento, admin }: { evento: any; adm
         <span style={{ fontSize: 12, color: 'var(--muted)' }}>⏳ Contagem regressiva desativada</span>
         <button onClick={abrirEdicao} style={{ background: 'var(--primary)', color: 'white', border: 'none', borderRadius: 8, padding: '6px 14px', cursor: 'pointer', fontSize: 12, fontWeight: 700, fontFamily: 'inherit' }}>Reativar</button>
         {editando && modal()}
+        <Confete disparo={confete} />
       </div>
     )
   }
@@ -276,6 +290,7 @@ export default function ContagemRegressiva({ evento, admin }: { evento: any; adm
       </div>
 
       {editando && modal()}
+      <Confete disparo={confete} />
     </div>
   )
 }

@@ -9,6 +9,7 @@ import { carregarConfig, salvarConfig } from '../lib/tema'
 import HomeCarousel from '../components/HomeCarousel'
 import CronometroAoVivo from '../components/CronometroAoVivo'
 import ContagemRegressiva from '../components/ContagemRegressiva'
+import ProximoItem from '../components/ProximoItem'
 import PlaylistHome from '../components/PlaylistHome'
 import BoasVindas, { type BVVariante } from '../components/BoasVindas'
 import { MENUS_CATALOGO } from '../lib/permCatalog'
@@ -17,7 +18,7 @@ import type { Profile } from '../App'
 type Stats = { encontristas:number; encontreiros:number; equipes:number; alertas:number }
 
 // #tela-inicial — blocos reordenáveis (o admin arrasta e salva a ordem)
-const ORDEM_PADRAO = ['evento','ranking','indicadores','carrossel','playlist','boasvindas']
+const ORDEM_PADRAO = ['evento','proximo','ranking','indicadores','carrossel','playlist','boasvindas']
 function normalizarOrdem(arr:any): string[] {
   const base = ORDEM_PADRAO
   const filtrada = Array.isArray(arr) ? arr.filter((id:string)=>base.includes(id)) : []
@@ -84,6 +85,7 @@ export default function Dashboard({ profile }: { profile: Profile }) {
 
   // #tela-inicial — ordem dos blocos + modo "arrastar" (admin)
   const [ordem, setOrdem] = useState<string[]>(ORDEM_PADRAO)
+  const [ocultos, setOcultos] = useState<string[]>([])  // blocos que o admin escondeu
   const [reordenando, setReordenando] = useState(false)
   const [salvandoOrdem, setSalvandoOrdem] = useState(false)
   const [arrastando, setArrastando] = useState<string|null>(null)
@@ -91,6 +93,13 @@ export default function Dashboard({ profile }: { profile: Profile }) {
   const blocosRef = useRef<Record<string, HTMLDivElement|null>>({})
 
   useEffect(() => { carregarConfig('home_ordem').then(v => { if (v) { try { setOrdem(normalizarOrdem(JSON.parse(v))) } catch {} } }) }, [])
+  useEffect(() => { carregarConfig('home_ocultos').then(v => { if (v) { try { setOcultos(JSON.parse(v)) } catch {} } }) }, [])
+  const escondido = (id: string) => ocultos.includes(id)
+  async function toggleOculto(id: string) {
+    const novo = escondido(id) ? ocultos.filter(x => x !== id) : [...ocultos, id]
+    setOcultos(novo)
+    await salvarConfig('home_ocultos', JSON.stringify(novo))
+  }
 
   // Arrastar (mouse + toque): move o bloco conforme o dedo/cursor passa sobre os outros
   useEffect(() => {
@@ -232,6 +241,8 @@ export default function Dashboard({ profile }: { profile: Profile }) {
             ))}
           </div>
         ) : null
+      case 'proximo':
+        return <ProximoItem eventoId={evento.id} admin={admin} />
       case 'carrossel':
         return <HomeCarousel admin={admin} />
       case 'playlist':
@@ -286,19 +297,29 @@ export default function Dashboard({ profile }: { profile: Profile }) {
           )}
 
           {ordem.map(id => {
+            const oculto = escondido(id)
+            // Fora do modo reordenar, bloco oculto some para todos (inclusive admin)
+            if (oculto && !reordenando) return null
             const conteudo = renderSecao(id)
             if (!conteudo) return null
             return (
               <div key={id} ref={el=>{ blocosRef.current[id]=el }}
                 style={reordenando
-                  ? { position:'relative', border:'2px dashed var(--primary)', borderRadius:14, padding:'8px 8px 0', marginBottom:12, background: arrastando===id?'var(--primary-light)':'white', touchAction:'none' }
+                  ? { position:'relative', border:'2px dashed var(--primary)', borderRadius:14, padding:'8px 8px 0', marginBottom:12, background: arrastando===id?'var(--primary-light)':'white', touchAction:'none', opacity: oculto?0.45:1 }
                   : { position:'relative' }}>
                 {reordenando && (
-                  <div onPointerDown={(e)=>{ e.preventDefault(); dragId.current=id; setArrastando(id) }}
-                    style={{position:'absolute',top:-1,right:-1,zIndex:5,background:'var(--primary)',color:'white',borderTopRightRadius:12,borderBottomLeftRadius:12,padding:'5px 10px',cursor:'grab',touchAction:'none',userSelect:'none',display:'flex',alignItems:'center',gap:4,fontSize:12,fontWeight:800}}>
-                    <span className="icon icon-sm">drag_indicator</span> arrastar
-                  </div>
+                  <>
+                    <button onClick={()=>toggleOculto(id)} title={oculto?'Mostrar':'Ocultar'}
+                      style={{position:'absolute',top:-1,left:-1,zIndex:5,background:oculto?'var(--muted)':'var(--success)',color:'white',borderTopLeftRadius:12,borderBottomRightRadius:12,padding:'5px 10px',cursor:'pointer',border:'none',fontFamily:'inherit',userSelect:'none',display:'flex',alignItems:'center',gap:4,fontSize:12,fontWeight:800}}>
+                      <span className="icon icon-sm">{oculto?'visibility_off':'visibility'}</span> {oculto?'Oculto':'Visível'}
+                    </button>
+                    <div onPointerDown={(e)=>{ e.preventDefault(); dragId.current=id; setArrastando(id) }}
+                      style={{position:'absolute',top:-1,right:-1,zIndex:5,background:'var(--primary)',color:'white',borderTopRightRadius:12,borderBottomLeftRadius:12,padding:'5px 10px',cursor:'grab',touchAction:'none',userSelect:'none',display:'flex',alignItems:'center',gap:4,fontSize:12,fontWeight:800}}>
+                      <span className="icon icon-sm">drag_indicator</span> arrastar
+                    </div>
+                  </>
                 )}
+                {reordenando && <div style={{height:26}}/>}
                 {conteudo}
               </div>
             )
