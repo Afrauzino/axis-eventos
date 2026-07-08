@@ -8,6 +8,7 @@ import { toast } from '../components/Toast'
 import { carregarConfig, salvarConfig } from '../lib/tema'
 import HomeCarousel from '../components/HomeCarousel'
 import CronometroAoVivo from '../components/CronometroAoVivo'
+import ContagemRegressiva from '../components/ContagemRegressiva'
 import PlaylistHome from '../components/PlaylistHome'
 import BoasVindas, { type BVVariante } from '../components/BoasVindas'
 import { MENUS_CATALOGO } from '../lib/permCatalog'
@@ -246,6 +247,9 @@ export default function Dashboard({ profile }: { profile: Profile }) {
     <div className="page slide-up">
       {/* Faixa AO VIVO: cronômetro de um bloco em andamento (visível a todos, não clicável) */}
       <CronometroAoVivo eventoId={evento?.id} />
+
+      {/* Relógio digital: contagem regressiva para o 1º dia do evento */}
+      <ContagemRegressiva dataInicio={(evento as any)?.start_date} />
 
       {semLiberacao ? (
         <>

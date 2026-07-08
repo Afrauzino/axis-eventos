@@ -59,8 +59,8 @@ export default function PlaylistHome({ admin }: { admin: boolean }) {
 
   return (
     <div style={{ background: 'white', borderRadius: 14, boxShadow: 'var(--shadow-sm)', overflow: 'hidden', marginBottom: 16 }}>
-      {/* Cabeçalho estilo Spotify */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', background: 'linear-gradient(135deg,#1DB954,#0e7a35)' }}>
+      {/* Cabeçalho na cor do sistema */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', background: 'linear-gradient(135deg,var(--primary),var(--primary-dark))' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
           <span style={{ fontSize: 20 }}>🎵</span>
           <div>
@@ -89,13 +89,19 @@ export default function PlaylistHome({ admin }: { admin: boolean }) {
             loading="lazy"
             style={{ borderRadius: 12, display: 'block', border: 'none' }}
           />
+          {/* No app o player toca só prévia (30s) quando o usuário não está logado no Spotify.
+              Este botão abre a playlist no Spotify pra ouvir completo. */}
+          <a href={url} target="_blank" rel="noreferrer"
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 8, textDecoration: 'none', background: 'var(--primary)', color: 'white', borderRadius: 8, padding: '10px', fontSize: 13, fontWeight: 800, fontFamily: 'inherit' }}>
+            <span className="icon icon-sm">open_in_new</span> Abrir no Spotify (ouvir completo)
+          </a>
         </div>
       ) : admin ? (
         <div style={{ padding: '22px 16px', textAlign: 'center' }}>
           <p style={{ fontSize: 28, marginBottom: 8 }}>🎧</p>
           <p style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 14 }}>Nenhuma playlist adicionada ainda.</p>
           <button onClick={abrirEdicao}
-            style={{ background: '#1DB954', color: 'white', border: 'none', borderRadius: 8, padding: '9px 20px', cursor: 'pointer', fontSize: 13, fontWeight: 800, fontFamily: 'inherit' }}>
+            style={{ background: 'var(--primary)', color: 'white', border: 'none', borderRadius: 8, padding: '9px 20px', cursor: 'pointer', fontSize: 13, fontWeight: 800, fontFamily: 'inherit' }}>
             Adicionar playlist do Spotify
           </button>
         </div>

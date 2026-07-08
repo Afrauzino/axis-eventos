@@ -52,7 +52,6 @@ export default function FichaMedica({ personId, eventId, readOnly=false, startOp
   const [f, setF]               = useState<FichaState>(VAZIO)
   const [meds, setMeds]         = useState<MedRow[]>([])
   const [janela, setJanela] = useState<JanelaMed>(() => janelaDoEvento(null))
-  const [focoData, setFocoData] = useState<string | undefined>(undefined)  // mês do evento p/ centralizar o calendário
 
   function setMed(i:number, patch:Partial<MedRow>) { setMeds(prev=>prev.map((m,idx)=>idx===i?{...m,...patch}:m)) }
   function addMed() { setMeds(prev=>[...prev,{...MED_VAZIO}]) }
@@ -69,7 +68,7 @@ export default function FichaMedica({ personId, eventId, readOnly=false, startOp
       supabase.from('med_controlados').select('*').eq('person_id',personId).eq('event_id',eventId),
       supabase.from('events').select('med_corte_hora,med_inicio,med_fim').eq('id',eventId).maybeSingle(),
     ])
-    if (ev) { setJanela(janelaDoEvento(ev)); setFocoData(ev.med_inicio ? String(ev.med_inicio).slice(0,10) : undefined) }
+    if (ev) setJanela(janelaDoEvento(ev))
     if (data) setF({
       restricao_alimentar:  data.restricao_alimentar ?? !!data.restricoes_alimentares,
       restricoes_alimentares: data.restricoes_alimentares ?? '',
@@ -190,7 +189,7 @@ export default function FichaMedica({ personId, eventId, readOnly=false, startOp
                       </div>
                       <div className="form-group" style={{marginBottom:0}}>
                         <label className="form-label">Última vez que tomou</label>
-                        <DataHora modo="datetime" value={m.ultima_dose} disabled={readOnly} onChange={v=>setMed(i,{ultima_dose:v})} foco={focoData}/>
+                        <DataHora modo="datetime" value={m.ultima_dose} disabled={readOnly} onChange={v=>setMed(i,{ultima_dose:v})}/>
                       </div>
                     </div>
                   ))}
