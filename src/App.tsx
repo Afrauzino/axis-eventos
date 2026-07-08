@@ -15,6 +15,7 @@ import Login from './pages/Login'
 import Pending from './pages/Pending'
 import Dashboard from './pages/Dashboard'
 import CriticoWatcher from './components/CriticoWatcher'
+import AberturaGate from './components/AberturaGate'
 // #perf — telas carregadas SOB DEMANDA (lazy): a inicial abre bem mais rápido, sem perder nada
 const MinhasAtividades = lazy(() => import('./pages/MinhasAtividades'))
 const Cronograma       = lazy(() => import('./pages/Cronograma'))
@@ -267,6 +268,8 @@ export default function App() {
     <BrowserRouter>
      <ChromeProvider>
       <div className="app-root">
+        {/* Portão de abertura do dia do evento (bloqueia tudo até a cerimônia) */}
+        <AberturaGate />
         {/* Header */}
         <header style={{height:56,background:'var(--primary)',display:'flex',alignItems:'center',padding:'0 16px',gap:12,flexShrink:0,zIndex:100,boxShadow:'0 2px 8px rgba(0,169,157,0.2)'}}>
           <button onClick={()=>setMenuOpen(true)} style={{background:'none',border:'none',cursor:'pointer',color:'white',display:'flex',alignItems:'center',justifyContent:'center',width:36,height:36,borderRadius:8,fontFamily:'inherit'}}>

@@ -1,16 +1,19 @@
 import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { invalidarEventoAtivo } from '../hooks/useEvento'
+import { carregarConfig, salvarConfig } from '../lib/tema'
 import { useVoltarFecha } from '../hooks/useVoltarFecha'
 import { toast } from './Toast'
-import Confete from './Confete'
+import AberturaCerimonia from './AberturaCerimonia'
+import { MSG_ABERTURA_PADRAO } from './AberturaGate'
 
 // Relógio digital de contagem regressiva para o 1º dia do evento.
 //  - dias / horas / min / seg + barra de progresso (janela de 30 dias);
-//  - no dia do evento mostra "É HOJE" e toca a buzina uma vez (bem alto);
-//  - admin pode desligar e personalizar (cor/imagem), igual à caixa do evento.
+//  - no dia do evento mostra "É HOJE";
+//  - admin desliga, personaliza (cor/imagem) e escreve a mensagem de abertura;
+//  - o botão "Testar" roda a MESMA cerimônia do dia (mensagem → Iniciar →
+//    contagem → corneta + confete).
 
-const BUZINA = '/buzina-evento.mp3'
 const JANELA_DIAS = 30
 const CORES = ['#00A99D','#1565C0','#6B46C1','#2F855A','#C53030','#D69E2E','#E8821A','#0F766E','#B83280','#1A202C']
 
@@ -26,13 +29,10 @@ export default function ContagemRegressiva({ evento, admin }: { evento: any; adm
   const [cor, setCor] = useState('')
   const [bg, setBg] = useState('')
   const [ativa, setAtiva] = useState(true)
+  const [mensagem, setMensagem] = useState('')
   const [salvando, setSalvando] = useState(false)
-  const [confete, setConfete] = useState(0)
-  const [testeContagem, setTesteContagem] = useState<number | null>(null)
+  const [testando, setTestando] = useState(false)
   const bgFileRef = useRef<HTMLInputElement>(null)
-  const ctxRef = useRef<AudioContext | null>(null)
-  const bufRef = useRef<AudioBuffer | null>(null)
-  const tocouRef = useRef(false)
   useVoltarFecha(editando, () => setEditando(false))
 
   const startStr: string | null = evento?.start_date ? String(evento.start_date).slice(0, 10) : null
@@ -41,7 +41,8 @@ export default function ContagemRegressiva({ evento, admin }: { evento: any; adm
   const estado: 'antes' | 'hoje' | 'passou' =
     !startStr ? 'passou' : hoje < startStr ? 'antes' : hoje === startStr ? 'hoje' : 'passou'
 
-  // Sincroniza rascunho com o evento
+  useEffect(() => { carregarConfig('abertura_mensagem').then(v => setMensagem(v || '')) }, [])
+
   useEffect(() => {
     if (!evento) return
     setCor(evento.contagem_cor || '')
@@ -55,83 +56,6 @@ export default function ContagemRegressiva({ evento, admin }: { evento: any; adm
     const t = setInterval(() => setAgora(Date.now()), 1000)
     return () => clearInterval(t)
   }, [startStr])
-
-  // Desbloqueia o áudio no primeiro toque do usuário (política de autoplay)
-  useEffect(() => {
-    const desbloquear = async () => {
-      try {
-        const AC = (window.AudioContext || (window as any).webkitAudioContext)
-        if (AC && !ctxRef.current) ctxRef.current = new AC()
-        await ctxRef.current?.resume()
-        if (ctxRef.current && !bufRef.current) {
-          const resp = await fetch(BUZINA)
-          bufRef.current = await ctxRef.current.decodeAudioData(await resp.arrayBuffer())
-        }
-      } catch {}
-    }
-    window.addEventListener('pointerdown', desbloquear, { once: true })
-    return () => window.removeEventListener('pointerdown', desbloquear)
-  }, [])
-
-  // Toca a buzina UMA vez quando é o dia (+ confete)
-  useEffect(() => {
-    if (estado === 'hoje' && eventoAtiva && !tocouRef.current) {
-      tocouRef.current = true
-      tocarBuzina()
-      setConfete(c => c + 1)
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [estado, eventoAtiva])
-
-  // Simulação real: fecha a janela e começa a contagem de 5s
-  function testar() {
-    setEditando(false)
-    setTesteContagem(5)
-  }
-  // Contagem 5→0; ao zerar dispara corneta + confete e volta ao normal
-  useEffect(() => {
-    if (testeContagem == null) return
-    if (testeContagem <= 0) {
-      tocarBuzina()
-      setConfete(c => c + 1)
-      const t = setTimeout(() => setTesteContagem(null), 2000)
-      return () => clearTimeout(t)
-    }
-    const t = setTimeout(() => setTesteContagem(v => (v == null ? null : v - 1)), 1000)
-    return () => clearTimeout(t)
-  }, [testeContagem])
-
-  function overlayTeste() {
-    if (testeContagem == null) return null
-    return (
-      <div style={{ position: 'fixed', inset: 0, zIndex: 9997, background: 'rgba(0,0,0,0.85)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'white', textAlign: 'center', padding: 20 }}>
-        <p style={{ fontSize: 13, fontWeight: 700, letterSpacing: '0.12em', opacity: 0.8, marginBottom: 18 }}>SIMULAÇÃO · O ENCONTRO COMEÇA EM</p>
-        {testeContagem > 0
-          ? <div key={testeContagem} style={{ fontSize: 128, fontWeight: 800, lineHeight: 1, animation: 'pulse 1s ease' }}>{testeContagem}</div>
-          : <div style={{ fontSize: 56, fontWeight: 800 }}>É HOJE! 🎉</div>}
-      </div>
-    )
-  }
-
-  async function tocarBuzina() {
-    // Web Audio com ganho alto (mais alto que o volume padrão do arquivo)
-    try {
-      const AC = (window.AudioContext || (window as any).webkitAudioContext)
-      if (AC && !ctxRef.current) ctxRef.current = new AC()
-      const ctx = ctxRef.current!
-      await ctx.resume()
-      if (!bufRef.current) {
-        const resp = await fetch(BUZINA)
-        bufRef.current = await ctx.decodeAudioData(await resp.arrayBuffer())
-      }
-      const src = ctx.createBufferSource(); src.buffer = bufRef.current
-      const gain = ctx.createGain(); gain.gain.value = 3.0
-      src.connect(gain); gain.connect(ctx.destination)
-      src.start()
-      return
-    } catch {}
-    try { const a = new Audio(BUZINA); a.volume = 1; await a.play() } catch {}
-  }
 
   function abrirEdicao() {
     setCor(evento?.contagem_cor || '')
@@ -158,11 +82,17 @@ export default function ContagemRegressiva({ evento, admin }: { evento: any; adm
     const { error } = await supabase.from('events').update({
       contagem_ativa: ativa, contagem_cor: cor || null, contagem_bg_url: bg || null,
     }).eq('id', evento.id)
+    await salvarConfig('abertura_mensagem', mensagem)
     setSalvando(false)
     if (error) { toast.falha('Não foi possível salvar. Rode o SQL 38_contagem_regressiva.sql no Supabase.', error); return }
     invalidarEventoAtivo()
     setEditando(false)
     toast.sucesso('Contagem regressiva atualizada!')
+  }
+
+  function testar() {
+    setEditando(false)
+    setTestando(true)
   }
 
   function modal() {
@@ -180,13 +110,18 @@ export default function ContagemRegressiva({ evento, admin }: { evento: any; adm
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', background: 'var(--bg)', borderRadius: 12, marginBottom: 16 }}>
             <div>
               <p style={{ fontSize: 14, fontWeight: 700 }}>Mostrar na tela inicial</p>
-              <p style={{ fontSize: 12, color: 'var(--muted)' }}>Desligue para parar a contagem para todos.</p>
+              <p style={{ fontSize: 12, color: 'var(--muted)' }}>Desligue para parar a contagem e a abertura do dia.</p>
             </div>
             <button onClick={() => setAtiva(a => !a)} aria-label="Ligar/desligar"
               style={{ width: 50, height: 28, borderRadius: 99, border: 'none', cursor: 'pointer', background: ativa ? 'var(--primary)' : 'var(--border)', position: 'relative', transition: 'background 0.15s', flexShrink: 0 }}>
               <span style={{ position: 'absolute', top: 3, left: ativa ? 25 : 3, width: 22, height: 22, borderRadius: '50%', background: 'white', transition: 'left 0.15s', boxShadow: '0 1px 3px rgba(0,0,0,0.3)' }} />
             </button>
           </div>
+
+          {/* Mensagem de abertura do dia */}
+          <label className="form-label">Mensagem de abertura (aparece no dia do evento)</label>
+          <textarea className="form-textarea" value={mensagem} onChange={e => setMensagem(e.target.value)} rows={3}
+            placeholder={MSG_ABERTURA_PADRAO} style={{ marginBottom: 16 }} />
 
           {/* Prévia */}
           <div style={previa}>
@@ -213,9 +148,9 @@ export default function ContagemRegressiva({ evento, admin }: { evento: any; adm
             </button>}
           </div>
 
-          {/* Teste da buzina + confete (sem esperar o dia do evento) */}
+          {/* Teste = mesma cerimônia do dia */}
           <button type="button" className="btn btn-ghost btn-full" onClick={testar} style={{ marginBottom: 10, border: '1px dashed var(--border)' }}>
-            <span className="icon icon-sm">volume_up</span> Testar buzina + confete
+            <span className="icon icon-sm">play_circle</span> Testar abertura (igual ao dia)
           </button>
 
           <button className="btn btn-primary btn-full" onClick={salvar} disabled={salvando} style={{ marginBottom: 8 }}>
@@ -228,23 +163,24 @@ export default function ContagemRegressiva({ evento, admin }: { evento: any; adm
     )
   }
 
-  if (!startStr) return null
+  const cerimonia = testando ? <AberturaCerimonia mensagem={mensagem || MSG_ABERTURA_PADRAO} onFechar={() => setTestando(false)} /> : null
+
+  if (!startStr) return cerimonia
 
   // Desligada: some para todos; admin vê faixa fina para reativar/personalizar
   if (!eventoAtiva) {
-    if (!admin) return null
+    if (!admin) return cerimonia
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, background: 'var(--bg)', border: '1px dashed var(--border)', borderRadius: 12, padding: '10px 14px', marginBottom: 16 }}>
         <span style={{ fontSize: 12, color: 'var(--muted)' }}>⏳ Contagem regressiva desativada</span>
         <button onClick={abrirEdicao} style={{ background: 'var(--primary)', color: 'white', border: 'none', borderRadius: 8, padding: '6px 14px', cursor: 'pointer', fontSize: 12, fontWeight: 700, fontFamily: 'inherit' }}>Reativar</button>
         {editando && modal()}
-        {overlayTeste()}
-        <Confete disparo={confete} />
+        {cerimonia}
       </div>
     )
   }
 
-  if (estado === 'passou') return null
+  if (estado === 'passou') return cerimonia
 
   // Cálculos
   const [y, mo, da] = startStr.split('-').map(Number)
@@ -317,8 +253,7 @@ export default function ContagemRegressiva({ evento, admin }: { evento: any; adm
       </div>
 
       {editando && modal()}
-      {overlayTeste()}
-      <Confete disparo={confete} />
+      {cerimonia}
     </div>
   )
 }
