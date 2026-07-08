@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useRegistrarChromeNav } from '../lib/chrome'
 import PrintOverlay from '../components/PrintOverlay'
-import { getInitials, fmtHora, isAdmin, isLider, nowLocalInput } from '../utils'
+import { getInitials, fmtHora, isAdmin, isLider, nowLocalInput, toLocalInput } from '../utils'
 import { useEvento } from '../hooks/useEvento'
 import { usePermissao } from '../hooks/usePermissao'
 import PersonSelect from '../components/PersonSelect'
@@ -239,7 +239,7 @@ export default function Escalas({ profile }: { profile?: Profile }) {
   function abrirEdicao(e:Escala) {
     setEditando(e)
     setFormEquipeId(e.team_id ?? '')
-    setForm({ person_id:e.person_id, title:e.title, start_time:new Date(e.start_time).toISOString().slice(0,16), end_time:new Date(e.end_time).toISOString().slice(0,16), location:e.location??'', notes:e.notes??'' })
+    setForm({ person_id:e.person_id, title:e.title, start_time:toLocalInput(e.start_time), end_time:toLocalInput(e.end_time), location:e.location??'', notes:e.notes??'' })
     setTipoAtiv((e as any).tipo === 'checklist' ? 'checklist' : 'texto')
     setItensCheck(checklist.filter(c => c.escala_id === e.id).sort((a,b)=>a.ordem-b.ordem).map(c => ({ id:c.id, texto:c.texto, feito:c.feito })))
     setErro(''); setConflito(null); setModal(true)

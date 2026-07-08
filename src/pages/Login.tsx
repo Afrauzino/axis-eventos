@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase'
 import { carregarConfig } from '../lib/tema'
 import CadastroPessoa, { FORM_VAZIO, MED_VAZIO, type PessoaForm, type MedCtrl } from '../components/CadastroPessoa'
 import InstallPWA from '../components/InstallPWA'
+import { toast } from '../components/Toast'
 
 type Modo = 'login' | 'codigo' | 'cadastro' | 'recuperar'
 
@@ -95,13 +96,21 @@ export default function Login() {
     if (!pessoa) return
 
     // Validações
-    if (!form.photo_url) { setErro('A foto é obrigatória.'); setLoading(false); return }
-    if (!form.name.trim()) { setErro('Nome é obrigatório.'); setLoading(false); return }
-    if (!form.phone.trim()) { setErro('Celular é obrigatório.'); setLoading(false); return }
-    if (!email.trim()) { setErro('Email é obrigatório.'); setLoading(false); return }
-    if (senha.length < 6) { setErro('Senha mínima: 6 caracteres.'); setLoading(false); return }
-    if (senha !== conf) { setErro('As senhas não coincidem.'); setLoading(false); return }
-    if (usaMed && meds.some(m=>!m.nome.trim())) { setErro('Preencha o nome de todos os medicamentos.'); setLoading(false); return }
+    // Validação: mostra um TOAST (visível em qualquer posição da tela) + rola pro topo,
+    // pra pessoa não achar que o botão "não faz nada" quando está rolada lá embaixo.
+    const erroValid =
+      !form.photo_url ? 'A foto é obrigatória.' :
+      !form.name.trim() ? 'Nome é obrigatório.' :
+      !form.phone.trim() ? 'Celular é obrigatório.' :
+      !email.trim() ? 'Email é obrigatório.' :
+      senha.length < 6 ? 'Senha mínima: 6 caracteres.' :
+      senha !== conf ? 'As senhas não coincidem.' :
+      (usaMed && meds.some(m=>!m.nome.trim())) ? 'Preencha o nome de todos os medicamentos.' : ''
+    if (erroValid) {
+      setErro(erroValid); toast.aviso(erroValid); setLoading(false)
+      try { window.scrollTo({ top: 0, behavior: 'smooth' }); document.querySelector('.auth-body,.auth-wrap,main')?.scrollTo({ top: 0, behavior: 'smooth' }) } catch {}
+      return
+    }
 
     // Criar conta Supabase Auth
     const { data: authData, error: authErr } = await supabase.auth.signUp({

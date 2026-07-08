@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import DataHora from './DataHora'
+import { toLocalInput } from '../utils'
 import { gerarDoses, janelaDoEvento, type JanelaMed } from '../lib/doses'
 
 /**
@@ -75,7 +76,7 @@ export default function FichaMedica({ personId, eventId, readOnly=false, startOp
       alergias:             data.alergias ?? '',
       toma_controlado:      data.toma_controlado ?? !!(data as any).medicamento_controlado,
     })
-    setMeds((mc??[]).map((m:any)=>({ id:m.id, nome:m.nome??'', dosagem:m.dosagem??'', intervalo_h:String(m.intervalo_h??8), ultima_dose:m.ultima_dose?new Date(m.ultima_dose).toISOString().slice(0,16):'' })))
+    setMeds((mc??[]).map((m:any)=>({ id:m.id, nome:m.nome??'', dosagem:m.dosagem??'', intervalo_h:String(m.intervalo_h??8), ultima_dose:m.ultima_dose?toLocalInput(m.ultima_dose):'' })))
     setCarregado(true); setLoading(false)
   }
   useEffect(() => { if (startOpen && !carregado) carregar() }, [startOpen])

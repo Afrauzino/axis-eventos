@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
-import { getInitials, fmtHora, fmtData, isAdmin, hasRole } from '../utils'
+import { getInitials, fmtHora, fmtData, isAdmin, hasRole, toLocalInput } from '../utils'
 import { useEvento } from '../hooks/useEvento'
 import { usePermissao } from '../hooks/usePermissao'
 import { toast } from '../components/Toast'
@@ -139,7 +139,7 @@ export default function Ministracoes({ profile }: { profile?: Profile }) {
   function abrirEdicao(m:Ministracao) {
     setEditando(m)
     const teatroVinc = teatros.find(t=>t.ministracao_id===m.id)
-    setForm({ titulo:m.titulo, ministrante_id:m.ministrante_id??'', hora_inicio:new Date(m.hora_inicio).toISOString().slice(0,16), hora_fim:new Date(m.hora_fim).toISOString().slice(0,16), local:m.local??'', conteudo_sermao:m.conteudo_sermao??'', continuacao_sermao:m.continuacao_sermao??'', anotacoes_pessoais:m.anotacoes_pessoais??'', teatro_id:teatroVinc?.id??'', emoji:(m as any).emoji??'', cor:(m as any).cor??'#6B46C1' })
+    setForm({ titulo:m.titulo, ministrante_id:m.ministrante_id??'', hora_inicio:toLocalInput(m.hora_inicio), hora_fim:toLocalInput(m.hora_fim), local:m.local??'', conteudo_sermao:m.conteudo_sermao??'', continuacao_sermao:m.continuacao_sermao??'', anotacoes_pessoais:m.anotacoes_pessoais??'', teatro_id:teatroVinc?.id??'', emoji:(m as any).emoji??'', cor:(m as any).cor??'#6B46C1' })
     setErro(''); setAbaForm('basico')
     // Rebuild blocos from saved JSON or legacy fields
     let bl: {tipo:string;conteudo:string}[] = []

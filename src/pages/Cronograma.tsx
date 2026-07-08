@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
-import { fmtHora, isAdmin, nowLocalInput, getInitials } from '../utils'
+import { fmtHora, isAdmin, nowLocalInput, toLocalInput, getInitials } from '../utils'
 import { useEvento } from '../hooks/useEvento'
 import { usePermissao } from '../hooks/usePermissao'
 import { useRegistrarChrome } from '../lib/chrome'
@@ -237,8 +237,8 @@ export default function Cronograma({ profile }: { profile?: Profile }) {
     setEditando(item)
     setForm({
       titulo: item.titulo, tipo: item.tipo,
-      hora_inicio: new Date(item.hora_inicio).toISOString().slice(0,16),
-      hora_fim: new Date(item.hora_fim).toISOString().slice(0,16),
+      hora_inicio: toLocalInput(item.hora_inicio),
+      hora_fim: toLocalInput(item.hora_fim),
       duracao_minutos: String(item.duracao_minutos ?? Math.max(1, Math.round((new Date(item.hora_fim).getTime()-new Date(item.hora_inicio).getTime())/60000))),
       local: item.local ?? '',
       descricao: item.descricao ?? '',

@@ -329,8 +329,8 @@ export default function Equipes({ profile }: { profile?: Profile }) {
                 return (
                   <button key={p.id} onClick={()=>!jaMembro&&togglePessoa(p.id)}
                     style={{display:'flex',alignItems:'center',gap:12,padding:'10px 12px',borderRadius:10,border:`2px solid ${pessoasSel.includes(p.id)?'var(--primary)':jaMembro?'var(--border)':'var(--border)'}`,background:jaMembro?'var(--bg)':pessoasSel.includes(p.id)?'var(--primary-light)':'white',cursor:jaMembro?'default':'pointer',fontFamily:'inherit',textAlign:'left',opacity:jaMembro?0.5:1,transition:'all 0.12s'}}>
-                    <div style={{width:36,height:36,borderRadius:'50%',background:'var(--primary)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:13,fontWeight:700,color:'white',flexShrink:0}}>
-                      {getInitials(p.name)}
+                    <div style={{width:36,height:36,borderRadius:'50%',background:'var(--primary)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:13,fontWeight:700,color:'white',flexShrink:0,overflow:'hidden'}}>
+                      {p.photo_url ? <img src={p.photo_url} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}}/> : getInitials(p.name)}
                     </div>
                     <div style={{flex:1,minWidth:0}}>
                       <p style={{fontSize:13,fontWeight:equipesDela.length===0&&!jaMembro?700:600,color:equipesDela.length===0&&!jaMembro?'var(--danger)':'var(--text)'}}>{p.name}</p>
