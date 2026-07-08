@@ -23,6 +23,7 @@ type Stats = { encontristas:number; encontreiros:number; equipes:number; alertas
 
 // #tela-inicial — blocos reordenáveis (o admin arrasta e salva a ordem)
 const ORDEM_PADRAO = ['evento','proximo','meta','mural','aniversarios','versiculo','ranking','indicadores','carrossel','playlist','boasvindas']
+const HOME_CORES = ['#00A99D','#1565C0','#6B46C1','#2F855A','#C53030','#D69E2E','#E8821A','#0F766E','#B83280','#1A202C','#2D3748']
 function normalizarOrdem(arr:any): string[] {
   const base = ORDEM_PADRAO
   const filtrada = Array.isArray(arr) ? arr.filter((id:string)=>base.includes(id)) : []
@@ -90,6 +91,12 @@ export default function Dashboard({ profile }: { profile: Profile }) {
   // #tela-inicial — ordem dos blocos + modo "arrastar" (admin)
   const [ordem, setOrdem] = useState<string[]>(ORDEM_PADRAO)
   const [ocultos, setOcultos] = useState<string[]>([])  // blocos que o admin escondeu
+  const [estilos, setEstilos] = useState<Record<string, { cor?: string; bg?: string }>>({})  // cor/imagem por bloco
+  const [estiloEditId, setEstiloEditId] = useState<string | null>(null)
+  const [estiloCor, setEstiloCor] = useState('')
+  const [estiloBg, setEstiloBg] = useState('')
+  const [salvandoEstilo, setSalvandoEstilo] = useState(false)
+  const estiloFileRef = useRef<HTMLInputElement>(null)
   const [reordenando, setReordenando] = useState(false)
   const [salvandoOrdem, setSalvandoOrdem] = useState(false)
   const [arrastando, setArrastando] = useState<string|null>(null)
@@ -103,6 +110,32 @@ export default function Dashboard({ profile }: { profile: Profile }) {
     const novo = escondido(id) ? ocultos.filter(x => x !== id) : [...ocultos, id]
     setOcultos(novo)
     await salvarConfig('home_ocultos', JSON.stringify(novo))
+  }
+
+  // Cor / imagem de fundo por bloco (genérico, vale para todos os blocos)
+  useEffect(() => { carregarConfig('home_estilos').then(v => { if (v) { try { setEstilos(JSON.parse(v)) } catch {} } }) }, [])
+  function abrirEstilo(id: string) { const e = estilos[id] || {}; setEstiloCor(e.cor || ''); setEstiloBg(e.bg || ''); setEstiloEditId(id) }
+  async function enviarEstiloBg(file: File) {
+    if (!estiloEditId) return
+    setSalvandoEstilo(true)
+    const ext = (file.name.split('.').pop() || 'jpg').toLowerCase()
+    const path = `home-bloco/${estiloEditId}.${ext}`
+    const { error } = await supabase.storage.from('pessoas').upload(path, file, { upsert: true })
+    if (error) { setSalvandoEstilo(false); toast.falha('Não foi possível enviar a imagem.', error); return }
+    const { data } = supabase.storage.from('pessoas').getPublicUrl(path)
+    setEstiloBg(`${data.publicUrl}?t=${Date.now()}`)
+    setSalvandoEstilo(false)
+  }
+  async function salvarEstilo() {
+    if (!estiloEditId) return
+    const novo = { ...estilos }
+    if (estiloCor || estiloBg) novo[estiloEditId] = { cor: estiloCor || undefined, bg: estiloBg || undefined }
+    else delete novo[estiloEditId]
+    setSalvandoEstilo(true)
+    setEstilos(novo)
+    await salvarConfig('home_estilos', JSON.stringify(novo))
+    setSalvandoEstilo(false)
+    setEstiloEditId(null)
   }
 
   // Arrastar (mouse + toque): move o bloco conforme o dedo/cursor passa sobre os outros
@@ -314,17 +347,31 @@ export default function Dashboard({ profile }: { profile: Profile }) {
             if (oculto && !reordenando) return null
             const conteudo = renderSecao(id)
             if (!conteudo) return null
+            const est = estilos[id]
+            const temEstilo = !!(est && (est.cor || est.bg))
+            // Fundo (cor/imagem) aplicado como moldura do bloco, só fora do modo reordenar
+            const backdrop: React.CSSProperties = !reordenando && temEstilo
+              ? (est!.bg
+                  ? { backgroundImage:`linear-gradient(rgba(0,0,0,0.28),rgba(0,0,0,0.40)), url(${est!.bg})`, backgroundSize:'cover', backgroundPosition:'center', padding:'12px 12px 0', borderRadius:16, marginBottom:16 }
+                  : { background: est!.cor, padding:'12px 12px 0', borderRadius:16, marginBottom:16 })
+              : {}
             return (
               <div key={id} ref={el=>{ blocosRef.current[id]=el }}
                 style={reordenando
                   ? { position:'relative', border:'2px dashed var(--primary)', borderRadius:14, padding:'8px 8px 0', marginBottom:12, background: arrastando===id?'var(--primary-light)':'white', touchAction:'none', opacity: oculto?0.45:1 }
-                  : { position:'relative' }}>
+                  : { position:'relative', ...backdrop }}>
                 {reordenando && (
                   <>
-                    <button onClick={()=>toggleOculto(id)} title={oculto?'Mostrar':'Ocultar'}
-                      style={{position:'absolute',top:-1,left:-1,zIndex:5,background:oculto?'var(--muted)':'var(--success)',color:'white',borderTopLeftRadius:12,borderBottomRightRadius:12,padding:'5px 10px',cursor:'pointer',border:'none',fontFamily:'inherit',userSelect:'none',display:'flex',alignItems:'center',gap:4,fontSize:12,fontWeight:800}}>
-                      <span className="icon icon-sm">{oculto?'visibility_off':'visibility'}</span> {oculto?'Oculto':'Visível'}
-                    </button>
+                    <div style={{position:'absolute',top:-1,left:-1,zIndex:5,display:'flex',gap:4}}>
+                      <button onClick={()=>toggleOculto(id)} title={oculto?'Mostrar':'Ocultar'}
+                        style={{background:oculto?'var(--muted)':'var(--success)',color:'white',borderTopLeftRadius:12,borderBottomRightRadius:12,padding:'5px 10px',cursor:'pointer',border:'none',fontFamily:'inherit',userSelect:'none',display:'flex',alignItems:'center',gap:4,fontSize:12,fontWeight:800}}>
+                        <span className="icon icon-sm">{oculto?'visibility_off':'visibility'}</span> {oculto?'Oculto':'Visível'}
+                      </button>
+                      <button onClick={()=>abrirEstilo(id)} title="Cor / imagem de fundo"
+                        style={{background:temEstilo?'var(--primary-dark)':'var(--primary)',color:'white',borderRadius:8,padding:'5px 9px',cursor:'pointer',border:'none',fontFamily:'inherit',display:'flex',alignItems:'center',fontSize:12,fontWeight:800}}>
+                        <span className="icon icon-sm">palette</span>
+                      </button>
+                    </div>
                     <div onPointerDown={(e)=>{ e.preventDefault(); dragId.current=id; setArrastando(id) }}
                       style={{position:'absolute',top:-1,right:-1,zIndex:5,background:'var(--primary)',color:'white',borderTopRightRadius:12,borderBottomLeftRadius:12,padding:'5px 10px',cursor:'grab',touchAction:'none',userSelect:'none',display:'flex',alignItems:'center',gap:4,fontSize:12,fontWeight:800}}>
                       <span className="icon icon-sm">drag_indicator</span> arrastar
@@ -381,6 +428,52 @@ export default function Dashboard({ profile }: { profile: Profile }) {
         </div>
       )}
       <input ref={bgFileRef} type="file" accept="image/*" style={{display:'none'}} onChange={e=>{const f=e.target.files?.[0]; if(f) enviarBgEvento(f); e.target.value=''}}/>
+
+      {/* Cor / imagem de fundo de um bloco qualquer da tela inicial */}
+      {estiloEditId && (
+        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.5)',zIndex:400,display:'flex',flexDirection:'column',justifyContent:'flex-end'}} onClick={e=>e.target===e.currentTarget&&setEstiloEditId(null)}>
+          <div style={{background:'white',borderRadius:'20px 20px 0 0',padding:'8px 20px 28px',maxWidth:480,width:'100%',margin:'0 auto',maxHeight:'88vh',overflowY:'auto'}}>
+            <div style={{width:36,height:4,background:'var(--border)',borderRadius:2,margin:'12px auto 16px'}}/>
+            <p style={{fontSize:16,fontWeight:800,marginBottom:14}}>Cor e imagem de fundo do bloco</p>
+
+            {/* Prévia */}
+            <div style={estiloBg
+              ? { backgroundImage:`linear-gradient(rgba(0,0,0,0.28),rgba(0,0,0,0.40)), url(${estiloBg})`, backgroundSize:'cover', backgroundPosition:'center', borderRadius:14, padding:'18px 16px', marginBottom:16 }
+              : { background: estiloCor || 'var(--bg)', borderRadius:14, padding:'18px 16px', marginBottom:16, border:'1px solid var(--border)' }}>
+              <p style={{fontSize:13,fontWeight:800,color: (estiloBg||estiloCor)?'white':'var(--muted)'}}>Prévia do fundo</p>
+            </div>
+
+            <label className="form-label">Cor de fundo</label>
+            <div style={{display:'flex',gap:8,flexWrap:'wrap',marginBottom:16}}>
+              {HOME_CORES.map(c=>(
+                <button key={c} type="button" onClick={()=>setEstiloCor(c)} aria-label={c}
+                  style={{width:34,height:34,borderRadius:8,background:c,border:estiloCor===c?'3px solid var(--text)':'2px solid white',boxShadow:'0 0 0 1px var(--border)',cursor:'pointer'}}/>
+              ))}
+              <button type="button" onClick={()=>setEstiloCor('')} title="Sem cor"
+                style={{width:34,height:34,borderRadius:8,background:'white',border:!estiloCor?'3px solid var(--text)':'2px solid white',boxShadow:'0 0 0 1px var(--border)',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}>
+                <span className="icon icon-sm" style={{color:'var(--muted)'}}>block</span>
+              </button>
+            </div>
+
+            <label className="form-label">Imagem de fundo</label>
+            <p className="form-hint mb-2">A imagem cobre a cor e fica escurecida para dar contraste.</p>
+            <div style={{display:'flex',gap:8,marginBottom:18,flexWrap:'wrap'}}>
+              <button type="button" className="btn btn-ghost btn-sm" onClick={()=>estiloFileRef.current?.click()} disabled={salvandoEstilo}>
+                <span className="icon icon-sm">image</span> {salvandoEstilo?'Enviando...':'Enviar imagem'}
+              </button>
+              {estiloBg && <button type="button" className="btn btn-ghost btn-sm" style={{color:'var(--danger)'}} onClick={()=>setEstiloBg('')}>
+                <span className="icon icon-sm">delete</span> Remover imagem
+              </button>}
+            </div>
+
+            <button className="btn btn-primary btn-full" onClick={salvarEstilo} disabled={salvandoEstilo} style={{marginBottom:8}}>
+              {salvandoEstilo?'Salvando...':'Salvar'}
+            </button>
+            <button className="btn btn-ghost btn-full" onClick={()=>setEstiloEditId(null)}>Cancelar</button>
+          </div>
+        </div>
+      )}
+      <input ref={estiloFileRef} type="file" accept="image/*" style={{display:'none'}} onChange={e=>{const f=e.target.files?.[0]; if(f) enviarEstiloBg(f); e.target.value=''}}/>
 
     </div>
   )
