@@ -18,6 +18,7 @@ type Props = {
   titulo?: string
   min?: string   // 'YYYY-MM-DD' — trava dias ANTES (ex.: início do evento)
   max?: string   // 'YYYY-MM-DD' — trava dias DEPOIS (ex.: fim do evento)
+  foco?: string  // 'YYYY-MM-DD' — mês inicial do calendário quando vazio (só centraliza, NÃO trava)
 }
 
 const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
@@ -59,13 +60,14 @@ function rotulo(value: string, modo: ModoDataHora): string {
   return `${dataFmt} ${pad(p.h)}:${pad(isNaN(p.min) ? 0 : p.min)}`
 }
 
-export default function DataHora({ value, onChange, modo = 'date', disabled, placeholder, titulo, min, max }: Props) {
+export default function DataHora({ value, onChange, modo = 'date', disabled, placeholder, titulo, min, max, foco }: Props) {
   const [aberto, setAberto] = useState(false)
   useVoltarFecha(aberto, () => setAberto(false))  // voltar do celular fecha o calendário
   const [work, setWork] = useState<Partes>(() => parse(value, modo))
-  // sem valor, o calendário centraliza no INÍCIO do evento (min) em vez de "hoje"
+  // sem valor, o calendário centraliza na data do evento (min ou foco) em vez de "hoje"
   const baseView = () => {
-    if (min) return { y: +min.slice(0,4), m: +min.slice(5,7) - 1 }
+    const base = min || foco
+    if (base) return { y: +base.slice(0,4), m: +base.slice(5,7) - 1 }
     const hoje = new Date(); return { y: hoje.getFullYear(), m: hoje.getMonth() }
   }
   const dataCel = (y:number,m:number,d:number) => `${y}-${pad(m+1)}-${pad(d)}`

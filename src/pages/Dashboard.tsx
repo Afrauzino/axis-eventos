@@ -7,6 +7,7 @@ import { usePermissao } from '../hooks/usePermissao'
 import { toast } from '../components/Toast'
 import { carregarConfig, salvarConfig } from '../lib/tema'
 import HomeCarousel from '../components/HomeCarousel'
+import CronometroAoVivo from '../components/CronometroAoVivo'
 import BoasVindas, { type BVVariante } from '../components/BoasVindas'
 import { MENUS_CATALOGO } from '../lib/permCatalog'
 import type { Profile } from '../App'
@@ -240,6 +241,9 @@ export default function Dashboard({ profile }: { profile: Profile }) {
 
   return (
     <div className="page slide-up">
+      {/* Faixa AO VIVO: cronômetro de um bloco em andamento (visível a todos, não clicável) */}
+      <CronometroAoVivo eventoId={evento?.id} />
+
       {semLiberacao ? (
         <>
           <HomeCarousel admin={admin} />

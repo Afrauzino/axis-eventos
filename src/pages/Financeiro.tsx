@@ -187,7 +187,7 @@ export default function Financeiro({ profile }: { profile?: Profile }) {
                   <input className="form-input" type="number" step="0.01" min="0" value={form.valor} onChange={e=>setForm(f=>({...f,valor:e.target.value}))} required/>
                 </div>
                 <div className="form-group"><label className="form-label">Data</label>
-                  <DataHora modo="date" value={form.data_pagamento} onChange={v=>setForm(f=>({...f,data_pagamento:v}))}/>
+                  <DataHora modo="date" value={form.data_pagamento} onChange={v=>setForm(f=>({...f,data_pagamento:v}))} foco={(evento as any)?.start_date}/>
                 </div>
               </div>
               <div className="form-group"><label className="form-label">Forma de pagamento</label>
