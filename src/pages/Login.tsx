@@ -5,7 +5,7 @@ import CadastroPessoa, { FORM_VAZIO, MED_VAZIO, type PessoaForm, type MedCtrl } 
 import InstallPWA from '../components/InstallPWA'
 import { toast } from '../components/Toast'
 
-type Modo = 'login' | 'codigo' | 'cadastro' | 'recuperar'
+type Modo = 'login' | 'codigo' | 'cadastro' | 'recuperar' | 'inscrever'
 
 export default function Login() {
   const [modo, setModo]   = useState<Modo>('login')
@@ -18,14 +18,23 @@ export default function Login() {
   const [ok, setOk]       = useState('')
   const [loading, setLoading] = useState(false)
   const [logoUrl, setLogoUrl] = useState<string|null>(null)
+  const [eventoAtivo, setEventoAtivo] = useState<{id:string;name:string}|null>(null)
+  const [evLoad, setEvLoad] = useState(true)
   useEffect(() => { carregarConfig('logo_url').then(setLogoUrl) }, [])
 
-  // Link do "Primeiro acesso": ?codigo=XXX abre direto nessa aba com o código preenchido
+  // Evento ativo (para o link aberto de inscrição)
+  useEffect(() => {
+    supabase.from('events').select('id,name').eq('status','active').order('created_at',{ascending:false}).limit(1).maybeSingle()
+      .then(({ data }) => { setEventoAtivo(data ? { id:data.id, name:data.name } : null); setEvLoad(false) })
+  }, [])
+
+  // Links: ?codigo=XXX abre "Primeiro acesso"; ?inscrever=1 abre a inscrição aberta
   useEffect(() => {
     const p = new URLSearchParams(window.location.search)
     const c = p.get('codigo')
     if (c) { setCodigo(c.toUpperCase()); setModo('codigo') }
     else if (p.get('acesso') === '1') { setModo('codigo') }
+    else if (p.get('inscrever') === '1') { setModo('inscrever') }
   }, [])
 
   // Formulário unificado
@@ -88,6 +97,101 @@ export default function Login() {
     }))
     setModo('cadastro')
     setLoading(false)
+  }
+
+  // Gera a agenda de doses dos medicamentos contínuos (reutilizado por código e inscrição)
+  async function gerarAgendaMeds(personId: string, eventId: string) {
+    if (!(usaMed && meds.length > 0)) return
+    try {
+      const { data: ev } = await supabase.from('events').select('start_date,end_date').eq('id', eventId).single()
+      for (const med of meds.filter(m => m.nome.trim())) {
+        const { data: newMed, error: medErr } = await supabase.from('med_controlados').insert({
+          person_id: personId, event_id: eventId, nome: med.nome, tipo: med.tipo,
+          dosagem: med.dosagem || null, horario_ini: med.horario_ini,
+          intervalo_h: med.intervalo_h, vezes_dia: Math.round(24 / med.intervalo_h),
+        }).select('id').single()
+        const intervalo = Number(med.intervalo_h) > 0 ? Number(med.intervalo_h) : 8
+        if (!medErr && newMed && ev?.start_date && ev?.end_date) {
+          const [h, m] = med.horario_ini.split(':').map(Number)
+          const start = new Date(ev.start_date + 'T00:00:00')
+          const end = new Date(ev.end_date + 'T23:59:59')
+          const items: any[] = []
+          if (!isNaN(start.getTime()) && !isNaN(end.getTime()) && end > start) {
+            const cursor = new Date(start); cursor.setHours(h || 8, m || 0, 0, 0); let guard = 0
+            while (cursor <= end && guard < 500) {
+              items.push({ med_ctrl_id: newMed.id, person_id: personId, event_id: eventId, nome: med.nome, dosagem: med.dosagem || null, horario: cursor.toISOString(), entregue: false })
+              cursor.setTime(cursor.getTime() + intervalo * 3600000); guard++
+            }
+          }
+          if (items.length) await supabase.from('med_agenda').insert(items)
+        }
+      }
+    } catch (e) { console.warn('Aviso medicamentos:', e) }
+  }
+
+  // INSCRIÇÃO ABERTA (link público) — cria o próprio cadastro, pendente de aprovação
+  async function inscreverConta(e: React.FormEvent) {
+    e.preventDefault(); setErro(''); setLoading(true)
+    if (!eventoAtivo) { setErro('As inscrições estão fechadas no momento.'); setLoading(false); return }
+    const erroValid =
+      !form.photo_url ? 'A foto é obrigatória.' :
+      !form.name.trim() ? 'Nome é obrigatório.' :
+      !form.phone.trim() ? 'Celular é obrigatório.' :
+      !email.trim() ? 'Email é obrigatório.' :
+      senha.length < 6 ? 'Senha mínima: 6 caracteres.' :
+      senha !== conf ? 'As senhas não coincidem.' :
+      (usaMed && meds.some(m => !m.nome.trim())) ? 'Preencha o nome de todos os medicamentos.' : ''
+    if (erroValid) {
+      setErro(erroValid); toast.aviso(erroValid); setLoading(false)
+      try { window.scrollTo({ top: 0, behavior: 'smooth' }); document.querySelector('.auth-body,.auth-wrap,main')?.scrollTo({ top: 0, behavior: 'smooth' }) } catch {}
+      return
+    }
+
+    const { data: authData, error: authErr } = await supabase.auth.signUp({
+      email: email.trim().toLowerCase(), password: senha, options: { data: { full_name: form.name } },
+    })
+    if (authErr) {
+      const msg = authErr.message || ''
+      setErro(msg.includes('already') ? 'Este email já foi cadastrado. Faça login.' : 'Erro ao criar conta: ' + msg)
+      setLoading(false); return
+    }
+    const uid = authData?.user?.id
+    if (!uid) { setErro('Verifique seu email para confirmar o cadastro, depois faça login.'); setLoading(false); return }
+
+    const tel = form.phone.trim()
+    // Cria o próprio registro de pessoa (fica pendente de aprovação do admin)
+    const { data: nova, error: pErr } = await supabase.from('people').insert({
+      event_id: eventoAtivo.id, user_id: uid, name: form.name, phone: tel,
+      contact_phone: form.contact_phone || null, church: form.church || null,
+      ano_encontro: form.ano_encontro ? Number(form.ano_encontro) : null, sexo: form.sexo || null,
+      birth_date: form.birth_date || null, cpf: form.cpf || null, rg: form.rg || null,
+      cidade: form.cidade || null, estado: form.estado || null, endereco: form.endereco || null,
+      bairro: form.bairro || null, cep: form.cep || null, notes: form.notes || null,
+      photo_url: form.photo_url || null, role_type: form.role_type, team_pref: form.team_pref || null,
+    }).select('id').single()
+    if (pErr) { setErro('Erro ao salvar inscrição: ' + pErr.message + ' (o admin precisa rodar sql/41_inscricao_aberta.sql)'); setLoading(false); return }
+    const personId = nova.id
+
+    const r2 = await supabase.from('profiles').upsert({
+      user_id: uid, name: form.name, phone: tel, user_role: 'visitante', role_status: 'pending',
+    }, { onConflict: 'user_id' })
+    if (r2.error) { setErro('Erro ao criar perfil: ' + r2.error.message); setLoading(false); return }
+
+    const r3 = await supabase.from('saude_fichas').upsert({
+      person_id: personId, event_id: eventoAtivo.id,
+      diabetes: form.diabetes, hipertensao: form.hipertensao, cardiopatia: form.cardiopatia,
+      epilepsia: form.epilepsia, ansiedade: form.ansiedade, tipo_sanguineo: form.tipo_sanguineo || null,
+      alergias: form.alergias || null, restricoes_alimentares: form.restricoes_alimentares || null,
+      observacoes: form.observacoes_saude || null,
+      contato_emergencia_nome: form.responsavel_nome || '', contato_emergencia_telefone: form.contact_phone || form.responsavel_tel || '',
+    }, { onConflict: 'person_id,event_id' })
+    if (r3.error) console.warn('Aviso ficha médica:', r3.error.message)
+
+    if (form.role_type === 'encounterer') await gerarAgendaMeds(personId, eventoAtivo.id)
+
+    setLoading(false)
+    setOk('Inscrição enviada! Aguardando aprovação do administrador.')
+    try { await supabase.auth.signInWithPassword({ email: email.trim().toLowerCase(), password: senha }) } catch {}
   }
 
   // CRIAR CONTA COMPLETA
@@ -193,50 +297,7 @@ export default function Login() {
     if (r3.error) console.warn('Aviso ficha médica:', r3.error.message)
 
     // ETAPA 4 — Medicamentos (só encontristas geram agenda de entrega)
-    const ehEncontrista = form.role_type === 'encounterer'
-    if (usaMed && meds.length > 0 && ehEncontrista) {
-      try {
-        const { data: ev } = await supabase.from('events')
-          .select('start_date,end_date').eq('id', pessoa.event_id).single()
-
-        for (const med of meds.filter(m=>m.nome.trim())) {
-          const { data: newMed, error: medErr } = await supabase.from('med_controlados').insert({
-            person_id: pessoa.id, event_id: pessoa.event_id,
-            nome: med.nome, tipo: med.tipo,
-            dosagem: med.dosagem || null,
-            horario_ini: med.horario_ini,
-            intervalo_h: med.intervalo_h,
-            vezes_dia: Math.round(24 / med.intervalo_h),
-          }).select('id').single()
-
-          const intervalo = Number(med.intervalo_h) > 0 ? Number(med.intervalo_h) : 8
-          if (!medErr && newMed && ev?.start_date && ev?.end_date) {
-            const [h, m] = med.horario_ini.split(':').map(Number)
-            const start = new Date(ev.start_date + 'T00:00:00')
-            const end   = new Date(ev.end_date + 'T23:59:59')
-            const items: any[] = []
-            if (!isNaN(start.getTime()) && !isNaN(end.getTime()) && end > start) {
-              const cursor = new Date(start)
-              cursor.setHours(h || 8, m || 0, 0, 0)
-              let guard = 0
-              while (cursor <= end && guard < 500) {
-                items.push({
-                  med_ctrl_id: newMed.id, person_id: pessoa.id,
-                  event_id: pessoa.event_id, nome: med.nome,
-                  dosagem: med.dosagem || null,
-                  horario: cursor.toISOString(), entregue: false,
-                })
-                cursor.setTime(cursor.getTime() + intervalo * 3600000)
-                guard++
-              }
-            }
-            if (items.length) await supabase.from('med_agenda').insert(items)
-          }
-        }
-      } catch (medError) {
-        console.warn('Aviso medicamentos:', medError)
-      }
-    }
+    if (form.role_type === 'encounterer') await gerarAgendaMeds(pessoa.id, pessoa.event_id)
 
     // Sucesso garantido — mostrar mensagem ANTES de qualquer login
     setLoading(false)
@@ -274,11 +335,12 @@ export default function Login() {
           {modo==='login'    ? 'Acesso ao sistema'
           :modo==='codigo'   ? 'Primeiro acesso'
           :modo==='cadastro' ? `Olá, ${pessoa?.name.split(' ')[0]}!`
+          :modo==='inscrever'? 'Inscrição'
           :                    'Recuperar senha'}
         </h1>
         <p className="auth-sub-text">
-          {modo==='cadastro'
-            ? 'Preencha todos os dados para concluir seu cadastro'
+          {(modo==='cadastro'||modo==='inscrever')
+            ? 'Preencha seus dados para concluir'
             : 'Sistema de gestão de eventos religiosos'}
         </p>
       </div>
@@ -312,6 +374,13 @@ export default function Login() {
               <button type="button" onClick={()=>reset('recuperar')}
                 style={{background:'none',border:'none',color:'var(--primary)',fontSize:13,cursor:'pointer',fontFamily:'inherit',fontWeight:500}}>
                 Esqueci minha senha
+              </button>
+            </div>
+            <div style={{textAlign:'center',marginTop:16,paddingTop:16,borderTop:'1px solid var(--border)'}}>
+              <p style={{fontSize:13,color:'var(--muted)',marginBottom:8}}>Ainda não tem cadastro?</p>
+              <button type="button" onClick={()=>reset('inscrever')}
+                style={{background:'none',border:'1.5px solid var(--primary)',color:'var(--primary)',borderRadius:10,padding:'10px 20px',fontSize:14,cursor:'pointer',fontFamily:'inherit',fontWeight:700}}>
+                Fazer minha inscrição
               </button>
             </div>
             <InstallPWA variant="inline" />
@@ -379,6 +448,60 @@ export default function Login() {
               </button>
             </div>
           </form>
+        )}
+
+        {/* INSCRIÇÃO ABERTA (link público) */}
+        {modo==='inscrever' && (
+          evLoad ? (
+            <p style={{textAlign:'center',color:'var(--muted)',fontSize:13,padding:'20px 0'}}>Carregando...</p>
+          ) : !eventoAtivo ? (
+            <>
+              <div className="alert-box alert-info mb-3">As inscrições estão fechadas no momento.</div>
+              <button type="button" className="btn btn-ghost btn-full" onClick={()=>reset('login')}>← Voltar</button>
+            </>
+          ) : (
+            <form onSubmit={inscreverConta}>
+              <div className="alert-box alert-info mb-3" style={{fontSize:13}}>
+                Inscrição para <b>{eventoAtivo.name}</b>. Depois de enviar, o administrador aprova o seu acesso.
+              </div>
+              <p className="section-label mb-2">🔑 Dados de acesso</p>
+              <div className="form-group">
+                <label className="form-label">Email <span className="req">*</span></label>
+                <input className="form-input" type="email" placeholder="seu@email.com" value={email} onChange={e=>setEmail(e.target.value)} required/>
+              </div>
+              <div className="form-grid-2">
+                <div className="form-group">
+                  <label className="form-label">Senha <span className="req">*</span></label>
+                  <input className="form-input" type="password" placeholder="Mín. 6 caracteres" value={senha} onChange={e=>setSenha(e.target.value)} required minLength={6}/>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Confirmar senha <span className="req">*</span></label>
+                  <input className="form-input" type="password" placeholder="Repita" value={conf} onChange={e=>setConf(e.target.value)} required/>
+                </div>
+              </div>
+
+              <CadastroPessoa
+                form={form}
+                onChange={setForm}
+                eventoId={eventoAtivo.id}
+                showRole={true}
+                showStatus={false}
+                showTeam={true}
+                showReferencia={form.role_type==='encounterer'}
+                fotoObrigatoria={true}
+              />
+
+              <button type="submit" className="btn btn-primary btn-full btn-lg" disabled={loading} style={{marginTop:16}}>
+                {loading?'Enviando inscrição...':'Enviar inscrição'}
+              </button>
+              <div style={{textAlign:'center',marginTop:12}}>
+                <button type="button" onClick={()=>reset('login')}
+                  style={{background:'none',border:'none',color:'var(--muted)',fontSize:13,cursor:'pointer',fontFamily:'inherit'}}>
+                  ← Voltar
+                </button>
+              </div>
+            </form>
+          )
         )}
 
         {/* RECUPERAR SENHA */}

@@ -899,14 +899,19 @@ export default function Admin({ profile }: { profile?: Profile }) {
             <div className="stat-card"><div className="stat-label">Com conta</div><div className="stat-value" style={{color:'var(--success)'}}>{pessoas.filter(p=>p.user_id).length}</div></div>
           </div>
 
-          <div style={{display:'flex',gap:8,marginBottom:12}}>
+          <div style={{display:'flex',gap:8,marginBottom:12,flexWrap:'wrap'}}>
             <button onClick={gerarCodigos} disabled={gerandoCodigos}
               style={{background:'var(--primary-light)',color:'var(--primary)',border:'none',borderRadius:8,padding:'7px 14px',cursor:'pointer',fontSize:12,fontWeight:700,fontFamily:'inherit',display:'flex',alignItems:'center',gap:4}}>
               <span className="icon icon-sm">key</span> {gerandoCodigos?'Gerando...':'Gerar códigos'}
             </button>
+            <button onClick={()=>{ const link = window.location.origin + '/?inscrever=1'; try { navigator.clipboard.writeText(link); toast.sucesso('Link de inscrição copiado!') } catch { toast.aviso(link) } }}
+              style={{background:'var(--primary)',color:'white',border:'none',borderRadius:8,padding:'7px 14px',cursor:'pointer',fontSize:12,fontWeight:700,fontFamily:'inherit',display:'flex',alignItems:'center',gap:4}}>
+              <span className="icon icon-sm">link</span> Copiar link de inscrição
+            </button>
           </div>
           <p style={{fontSize:11,color:'var(--muted)',marginBottom:14,lineHeight:1.6}}>
-            Sem conta: compartilhe o código → pessoa abre o app → <strong>Primeiro acesso</strong> → cria email e senha → entra automaticamente.
+            <strong>Link de inscrição</strong>: qualquer pessoa se cadastra sozinha e cai aqui para você aprovar.<br/>
+            <strong>Código</strong> (pré-cadastro): compartilhe o código → pessoa abre o app → <strong>Primeiro acesso</strong> → cria email e senha.
           </p>
 
           {/* Lista única — mesmo padrão visual do Cadastros */}
