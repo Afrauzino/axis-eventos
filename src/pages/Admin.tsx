@@ -183,6 +183,16 @@ export default function Admin({ profile }: { profile?: Profile }) {
   useEffect(() => { carregar() }, [])
   useEffect(() => { carregarConfig('msg_codigo').then(v => { const m = v ?? MSG_CODIGO_PADRAO; setMsgCodigo(m); setMsgSalva(m) }) }, [])
 
+  // Inscrições abertas/fechadas (link público)
+  const [inscricoesAbertas, setInscricoesAbertas] = useState(true)
+  useEffect(() => { carregarConfig('inscricoes_abertas').then(v => setInscricoesAbertas(v !== 'false')) }, [])
+  async function alternarInscricoes() {
+    const novo = !inscricoesAbertas
+    setInscricoesAbertas(novo)
+    await salvarConfig('inscricoes_abertas', novo ? 'true' : 'false')
+    toast.sucesso(novo ? 'Inscrições ABERTAS' : 'Inscrições FECHADAS')
+  }
+
   async function salvarMsgCodigo() {
     setSalvandoMsg(true)
     await salvarConfig('msg_codigo', msgCodigo)
@@ -907,6 +917,18 @@ export default function Admin({ profile }: { profile?: Profile }) {
             <button onClick={()=>{ const link = window.location.origin + '/?inscrever=1'; try { navigator.clipboard.writeText(link); toast.sucesso('Link de inscrição copiado!') } catch { toast.aviso(link) } }}
               style={{background:'var(--primary)',color:'white',border:'none',borderRadius:8,padding:'7px 14px',cursor:'pointer',fontSize:12,fontWeight:700,fontFamily:'inherit',display:'flex',alignItems:'center',gap:4}}>
               <span className="icon icon-sm">link</span> Copiar link de inscrição
+            </button>
+          </div>
+
+          {/* Liga/desliga das inscrições pelo link público */}
+          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:8,background:inscricoesAbertas?'var(--success-bg)':'var(--bg)',border:'1px solid var(--border)',borderRadius:10,padding:'10px 14px',marginBottom:12}}>
+            <div>
+              <p style={{fontSize:13,fontWeight:700}}>{inscricoesAbertas ? '🟢 Inscrições abertas' : '🔴 Inscrições fechadas'}</p>
+              <p style={{fontSize:11,color:'var(--muted)'}}>Controla o link público de inscrição.</p>
+            </div>
+            <button onClick={alternarInscricoes} aria-label="Abrir/fechar inscrições"
+              style={{width:50,height:28,borderRadius:99,border:'none',cursor:'pointer',background:inscricoesAbertas?'var(--success)':'var(--border)',position:'relative',flexShrink:0,transition:'background 0.15s'}}>
+              <span style={{position:'absolute',top:3,left:inscricoesAbertas?25:3,width:22,height:22,borderRadius:'50%',background:'white',transition:'left 0.15s',boxShadow:'0 1px 3px rgba(0,0,0,0.3)'}}/>
             </button>
           </div>
           <p style={{fontSize:11,color:'var(--muted)',marginBottom:14,lineHeight:1.6}}>

@@ -19,8 +19,10 @@ export default function Login() {
   const [loading, setLoading] = useState(false)
   const [logoUrl, setLogoUrl] = useState<string|null>(null)
   const [eventoAtivo, setEventoAtivo] = useState<{id:string;name:string}|null>(null)
+  const [abertas, setAbertas] = useState(true)   // inscrições abertas/fechadas (admin controla)
   const [evLoad, setEvLoad] = useState(true)
   useEffect(() => { carregarConfig('logo_url').then(setLogoUrl) }, [])
+  useEffect(() => { carregarConfig('inscricoes_abertas').then(v => setAbertas(v !== 'false')) }, [])
 
   // Evento ativo (para o link aberto de inscrição)
   useEffect(() => {
@@ -456,7 +458,7 @@ export default function Login() {
         {modo==='inscrever' && (
           evLoad ? (
             <p style={{textAlign:'center',color:'var(--muted)',fontSize:13,padding:'20px 0'}}>Carregando...</p>
-          ) : !eventoAtivo ? (
+          ) : (!eventoAtivo || !abertas) ? (
             <>
               <div className="alert-box alert-info mb-3">As inscrições estão fechadas no momento.</div>
               <button type="button" className="btn btn-ghost btn-full" onClick={()=>reset('login')}>← Voltar</button>
