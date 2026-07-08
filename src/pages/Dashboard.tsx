@@ -249,7 +249,7 @@ export default function Dashboard({ profile }: { profile: Profile }) {
       <CronometroAoVivo eventoId={evento?.id} />
 
       {/* Relógio digital: contagem regressiva para o 1º dia do evento */}
-      <ContagemRegressiva dataInicio={(evento as any)?.start_date} />
+      <ContagemRegressiva evento={evento} admin={admin} />
 
       {semLiberacao ? (
         <>
