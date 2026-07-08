@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useNavigationType } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { fmtHora, isAdmin, nowLocalInput, toLocalInput, getInitials } from '../utils'
 import { useEvento } from '../hooks/useEvento'
@@ -42,8 +42,13 @@ const STATUS_CFG: Record<string,{label:string;badge:string}> = {
   cancelado:    {label:'Cancelado',     badge:'badge-danger'},
 }
 
+// Guarda o último dia visto no Cronograma (sobrevive à saída p/ teatro/ministração).
+// Só é restaurado quando o retorno é pelo Voltar (navegação POP); abrir pelo menu recomeça em hoje.
+let ultimoDiaCronograma: number | null = null
+
 export default function Cronograma({ profile }: { profile?: Profile }) {
   const navigate = useNavigate()
+  const navType  = useNavigationType()
   const { evento, loading: evLoading } = useEvento()
   const [itens, setItens]             = useState<Item[]>([])
   const [ministrações, setMinistrações] = useState<Ministracao[]>([])
@@ -66,7 +71,12 @@ export default function Cronograma({ profile }: { profile?: Profile }) {
   useVoltarFecha(!!detalhe, () => setDetalhe(null))
   useVoltarFecha(modal, () => { setModal(false); setEditando(null) })
   const hoje = new Date()
-  const [dataSel, setDataSel]         = useState(hoje)
+  // Ao voltar (POP) do teatro/ministração, retoma o dia onde o usuário estava.
+  const [dataSel, setDataSel]         = useState(() =>
+    (navType === 'POP' && ultimoDiaCronograma != null) ? new Date(ultimoDiaCronograma) : hoje
+  )
+  // Mantém o "último dia visto" atualizado para o retorno.
+  useEffect(() => { ultimoDiaCronograma = dataSel.getTime() }, [dataSel])
   const [form, setForm] = useState({
     titulo:'', tipo:'atividade',
     hora_inicio: nowLocalInput(),
