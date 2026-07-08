@@ -134,23 +134,11 @@ export default function Cozinha({ profile }: { profile?: Profile }) {
 
   return (
     <div className="page slide-up">
-      {/* Menu vertical (sem engrenagem) */}
-      <div style={{display:'flex',flexDirection:'column',gap:8,marginBottom:16}}>
-        {([
-          {k:'cardapio' as const, emoji:'🍽️', label:'Cardápio'},
-          {k:'tipo' as const,     emoji:'🏷️', label:'Tipo de refeição'},
-          {k:'restricao' as const,emoji:'🥗', label:'Restrições alimentares'},
-        ]).map(item=>{
-          const on = aba===item.k
-          return (
-            <button key={item.k} onClick={()=>setAba(item.k)}
-              style={{display:'flex',alignItems:'center',gap:12,padding:'13px 16px',borderRadius:12,border:on?'1.5px solid var(--primary)':'1px solid var(--border)',cursor:'pointer',fontFamily:'inherit',textAlign:'left',fontSize:15,fontWeight:on?800:600,background:on?'var(--primary-light)':'white',color:on?'var(--primary-dark)':'var(--text)',boxShadow:'var(--shadow-sm)'}}>
-              <span style={{fontSize:20}}>{item.emoji}</span>
-              <span style={{flex:1}}>{item.label}</span>
-              <span className="icon icon-sm" style={{color:on?'var(--primary)':'var(--muted-light)'}}>chevron_right</span>
-            </button>
-          )
-        })}
+      {/* Abas horizontais (padrão do Correio) — sem engrenagem */}
+      <div className="tabs mb-4" style={{flexWrap:'wrap'}}>
+        <button className={`tab ${aba==='restricao'?'active':''}`} onClick={()=>setAba('restricao')}>Restrições</button>
+        <button className={`tab ${aba==='cardapio'?'active':''}`} onClick={()=>setAba('cardapio')}>Cardápio</button>
+        <button className={`tab ${aba==='tipo'?'active':''}`} onClick={()=>setAba('tipo')}>Tipo</button>
       </div>
 
       {/* Imprimir (inline, na aba Cardápio) */}

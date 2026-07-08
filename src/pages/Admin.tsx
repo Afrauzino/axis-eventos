@@ -536,7 +536,7 @@ export default function Admin({ profile }: { profile?: Profile }) {
   async function excluirCadastro(p: typeof pessoas[0]) {
     if (p.user_role === 'admin') { toast.aviso('Administradores não podem ser excluídos. Rebaixe o cargo antes, se precisar.'); return }
     const msg = p.user_id
-      ? `Excluir "${p.name}" de TODOS os sistemas?\n\nSerá removido de teatro, escalas, equipes, saúde, ranking e a conta será bloqueada. Esta ação é permanente.`
+      ? `Excluir "${p.name}" de TODOS os sistemas?\n\nSerá removido de teatro, escalas, equipes, saúde, ranking E a conta (login) será apagada de verdade — o email fica livre para se inscrever de novo. Esta ação é permanente.`
       : `Excluir "${p.name}" de TODOS os sistemas?\n\nSerá removido de teatro, escalas, equipes, saúde e ranking. Esta ação é permanente.`
     if (!confirm(msg)) return
 
