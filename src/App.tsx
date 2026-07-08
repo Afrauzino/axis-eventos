@@ -2,10 +2,11 @@ import { useEffect, useState, lazy, Suspense } from 'react'
 import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { supabase } from './lib/supabase'
 import { carregarCorSalva, carregarConfig, aplicarIconesApp } from './lib/tema'
-import { formatName } from './utils'
+import { formatName, isAdmin } from './utils'
+import { usePermissao } from './hooks/usePermissao'
 import Nav from './components/Nav'
 import CriticalAlert from './components/CriticalAlert'
-import NotificacoesCenter, { contarNaoLidas } from './components/NotificacoesCenter'
+import NotificacoesCenter, { sincronizarPushLocal } from './components/NotificacoesCenter'
 import InstallPWA from './components/InstallPWA'
 import { ToastHost } from './components/Toast'
 import BotaoConfig from './components/BotaoConfig'
@@ -63,7 +64,64 @@ export type Profile = {
   church?: string | null
 }
 
+// Permissão (menu) exigida por rota. Rotas livres (Início/Perfil) retornam null.
+const ROTA_PERM = ([
+  ['/minhas-atividades','menu_atividades'],
+  ['/cronograma','menu_cronograma'],
+  ['/encontristas','menu_encontristas'],
+  ['/cadastros','menu_cadastros'],
+  ['/equipes','menu_equipes'],
+  ['/escalas','menu_equipes'],
+  ['/correio','menu_correio'],
+  ['/logistica','menu_logistica'],
+  ['/midia','menu_midia'],
+  ['/cracha','menu_cracha'],
+  ['/alertas-lideres','menu_alertas_lideres'],
+  ['/alertas','menu_alertas_lideres'],
+  ['/cozinha','menu_cozinha'],
+  ['/ministracoes','menu_ministracoes'],
+  ['/ministrantes','menu_ministracoes'],
+  ['/teatro','menu_teatro'],
+  ['/locais','menu_evento'],
+  ['/ocorrencias','menu_evento'],
+  ['/saude','menu_saude'],
+  ['/financeiro','menu_financeiro'],
+  ['/doacoes','menu_financeiro'],
+  ['/relatorios','menu_admin'],
+  ['/ranking','menu_ranking'],
+  ['/admin','menu_admin'],
+] as [string, string][]).sort((a, b) => b[0].length - a[0].length) // mais específico primeiro
+
+function permDaRota(path: string): string | null {
+  if (path === '/' || path === '/perfil') return null
+  for (const [pref, perm] of ROTA_PERM) {
+    if (path === pref || path.startsWith(pref + '/')) return perm
+  }
+  return null
+}
+
+function SemAcesso() {
+  const navigate = useNavigate()
+  return (
+    <div className="page" style={{ textAlign:'center', padding:'56px 20px' }}>
+      <div style={{ fontSize:46, marginBottom:12 }}>🔒</div>
+      <p style={{ fontSize:18, fontWeight:800, marginBottom:6 }}>Sem acesso</p>
+      <p style={{ fontSize:14, color:'var(--muted)', marginBottom:22 }}>Você não tem permissão para abrir esta tela.</p>
+      <button className="btn btn-primary" onClick={()=>navigate('/')}>Ir para o início</button>
+    </div>
+  )
+}
+
 function AppRoutes({ profile, onProfileUpdate }: { profile: Profile; onProfileUpdate: () => void }) {
+  const loc = useLocation()
+  const { pode, carregado } = usePermissao(profile)
+  const admin = isAdmin(profile.user_role) || profile.is_admin
+  const perm = permDaRota(loc.pathname)
+  // Cadeado: sem permissão → tela "Sem acesso" (admin passa sempre)
+  if (perm && !admin) {
+    if (!carregado) return <div className="page">{[1,2,3].map(i=><div key={i} className="skeleton" style={{height:80,marginBottom:10,borderRadius:14}}/>)}</div>
+    if (!pode(perm)) return <SemAcesso />
+  }
   return (
     <Suspense fallback={<div className="page">{[1,2,3].map(i=><div key={i} className="skeleton" style={{height:80,marginBottom:10,borderRadius:14}}/>)}</div>}>
     <Routes>
@@ -232,7 +290,7 @@ export default function App() {
   useEffect(() => {
     if (!profile?.user_id) { setNotifUnread(0); return }
     let ativo = true
-    const calc = () => contarNaoLidas(profile, eventoAtivo?.id ?? null).then(n => { if (ativo) setNotifUnread(n) }).catch(()=>{})
+    const calc = () => sincronizarPushLocal(profile, eventoAtivo?.id ?? null).then(n => { if (ativo) setNotifUnread(n) }).catch(()=>{})
     if (!notifOpen) calc()
     const t = setInterval(() => { if (!notifOpen) calc() }, 60000)
     return () => { ativo = false; clearInterval(t) }
@@ -278,7 +336,7 @@ export default function App() {
           <BotaoVoltar />
           <HeaderTitle />
           <BotaoConfig />
-          <button onClick={()=>setNotifOpen(true)} style={{background:'none',border:'none',cursor:'pointer',color:'white',display:'flex',alignItems:'center',justifyContent:'center',width:36,height:36,borderRadius:8,fontFamily:'inherit',position:'relative'}}>
+          <button onClick={()=>{ try { if ('Notification' in window && Notification.permission==='default') Notification.requestPermission() } catch {} ; setNotifOpen(true) }} style={{background:'none',border:'none',cursor:'pointer',color:'white',display:'flex',alignItems:'center',justifyContent:'center',width:36,height:36,borderRadius:8,fontFamily:'inherit',position:'relative'}}>
             <span style={{fontFamily:"'Material Symbols Outlined'",fontSize:22,color:'white',fontVariationSettings:"'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24",fontWeight:'normal',fontStyle:'normal',lineHeight:1,letterSpacing:'normal',textTransform:'none',display:'inline-block',whiteSpace:'nowrap',userSelect:'none'}}>notifications</span>
             {notifUnread > 0 && (
               <span style={{position:'absolute',top:2,right:2,minWidth:16,height:16,background:'#E53E3E',borderRadius:99,fontSize:10,fontWeight:800,color:'white',display:'flex',alignItems:'center',justifyContent:'center',padding:'0 4px',border:'2px solid var(--primary)'}}>{notifUnread}</span>

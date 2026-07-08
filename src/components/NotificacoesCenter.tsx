@@ -123,6 +123,36 @@ export async function contarNaoLidas(profile: Profile, eventoId: string | null):
   return list.filter(i => !lidas.has(i.id)).length
 }
 
+function chaveNotificados(userId?: string) { return `notif_push_${userId ?? 'anon'}` }
+
+// Conta não lidas E dispara notificação NATIVA do celular para as novas.
+// (Funciona com o app aberto/em segundo plano; app 100% fechado exige Web Push.)
+export async function sincronizarPushLocal(profile: Profile, eventoId: string | null): Promise<number> {
+  const list = await montarNotificacoes(profile, eventoId)
+  const lidas = lerLidas(profile.user_id)
+  const naoLidas = list.filter(i => !lidas.has(i.id))
+
+  try {
+    if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+      let salvos: string[] | null = null
+      try { const raw = localStorage.getItem(chaveNotificados(profile.user_id)); salvos = raw ? JSON.parse(raw) : null } catch {}
+      const primeira = salvos === null            // 1ª vez: não dispara (evita enxurrada), só semeia
+      const set = new Set<string>(salvos ?? [])
+      const novos = primeira ? [] : naoLidas.filter(i => !set.has(i.id))
+      for (const n of novos.slice(0, 3)) {         // no máx 3 por ciclo
+        try { new Notification(`${n.emoji} ${n.titulo}`, { body: n.sub || '', tag: n.id, icon: '/favicon.svg' }) } catch {}
+        set.add(n.id)
+      }
+      naoLidas.forEach(i => set.add(i.id))          // marca as atuais como já "vistas" p/ não repetir
+      const relevantes = new Set(list.map(i => i.id))
+      const persistir = [...set].filter(id => relevantes.has(id)).slice(-100)
+      try { localStorage.setItem(chaveNotificados(profile.user_id), JSON.stringify(persistir)) } catch {}
+    }
+  } catch {}
+
+  return naoLidas.length
+}
+
 // "Começa em X" pros próximos 60 min
 function lembrete(quando?: string | null): string | null {
   if (!quando) return null
