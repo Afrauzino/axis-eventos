@@ -1,25 +1,24 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 
 // Faz o botão VOLTAR do celular FECHAR a janela/modal aberto (em vez de sair da tela).
 // Uso: useVoltarFecha(aberto, () => fechar())
-// Como funciona: ao abrir, empurra um estado no histórico. O "voltar" dispara popstate
-// → fecha o modal. Se o modal fechar por outro caminho (botão X/fora), desfaz esse estado.
+//
+// Ao abrir, empurra um estado no histórico. O "voltar" dispara popstate → fecha o modal
+// (e o próprio voltar já consome o estado que empurramos).
+// NÃO desfazemos o estado na limpeza de propósito: isso causava "piscar" (o modal abria e
+// fechava na hora, principalmente em dev/StrictMode, por causa do history.back() do cleanup).
 export function useVoltarFecha(aberto: boolean, fechar: () => void) {
+  const fecharRef = useRef(fechar)
+  fecharRef.current = fechar
   useEffect(() => {
     if (!aberto) return
-    const urlAoAbrir = window.location.href
+    let ativo = true
     window.history.pushState({ axisModal: true }, '')
-    let fechadoPeloVoltar = false
-    const onPop = () => { fechadoPeloVoltar = true; fechar() }
+    const onPop = () => { if (ativo) fecharRef.current() }
     window.addEventListener('popstate', onPop)
     return () => {
+      ativo = false
       window.removeEventListener('popstate', onPop)
-      if (fechadoPeloVoltar) return
-      // fechou pelo X/fora: só desfaz o estado extra SE ainda estamos na MESMA url
-      // (se navegou pra outra tela, NÃO mexe no histórico pra não voltar sem querer)
-      if (window.location.href === urlAoAbrir && window.history.state && (window.history.state as any).axisModal) {
-        window.history.back()
-      }
     }
   }, [aberto])
 }
