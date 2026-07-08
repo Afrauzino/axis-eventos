@@ -18,7 +18,7 @@ const CORES = ['#00A99D','#6B46C1','#2F855A','#D69E2E','#E53E3E','#3182CE','#DD6
 
 export default function Cozinha({ profile }: { profile?: Profile }) {
   const { evento, loading:evLoading } = useEvento()
-  const [aba, setAba] = useState<'cardapio'|'tipo'|'restricao'>('cardapio')
+  const [aba, setAba] = useState<'cardapio'|'tipo'|'restricao'>('restricao')
   const [tipos, setTipos] = useState<RefTipo[]>([])
   const [cardapios, setCardapios] = useState<Cardapio[]>([])
   const [restricoes, setRestricoes] = useState<Restricao[]>([])

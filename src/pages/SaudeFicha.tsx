@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useVoltarFecha } from '../hooks/useVoltarFecha'
-import { useRegistrarChromeNav } from '../lib/chrome'
+import MenuSaude from '../components/MenuSaude'
 import FichaMedica from '../components/FichaMedica'
 import CardItem from '../components/CardItem'
 import FotoAmpliada from '../components/FotoAmpliada'
@@ -76,15 +76,16 @@ export default function SaudeFicha({ profile }: { profile?: Profile }) {
       : <span className="badge badge-success" style={{fontSize:10}}>Ok</span>
   }
 
-  useRegistrarChromeNav('saude', {
-    busca: { value: busca, onChange: setBusca, placeholder: 'Buscar pessoa...' },
-    grupos: [{ chave:'ficha', label:'Ficha', opcoes:[{value:'todos',label:'Todos'},{value:'com',label:'Com ficha'},{value:'sem',label:'Sem ficha'}] }],
-    valores: { ficha: filtro },
-    onFiltro: (_,v)=>setFiltro(v as any),
-  }, [busca, filtro])
-
   return (
     <div className="page">
+      <MenuSaude />
+      {/* Busca + filtro inline (sem engrenagem) */}
+      <input className="form-input" value={busca} onChange={e=>setBusca(e.target.value)} placeholder="Buscar pessoa..." style={{marginBottom:10}}/>
+      <div className="tabs mb-4">
+        {([['todos','Todos'],['com','Com ficha'],['sem','Sem ficha']] as const).map(([v,l])=>(
+          <button key={v} className={`tab ${filtro===v?'active':''}`} onClick={()=>setFiltro(v as any)}>{l}</button>
+        ))}
+      </div>
       {loading ? [1,2,3].map(i=><div key={i} className="skeleton" style={{height:68,marginBottom:8,borderRadius:14}}/>) :
       listagem.map(p => {
         const f = fichas.find(x=>x.person_id===p.id)

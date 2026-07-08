@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import { useRegistrarChromeNav } from '../lib/chrome'
+import MenuSaude from '../components/MenuSaude'
 import DataHora from '../components/DataHora'
 import { toast } from '../components/Toast'
 import { gerarDoses, type JanelaMed } from '../lib/doses'
@@ -15,7 +15,6 @@ export default function SaudeConfig({ profile }: { profile?: Profile }) {
   const [loading, setLoading] = useState(true)
   const [salvando, setSalvando] = useState(false)
   const canEdit = isAdmin(profile?.user_role)
-  useRegistrarChromeNav('saude')
 
   useEffect(() => { if (evLoading) return; if (!evento) { setLoading(false); return }; carregar() }, [evento, evLoading])
 
@@ -65,6 +64,7 @@ export default function SaudeConfig({ profile }: { profile?: Profile }) {
 
   return (
     <div className="page">
+      <MenuSaude />
 
       <div className="section-label mb-2">Medicamento contínuo — período de doses</div>
       <div style={{background:'white',borderRadius:12,padding:'16px',boxShadow:'var(--shadow-sm)',marginBottom:16}}>

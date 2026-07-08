@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useVoltarFecha } from '../hooks/useVoltarFecha'
-import { useRegistrarChromeNav } from '../lib/chrome'
+import MenuSaude from '../components/MenuSaude'
 import PessoaSaudeResumo from '../components/PessoaSaudeResumo'
 import { toast } from '../components/Toast'
 import CardItem from '../components/CardItem'
@@ -26,7 +26,6 @@ export default function Medicamentos({ profile }: { profile?: Profile }) {
   const [pessoaDoses, setPessoaDoses] = useState<string|null>(null)
   useVoltarFecha(!!pessoaDoses, () => setPessoaDoses(null))
   const [fotoAmpliada, setFotoAmpliada] = useState<string|null>(null)
-  useRegistrarChromeNav('saude')
 
   useEffect(() => { if (evLoading) return; if (!evento) { setLoading(false); return }; carregar() }, [evento, evLoading])
 
@@ -95,6 +94,7 @@ export default function Medicamentos({ profile }: { profile?: Profile }) {
 
   return (
     <div className="page">
+      <MenuSaude />
       <div className="tabs mb-4">
         <button className={`tab ${aba==='agenda'?'active':''}`} onClick={()=>setAba('agenda')}>
           Agenda {pendentes.length>0 && <span className="badge badge-warning" style={{marginLeft:4,fontSize:9}}>{pendentes.length}</span>}

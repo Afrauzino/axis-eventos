@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useVoltarFecha } from '../hooks/useVoltarFecha'
-import { useRegistrarChromeNav } from '../lib/chrome'
+import MenuSaude from '../components/MenuSaude'
 import { getInitials, fmtDataHora } from '../utils'
 import { useEvento } from '../hooks/useEvento'
 import PersonSelect from '../components/PersonSelect'
@@ -53,10 +53,10 @@ export default function Saude({ profile }: { profile?: Profile }) {
 
   function getPessoa(id: string) { return pessoas.find(p=>p.id===id) }
 
-  useRegistrarChromeNav('saude')
 
   return (
     <div className="page">
+      <MenuSaude />
       <div className="section-title">Atendimentos recentes</div>
 
       {loading ? [1,2,3].map(i=><div key={i} className="skeleton" style={{height:68,marginBottom:8,borderRadius:14}}/>) :

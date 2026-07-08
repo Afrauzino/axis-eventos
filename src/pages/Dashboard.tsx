@@ -309,6 +309,14 @@ export default function Dashboard({ profile }: { profile: Profile }) {
 
   return (
     <div className="page slide-up">
+      {/* Encontrista: a própria ficha médica vem PRIMEIRO (encolhe ao salvar) */}
+      {semLiberacao && evento && meuPersonId && (
+        <div style={{ background:'white', borderRadius:14, boxShadow:'var(--shadow-sm)', padding:'14px', marginBottom:16 }}>
+          <p style={{ fontWeight:800, fontSize:15, marginBottom:10, display:'flex', alignItems:'center', gap:6 }}>⛑️ Minha ficha médica</p>
+          <FichaMedica personId={meuPersonId} eventId={evento.id} startOpen />
+        </div>
+      )}
+
       {/* Faixa AO VIVO: só para quem tem acesso (encontrista não vê) */}
       {!semLiberacao && <CronometroAoVivo eventoId={evento?.id} />}
 
@@ -316,18 +324,11 @@ export default function Dashboard({ profile }: { profile: Profile }) {
       <ContagemRegressiva evento={evento} admin={admin} />
 
       {semLiberacao ? (
-        /* Encontrista / nível mais baixo: só contagem (acima), carrossel, boas-vindas,
-           aniversariantes e a própria ficha médica */
+        /* Encontrista / nível mais baixo: carrossel, boas-vindas e aniversariantes */
         <>
           <HomeCarousel admin={admin} />
           <BoasVindas variante={variante} admin={false} />
           {evento && <Aniversariantes eventoId={evento.id} />}
-          {evento && meuPersonId && (
-            <div style={{ background:'white', borderRadius:14, boxShadow:'var(--shadow-sm)', padding:'14px', marginBottom:16 }}>
-              <p style={{ fontWeight:800, fontSize:15, marginBottom:10, display:'flex', alignItems:'center', gap:6 }}>⛑️ Minha ficha médica</p>
-              <FichaMedica personId={meuPersonId} eventId={evento.id} startOpen />
-            </div>
-          )}
         </>
       ) : !evento ? (
         <>
