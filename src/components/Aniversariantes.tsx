@@ -1,16 +1,17 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { getInitials } from '../utils'
-import { estiloFundo, type BlocoFundo } from '../lib/blocoFundo'
+import { estiloFundo, medirAspecto, type BlocoFundo } from '../lib/blocoFundo'
 
 // Aniversariantes do mês (tela inicial). Usa people.birth_date.
 const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
 
 type Aniv = { id: string; name: string; photo_url: string | null; dia: number }
 
-export default function Aniversariantes({ eventoId, fundo, onEditar }: { eventoId?: string; fundo?: BlocoFundo; onEditar?: () => void }) {
+export default function Aniversariantes({ eventoId, fundo, onEditar }: { eventoId?: string; fundo?: BlocoFundo; onEditar?: (aspecto: number) => void }) {
   const [lista, setLista] = useState<Aniv[]>([])
   const [carregado, setCarregado] = useState(false)
+  const headerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (!eventoId) { setCarregado(true); return }
@@ -32,7 +33,7 @@ export default function Aniversariantes({ eventoId, fundo, onEditar }: { eventoI
 
   return (
     <div style={{ background: 'white', borderRadius: 14, boxShadow: 'var(--shadow-sm)', overflow: 'hidden', marginBottom: 16 }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '12px 14px', ...estiloFundo(fundo, 'linear-gradient(135deg,#ED64A6,#B83280)') }}>
+      <div ref={headerRef} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '12px 14px', ...estiloFundo(fundo, 'linear-gradient(135deg,#ED64A6,#B83280)') }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
           <span style={{ fontSize: 20 }}>🎂</span>
           <div>
@@ -41,7 +42,7 @@ export default function Aniversariantes({ eventoId, fundo, onEditar }: { eventoI
           </div>
         </div>
         {onEditar && (
-          <button onClick={onEditar} title="Cor / imagem" style={{ background: 'rgba(255,255,255,0.22)', border: 'none', borderRadius: 8, width: 28, height: 28, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontFamily: 'inherit', flexShrink: 0 }}>
+          <button onClick={() => onEditar(medirAspecto(headerRef.current))} title="Cor / imagem" style={{ background: 'rgba(255,255,255,0.22)', border: 'none', borderRadius: 8, width: 28, height: 28, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontFamily: 'inherit', flexShrink: 0 }}>
             <span className="icon icon-sm">palette</span>
           </button>
         )}

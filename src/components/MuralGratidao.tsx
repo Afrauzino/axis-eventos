@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase'
 import { getInitials, isAdmin } from '../utils'
 import { useVoltarFecha } from '../hooks/useVoltarFecha'
 import { toast } from './Toast'
-import { estiloFundo, type BlocoFundo } from '../lib/blocoFundo'
+import { estiloFundo, medirAspecto, type BlocoFundo } from '../lib/blocoFundo'
 import type { Profile } from '../App'
 
 // Mural de gratidão — feed da tela inicial. Cada pessoa posta uma mensagem
@@ -30,7 +30,7 @@ function haQuanto(iso: string): string {
   return new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })
 }
 
-export default function MuralGratidao({ eventoId, profile, fundo, onEditar }: { eventoId?: string; profile: Profile; fundo?: BlocoFundo; onEditar?: () => void }) {
+export default function MuralGratidao({ eventoId, profile, fundo, onEditar }: { eventoId?: string; profile: Profile; fundo?: BlocoFundo; onEditar?: (aspecto: number) => void }) {
   const [posts, setPosts] = useState<Post[]>([])
   const [pessoas, setPessoas] = useState<Pessoa[]>([])
   const [texto, setTexto] = useState('')
@@ -43,6 +43,7 @@ export default function MuralGratidao({ eventoId, profile, fundo, onEditar }: { 
   const [comentarios, setComentarios] = useState<Comentario[]>([])
   const [expandidos, setExpandidos] = useState<Set<string>>(new Set())
   const [novoComent, setNovoComent] = useState<Record<string, string>>({})
+  const headerRef = useRef<HTMLDivElement>(null)
   useVoltarFecha(pickerAberto, () => setPickerAberto(false))
 
   const admin = isAdmin(profile.user_role) || profile.is_admin
@@ -142,7 +143,7 @@ export default function MuralGratidao({ eventoId, profile, fundo, onEditar }: { 
   return (
     <div style={{ background: 'white', borderRadius: 14, boxShadow: 'var(--shadow-sm)', overflow: 'hidden', marginBottom: 16 }}>
       {/* Cabeçalho */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '12px 14px', ...estiloFundo(fundo, 'linear-gradient(135deg,#ED8936,#DD6B20)') }}>
+      <div ref={headerRef} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '12px 14px', ...estiloFundo(fundo, 'linear-gradient(135deg,#ED8936,#DD6B20)') }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
           <span style={{ fontSize: 20 }}>🙌</span>
           <div>
@@ -151,7 +152,7 @@ export default function MuralGratidao({ eventoId, profile, fundo, onEditar }: { 
           </div>
         </div>
         {onEditar && (
-          <button onClick={onEditar} title="Cor / imagem" style={{ background: 'rgba(255,255,255,0.22)', border: 'none', borderRadius: 8, width: 28, height: 28, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontFamily: 'inherit', flexShrink: 0 }}>
+          <button onClick={() => onEditar(medirAspecto(headerRef.current))} title="Cor / imagem" style={{ background: 'rgba(255,255,255,0.22)', border: 'none', borderRadius: 8, width: 28, height: 28, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontFamily: 'inherit', flexShrink: 0 }}>
             <span className="icon icon-sm">palette</span>
           </button>
         )}

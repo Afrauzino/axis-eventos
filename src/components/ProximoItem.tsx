@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { medirAspecto } from '../lib/blocoFundo'
 import { carregarConfig, salvarConfig } from '../lib/tema'
 import { useVoltarFecha } from '../hooks/useVoltarFecha'
 import { fmtHora } from '../utils'
@@ -30,6 +31,8 @@ export default function ProximoItem({ eventoId, admin }: { eventoId?: string; ad
   const [bg, setBg] = useState('')
   const [editando, setEditando] = useState(false)
   const [salvando, setSalvando] = useState(false)
+  const [aspecto, setAspecto] = useState(16 / 9)
+  const cardRef = useRef<HTMLDivElement>(null)
   useVoltarFecha(editando, () => setEditando(false))
 
   useEffect(() => {
@@ -104,13 +107,13 @@ export default function ProximoItem({ eventoId, admin }: { eventoId?: string; ad
   const quando = prox.agora ? 'AGORA' : (ehMesmoDia(prox.hora_inicio) ? 'HOJE' : rotuloDia(prox.hora_inicio).toUpperCase())
 
   return (
-    <div style={cardStyle}>
+    <div ref={cardRef} style={cardStyle}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
         <span style={{ fontSize: 11, fontWeight: 800, color: 'rgba(255,255,255,0.85)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
           {prox.agora ? '🔴 Acontecendo agora' : '📌 Próximo no cronograma'}
         </span>
         {admin && (
-          <button onClick={() => setEditando(true)} title="Personalizar"
+          <button onClick={() => { setAspecto(medirAspecto(cardRef.current)); setEditando(true) }} title="Personalizar"
             style={{ background: 'rgba(255,255,255,0.22)', border: 'none', borderRadius: 8, width: 28, height: 28, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontFamily: 'inherit' }}>
             <span className="icon icon-sm">palette</span>
           </button>
@@ -158,7 +161,7 @@ export default function ProximoItem({ eventoId, admin }: { eventoId?: string; ad
 
             <label className="form-label">Imagem de fundo</label>
             <div style={{ display: 'flex', gap: 8, marginBottom: 18, flexWrap: 'wrap' }}>
-              <BotaoImagemFundo onImagem={enviarBg} disabled={salvando} label={salvando ? 'Enviando...' : 'Enviar imagem'} />
+              <BotaoImagemFundo onImagem={enviarBg} aspecto={aspecto} disabled={salvando} label={salvando ? 'Enviando...' : 'Enviar imagem'} />
               {bg && <button type="button" className="btn btn-ghost btn-sm" style={{ color: 'var(--danger)' }} onClick={() => setBg('')}>
                 <span className="icon icon-sm">delete</span> Remover imagem
               </button>}

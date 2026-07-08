@@ -1,14 +1,15 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { carregarConfig, salvarConfig } from '../lib/tema'
 import { useVoltarFecha } from '../hooks/useVoltarFecha'
 import { toast } from './Toast'
-import { estiloFundo, type BlocoFundo } from '../lib/blocoFundo'
+import { estiloFundo, medirAspecto, type BlocoFundo } from '../lib/blocoFundo'
 
 // Meta de encontristas (configurável pelo admin). Barra de progresso.
 const CHAVE = 'meta_encontristas'
 
-export default function MetaEncontristas({ eventoId, admin, fundo, onEditar }: { eventoId?: string; admin: boolean; fundo?: BlocoFundo; onEditar?: () => void }) {
+export default function MetaEncontristas({ eventoId, admin, fundo, onEditar }: { eventoId?: string; admin: boolean; fundo?: BlocoFundo; onEditar?: (aspecto: number) => void }) {
+  const cardRef = useRef<HTMLDivElement>(null)
   const [total, setTotal] = useState(0)
   const [meta, setMeta] = useState(0)
   const [carregado, setCarregado] = useState(false)
@@ -46,7 +47,7 @@ export default function MetaEncontristas({ eventoId, admin, fundo, onEditar }: {
   const bateu = meta > 0 && total >= meta
 
   return (
-    <div style={{ ...estiloFundo(fundo, 'linear-gradient(135deg,#2F855A,#276749)'), borderRadius: 14, padding: '16px', marginBottom: 16, boxShadow: '0 4px 14px rgba(0,0,0,0.15)', position: 'relative' }}>
+    <div ref={cardRef} style={{ ...estiloFundo(fundo, 'linear-gradient(135deg,#2F855A,#276749)'), borderRadius: 14, padding: '16px', marginBottom: 16, boxShadow: '0 4px 14px rgba(0,0,0,0.15)', position: 'relative' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
           <span style={{ fontSize: 18 }}>🎯</span>
@@ -55,7 +56,7 @@ export default function MetaEncontristas({ eventoId, admin, fundo, onEditar }: {
         {admin && (
           <div style={{ display: 'flex', gap: 6 }}>
             {onEditar && (
-              <button onClick={onEditar} title="Cor / imagem"
+              <button onClick={() => onEditar(medirAspecto(cardRef.current))} title="Cor / imagem"
                 style={{ background: 'rgba(255,255,255,0.22)', border: 'none', borderRadius: 8, width: 30, height: 30, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontFamily: 'inherit' }}>
                 <span className="icon icon-sm">palette</span>
               </button>

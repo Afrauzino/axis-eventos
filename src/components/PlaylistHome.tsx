@@ -1,8 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { carregarConfig, salvarConfig } from '../lib/tema'
 import { useVoltarFecha } from '../hooks/useVoltarFecha'
 import { toast } from './Toast'
-import { estiloFundo, type BlocoFundo } from '../lib/blocoFundo'
+import { estiloFundo, medirAspecto, type BlocoFundo } from '../lib/blocoFundo'
 
 // Playlist do Spotify embutida na tela inicial.
 // O admin cola o link de uma playlist/álbum do Spotify; toca dentro do app.
@@ -23,7 +23,8 @@ function spotifyEmbed(raw: string): string | null {
   return null
 }
 
-export default function PlaylistHome({ admin, fundo, onEditar }: { admin: boolean; fundo?: BlocoFundo; onEditar?: () => void }) {
+export default function PlaylistHome({ admin, fundo, onEditar }: { admin: boolean; fundo?: BlocoFundo; onEditar?: (aspecto: number) => void }) {
+  const headerRef = useRef<HTMLDivElement>(null)
   const [url, setUrl] = useState<string>('')          // link salvo
   const [carregado, setCarregado] = useState(false)
   const [editando, setEditando] = useState(false)
@@ -61,7 +62,7 @@ export default function PlaylistHome({ admin, fundo, onEditar }: { admin: boolea
   return (
     <div style={{ background: 'white', borderRadius: 14, boxShadow: 'var(--shadow-sm)', overflow: 'hidden', marginBottom: 16 }}>
       {/* Cabeçalho na cor do sistema (ou personalizada) */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', ...estiloFundo(fundo, 'linear-gradient(135deg,var(--primary),var(--primary-dark))') }}>
+      <div ref={headerRef} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', ...estiloFundo(fundo, 'linear-gradient(135deg,var(--primary),var(--primary-dark))') }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
           <span style={{ fontSize: 20 }}>🎵</span>
           <div>
@@ -72,7 +73,7 @@ export default function PlaylistHome({ admin, fundo, onEditar }: { admin: boolea
         {admin && (
           <div style={{ display: 'flex', gap: 6 }}>
             {onEditar && (
-              <button onClick={onEditar} title="Cor / imagem"
+              <button onClick={() => onEditar(medirAspecto(headerRef.current))} title="Cor / imagem"
                 style={{ background: 'rgba(255,255,255,0.22)', border: 'none', borderRadius: 8, width: 32, height: 32, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontFamily: 'inherit' }}>
                 <span className="icon icon-sm">palette</span>
               </button>

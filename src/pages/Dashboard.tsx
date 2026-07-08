@@ -17,7 +17,7 @@ import VersiculoDia from '../components/VersiculoDia'
 import PlaylistHome from '../components/PlaylistHome'
 import BoasVindas, { type BVVariante } from '../components/BoasVindas'
 import { MENUS_CATALOGO } from '../lib/permCatalog'
-import { estiloFundo } from '../lib/blocoFundo'
+import { estiloFundo, medirAspecto } from '../lib/blocoFundo'
 import BotaoImagemFundo from '../components/BotaoImagemFundo'
 import type { Profile } from '../App'
 
@@ -64,6 +64,8 @@ export default function Dashboard({ profile }: { profile: Profile }) {
   const [cardBg, setCardBg]   = useState('')
   const [personalizando, setPersonalizando] = useState(false)
   const [salvandoCard, setSalvandoCard]     = useState(false)
+  const [eventoAspecto, setEventoAspecto]   = useState(16 / 9)
+  const eventoCardRef = useRef<HTMLDivElement>(null)
   useEffect(() => { if (evento) { setCardCor((evento as any).home_cor || ''); setCardBg((evento as any).home_bg_url || '') } }, [evento?.id]) // eslint-disable-line
 
   async function enviarBgEvento(blob: Blob) {
@@ -93,6 +95,7 @@ export default function Dashboard({ profile }: { profile: Profile }) {
   const [ocultos, setOcultos] = useState<string[]>([])  // blocos que o admin escondeu
   const [estilos, setEstilos] = useState<Record<string, { cor?: string; bg?: string }>>({})  // cor/imagem por bloco
   const [estiloEditId, setEstiloEditId] = useState<string | null>(null)
+  const [estiloAspecto, setEstiloAspecto] = useState(16 / 9)
   const [estiloCor, setEstiloCor] = useState('')
   const [estiloBg, setEstiloBg] = useState('')
   const [salvandoEstilo, setSalvandoEstilo] = useState(false)
@@ -113,7 +116,7 @@ export default function Dashboard({ profile }: { profile: Profile }) {
 
   // Cor / imagem de fundo por bloco (genérico, vale para todos os blocos)
   useEffect(() => { carregarConfig('home_estilos').then(v => { if (v) { try { setEstilos(JSON.parse(v)) } catch {} } }) }, [])
-  function abrirEstilo(id: string) { const e = estilos[id] || {}; setEstiloCor(e.cor || ''); setEstiloBg(e.bg || ''); setEstiloEditId(id) }
+  function abrirEstilo(id: string, aspecto = 16 / 9) { const e = estilos[id] || {}; setEstiloCor(e.cor || ''); setEstiloBg(e.bg || ''); setEstiloAspecto(aspecto); setEstiloEditId(id) }
   async function enviarEstiloBg(blob: Blob) {
     if (!estiloEditId) return
     setSalvandoEstilo(true)
@@ -221,7 +224,7 @@ export default function Dashboard({ profile }: { profile: Profile }) {
           ? { backgroundImage:`linear-gradient(rgba(0,0,0,0.38),rgba(0,0,0,0.52)), url(${cardBg})`, backgroundSize:'cover', backgroundPosition:'center', borderRadius:14, padding:'16px 20px', marginBottom:16, boxShadow:'0 4px 14px rgba(0,0,0,0.28)', position:'relative' }
           : { background:corCard, borderRadius:14, padding:'16px 20px', marginBottom:16, boxShadow:'0 4px 14px rgba(0,0,0,0.15)', position:'relative' }
         return (
-          <div style={cardStyle}>
+          <div ref={eventoCardRef} style={cardStyle}>
             <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',marginBottom:10}}>
               <div>
                 <p style={{fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.08em',color:'rgba(255,255,255,0.7)',marginBottom:4}}>Evento atual</p>
@@ -233,7 +236,7 @@ export default function Dashboard({ profile }: { profile: Profile }) {
                   {evento.status==='active'?'Em andamento':'Encerrado'}
                 </span>
                 {admin && !reordenando && (
-                  <button onClick={()=>setPersonalizando(true)} title="Personalizar caixa"
+                  <button onClick={()=>{ setEventoAspecto(medirAspecto(eventoCardRef.current)); setPersonalizando(true) }} title="Personalizar caixa"
                     style={{background:'rgba(255,255,255,0.2)',border:'none',borderRadius:8,width:30,height:30,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',color:'white',fontFamily:'inherit'}}>
                     <span className="icon icon-sm">palette</span>
                   </button>
@@ -257,7 +260,7 @@ export default function Dashboard({ profile }: { profile: Profile }) {
       case 'ranking':
         return (
           <div style={{marginBottom:16}}>
-            <RankingMini eventoId={evento.id} navigate={navigate} fundo={estilos[id]} onEditar={admin?()=>abrirEstilo(id):undefined}/>
+            <RankingMini eventoId={evento.id} navigate={navigate} fundo={estilos[id]} onEditar={admin?(asp:number)=>abrirEstilo(id, asp):undefined}/>
           </div>
         )
       case 'indicadores':
@@ -279,17 +282,17 @@ export default function Dashboard({ profile }: { profile: Profile }) {
       case 'proximo':
         return <ProximoItem eventoId={evento.id} admin={admin} />
       case 'meta':
-        return <MetaEncontristas eventoId={evento.id} admin={admin} fundo={estilos[id]} onEditar={admin?()=>abrirEstilo(id):undefined} />
+        return <MetaEncontristas eventoId={evento.id} admin={admin} fundo={estilos[id]} onEditar={admin?(asp:number)=>abrirEstilo(id, asp):undefined} />
       case 'mural':
-        return <MuralGratidao eventoId={evento.id} profile={profile} fundo={estilos[id]} onEditar={admin?()=>abrirEstilo(id):undefined} />
+        return <MuralGratidao eventoId={evento.id} profile={profile} fundo={estilos[id]} onEditar={admin?(asp:number)=>abrirEstilo(id, asp):undefined} />
       case 'aniversarios':
-        return <Aniversariantes eventoId={evento.id} fundo={estilos[id]} onEditar={admin?()=>abrirEstilo(id):undefined} />
+        return <Aniversariantes eventoId={evento.id} fundo={estilos[id]} onEditar={admin?(asp:number)=>abrirEstilo(id, asp):undefined} />
       case 'versiculo':
-        return <VersiculoDia fundo={estilos[id]} onEditar={admin?()=>abrirEstilo(id):undefined} />
+        return <VersiculoDia fundo={estilos[id]} onEditar={admin?(asp:number)=>abrirEstilo(id, asp):undefined} />
       case 'carrossel':
         return <HomeCarousel admin={admin} />
       case 'playlist':
-        return <PlaylistHome admin={admin} fundo={estilos[id]} onEditar={admin?()=>abrirEstilo(id):undefined} />
+        return <PlaylistHome admin={admin} fundo={estilos[id]} onEditar={admin?(asp:number)=>abrirEstilo(id, asp):undefined} />
       case 'boasvindas':
         return admin ? <BoasVindas variante={variante} admin={true} /> : null
       default:
@@ -396,7 +399,7 @@ export default function Dashboard({ profile }: { profile: Profile }) {
             <label className="form-label">Imagem de fundo</label>
             <p className="form-hint mb-2">Se colocar uma imagem, ela cobre a cor. Fica escurecida um pouco pra o texto ler bem.</p>
             <div style={{display:'flex',gap:8,marginBottom:16,flexWrap:'wrap'}}>
-              <BotaoImagemFundo onImagem={enviarBgEvento} disabled={salvandoCard} label={salvandoCard?'Enviando...':'Enviar imagem'} />
+              <BotaoImagemFundo onImagem={enviarBgEvento} aspecto={eventoAspecto} disabled={salvandoCard} label={salvandoCard?'Enviando...':'Enviar imagem'} />
               {cardBg && <button type="button" className="btn btn-ghost btn-sm" style={{color:'var(--danger)'}} onClick={()=>setCardBg('')}>
                 <span className="icon icon-sm">delete</span> Remover imagem
               </button>}
@@ -439,7 +442,7 @@ export default function Dashboard({ profile }: { profile: Profile }) {
             <label className="form-label">Imagem de fundo</label>
             <p className="form-hint mb-2">A imagem cobre a cor e fica escurecida para dar contraste.</p>
             <div style={{display:'flex',gap:8,marginBottom:18,flexWrap:'wrap'}}>
-              <BotaoImagemFundo onImagem={enviarEstiloBg} disabled={salvandoEstilo} label={salvandoEstilo?'Enviando...':'Enviar imagem'} />
+              <BotaoImagemFundo onImagem={enviarEstiloBg} aspecto={estiloAspecto} disabled={salvandoEstilo} label={salvandoEstilo?'Enviando...':'Enviar imagem'} />
               {estiloBg && <button type="button" className="btn btn-ghost btn-sm" style={{color:'var(--danger)'}} onClick={()=>setEstiloBg('')}>
                 <span className="icon icon-sm">delete</span> Remover imagem
               </button>}
@@ -460,7 +463,8 @@ type LinhaCat = {
   cat: { id:string; nome:string; icone:string; cor:string }
   winner: { id:string; name:string; photo_url:string|null; media:number; total:number }
 }
-function RankingMini({ eventoId, navigate, fundo, onEditar }: { eventoId:string; navigate:(to:string)=>void; fundo?:{cor?:string;bg?:string}; onEditar?:()=>void }) {
+function RankingMini({ eventoId, navigate, fundo, onEditar }: { eventoId:string; navigate:(to:string)=>void; fundo?:{cor?:string;bg?:string}; onEditar?:(aspecto:number)=>void }) {
+  const headerRef = useRef<HTMLDivElement>(null)
   const [linhas, setLinhas] = useState<LinhaCat[]>([])
   const [carregado, setCarregado] = useState(false)
 
@@ -504,7 +508,7 @@ function RankingMini({ eventoId, navigate, fundo, onEditar }: { eventoId:string;
   return (
     <div style={{background:'white',borderRadius:14,boxShadow:'var(--shadow-sm)',overflow:'hidden',marginBottom:20}}>
       {/* Header */}
-      <div style={{...estiloFundo(fundo,'linear-gradient(135deg,#F6AD55,#FC8181)'),padding:'14px 16px',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+      <div ref={headerRef} style={{...estiloFundo(fundo,'linear-gradient(135deg,#F6AD55,#FC8181)'),padding:'14px 16px',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
         <div style={{display:'flex',alignItems:'center',gap:8}}>
           <span style={{fontSize:22}}>🏆</span>
           <div>
@@ -514,7 +518,7 @@ function RankingMini({ eventoId, navigate, fundo, onEditar }: { eventoId:string;
         </div>
         <div style={{display:'flex',alignItems:'center',gap:6}}>
           {onEditar && (
-            <button onClick={onEditar} title="Cor / imagem"
+            <button onClick={()=>onEditar(medirAspecto(headerRef.current))} title="Cor / imagem"
               style={{background:'rgba(255,255,255,0.25)',color:'white',border:'none',borderRadius:8,width:30,height:30,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',fontFamily:'inherit'}}>
               <span className="icon icon-sm">palette</span>
             </button>

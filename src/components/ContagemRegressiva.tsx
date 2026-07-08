@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { medirAspecto } from '../lib/blocoFundo'
 import { invalidarEventoAtivo } from '../hooks/useEvento'
 import { carregarConfig, salvarConfig } from '../lib/tema'
 import { useVoltarFecha } from '../hooks/useVoltarFecha'
@@ -33,6 +34,8 @@ export default function ContagemRegressiva({ evento, admin }: { evento: any; adm
   const [mensagem, setMensagem] = useState('')
   const [salvando, setSalvando] = useState(false)
   const [testando, setTestando] = useState(false)
+  const [aspecto, setAspecto] = useState(16 / 9)
+  const cardRef = useRef<HTMLDivElement>(null)
   useVoltarFecha(editando, () => setEditando(false))
 
   const startStr: string | null = evento?.start_date ? String(evento.start_date).slice(0, 10) : null
@@ -61,6 +64,7 @@ export default function ContagemRegressiva({ evento, admin }: { evento: any; adm
     setCor(evento?.contagem_cor || '')
     setBg(evento?.contagem_bg_url || '')
     setAtiva((evento?.contagem_ativa ?? true) !== false)
+    setAspecto(medirAspecto(cardRef.current))
     setEditando(true)
   }
 
@@ -139,7 +143,7 @@ export default function ContagemRegressiva({ evento, admin }: { evento: any; adm
           <label className="form-label">Imagem de fundo</label>
           <p className="form-hint mb-2">Se colocar uma imagem, ela cobre a cor (fica escurecida para o texto ler bem).</p>
           <div style={{ display: 'flex', gap: 8, marginBottom: 18, flexWrap: 'wrap' }}>
-            <BotaoImagemFundo onImagem={enviarBg} disabled={salvando} label={salvando ? 'Enviando...' : 'Enviar imagem'} />
+            <BotaoImagemFundo onImagem={enviarBg} aspecto={aspecto} disabled={salvando} label={salvando ? 'Enviando...' : 'Enviar imagem'} />
             {bg && <button type="button" className="btn btn-ghost btn-sm" style={{ color: 'var(--danger)' }} onClick={() => setBg('')}>
               <span className="icon icon-sm">delete</span> Remover imagem
             </button>}
@@ -205,7 +209,7 @@ export default function ContagemRegressiva({ evento, admin }: { evento: any; adm
   ]
 
   return (
-    <div style={cardStyle}>
+    <div ref={cardRef} style={cardStyle}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
           <span style={{ fontSize: 16 }}>⏳</span>
