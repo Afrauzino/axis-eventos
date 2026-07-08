@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { invalidarEventoAtivo } from '../hooks/useEvento'
 import { carregarConfig, salvarConfig } from '../lib/tema'
@@ -6,6 +6,7 @@ import { useVoltarFecha } from '../hooks/useVoltarFecha'
 import { toast } from './Toast'
 import AberturaCerimonia from './AberturaCerimonia'
 import { MSG_ABERTURA_PADRAO } from './AberturaGate'
+import BotaoImagemFundo from './BotaoImagemFundo'
 
 // Relógio digital de contagem regressiva para o 1º dia do evento.
 //  - dias / horas / min / seg + barra de progresso (janela de 30 dias);
@@ -32,7 +33,6 @@ export default function ContagemRegressiva({ evento, admin }: { evento: any; adm
   const [mensagem, setMensagem] = useState('')
   const [salvando, setSalvando] = useState(false)
   const [testando, setTestando] = useState(false)
-  const bgFileRef = useRef<HTMLInputElement>(null)
   useVoltarFecha(editando, () => setEditando(false))
 
   const startStr: string | null = evento?.start_date ? String(evento.start_date).slice(0, 10) : null
@@ -64,12 +64,11 @@ export default function ContagemRegressiva({ evento, admin }: { evento: any; adm
     setEditando(true)
   }
 
-  async function enviarBg(file: File) {
+  async function enviarBg(blob: Blob) {
     if (!evento) return
     setSalvando(true)
-    const ext = (file.name.split('.').pop() || 'jpg').toLowerCase()
-    const path = `contagem-bg/${evento.id}.${ext}`
-    const { error } = await supabase.storage.from('pessoas').upload(path, file, { upsert: true })
+    const path = `contagem-bg/${evento.id}-${Date.now()}.jpg`
+    const { error } = await supabase.storage.from('pessoas').upload(path, blob, { upsert: true, contentType: 'image/jpeg' })
     if (error) { setSalvando(false); toast.falha('Não foi possível enviar a imagem.', error); return }
     const { data } = supabase.storage.from('pessoas').getPublicUrl(path)
     setBg(`${data.publicUrl}?t=${Date.now()}`)
@@ -140,9 +139,7 @@ export default function ContagemRegressiva({ evento, admin }: { evento: any; adm
           <label className="form-label">Imagem de fundo</label>
           <p className="form-hint mb-2">Se colocar uma imagem, ela cobre a cor (fica escurecida para o texto ler bem).</p>
           <div style={{ display: 'flex', gap: 8, marginBottom: 18, flexWrap: 'wrap' }}>
-            <button type="button" className="btn btn-ghost btn-sm" onClick={() => bgFileRef.current?.click()} disabled={salvando}>
-              <span className="icon icon-sm">image</span> {salvando ? 'Enviando...' : 'Enviar imagem'}
-            </button>
+            <BotaoImagemFundo onImagem={enviarBg} disabled={salvando} label={salvando ? 'Enviando...' : 'Enviar imagem'} />
             {bg && <button type="button" className="btn btn-ghost btn-sm" style={{ color: 'var(--danger)' }} onClick={() => setBg('')}>
               <span className="icon icon-sm">delete</span> Remover imagem
             </button>}
@@ -157,7 +154,6 @@ export default function ContagemRegressiva({ evento, admin }: { evento: any; adm
             {salvando ? 'Salvando...' : 'Salvar'}
           </button>
           <button className="btn btn-ghost btn-full" onClick={() => setEditando(false)}>Cancelar</button>
-          <input ref={bgFileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={e => { const f = e.target.files?.[0]; if (f) enviarBg(f); e.target.value = '' }} />
         </div>
       </div>
     )

@@ -18,6 +18,7 @@ import PlaylistHome from '../components/PlaylistHome'
 import BoasVindas, { type BVVariante } from '../components/BoasVindas'
 import { MENUS_CATALOGO } from '../lib/permCatalog'
 import { estiloFundo } from '../lib/blocoFundo'
+import BotaoImagemFundo from '../components/BotaoImagemFundo'
 import type { Profile } from '../App'
 
 type Stats = { encontristas:number; encontreiros:number; equipes:number; alertas:number }
@@ -63,15 +64,13 @@ export default function Dashboard({ profile }: { profile: Profile }) {
   const [cardBg, setCardBg]   = useState('')
   const [personalizando, setPersonalizando] = useState(false)
   const [salvandoCard, setSalvandoCard]     = useState(false)
-  const bgFileRef = useRef<HTMLInputElement>(null)
   useEffect(() => { if (evento) { setCardCor((evento as any).home_cor || ''); setCardBg((evento as any).home_bg_url || '') } }, [evento?.id]) // eslint-disable-line
 
-  async function enviarBgEvento(file: File) {
+  async function enviarBgEvento(blob: Blob) {
     if (!evento) return
     setSalvandoCard(true)
-    const ext = (file.name.split('.').pop() || 'jpg').toLowerCase()
-    const path = `evento-bg/${evento.id}.${ext}`
-    const { error } = await supabase.storage.from('pessoas').upload(path, file, { upsert: true })
+    const path = `evento-bg/${evento.id}.jpg`
+    const { error } = await supabase.storage.from('pessoas').upload(path, blob, { upsert: true, contentType: 'image/jpeg' })
     if (error) { setSalvandoCard(false); toast.falha('Não foi possível enviar a imagem.', error); return }
     const { data } = supabase.storage.from('pessoas').getPublicUrl(path)
     setCardBg(`${data.publicUrl}?t=${Date.now()}`)
@@ -97,7 +96,6 @@ export default function Dashboard({ profile }: { profile: Profile }) {
   const [estiloCor, setEstiloCor] = useState('')
   const [estiloBg, setEstiloBg] = useState('')
   const [salvandoEstilo, setSalvandoEstilo] = useState(false)
-  const estiloFileRef = useRef<HTMLInputElement>(null)
   const [reordenando, setReordenando] = useState(false)
   const [salvandoOrdem, setSalvandoOrdem] = useState(false)
   const [arrastando, setArrastando] = useState<string|null>(null)
@@ -116,12 +114,11 @@ export default function Dashboard({ profile }: { profile: Profile }) {
   // Cor / imagem de fundo por bloco (genérico, vale para todos os blocos)
   useEffect(() => { carregarConfig('home_estilos').then(v => { if (v) { try { setEstilos(JSON.parse(v)) } catch {} } }) }, [])
   function abrirEstilo(id: string) { const e = estilos[id] || {}; setEstiloCor(e.cor || ''); setEstiloBg(e.bg || ''); setEstiloEditId(id) }
-  async function enviarEstiloBg(file: File) {
+  async function enviarEstiloBg(blob: Blob) {
     if (!estiloEditId) return
     setSalvandoEstilo(true)
-    const ext = (file.name.split('.').pop() || 'jpg').toLowerCase()
-    const path = `home-bloco/${estiloEditId}.${ext}`
-    const { error } = await supabase.storage.from('pessoas').upload(path, file, { upsert: true })
+    const path = `home-bloco/${estiloEditId}-${Date.now()}.jpg`
+    const { error } = await supabase.storage.from('pessoas').upload(path, blob, { upsert: true, contentType: 'image/jpeg' })
     if (error) { setSalvandoEstilo(false); toast.falha('Não foi possível enviar a imagem.', error); return }
     const { data } = supabase.storage.from('pessoas').getPublicUrl(path)
     setEstiloBg(`${data.publicUrl}?t=${Date.now()}`)
@@ -399,9 +396,7 @@ export default function Dashboard({ profile }: { profile: Profile }) {
             <label className="form-label">Imagem de fundo</label>
             <p className="form-hint mb-2">Se colocar uma imagem, ela cobre a cor. Fica escurecida um pouco pra o texto ler bem.</p>
             <div style={{display:'flex',gap:8,marginBottom:16,flexWrap:'wrap'}}>
-              <button type="button" className="btn btn-ghost btn-sm" onClick={()=>bgFileRef.current?.click()} disabled={salvandoCard}>
-                <span className="icon icon-sm">image</span> {salvandoCard?'Enviando...':'Enviar imagem'}
-              </button>
+              <BotaoImagemFundo onImagem={enviarBgEvento} disabled={salvandoCard} label={salvandoCard?'Enviando...':'Enviar imagem'} />
               {cardBg && <button type="button" className="btn btn-ghost btn-sm" style={{color:'var(--danger)'}} onClick={()=>setCardBg('')}>
                 <span className="icon icon-sm">delete</span> Remover imagem
               </button>}
@@ -414,7 +409,6 @@ export default function Dashboard({ profile }: { profile: Profile }) {
           </div>
         </div>
       )}
-      <input ref={bgFileRef} type="file" accept="image/*" style={{display:'none'}} onChange={e=>{const f=e.target.files?.[0]; if(f) enviarBgEvento(f); e.target.value=''}}/>
 
       {/* Cor / imagem de fundo de um bloco qualquer da tela inicial */}
       {estiloEditId && (
@@ -445,9 +439,7 @@ export default function Dashboard({ profile }: { profile: Profile }) {
             <label className="form-label">Imagem de fundo</label>
             <p className="form-hint mb-2">A imagem cobre a cor e fica escurecida para dar contraste.</p>
             <div style={{display:'flex',gap:8,marginBottom:18,flexWrap:'wrap'}}>
-              <button type="button" className="btn btn-ghost btn-sm" onClick={()=>estiloFileRef.current?.click()} disabled={salvandoEstilo}>
-                <span className="icon icon-sm">image</span> {salvandoEstilo?'Enviando...':'Enviar imagem'}
-              </button>
+              <BotaoImagemFundo onImagem={enviarEstiloBg} disabled={salvandoEstilo} label={salvandoEstilo?'Enviando...':'Enviar imagem'} />
               {estiloBg && <button type="button" className="btn btn-ghost btn-sm" style={{color:'var(--danger)'}} onClick={()=>setEstiloBg('')}>
                 <span className="icon icon-sm">delete</span> Remover imagem
               </button>}
@@ -460,8 +452,6 @@ export default function Dashboard({ profile }: { profile: Profile }) {
           </div>
         </div>
       )}
-      <input ref={estiloFileRef} type="file" accept="image/*" style={{display:'none'}} onChange={e=>{const f=e.target.files?.[0]; if(f) enviarEstiloBg(f); e.target.value=''}}/>
-
     </div>
   )
 }

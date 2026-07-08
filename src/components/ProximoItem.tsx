@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { carregarConfig, salvarConfig } from '../lib/tema'
 import { useVoltarFecha } from '../hooks/useVoltarFecha'
 import { fmtHora } from '../utils'
 import { toast } from './Toast'
+import BotaoImagemFundo from './BotaoImagemFundo'
 
 // Bloco "Próximo no cronograma": mostra o próximo item (ou o que está em
 // andamento). Admin personaliza cor/imagem de fundo (salvo em configuracoes).
@@ -29,7 +30,6 @@ export default function ProximoItem({ eventoId, admin }: { eventoId?: string; ad
   const [bg, setBg] = useState('')
   const [editando, setEditando] = useState(false)
   const [salvando, setSalvando] = useState(false)
-  const bgFileRef = useRef<HTMLInputElement>(null)
   useVoltarFecha(editando, () => setEditando(false))
 
   useEffect(() => {
@@ -77,11 +77,10 @@ export default function ProximoItem({ eventoId, admin }: { eventoId?: string; ad
     return () => { supabase.removeChannel(canal); clearInterval(t) }
   }, [eventoId])
 
-  async function enviarBg(file: File) {
+  async function enviarBg(blob: Blob) {
     setSalvando(true)
-    const ext = (file.name.split('.').pop() || 'jpg').toLowerCase()
-    const path = `home-proximo/bg.${ext}`
-    const { error } = await supabase.storage.from('pessoas').upload(path, file, { upsert: true })
+    const path = `home-proximo/bg-${Date.now()}.jpg`
+    const { error } = await supabase.storage.from('pessoas').upload(path, blob, { upsert: true, contentType: 'image/jpeg' })
     if (error) { setSalvando(false); toast.falha('Não foi possível enviar a imagem.', error); return }
     const { data } = supabase.storage.from('pessoas').getPublicUrl(path)
     setBg(`${data.publicUrl}?t=${Date.now()}`)
@@ -139,6 +138,14 @@ export default function ProximoItem({ eventoId, admin }: { eventoId?: string; ad
             <div style={{ width: 36, height: 4, background: 'var(--border)', borderRadius: 2, margin: '12px auto 16px' }} />
             <p style={{ fontSize: 16, fontWeight: 800, marginBottom: 14 }}>Bloco "Próximo no cronograma"</p>
 
+            {/* Prévia */}
+            <div style={bg
+              ? { backgroundImage: `linear-gradient(rgba(0,0,0,0.42),rgba(0,0,0,0.58)), url(${bg})`, backgroundSize: 'cover', backgroundPosition: 'center', borderRadius: 14, padding: '18px 16px', marginBottom: 16 }
+              : { background: cor || 'linear-gradient(135deg,#2D3748,#1A202C)', borderRadius: 14, padding: '18px 16px', marginBottom: 16 }}>
+              <p style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'rgba(255,255,255,0.7)' }}>Próximo no cronograma</p>
+              <p style={{ fontSize: 16, fontWeight: 800, color: 'white' }}>Prévia</p>
+            </div>
+
             <label className="form-label">Cor de fundo</label>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
               {CORES.map(c => (
@@ -151,9 +158,7 @@ export default function ProximoItem({ eventoId, admin }: { eventoId?: string; ad
 
             <label className="form-label">Imagem de fundo</label>
             <div style={{ display: 'flex', gap: 8, marginBottom: 18, flexWrap: 'wrap' }}>
-              <button type="button" className="btn btn-ghost btn-sm" onClick={() => bgFileRef.current?.click()} disabled={salvando}>
-                <span className="icon icon-sm">image</span> {salvando ? 'Enviando...' : 'Enviar imagem'}
-              </button>
+              <BotaoImagemFundo onImagem={enviarBg} disabled={salvando} label={salvando ? 'Enviando...' : 'Enviar imagem'} />
               {bg && <button type="button" className="btn btn-ghost btn-sm" style={{ color: 'var(--danger)' }} onClick={() => setBg('')}>
                 <span className="icon icon-sm">delete</span> Remover imagem
               </button>}
@@ -163,7 +168,6 @@ export default function ProximoItem({ eventoId, admin }: { eventoId?: string; ad
               {salvando ? 'Salvando...' : 'Salvar'}
             </button>
             <button className="btn btn-ghost btn-full" onClick={() => setEditando(false)}>Cancelar</button>
-            <input ref={bgFileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={e => { const f = e.target.files?.[0]; if (f) enviarBg(f); e.target.value = '' }} />
           </div>
         </div>
       )}

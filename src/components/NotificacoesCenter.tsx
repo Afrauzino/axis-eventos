@@ -99,6 +99,18 @@ export async function montarNotificacoes(profile: Profile, eventoId: string | nu
     }
   } catch {}
 
+  // Fui marcado no Mural de Gratidão
+  try {
+    const { data } = await supabase.from('mural_posts')
+      .select('id,autor_nome,texto,created_at')
+      .eq('event_id', eventoId)
+      .contains('mencionados', [personId])
+      .order('created_at', { ascending: false }).limit(10)
+    for (const m of data ?? []) {
+      out.push({ id: 'mural-' + m.id, emoji: '🙌', titulo: `${m.autor_nome ?? 'Alguém'} marcou você no mural`, sub: (m.texto || '').slice(0, 60), quando: m.created_at, rota: '/' })
+    }
+  } catch {}
+
   // Ordena: mais recentes/próximos primeiro (quem tem "quando" vem por data desc; sem data, no fim)
   out.sort((a, b) => (b.quando ?? '').localeCompare(a.quando ?? ''))
   return out
