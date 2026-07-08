@@ -49,7 +49,7 @@ export const MENUS_CATALOGO: MenuItemCat[] = [
   { modulo:'menu_logistica',       label:'Logística',           emoji:'📦' },
   { modulo:'menu_midia',           label:'Mídia',               emoji:'🎬' },
   { modulo:'menu_cracha',          label:'Crachá',              emoji:'🪪' },
-  { modulo:'menu_equipes',         label:'Equipes & Escalas',   emoji:'🛡️' },
+  { modulo:'menu_equipes',         label:'Equipes',             emoji:'🛡️' },
   { modulo:'menu_teatro',          label:'Teatro',              emoji:'🎭' },
   { modulo:'menu_evento',          label:'Evento (Locais/Ocorrências)', emoji:'📍' },
   { modulo:'menu_alertas_lideres', label:'Alertas entre Líderes', emoji:'📢' },
