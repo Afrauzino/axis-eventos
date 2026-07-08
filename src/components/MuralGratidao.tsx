@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase'
 import { getInitials, isAdmin } from '../utils'
 import { useVoltarFecha } from '../hooks/useVoltarFecha'
 import { toast } from './Toast'
+import { estiloFundo, type BlocoFundo } from '../lib/blocoFundo'
 import type { Profile } from '../App'
 
 // Mural de gratidão — feed da tela inicial. Cada pessoa posta uma mensagem
@@ -26,7 +27,7 @@ function haQuanto(iso: string): string {
   return new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })
 }
 
-export default function MuralGratidao({ eventoId, profile }: { eventoId?: string; profile: Profile }) {
+export default function MuralGratidao({ eventoId, profile, fundo, onEditar }: { eventoId?: string; profile: Profile; fundo?: BlocoFundo; onEditar?: () => void }) {
   const [posts, setPosts] = useState<Post[]>([])
   const [pessoas, setPessoas] = useState<Pessoa[]>([])
   const [texto, setTexto] = useState('')
@@ -94,12 +95,19 @@ export default function MuralGratidao({ eventoId, profile }: { eventoId?: string
   return (
     <div style={{ background: 'white', borderRadius: 14, boxShadow: 'var(--shadow-sm)', overflow: 'hidden', marginBottom: 16 }}>
       {/* Cabeçalho */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 14px', background: 'linear-gradient(135deg,#ED8936,#DD6B20)' }}>
-        <span style={{ fontSize: 20 }}>🙌</span>
-        <div>
-          <p style={{ fontWeight: 800, fontSize: 15, color: 'white', lineHeight: 1.1 }}>Mural de Gratidão</p>
-          <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.85)' }}>Deixe uma mensagem para todos</p>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '12px 14px', ...estiloFundo(fundo, 'linear-gradient(135deg,#ED8936,#DD6B20)') }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+          <span style={{ fontSize: 20 }}>🙌</span>
+          <div>
+            <p style={{ fontWeight: 800, fontSize: 15, color: 'white', lineHeight: 1.1 }}>Mural de Gratidão</p>
+            <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.85)' }}>Deixe uma mensagem para todos</p>
+          </div>
         </div>
+        {onEditar && (
+          <button onClick={onEditar} title="Cor / imagem" style={{ background: 'rgba(255,255,255,0.22)', border: 'none', borderRadius: 8, width: 28, height: 28, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontFamily: 'inherit', flexShrink: 0 }}>
+            <span className="icon icon-sm">palette</span>
+          </button>
+        )}
       </div>
 
       {/* Composer */}

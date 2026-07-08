@@ -1,3 +1,5 @@
+import { estiloFundo, type BlocoFundo } from '../lib/blocoFundo'
+
 // Versículo do dia — rotaciona de forma determinística pelo dia do ano.
 // Lista embutida (sem internet). Admin pode ampliar depois se quiser.
 
@@ -42,13 +44,20 @@ function diaDoAno(): number {
   return Math.floor(diff / 86400000)
 }
 
-export default function VersiculoDia() {
+export default function VersiculoDia({ fundo, onEditar }: { fundo?: BlocoFundo; onEditar?: () => void }) {
   const v = VERSICULOS[diaDoAno() % VERSICULOS.length]
   return (
-    <div style={{ background: 'linear-gradient(135deg,#4C51BF,#553C9A)', borderRadius: 14, padding: '18px 18px 16px', marginBottom: 16, boxShadow: '0 4px 14px rgba(0,0,0,0.15)' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 10 }}>
-        <span style={{ fontSize: 16 }}>📖</span>
-        <span style={{ fontSize: 12, fontWeight: 800, color: 'rgba(255,255,255,0.85)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Versículo do dia</span>
+    <div style={{ ...estiloFundo(fundo, 'linear-gradient(135deg,#4C51BF,#553C9A)'), borderRadius: 14, padding: '18px 18px 16px', marginBottom: 16, boxShadow: '0 4px 14px rgba(0,0,0,0.15)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 7, marginBottom: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+          <span style={{ fontSize: 16 }}>📖</span>
+          <span style={{ fontSize: 12, fontWeight: 800, color: 'rgba(255,255,255,0.85)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Versículo do dia</span>
+        </div>
+        {onEditar && (
+          <button onClick={onEditar} title="Cor / imagem" style={{ background: 'rgba(255,255,255,0.22)', border: 'none', borderRadius: 8, width: 28, height: 28, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontFamily: 'inherit' }}>
+            <span className="icon icon-sm">palette</span>
+          </button>
+        )}
       </div>
       <p style={{ fontSize: 15, color: 'white', lineHeight: 1.5, fontStyle: 'italic' }}>"{v.t}"</p>
       <p style={{ fontSize: 13, fontWeight: 800, color: 'rgba(255,255,255,0.9)', marginTop: 10, textAlign: 'right' }}>— {v.r}</p>

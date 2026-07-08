@@ -1,13 +1,14 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { getInitials } from '../utils'
+import { estiloFundo, type BlocoFundo } from '../lib/blocoFundo'
 
 // Aniversariantes do mês (tela inicial). Usa people.birth_date.
 const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
 
 type Aniv = { id: string; name: string; photo_url: string | null; dia: number }
 
-export default function Aniversariantes({ eventoId }: { eventoId?: string }) {
+export default function Aniversariantes({ eventoId, fundo, onEditar }: { eventoId?: string; fundo?: BlocoFundo; onEditar?: () => void }) {
   const [lista, setLista] = useState<Aniv[]>([])
   const [carregado, setCarregado] = useState(false)
 
@@ -31,12 +32,19 @@ export default function Aniversariantes({ eventoId }: { eventoId?: string }) {
 
   return (
     <div style={{ background: 'white', borderRadius: 14, boxShadow: 'var(--shadow-sm)', overflow: 'hidden', marginBottom: 16 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 14px', background: 'linear-gradient(135deg,#ED64A6,#B83280)' }}>
-        <span style={{ fontSize: 20 }}>🎂</span>
-        <div>
-          <p style={{ fontWeight: 800, fontSize: 15, color: 'white', lineHeight: 1.1 }}>Aniversariantes de {mesNome}</p>
-          <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.85)' }}>{lista.length} no mês</p>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '12px 14px', ...estiloFundo(fundo, 'linear-gradient(135deg,#ED64A6,#B83280)') }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+          <span style={{ fontSize: 20 }}>🎂</span>
+          <div>
+            <p style={{ fontWeight: 800, fontSize: 15, color: 'white', lineHeight: 1.1 }}>Aniversariantes de {mesNome}</p>
+            <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.85)' }}>{lista.length} no mês</p>
+          </div>
         </div>
+        {onEditar && (
+          <button onClick={onEditar} title="Cor / imagem" style={{ background: 'rgba(255,255,255,0.22)', border: 'none', borderRadius: 8, width: 28, height: 28, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontFamily: 'inherit', flexShrink: 0 }}>
+            <span className="icon icon-sm">palette</span>
+          </button>
+        )}
       </div>
       <div style={{ maxHeight: 320, overflowY: 'auto' }}>
         {lista.map((p, i) => {

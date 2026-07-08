@@ -17,6 +17,7 @@ import VersiculoDia from '../components/VersiculoDia'
 import PlaylistHome from '../components/PlaylistHome'
 import BoasVindas, { type BVVariante } from '../components/BoasVindas'
 import { MENUS_CATALOGO } from '../lib/permCatalog'
+import { estiloFundo } from '../lib/blocoFundo'
 import type { Profile } from '../App'
 
 type Stats = { encontristas:number; encontreiros:number; equipes:number; alertas:number }
@@ -259,7 +260,7 @@ export default function Dashboard({ profile }: { profile: Profile }) {
       case 'ranking':
         return (
           <div style={{marginBottom:16}}>
-            <RankingMini eventoId={evento.id} navigate={navigate}/>
+            <RankingMini eventoId={evento.id} navigate={navigate} fundo={estilos[id]} onEditar={admin?()=>abrirEstilo(id):undefined}/>
           </div>
         )
       case 'indicadores':
@@ -281,17 +282,17 @@ export default function Dashboard({ profile }: { profile: Profile }) {
       case 'proximo':
         return <ProximoItem eventoId={evento.id} admin={admin} />
       case 'meta':
-        return <MetaEncontristas eventoId={evento.id} admin={admin} />
+        return <MetaEncontristas eventoId={evento.id} admin={admin} fundo={estilos[id]} onEditar={admin?()=>abrirEstilo(id):undefined} />
       case 'mural':
-        return <MuralGratidao eventoId={evento.id} profile={profile} />
+        return <MuralGratidao eventoId={evento.id} profile={profile} fundo={estilos[id]} onEditar={admin?()=>abrirEstilo(id):undefined} />
       case 'aniversarios':
-        return <Aniversariantes eventoId={evento.id} />
+        return <Aniversariantes eventoId={evento.id} fundo={estilos[id]} onEditar={admin?()=>abrirEstilo(id):undefined} />
       case 'versiculo':
-        return <VersiculoDia />
+        return <VersiculoDia fundo={estilos[id]} onEditar={admin?()=>abrirEstilo(id):undefined} />
       case 'carrossel':
         return <HomeCarousel admin={admin} />
       case 'playlist':
-        return <PlaylistHome admin={admin} />
+        return <PlaylistHome admin={admin} fundo={estilos[id]} onEditar={admin?()=>abrirEstilo(id):undefined} />
       case 'boasvindas':
         return admin ? <BoasVindas variante={variante} admin={true} /> : null
       default:
@@ -347,31 +348,17 @@ export default function Dashboard({ profile }: { profile: Profile }) {
             if (oculto && !reordenando) return null
             const conteudo = renderSecao(id)
             if (!conteudo) return null
-            const est = estilos[id]
-            const temEstilo = !!(est && (est.cor || est.bg))
-            // Fundo (cor/imagem) aplicado como moldura do bloco, só fora do modo reordenar
-            const backdrop: React.CSSProperties = !reordenando && temEstilo
-              ? (est!.bg
-                  ? { backgroundImage:`linear-gradient(rgba(0,0,0,0.28),rgba(0,0,0,0.40)), url(${est!.bg})`, backgroundSize:'cover', backgroundPosition:'center', padding:'12px 12px 0', borderRadius:16, marginBottom:16 }
-                  : { background: est!.cor, padding:'12px 12px 0', borderRadius:16, marginBottom:16 })
-              : {}
             return (
               <div key={id} ref={el=>{ blocosRef.current[id]=el }}
                 style={reordenando
                   ? { position:'relative', border:'2px dashed var(--primary)', borderRadius:14, padding:'8px 8px 0', marginBottom:12, background: arrastando===id?'var(--primary-light)':'white', touchAction:'none', opacity: oculto?0.45:1 }
-                  : { position:'relative', ...backdrop }}>
+                  : { position:'relative' }}>
                 {reordenando && (
                   <>
-                    <div style={{position:'absolute',top:-1,left:-1,zIndex:5,display:'flex',gap:4}}>
-                      <button onClick={()=>toggleOculto(id)} title={oculto?'Mostrar':'Ocultar'}
-                        style={{background:oculto?'var(--muted)':'var(--success)',color:'white',borderTopLeftRadius:12,borderBottomRightRadius:12,padding:'5px 10px',cursor:'pointer',border:'none',fontFamily:'inherit',userSelect:'none',display:'flex',alignItems:'center',gap:4,fontSize:12,fontWeight:800}}>
-                        <span className="icon icon-sm">{oculto?'visibility_off':'visibility'}</span> {oculto?'Oculto':'Visível'}
-                      </button>
-                      <button onClick={()=>abrirEstilo(id)} title="Cor / imagem de fundo"
-                        style={{background:temEstilo?'var(--primary-dark)':'var(--primary)',color:'white',borderRadius:8,padding:'5px 9px',cursor:'pointer',border:'none',fontFamily:'inherit',display:'flex',alignItems:'center',fontSize:12,fontWeight:800}}>
-                        <span className="icon icon-sm">palette</span>
-                      </button>
-                    </div>
+                    <button onClick={()=>toggleOculto(id)} title={oculto?'Mostrar':'Ocultar'}
+                      style={{position:'absolute',top:-1,left:-1,zIndex:5,background:oculto?'var(--muted)':'var(--success)',color:'white',borderTopLeftRadius:12,borderBottomRightRadius:12,padding:'5px 10px',cursor:'pointer',border:'none',fontFamily:'inherit',userSelect:'none',display:'flex',alignItems:'center',gap:4,fontSize:12,fontWeight:800}}>
+                      <span className="icon icon-sm">{oculto?'visibility_off':'visibility'}</span> {oculto?'Oculto':'Visível'}
+                    </button>
                     <div onPointerDown={(e)=>{ e.preventDefault(); dragId.current=id; setArrastando(id) }}
                       style={{position:'absolute',top:-1,right:-1,zIndex:5,background:'var(--primary)',color:'white',borderTopRightRadius:12,borderBottomLeftRadius:12,padding:'5px 10px',cursor:'grab',touchAction:'none',userSelect:'none',display:'flex',alignItems:'center',gap:4,fontSize:12,fontWeight:800}}>
                       <span className="icon icon-sm">drag_indicator</span> arrastar
@@ -483,7 +470,7 @@ type LinhaCat = {
   cat: { id:string; nome:string; icone:string; cor:string }
   winner: { id:string; name:string; photo_url:string|null; media:number; total:number }
 }
-function RankingMini({ eventoId, navigate }: { eventoId:string; navigate:(to:string)=>void }) {
+function RankingMini({ eventoId, navigate, fundo, onEditar }: { eventoId:string; navigate:(to:string)=>void; fundo?:{cor?:string;bg?:string}; onEditar?:()=>void }) {
   const [linhas, setLinhas] = useState<LinhaCat[]>([])
   const [carregado, setCarregado] = useState(false)
 
@@ -527,7 +514,7 @@ function RankingMini({ eventoId, navigate }: { eventoId:string; navigate:(to:str
   return (
     <div style={{background:'white',borderRadius:14,boxShadow:'var(--shadow-sm)',overflow:'hidden',marginBottom:20}}>
       {/* Header */}
-      <div style={{background:'linear-gradient(135deg,#F6AD55,#FC8181)',padding:'14px 16px',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+      <div style={{...estiloFundo(fundo,'linear-gradient(135deg,#F6AD55,#FC8181)'),padding:'14px 16px',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
         <div style={{display:'flex',alignItems:'center',gap:8}}>
           <span style={{fontSize:22}}>🏆</span>
           <div>
@@ -535,10 +522,18 @@ function RankingMini({ eventoId, navigate }: { eventoId:string; navigate:(to:str
             <p style={{fontSize:11,color:'rgba(255,255,255,0.8)'}}>Destaque de cada categoria</p>
           </div>
         </div>
-        <button onClick={()=>navigate('/ranking')}
-          style={{background:'rgba(255,255,255,0.25)',color:'white',border:'1px solid rgba(255,255,255,0.4)',borderRadius:8,padding:'6px 14px',cursor:'pointer',fontSize:12,fontWeight:700,fontFamily:'inherit'}}>
-          Votar →
-        </button>
+        <div style={{display:'flex',alignItems:'center',gap:6}}>
+          {onEditar && (
+            <button onClick={onEditar} title="Cor / imagem"
+              style={{background:'rgba(255,255,255,0.25)',color:'white',border:'none',borderRadius:8,width:30,height:30,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',fontFamily:'inherit'}}>
+              <span className="icon icon-sm">palette</span>
+            </button>
+          )}
+          <button onClick={()=>navigate('/ranking')}
+            style={{background:'rgba(255,255,255,0.25)',color:'white',border:'1px solid rgba(255,255,255,0.4)',borderRadius:8,padding:'6px 14px',cursor:'pointer',fontSize:12,fontWeight:700,fontFamily:'inherit'}}>
+            Votar →
+          </button>
+        </div>
       </div>
 
       {/* Lista: um campeão por categoria */}

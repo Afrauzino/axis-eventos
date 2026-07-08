@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { carregarConfig, salvarConfig } from '../lib/tema'
 import { useVoltarFecha } from '../hooks/useVoltarFecha'
 import { toast } from './Toast'
+import { estiloFundo, type BlocoFundo } from '../lib/blocoFundo'
 
 // Playlist do Spotify embutida na tela inicial.
 // O admin cola o link de uma playlist/álbum do Spotify; toca dentro do app.
@@ -22,7 +23,7 @@ function spotifyEmbed(raw: string): string | null {
   return null
 }
 
-export default function PlaylistHome({ admin }: { admin: boolean }) {
+export default function PlaylistHome({ admin, fundo, onEditar }: { admin: boolean; fundo?: BlocoFundo; onEditar?: () => void }) {
   const [url, setUrl] = useState<string>('')          // link salvo
   const [carregado, setCarregado] = useState(false)
   const [editando, setEditando] = useState(false)
@@ -59,8 +60,8 @@ export default function PlaylistHome({ admin }: { admin: boolean }) {
 
   return (
     <div style={{ background: 'white', borderRadius: 14, boxShadow: 'var(--shadow-sm)', overflow: 'hidden', marginBottom: 16 }}>
-      {/* Cabeçalho na cor do sistema */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', background: 'linear-gradient(135deg,var(--primary),var(--primary-dark))' }}>
+      {/* Cabeçalho na cor do sistema (ou personalizada) */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', ...estiloFundo(fundo, 'linear-gradient(135deg,var(--primary),var(--primary-dark))') }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
           <span style={{ fontSize: 20 }}>🎵</span>
           <div>
@@ -69,10 +70,18 @@ export default function PlaylistHome({ admin }: { admin: boolean }) {
           </div>
         </div>
         {admin && (
+          <div style={{ display: 'flex', gap: 6 }}>
+            {onEditar && (
+              <button onClick={onEditar} title="Cor / imagem"
+                style={{ background: 'rgba(255,255,255,0.22)', border: 'none', borderRadius: 8, width: 32, height: 32, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontFamily: 'inherit' }}>
+                <span className="icon icon-sm">palette</span>
+              </button>
+            )}
           <button onClick={abrirEdicao} title="Editar playlist"
             style={{ background: 'rgba(255,255,255,0.22)', border: 'none', borderRadius: 8, width: 32, height: 32, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontFamily: 'inherit' }}>
             <span className="icon icon-sm">edit</span>
           </button>
+          </div>
         )}
       </div>
 

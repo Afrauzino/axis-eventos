@@ -3,11 +3,12 @@ import { supabase } from '../lib/supabase'
 import { carregarConfig, salvarConfig } from '../lib/tema'
 import { useVoltarFecha } from '../hooks/useVoltarFecha'
 import { toast } from './Toast'
+import { estiloFundo, type BlocoFundo } from '../lib/blocoFundo'
 
 // Meta de encontristas (configurável pelo admin). Barra de progresso.
 const CHAVE = 'meta_encontristas'
 
-export default function MetaEncontristas({ eventoId, admin }: { eventoId?: string; admin: boolean }) {
+export default function MetaEncontristas({ eventoId, admin, fundo, onEditar }: { eventoId?: string; admin: boolean; fundo?: BlocoFundo; onEditar?: () => void }) {
   const [total, setTotal] = useState(0)
   const [meta, setMeta] = useState(0)
   const [carregado, setCarregado] = useState(false)
@@ -45,17 +46,25 @@ export default function MetaEncontristas({ eventoId, admin }: { eventoId?: strin
   const bateu = meta > 0 && total >= meta
 
   return (
-    <div style={{ background: 'linear-gradient(135deg,#2F855A,#276749)', borderRadius: 14, padding: '16px', marginBottom: 16, boxShadow: '0 4px 14px rgba(0,0,0,0.15)', position: 'relative' }}>
+    <div style={{ ...estiloFundo(fundo, 'linear-gradient(135deg,#2F855A,#276749)'), borderRadius: 14, padding: '16px', marginBottom: 16, boxShadow: '0 4px 14px rgba(0,0,0,0.15)', position: 'relative' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
           <span style={{ fontSize: 18 }}>🎯</span>
           <span style={{ fontSize: 12, fontWeight: 800, color: 'rgba(255,255,255,0.92)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Meta de encontristas</span>
         </div>
         {admin && (
-          <button onClick={() => { setRascunho(meta ? String(meta) : ''); setEditando(true) }} title="Definir meta"
-            style={{ background: 'rgba(255,255,255,0.22)', border: 'none', borderRadius: 8, width: 30, height: 30, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontFamily: 'inherit' }}>
-            <span className="icon icon-sm">edit</span>
-          </button>
+          <div style={{ display: 'flex', gap: 6 }}>
+            {onEditar && (
+              <button onClick={onEditar} title="Cor / imagem"
+                style={{ background: 'rgba(255,255,255,0.22)', border: 'none', borderRadius: 8, width: 30, height: 30, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontFamily: 'inherit' }}>
+                <span className="icon icon-sm">palette</span>
+              </button>
+            )}
+            <button onClick={() => { setRascunho(meta ? String(meta) : ''); setEditando(true) }} title="Definir meta"
+              style={{ background: 'rgba(255,255,255,0.22)', border: 'none', borderRadius: 8, width: 30, height: 30, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontFamily: 'inherit' }}>
+              <span className="icon icon-sm">edit</span>
+            </button>
+          </div>
         )}
       </div>
 
