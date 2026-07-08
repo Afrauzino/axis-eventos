@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { useVoltarFecha } from '../hooks/useVoltarFecha'
 import { getInitials } from '../utils'
 import { useEvento } from '../hooks/useEvento'
 import { useRegistrarChrome } from '../lib/chrome'
@@ -36,6 +37,7 @@ export default function Ranking({ profile }: { profile?: Profile }) {
   const [erro,       setErro]       = useState<string|null>(null)
   const [catSel,     setCatSel]     = useState<Categoria|null>(null)
   const [pessoaAberta, setPessoaAberta] = useState<Pessoa|null>(null)
+  useVoltarFecha(!!pessoaAberta, () => setPessoaAberta(null))
   const [myPersonId, setMyPersonId] = useState<string|null>(null)
   const [voltarPara, setVoltarPara] = useState<string|null>(null) // origem quando aberto via "Votar neste encontrista"
   const canAdmin = profile && ['admin','coordenador'].includes(profile.user_role)

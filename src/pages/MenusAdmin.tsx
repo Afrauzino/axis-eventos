@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { useVoltarFecha } from '../hooks/useVoltarFecha'
 import { useRegistrarChromeNav } from '../lib/chrome'
 import EmojiGrid from '../components/EmojiGrid'
 import type { Profile } from '../App'
@@ -15,6 +16,7 @@ export default function MenusAdmin({ profile }: { profile?: Profile }) {
   const [menus, setMenus]       = useState<MenuItem[]>([])
   const [loading, setLoading]   = useState(true)
   const [editando, setEditando] = useState<MenuItem|null>(null)
+  useVoltarFecha(!!editando, () => setEditando(null))
   const [salvando, setSalvando] = useState(false)
   const [form, setForm] = useState({ label:'', emoji:'📋', icon:'circle', rota:'', visivel:true, roles:[] as string[] })
 

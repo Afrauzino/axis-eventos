@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { useVoltarFecha } from '../hooks/useVoltarFecha'
 import { getInitials, isAdmin } from '../utils'
 import UploadFoto from '../components/UploadFoto'
 import EmojiGrid from '../components/EmojiGrid'
@@ -19,6 +20,7 @@ export default function TeatroPersonagens({ profile }: { profile?: Profile }) {
   const [lista, setLista]       = useState<Personagem[]>([])
   const [loading, setLoading]   = useState(true)
   const [modal, setModal]       = useState(false)
+  useVoltarFecha(modal, () => setModal(false))
   const [editando, setEditando] = useState<Personagem|null>(null)
   const [salvando, setSalvando] = useState(false)
   const [buscar, setBuscar]     = useState('')

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { useVoltarFecha } from '../hooks/useVoltarFecha'
 import { useRegistrarChromeNav } from '../lib/chrome'
 import FichaMedica from '../components/FichaMedica'
 import CardItem from '../components/CardItem'
@@ -30,6 +31,7 @@ export default function SaudeFicha({ profile }: { profile?: Profile }) {
   const [filtro, setFiltro]     = useState<'todos'|'com'|'sem'>('todos')
   const [busca, setBusca]       = useState('')
   const [aberta, setAberta]     = useState<Pessoa|null>(null)
+  useVoltarFecha(!!aberta, () => setAberta(null))
   const [fotoAmpliada, setFotoAmpliada] = useState<string|null>(null)
 
   useEffect(() => { if (evLoading) return; if (!evento) { setLoading(false); return }; carregar() }, [evento, evLoading])

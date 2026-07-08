@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { useVoltarFecha } from '../hooks/useVoltarFecha'
 import { fmtDataHora, isAdmin, isLider } from '../utils'
 import { useEvento } from '../hooks/useEvento'
 import Seletor from '../components/Seletor'
@@ -25,6 +26,7 @@ export default function Alertas({ profile }: { profile?: Profile }) {
   const [leituras, setLeituras] = useState<Leitura[]>([])
   const [loading, setLoading] = useState(true)
   const [modal, setModal]     = useState(false)
+  useVoltarFecha(modal, () => setModal(false))
   const [salvando, setSalvando] = useState(false)
   const [erro, setErro]       = useState('')
   const [form, setForm]       = useState({ title:'', message:'', priority:'info', target_type:'all', requires_read:false })

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { useVoltarFecha } from '../hooks/useVoltarFecha'
 import { useRegistrarChromeNav } from '../lib/chrome'
 import { getInitials, fmtDataHora } from '../utils'
 import { useEvento } from '../hooks/useEvento'
@@ -19,6 +20,7 @@ export default function Saude({ profile }: { profile?: Profile }) {
   const [pessoas, setPessoas]           = useState<Pessoa[]>([])
   const [loading, setLoading]           = useState(true)
   const [modal, setModal]               = useState(false)
+  useVoltarFecha(modal, () => setModal(false))
   const [salvando, setSalvando]         = useState(false)
   const [form, setForm] = useState({ person_id:'', descricao:'', tipo:'Atendimento geral' })
 

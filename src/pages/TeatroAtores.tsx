@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { useVoltarFecha } from '../hooks/useVoltarFecha'
 import { useRegistrarChromeNav } from '../lib/chrome'
 import { getInitials, isAdmin } from '../utils'
 import { useEvento } from '../hooks/useEvento'
@@ -24,6 +25,7 @@ export default function TeatroAtores({ profile }: { profile?: Profile }) {
   const [personagens, setPersonagens] = useState<Personagem[]>([])
   const [loading, setLoading]     = useState(true)
   const [modal, setModal]         = useState(false)
+  useVoltarFecha(modal, () => setModal(false))
   const [salvando, setSalvando]   = useState(false)
   const [erro, setErro]           = useState('')
   const [form, setForm] = useState({ theater_id:'', person_id:'', personagem_id:'', observacoes:'' })

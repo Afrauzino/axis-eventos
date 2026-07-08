@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { useVoltarFecha } from '../hooks/useVoltarFecha'
 import { fmtHora, fmtDataLonga, getInitials, isAdmin } from '../utils'
 import { useEvento } from '../hooks/useEvento'
 import { toast } from '../components/Toast'
@@ -21,11 +22,13 @@ export default function MinhasAtividades({ profile }: { profile: Profile }) {
   const [alertas, setAlertas]   = useState<Alerta[]>([])
   const [loading, setLoading]   = useState(true)
   const [detalhe, setDetalhe]   = useState<Escala|null>(null)
+  useVoltarFecha(!!detalhe, () => setDetalhe(null))
   const [escalaChk, setEscalaChk] = useState<ItemChk[]>([])
   const [filtro, setFiltro]     = useState<'todas'|'pendentes'|'concluidas'>('todas')
   const [myPersonId, setMyPersonId] = useState<string|null>(null)
   const [cardapios, setCardapios] = useState<{id:string;tipo_refeicao_nome:string|null;titulo:string|null;itens:string|null;data_servir:string|null}[]>([])
   const [cardapioDetalhe, setCardapioDetalhe] = useState<{id:string;tipo_refeicao_nome:string|null;titulo:string|null;itens:string|null;data_servir:string|null}|null>(null)
+  useVoltarFecha(!!cardapioDetalhe, () => setCardapioDetalhe(null))
   const [meusAfilhados, setMeusAfilhados] = useState<{id:string;name:string;photo_url:string|null;pct:number;status:string}[]>([])
   // #11 — atividades vindas do Cronograma (sou ministrante / estou no elenco)
   const [cronoAtividades, setCronoAtividades] = useState<(Escala & { tipo:'ministracao'|'teatro' })[]>([])

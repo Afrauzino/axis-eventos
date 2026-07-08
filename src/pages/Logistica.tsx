@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { useVoltarFecha } from '../hooks/useVoltarFecha'
 import FichaMedica from '../components/FichaMedica'
 import PrintOverlay from '../components/PrintOverlay'
 import CardItem from '../components/CardItem'
@@ -26,6 +27,7 @@ export default function Logistica({ profile }: { profile?: Profile }) {
   const [pessoas, setPessoas] = useState<PessoaLog[]>([])
   const [aba, setAba] = useState<'encontristas'|'config'>('encontristas')
   const [aberto, setAberto] = useState<Pessoa|null>(null)
+  useVoltarFecha(!!aberto, () => setAberto(null))
   const [fotoAmpliada, setFotoAmpliada] = useState<string|null>(null)
   const [novoItem, setNovoItem] = useState('')
   const [busca, setBusca] = useState('')
