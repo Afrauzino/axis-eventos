@@ -10,6 +10,10 @@ import HomeCarousel from '../components/HomeCarousel'
 import CronometroAoVivo from '../components/CronometroAoVivo'
 import ContagemRegressiva from '../components/ContagemRegressiva'
 import ProximoItem from '../components/ProximoItem'
+import MuralGratidao from '../components/MuralGratidao'
+import Aniversariantes from '../components/Aniversariantes'
+import MetaEncontristas from '../components/MetaEncontristas'
+import VersiculoDia from '../components/VersiculoDia'
 import PlaylistHome from '../components/PlaylistHome'
 import BoasVindas, { type BVVariante } from '../components/BoasVindas'
 import { MENUS_CATALOGO } from '../lib/permCatalog'
@@ -18,7 +22,7 @@ import type { Profile } from '../App'
 type Stats = { encontristas:number; encontreiros:number; equipes:number; alertas:number }
 
 // #tela-inicial — blocos reordenáveis (o admin arrasta e salva a ordem)
-const ORDEM_PADRAO = ['evento','proximo','ranking','indicadores','carrossel','playlist','boasvindas']
+const ORDEM_PADRAO = ['evento','proximo','meta','mural','aniversarios','versiculo','ranking','indicadores','carrossel','playlist','boasvindas']
 function normalizarOrdem(arr:any): string[] {
   const base = ORDEM_PADRAO
   const filtrada = Array.isArray(arr) ? arr.filter((id:string)=>base.includes(id)) : []
@@ -243,6 +247,14 @@ export default function Dashboard({ profile }: { profile: Profile }) {
         ) : null
       case 'proximo':
         return <ProximoItem eventoId={evento.id} admin={admin} />
+      case 'meta':
+        return <MetaEncontristas eventoId={evento.id} admin={admin} />
+      case 'mural':
+        return <MuralGratidao eventoId={evento.id} profile={profile} />
+      case 'aniversarios':
+        return <Aniversariantes eventoId={evento.id} />
+      case 'versiculo':
+        return <VersiculoDia />
       case 'carrossel':
         return <HomeCarousel admin={admin} />
       case 'playlist':
