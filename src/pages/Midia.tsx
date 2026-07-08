@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useVoltarFecha } from '../hooks/useVoltarFecha'
 import ArquivosModulo from '../components/ArquivosModulo'
+import DriveBrowser from '../components/DriveBrowser'
 import { toast } from '../components/Toast'
 import { carregarConfig, salvarConfig } from '../lib/tema'
 import { isAdmin } from '../utils'
@@ -43,6 +44,8 @@ export default function Midia({ profile }: { profile?: Profile }) {
   const [driveModal, setDriveModal] = useState(false)
   const [driveRascunho, setDriveRascunho] = useState('')
   const [driveGrid, setDriveGrid]   = useState(true)
+  const [driveApiKey, setDriveApiKey] = useState('')       // chave da API do Google (global)
+  const [driveApiRascunho, setDriveApiRascunho] = useState('')
   useVoltarFecha(driveModal, () => setDriveModal(false))
   const [form, setForm]       = useState<{tipo:'foto'|'audio'|'video';titulo:string;url:string}>({ tipo:'foto', titulo:'', url:'' })
   const [salvando, setSalvando] = useState(false)
@@ -59,6 +62,8 @@ export default function Midia({ profile }: { profile?: Profile }) {
     setMidias((data as Midia[]) ?? [])
     const dv = await carregarConfig('midia_drive:' + evento.id)
     setDriveLink(dv ?? '')
+    const ak = await carregarConfig('google_api_key')
+    setDriveApiKey(ak ?? '')
     setLoading(false)
   }
 
@@ -67,7 +72,8 @@ export default function Midia({ profile }: { profile?: Profile }) {
     const link = driveRascunho.trim()
     if (link && !driveFolderId(link)) { toast.aviso('Link de pasta do Google Drive inválido. Cole o link de uma PASTA.'); return }
     await salvarConfig('midia_drive:' + evento.id, link)
-    setDriveLink(link); setDriveModal(false)
+    await salvarConfig('google_api_key', driveApiRascunho.trim())
+    setDriveLink(link); setDriveApiKey(driveApiRascunho.trim()); setDriveModal(false)
     toast.sucesso(link ? 'Pasta atualizada!' : 'Pasta removida.')
   }
 
@@ -108,28 +114,39 @@ export default function Midia({ profile }: { profile?: Profile }) {
               <div className="empty-icon"><MatIcon name="folder" size={28} color="var(--muted-light)"/></div>
               <p className="empty-title">Nenhuma pasta do Drive</p>
               <p className="empty-desc">{canEdit ? 'Defina uma pasta do Google Drive para navegar aqui como se fosse uma pasta.' : 'O administrador ainda não definiu a pasta.'}</p>
-              {canEdit && <button className="btn btn-primary" style={{marginTop:12}} onClick={()=>{setDriveRascunho(driveLink);setDriveModal(true)}}>Definir pasta do Google Drive</button>}
+              {canEdit && <button className="btn btn-primary" style={{marginTop:12}} onClick={()=>{setDriveRascunho(driveLink);setDriveApiRascunho(driveApiKey);setDriveModal(true)}}>Definir pasta do Google Drive</button>}
             </div>
           )
         }
         return (
           <>
-            <div style={{display:'flex',gap:8,marginBottom:10,flexWrap:'wrap',alignItems:'center'}}>
-              <button className="btn btn-ghost btn-sm" onClick={()=>setDriveGrid(g=>!g)}>
-                <MatIcon name={driveGrid?'view_list':'grid_view'} size={15}/> {driveGrid?'Lista':'Grade'}
-              </button>
-              <a href={`https://drive.google.com/drive/folders/${fid}`} target="_blank" rel="noreferrer" className="btn btn-ghost btn-sm" style={{textDecoration:'none'}}>
-                <MatIcon name="open_in_new" size={15}/> Abrir no Drive
-              </a>
-              {canEdit && <button className="btn btn-ghost btn-sm" onClick={()=>{setDriveRascunho(driveLink);setDriveModal(true)}}>
-                <MatIcon name="edit" size={15}/> Trocar pasta
-              </button>}
-            </div>
-            <iframe title="Google Drive" src={`https://drive.google.com/embeddedfolderview?id=${fid}#${driveGrid?'grid':'list'}`}
-              style={{width:'100%',height:'72vh',border:'1px solid var(--border)',borderRadius:12,background:'white',display:'block'}} />
-            <p style={{fontSize:11,color:'var(--muted)',marginTop:8,lineHeight:1.5}}>
-              Navegue pelas pastas e subpastas como no Drive. A pasta precisa estar compartilhada como <b>"Qualquer pessoa com o link"</b>.
-            </p>
+            {canEdit && (
+              <div style={{display:'flex',gap:8,marginBottom:10,flexWrap:'wrap',alignItems:'center',justifyContent:'flex-end'}}>
+                <button className="btn btn-ghost btn-sm" onClick={()=>{setDriveRascunho(driveLink);setDriveApiRascunho(driveApiKey);setDriveModal(true)}}>
+                  <MatIcon name="edit" size={15}/> Trocar pasta / chave
+                </button>
+              </div>
+            )}
+            {driveApiKey ? (
+              /* Explorador de verdade: navega subpastas aqui, Voltar, +/-, abre arquivos no Drive */
+              <DriveBrowser rootId={fid} apiKey={driveApiKey} />
+            ) : (
+              <>
+                <div style={{display:'flex',gap:8,marginBottom:10,flexWrap:'wrap',alignItems:'center'}}>
+                  <button className="btn btn-ghost btn-sm" onClick={()=>setDriveGrid(g=>!g)}>
+                    <MatIcon name={driveGrid?'view_list':'grid_view'} size={15}/> {driveGrid?'Lista':'Grade'}
+                  </button>
+                  <a href={`https://drive.google.com/drive/folders/${fid}`} target="_blank" rel="noreferrer" className="btn btn-ghost btn-sm" style={{textDecoration:'none'}}>
+                    <MatIcon name="open_in_new" size={15}/> Abrir no Drive
+                  </a>
+                </div>
+                <iframe title="Google Drive" src={`https://drive.google.com/embeddedfolderview?id=${fid}#${driveGrid?'grid':'list'}`}
+                  style={{width:'100%',height:'72vh',border:'1px solid var(--border)',borderRadius:12,background:'white',display:'block'}} />
+                <p style={{fontSize:11,color:'var(--muted)',marginTop:8,lineHeight:1.5}}>
+                  Modo simples (sem chave da API). Para navegar as subpastas <b>dentro do app</b> com Voltar e zoom, o admin adiciona uma <b>chave da API do Google</b> em "Trocar pasta / chave".
+                </p>
+              </>
+            )}
           </>
         )
       })()}
@@ -234,6 +251,14 @@ export default function Midia({ profile }: { profile?: Profile }) {
             {driveRascunho.trim() && !driveFolderId(driveRascunho) && (
               <p style={{fontSize:12,color:'var(--danger)',marginBottom:8}}>Link inválido — precisa ser o link de uma PASTA do Drive.</p>
             )}
+
+            <label className="form-label" style={{marginTop:8}}>Chave da API do Google (para navegar dentro do app)</label>
+            <p className="form-hint mb-2" style={{lineHeight:1.6}}>
+              Opcional, mas recomendado. Com a chave, dá pra <b>entrar nas subpastas aqui</b>, com Voltar e zoom (+/−). Sem ela, mostra o modo simples. A mesma chave vale para todos os eventos.
+            </p>
+            <input className="form-input" value={driveApiRascunho} onChange={e=>setDriveApiRascunho(e.target.value)}
+              placeholder="Cole a chave (AIza...)" style={{marginBottom:12}}/>
+
             <button className="btn btn-primary btn-full" onClick={salvarDrive} style={{marginBottom:8}}>Salvar</button>
             {driveLink && <button className="btn btn-ghost btn-full" style={{color:'var(--danger)'}} onClick={()=>setDriveRascunho('')}>Limpar</button>}
           </div>
