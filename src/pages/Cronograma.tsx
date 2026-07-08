@@ -9,6 +9,7 @@ import DataHora from '../components/DataHora'
 import BarraData from '../components/BarraData'
 import PrintOverlay from '../components/PrintOverlay'
 import Seletor from '../components/Seletor'
+import { useVoltarFecha } from '../hooks/useVoltarFecha'
 import CronometroPopup from '../components/CronometroPopup'
 import CronometroDisplay from '../components/CronometroDisplay'
 import type { Profile } from '../App'
@@ -60,6 +61,12 @@ export default function Cronograma({ profile }: { profile?: Profile }) {
   const [editando, setEditando]       = useState<Item|null>(null)
   const [salvando, setSalvando]       = useState(false)
   const [erro, setErro]               = useState('')
+
+  // Botão VOLTAR do celular fecha a janela aberta (em vez de sair da tela)
+  useVoltarFecha(!!detalhe, () => setDetalhe(null))
+  useVoltarFecha(!!cronometro, () => setCronometro(null))
+  useVoltarFecha(modal, () => { setModal(false); setEditando(null) })
+  useVoltarFecha(!!imprimir, () => setImprimir(null))
   const hoje = new Date()
   const [dataSel, setDataSel]         = useState(hoje)
   const [form, setForm] = useState({
@@ -588,20 +595,23 @@ export default function Cronograma({ profile }: { profile?: Profile }) {
                         </p>
                         {det && (min || tea || item.descricao) && (
                           <div style={{marginTop:6,fontSize:12,color:'#374151',borderTop:'1px dashed #e5e7eb',paddingTop:8}}>
+                            <div style={{display:'flex',gap:14,alignItems:'flex-start'}}>
                             {min && (
-                              <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:6}}>
-                                <div style={{width:40,height:40,borderRadius:'50%',overflow:'hidden',background:'#f3f4f6',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
-                                  {mfoto?.photo_url?<img src={mfoto.photo_url} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}}/>:<span style={{fontWeight:700,color:'#6b7280',fontSize:13}}>{getInitials(mfoto?.name ?? ministrante?.name ?? '?')}</span>}
+                              <div style={{flex:1,minWidth:0}}>
+                                <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:6}}>
+                                  <div style={{width:40,height:40,borderRadius:'50%',overflow:'hidden',background:'#f3f4f6',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+                                    {mfoto?.photo_url?<img src={mfoto.photo_url} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}}/>:<span style={{fontWeight:700,color:'#6b7280',fontSize:13}}>{getInitials(mfoto?.name ?? ministrante?.name ?? '?')}</span>}
+                                  </div>
+                                  <div>
+                                    <p style={{fontWeight:700}}>Ministrante: {mfoto?.name ?? ministrante?.name ?? '—'}</p>
+                                    {min.tema && <p>Tema: {min.tema}</p>}
+                                  </div>
                                 </div>
-                                <div>
-                                  <p style={{fontWeight:700}}>Ministrante: {mfoto?.name ?? ministrante?.name ?? '—'}</p>
-                                  {min.tema && <p>Tema: {min.tema}</p>}
-                                </div>
+                                {min?.descricao && <p style={{whiteSpace:'pre-wrap'}}>{min.descricao}</p>}
                               </div>
                             )}
-                            {min?.descricao && <p style={{whiteSpace:'pre-wrap',marginBottom:6}}>{min.descricao}</p>}
                             {tea && (
-                              <div style={{marginTop:min?4:0}}>
+                              <div style={{flex:1,minWidth:0}}>
                                 <p style={{fontWeight:700}}>🎭 Teatro: {tea.nome}</p>
                                 {tea.descricao && <p style={{whiteSpace:'pre-wrap'}}>{tea.descricao}</p>}
                                 {atores.length>0 && (
@@ -622,6 +632,7 @@ export default function Cronograma({ profile }: { profile?: Profile }) {
                                 )}
                               </div>
                             )}
+                            </div>
                             {!min && !tea && item.descricao && <p style={{whiteSpace:'pre-wrap'}}>{item.descricao}</p>}
                           </div>
                         )}
