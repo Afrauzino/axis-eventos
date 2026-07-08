@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { useVoltarFecha } from '../hooks/useVoltarFecha'
 import { useRegistrarChromeNav } from '../lib/chrome'
 import AvatarPicker from '../components/AvatarPicker'
 import UploadFoto from '../components/UploadFoto'
@@ -25,6 +26,7 @@ export default function TeatroLista({ profile }: { profile?: Profile }) {
   const [lista, setLista]       = useState<Teatro[]>([])
   const [loading, setLoading]   = useState(true)
   const [modal, setModal]       = useState(false)
+  useVoltarFecha(modal, () => setModal(false))
   const [editando, setEditando] = useState<Teatro|null>(null)
   const [salvando, setSalvando] = useState(false)
   const [erro, setErro]         = useState('')

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { useVoltarFecha } from '../hooks/useVoltarFecha'
 import ArquivosModulo from '../components/ArquivosModulo'
 import PrintOverlay from '../components/PrintOverlay'
 import { getInitials, isAdmin } from '../utils'
@@ -76,10 +77,12 @@ export default function TeatroDetalhe({ profile }: { profile?: Profile }) {
   const [aba, setAba]           = useState<'cenas'|'elenco'|'midia'|'arquivos'>('cenas')
   const [imprimir, setImprimir] = useState(false)
   const [modalMidia, setModalMidia] = useState(false)
+  useVoltarFecha(modalMidia, () => setModalMidia(false))
   const [formMidia, setFormMidia]   = useState<{tipo:'foto'|'audio'|'video';titulo:string;url:string}>({ tipo:'foto', titulo:'', url:'' })
   const [salvandoMidia, setSalvandoMidia] = useState(false)
   const [loading, setLoading]   = useState(true)
   const [modalCena, setModalCena] = useState(false)
+  useVoltarFecha(modalCena, () => setModalCena(false))
   const [editandoCena, setEditandoCena] = useState<Cena|null>(null)
   const [salvandoCena, setSalvandoCena] = useState(false)
 

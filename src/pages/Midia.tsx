@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { useVoltarFecha } from '../hooks/useVoltarFecha'
 import ArquivosModulo from '../components/ArquivosModulo'
 import { toast } from '../components/Toast'
 import { isAdmin } from '../utils'
@@ -24,6 +25,7 @@ export default function Midia({ profile }: { profile?: Profile }) {
   const [aba, setAba]         = useState<'midia'|'arquivos'>('midia')
   const [loading, setLoading] = useState(true)
   const [modal, setModal]     = useState(false)
+  useVoltarFecha(modal, () => setModal(false))
   const [form, setForm]       = useState<{tipo:'foto'|'audio'|'video';titulo:string;url:string}>({ tipo:'foto', titulo:'', url:'' })
   const [salvando, setSalvando] = useState(false)
 

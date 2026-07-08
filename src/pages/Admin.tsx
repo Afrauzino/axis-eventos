@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { useVoltarFecha } from '../hooks/useVoltarFecha'
 import ConfigCor from './ConfigCor'
 import { limparCachePermissoes } from '../hooks/usePermissao'
 import { fmtDataHora, isAdmin } from '../utils'
@@ -139,12 +140,14 @@ export default function Admin({ profile }: { profile?: Profile }) {
   }[]>([])
   const [gerandoCodigos, setGerandoCodigos] = useState(false)
   const [pessoaDetalhe, setPessoaDetalhe] = useState<typeof pessoas[0]|null>(null)
+  useVoltarFecha(!!pessoaDetalhe, () => setPessoaDetalhe(null))
   const [fotoAmpliada, setFotoAmpliada] = useState<string|null>(null)
   const [buscaUser, setBuscaUser]       = useState('')
   const [filtroUserTipo, setFiltroUserTipo] = useState('todos')  // todos | encounterer | worker
   const navigate = useNavigate()
   // #1 — admin edita 100% do cadastro de qualquer pessoa (reusa CadastroPessoa)
   const [editPessoaId, setEditPessoaId] = useState<string|null>(null)
+  useVoltarFecha(!!editPessoaId, () => setEditPessoaId(null))
   const [editEventoId, setEditEventoId] = useState<string|undefined>(undefined)
   const [editForm, setEditForm]         = useState<PessoaForm>(FORM_VAZIO)
   const [salvandoEdit, setSalvandoEdit] = useState(false)
@@ -164,11 +167,14 @@ export default function Admin({ profile }: { profile?: Profile }) {
   const [loading, setLoading]       = useState(true)
   const [salvando, setSalvando]     = useState(false)
   const [modalEvento, setModalEvento] = useState(false)
+  useVoltarFecha(modalEvento, () => setModalEvento(false))
   const [editandoEvento, setEditandoEvento] = useState<Evento|null>(null)
   const [modalTipo, setModalTipo]   = useState(false)
+  useVoltarFecha(modalTipo, () => setModalTipo(false))
   const [editandoTipo, setEditandoTipo] = useState<any>(null)
   const [formTipo, setFormTipo]     = useState({nome:'',cor:'#00A99D',icone:''})
   const [modalDuplicar, setModalDuplicar] = useState<Evento|null>(null)
+  useVoltarFecha(!!modalDuplicar, () => setModalDuplicar(null))
   const [nomeDuplicar, setNomeDuplicar] = useState('')
   const [opcoesDup, setOpcoesDup]   = useState({ ministracoes:true, teatros:true, cronograma:true, equipes:true, personagens:true, locais:true, tipos:true })
   const [duplicando, setDuplicando] = useState(false)

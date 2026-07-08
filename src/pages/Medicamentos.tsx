@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { useVoltarFecha } from '../hooks/useVoltarFecha'
 import { useRegistrarChromeNav } from '../lib/chrome'
 import PessoaSaudeResumo from '../components/PessoaSaudeResumo'
 import { toast } from '../components/Toast'
@@ -23,6 +24,7 @@ export default function Medicamentos({ profile }: { profile?: Profile }) {
   const [entregando, setEntregando] = useState<string|null>(null)
   const [resumoId, setResumoId] = useState<string|null>(null)
   const [pessoaDoses, setPessoaDoses] = useState<string|null>(null)
+  useVoltarFecha(!!pessoaDoses, () => setPessoaDoses(null))
   const [fotoAmpliada, setFotoAmpliada] = useState<string|null>(null)
   useRegistrarChromeNav('saude')
 

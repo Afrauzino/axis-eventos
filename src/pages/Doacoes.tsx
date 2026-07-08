@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { useVoltarFecha } from '../hooks/useVoltarFecha'
 import { useRegistrarChromeNav } from '../lib/chrome'
 import { getInitials, isAdmin, fmtData, fmtDataHora, fmtBRL } from '../utils'
 import { useEvento } from '../hooks/useEvento'
@@ -17,6 +18,7 @@ export default function Doacoes({ profile }: { profile?: Profile }) {
   const [pessoas, setPessoas] = useState<Pessoa[]>([])
   const [loading, setLoading] = useState(true)
   const [modal, setModal]     = useState(false)
+  useVoltarFecha(modal, () => setModal(false))
   const [fotoAmpliada, setFotoAmpliada] = useState<string|null>(null)
   const [salvando, setSalvando] = useState(false)
   const [form, setForm] = useState({ person_id:'', valor:'', descricao:'', forma_pagamento:'pix', anonima:false })

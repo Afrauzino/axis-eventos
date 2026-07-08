@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { useVoltarFecha } from '../hooks/useVoltarFecha'
 import { useRegistrarChromeNav } from '../lib/chrome'
 import { toast } from '../components/Toast'
 import DataHora from '../components/DataHora'
@@ -33,6 +34,7 @@ export default function Financeiro({ profile }: { profile?: Profile }) {
   const [loading, setLoading]       = useState(true)
   const [busca, setBusca]             = useState('')
   const [modal, setModal]             = useState(false)
+  useVoltarFecha(modal, () => setModal(false))
   const [editando, setEditando]       = useState<Pagamento|null>(null)
   const [personaSel, setPersonaSel]   = useState<Pessoa|null>(null)
   const [salvando, setSalvando]       = useState(false)

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { useVoltarFecha } from '../hooks/useVoltarFecha'
 import EmojiGrid from '../components/EmojiGrid'
 import PrintOverlay from '../components/PrintOverlay'
 import CardItem from '../components/CardItem'
@@ -29,11 +30,13 @@ export default function Cozinha({ profile }: { profile?: Profile }) {
 
   // modal tipo
   const [modalTipo, setModalTipo] = useState(false)
+  useVoltarFecha(modalTipo, () => setModalTipo(false))
   const [editTipo, setEditTipo] = useState<RefTipo|null>(null)
   const [novoTipo, setNovoTipo] = useState({ nome:'', cor:CORES[0], emoji:'🍽️' })
 
   // modal cardapio
   const [modalCard, setModalCard] = useState(false)
+  useVoltarFecha(modalCard, () => setModalCard(false))
   const [editCard, setEditCard] = useState<Cardapio|null>(null)
   const [formCard, setFormCard] = useState({ refeicao_tipo_id:'', titulo:'', itens:'' })
 

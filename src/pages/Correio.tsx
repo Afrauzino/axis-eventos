@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from 'react'
 import { supabase } from '../lib/supabase'
+import { useVoltarFecha } from '../hooks/useVoltarFecha'
 import PrintOverlay from '../components/PrintOverlay'
 import { toast } from '../components/Toast'
 import CardItem from '../components/CardItem'
@@ -48,6 +49,7 @@ export default function Correio({ profile }: { profile?: Profile }) {
   // config do líder de correio
   const [novoItem, setNovoItem] = useState('')
   const [modalPadrinho, setModalPadrinho] = useState<Pessoa|null>(null) // afiliado a quem atribuir padrinhos
+  useVoltarFecha(!!modalPadrinho, () => setModalPadrinho(null))
   const [buscaPadrinho, setBuscaPadrinho] = useState('') // filtro de nome no modal de padrinhos
   const [fotoAmpliada, setFotoAmpliada] = useState<string|null>(null)
   useRegistrarChrome(aba==='todos' ? { impressoes:[{ label:'Imprimir com checklist', onClick:()=>setImprimir(true) }] } : {}, [aba])

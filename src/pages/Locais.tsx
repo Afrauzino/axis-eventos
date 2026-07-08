@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { useVoltarFecha } from '../hooks/useVoltarFecha'
 import { isAdmin } from '../utils'
 import UploadFoto from '../components/UploadFoto'
 import EmojiGrid from '../components/EmojiGrid'
@@ -29,6 +30,7 @@ export default function Locais({ profile }: { profile?: Profile }) {
   const [loading, setLoading] = useState(true)
   const [modal, setModal]     = useState(false)
   const [editando, setEditando] = useState<Local|null>(null)
+  useVoltarFecha(modal, () => setModal(false))
   const [salvando, setSalvando] = useState(false)
   const [erro, setErro]       = useState('')
   const [filtro, setFiltro]   = useState('todos')
