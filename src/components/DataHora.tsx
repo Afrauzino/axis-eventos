@@ -61,6 +61,7 @@ function rotulo(value: string, modo: ModoDataHora): string {
 
 export default function DataHora({ value, onChange, modo = 'date', disabled, placeholder, titulo, min, max }: Props) {
   const [aberto, setAberto] = useState(false)
+  const [anoAberto, setAnoAberto] = useState(false)
   useVoltarFecha(aberto, () => setAberto(false))  // voltar do celular fecha o calendário
   const [work, setWork] = useState<Partes>(() => parse(value, modo))
   // sem valor, o calendário abre no mês do "min" (quando há trava de início) senão em "hoje"
@@ -90,6 +91,7 @@ export default function DataHora({ value, onChange, modo = 'date', disabled, pla
     setWork(p)
     const b = baseView()
     setView({ y: isNaN(p.y) ? b.y : p.y, m: isNaN(p.m) ? b.m : p.m })
+    setAnoAberto(false)
     setAberto(true)
   }
 
@@ -146,9 +148,21 @@ export default function DataHora({ value, onChange, modo = 'date', disabled, pla
               <div style={{ background: 'white', border: '1px solid var(--border)', borderRadius: 14, padding: 14, marginBottom: usaHora ? 14 : 4 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
                   <button type="button" onClick={() => mudarMes(-1)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--primary)', fontFamily: 'inherit', padding: 4, display: 'flex' }}><span className="icon">chevron_left</span></button>
-                  <span style={{ fontSize: 14, fontWeight: 800 }}>{MESES[view.m]} {view.y}</span>
+                  <button type="button" onClick={() => setAnoAberto(a => !a)} style={{ fontSize: 14, fontWeight: 800, background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 3 }}>
+                    {MESES[view.m]} {view.y} <span className="icon icon-sm" style={{ color: 'var(--primary)' }}>{anoAberto ? 'expand_less' : 'expand_more'}</span>
+                  </button>
                   <button type="button" onClick={() => mudarMes(1)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--primary)', fontFamily: 'inherit', padding: 4, display: 'flex' }}><span className="icon">chevron_right</span></button>
                 </div>
+                {anoAberto ? (
+                  <div style={{ maxHeight: 214, overflowY: 'auto', display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 6, padding: '2px' }}>
+                    {Array.from({ length: (new Date().getFullYear() + 1) - 1920 + 1 }, (_, i) => (new Date().getFullYear() + 1) - i).map(ano => (
+                      <button key={ano} type="button" onClick={() => { setView(v => ({ ...v, y: ano })); setAnoAberto(false) }}
+                        style={{ padding: '9px 0', borderRadius: 8, border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, fontWeight: ano === view.y ? 800 : 500, background: ano === view.y ? 'var(--primary)' : 'var(--bg)', color: ano === view.y ? 'white' : 'var(--text)' }}>
+                        {ano}
+                      </button>
+                    ))}
+                  </div>
+                ) : (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 3, textAlign: 'center' }}>
                   {DIAS_SEM.map((d, i) => <span key={i} style={{ fontSize: 11, color: 'var(--muted-light)', fontWeight: 600, paddingBottom: 2 }}>{d}</span>)}
                   {celulas.map((c, i) => {
@@ -167,6 +181,7 @@ export default function DataHora({ value, onChange, modo = 'date', disabled, pla
                     )
                   })}
                 </div>
+                )}
               </div>
             )}
 

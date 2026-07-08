@@ -59,11 +59,20 @@ const ROLES = ['visitante','aprovado','encontreiro','lider','financeiro','secret
 const ROLE_LABEL: Record<string,string> = { visitante:'Visitante', aprovado:'Aprovado', encontreiro:'Encontreiro', lider:'Líder', financeiro:'Financeiro', secretaria:'Secretaria', coordenador:'Coordenador', pastor:'Pastor', admin:'Admin' }
 
 // Cargos oferecidos na aprovação/definição de acesso (o resto do controle é por permissões de equipe/individuais)
-const CARGOS_APROVACAO = [
-  { role:'visitante',   label:'Visitante' },
-  { role:'encontreiro', label:'Encontreiro' },
-  { role:'admin',       label:'Administrador' },
+// Cargos da aprovação. Aprovar/escolher aqui define o cargo (profiles.user_role)
+// E converte o tipo da pessoa (people.role_type) — encontrista ↔ encontreiro.
+const CARGOS_APROVACAO: { key:string; label:string; user_role:string; status:string; role_type:string|null }[] = [
+  { key:'visitante',   label:'Visitante',     user_role:'visitante',   status:'pending',  role_type:null },
+  { key:'encontrista', label:'Encontrista',   user_role:'aprovado',    status:'approved', role_type:'encounterer' },
+  { key:'encontreiro', label:'Encontreiro',   user_role:'encontreiro', status:'approved', role_type:'worker' },
+  { key:'admin',       label:'Administrador', user_role:'admin',       status:'approved', role_type:null },
 ]
+// Descobre qual opção representa a pessoa hoje (para o seletor mostrar certo)
+function cargoKey(p: { user_role?:string|null; role_status?:string|null; role_type?:string|null }): string {
+  if (p.user_role === 'admin') return 'admin'
+  if (p.role_status === 'pending' || !p.user_role || p.user_role === 'visitante') return 'visitante'
+  return p.role_type === 'worker' ? 'encontreiro' : 'encontrista'
+}
 
 const TIPOS_PADRÃO = [
   {nome:'Ministração', cor:'#6B46C1', ordem:1},
@@ -155,6 +164,10 @@ export default function Admin({ profile }: { profile?: Profile }) {
   const [msgCodigo, setMsgCodigo] = useState('')
   const [msgSalva, setMsgSalva]   = useState('')
   const [salvandoMsg, setSalvandoMsg] = useState(false)
+  // Termos do evento (com aceite na inscrição) — um por tipo
+  const [termoEncontrista, setTermoEncontrista] = useState('')
+  const [termoEncontreiro, setTermoEncontreiro] = useState('')
+  const [salvandoTermos, setSalvandoTermos] = useState(false)
   // Permissões
   const [permsPessoa, setPermsPessoa]   = useState<any[]>([])
   const [permsAba, setPermsAba]         = useState<'liberacoes'|'acoes'|'menus_visiveis'>('liberacoes')
@@ -182,6 +195,17 @@ export default function Admin({ profile }: { profile?: Profile }) {
 
   useEffect(() => { carregar() }, [])
   useEffect(() => { carregarConfig('msg_codigo').then(v => { const m = v ?? MSG_CODIGO_PADRAO; setMsgCodigo(m); setMsgSalva(m) }) }, [])
+  useEffect(() => {
+    carregarConfig('termo_encontrista').then(v => setTermoEncontrista(v ?? ''))
+    carregarConfig('termo_encontreiro').then(v => setTermoEncontreiro(v ?? ''))
+  }, [])
+  async function salvarTermos() {
+    setSalvandoTermos(true)
+    await salvarConfig('termo_encontrista', termoEncontrista)
+    await salvarConfig('termo_encontreiro', termoEncontreiro)
+    setSalvandoTermos(false)
+    toast.sucesso('Termos salvos!')
+  }
 
   // Inscrições abertas/fechadas (link público)
   const [inscricoesAbertas, setInscricoesAbertas] = useState(true)
@@ -345,10 +369,13 @@ export default function Admin({ profile }: { profile?: Profile }) {
     setLoading(false)
   }
 
-  async function alterarRole(userId:string, role:string) {
-    const novoStatus = role === 'visitante' ? 'pending' : 'approved'
-    await supabase.from('profiles').update({ user_role: role, role_status: novoStatus }).eq('user_id', userId)
-    setPessoas(prev => prev.map(p => p.user_id === userId ? { ...p, user_role: role, role_status: novoStatus } : p))
+  async function alterarRole(userId:string, key:string) {
+    const cfg = CARGOS_APROVACAO.find(c => c.key === key)
+    if (!cfg) return
+    await supabase.from('profiles').update({ user_role: cfg.user_role, role_status: cfg.status }).eq('user_id', userId)
+    // Converte o TIPO da pessoa (encontrista/encontreiro) quando o cargo define isso
+    if (cfg.role_type) await supabase.from('people').update({ role_type: cfg.role_type }).eq('user_id', userId)
+    setPessoas(prev => prev.map(p => p.user_id === userId ? { ...p, user_role: cfg.user_role, role_status: cfg.status, ...(cfg.role_type ? { role_type: cfg.role_type } : {}) } : p))
     carregar()
   }
 
@@ -415,11 +442,12 @@ export default function Admin({ profile }: { profile?: Profile }) {
 
   async function aprovarPessoa(p: typeof pessoas[0]) {
     if (!p.user_id) return
-    const cargo = (p.user_role && p.user_role !== 'visitante') ? p.user_role : 'encontreiro'
-    await supabase.from('profiles').update({ user_role: cargo, role_status: 'approved' }).eq('user_id', p.user_id)
-    setPessoas(prev => prev.map(x => x.user_id === p.user_id ? { ...x, user_role: cargo, role_status: 'approved' } : x))
-    setPessoaDetalhe(prev => prev && prev.user_id === p.user_id ? { ...prev, user_role: cargo, role_status: 'approved' } : prev)
-    registrarLog({ action:'approve', entity:'profiles', entityId:p.id, description:`Aprovou o usuário ${p.name} como ${cargo}`, eventId:eventoAtivoId() })
+    // Aprova mantendo o TIPO com que a pessoa se cadastrou (encontrista/encontreiro)
+    const key = p.role_type === 'worker' ? 'encontreiro' : 'encontrista'
+    const cfg = CARGOS_APROVACAO.find(c => c.key === key)!
+    await alterarRole(p.user_id, key)
+    setPessoaDetalhe(prev => prev && prev.user_id === p.user_id ? { ...prev, user_role: cfg.user_role, role_status: 'approved', role_type: cfg.role_type ?? prev.role_type } : prev)
+    registrarLog({ action:'approve', entity:'profiles', entityId:p.id, description:`Aprovou o usuário ${p.name} como ${cfg.label}`, eventId:eventoAtivoId() })
   }
 
   // Gerar (ou regenerar) código de acesso
@@ -965,8 +993,8 @@ export default function Admin({ profile }: { profile?: Profile }) {
                   {p.role_status==='pending'?'⏳ Aprovar':'✓ Ativo'}
                 </button>
                 <Seletor sheet compact titulo="Cargo / Nível de acesso"
-                  value={p.user_role??'visitante'} onChange={v=>alterarRole(p.user_id!,v)}
-                  opcoes={CARGOS_APROVACAO.map(cg=>({value:cg.role, label:cg.label}))}/>
+                  value={cargoKey(p)} onChange={v=>alterarRole(p.user_id!,v)}
+                  opcoes={CARGOS_APROVACAO.map(cg=>({value:cg.key, label:cg.label}))}/>
               </>
             ) : p.invite_code ? (
               <div style={{display:'flex',alignItems:'center',gap:4}}>
@@ -1119,9 +1147,9 @@ export default function Admin({ profile }: { profile?: Profile }) {
                   <div style={{marginBottom:6}}>
                     <label style={{fontSize:12,color:'var(--muted)',display:'block',marginBottom:4}}>Cargo / Nível de acesso</label>
                     <Seletor titulo="Cargo / Nível de acesso"
-                      value={pessoaDetalhe.user_role??'visitante'}
-                      onChange={v=>{alterarRole(pessoaDetalhe.user_id!,v);setPessoaDetalhe(prev=>prev?{...prev,user_role:v,role_status:v==='visitante'?'pending':'approved'}:null)}}
-                      opcoes={CARGOS_APROVACAO.map(cg=>({value:cg.role, label:cg.label}))}/>
+                      value={cargoKey(pessoaDetalhe)}
+                      onChange={v=>{alterarRole(pessoaDetalhe.user_id!,v); const cfg=CARGOS_APROVACAO.find(c=>c.key===v); setPessoaDetalhe(prev=>prev?{...prev,user_role:cfg?.user_role,role_status:(cfg?.status as any),role_type:cfg?.role_type??prev.role_type}:null)}}
+                      opcoes={CARGOS_APROVACAO.map(cg=>({value:cg.key, label:cg.label}))}/>
                   </div>
                   {pessoaDetalhe.role_status==='pending' && (
                     <button onClick={()=>aprovarPessoa(pessoaDetalhe)}
@@ -1530,6 +1558,24 @@ export default function Admin({ profile }: { profile?: Profile }) {
           <p className="section-label" style={{marginTop:20,marginBottom:6}}>Prévia (código de exemplo)</p>
           <div style={{background:'white',border:'1px solid var(--border)',borderRadius:12,padding:14,whiteSpace:'pre-wrap',fontSize:14,lineHeight:1.6,color:'var(--text)'}}>
             {montarMsg(msgCodigo, 'Maria Silva', 'AB12CD')}
+          </div>
+
+          {/* Termos do evento — aceite obrigatório na inscrição */}
+          <div style={{marginTop:28,paddingTop:20,borderTop:'2px solid var(--border)'}}>
+            <p style={{fontSize:16,fontWeight:800,marginBottom:4}}>📜 Termos do evento</p>
+            <p style={{fontSize:12,color:'var(--muted)',marginBottom:14,lineHeight:1.6}}>
+              Texto que a pessoa lê e precisa <b>aceitar</b> ao se inscrever. Deixe em branco para não exigir aceite.
+              Cada tipo tem o seu termo.
+            </p>
+            <label className="form-label">Termo do <b>Encontrista</b></label>
+            <textarea className="form-textarea" value={termoEncontrista} onChange={e=>setTermoEncontrista(e.target.value)}
+              style={{minHeight:130,fontFamily:'inherit',fontSize:14,lineHeight:1.6,marginBottom:14}} placeholder="Ex: Autorizo o uso de imagem, estou ciente das regras..."/>
+            <label className="form-label">Termo do <b>Encontreiro</b></label>
+            <textarea className="form-textarea" value={termoEncontreiro} onChange={e=>setTermoEncontreiro(e.target.value)}
+              style={{minHeight:130,fontFamily:'inherit',fontSize:14,lineHeight:1.6,marginBottom:14}} placeholder="Ex: Compromisso de servo, disponibilidade..."/>
+            <button className="btn btn-primary" onClick={salvarTermos} disabled={salvandoTermos}>
+              {salvandoTermos?'Salvando...':'Salvar termos'}
+            </button>
           </div>
         </div>
       )}

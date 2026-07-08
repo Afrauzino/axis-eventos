@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useVoltarFecha } from '../hooks/useVoltarFecha'
 import { supabase } from '../lib/supabase'
 import { useEvento } from '../hooks/useEvento'
+import { isAdmin } from '../utils'
 import type { Profile } from '../App'
 
 // #6 — Central de notificações do sininho.
@@ -31,8 +32,8 @@ export async function montarNotificacoes(profile: Profile, eventoId: string | nu
   const out: Notif[] = []
   const userId = profile.user_id
 
-  // Aprovações pendentes (admin)
-  if (profile.is_admin) {
+  // Aprovações pendentes (admin — por cargo OU flag)
+  if (isAdmin(profile.user_role) || profile.is_admin) {
     try {
       const { count } = await supabase.from('profiles').select('user_id', { count: 'exact', head: true }).eq('role_status', 'pending')
       if (count && count > 0) out.push({ id: 'aprov', emoji: '🙋', titulo: `${count} pessoa(s) aguardando aprovação`, sub: 'Toque para revisar', rota: '/admin' })

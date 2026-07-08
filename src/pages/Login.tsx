@@ -44,6 +44,27 @@ export default function Login() {
   const [usaMed, setUsaMed] = useState(false)
   const [meds, setMeds]   = useState<MedCtrl[]>([])
 
+  // Termos do evento (aceite obrigatório se o admin definiu um)
+  const [termoEncontrista, setTermoEncontrista] = useState('')
+  const [termoEncontreiro, setTermoEncontreiro] = useState('')
+  const [aceito, setAceito] = useState(false)
+  useEffect(() => {
+    carregarConfig('termo_encontrista').then(v => setTermoEncontrista(v ?? ''))
+    carregarConfig('termo_encontreiro').then(v => setTermoEncontreiro(v ?? ''))
+  }, [])
+  const termoAtual = (form.role_type === 'worker' ? termoEncontreiro : termoEncontrista).trim()
+  useEffect(() => { setAceito(false) }, [form.role_type])  // troca de tipo → reaceitar
+  const blocoTermos = termoAtual ? (
+    <div style={{ border:'1px solid var(--border)', borderRadius:12, padding:'12px 14px', margin:'10px 0 4px', background:'var(--bg)' }}>
+      <p style={{ fontSize:12, fontWeight:800, marginBottom:6 }}>📜 Termos do evento</p>
+      <div style={{ maxHeight:170, overflowY:'auto', fontSize:13, color:'var(--text2)', lineHeight:1.6, whiteSpace:'pre-wrap', marginBottom:10, paddingRight:4 }}>{termoAtual}</div>
+      <label style={{ display:'flex', alignItems:'center', gap:8, cursor:'pointer', fontSize:14, fontWeight:700 }}>
+        <input type="checkbox" checked={aceito} onChange={e=>setAceito(e.target.checked)} style={{ width:18, height:18 }}/>
+        Li e aceito os termos
+      </label>
+    </div>
+  ) : null
+
   function reset(m: Modo) {
     setModo(m); setErro(''); setOk('')
     setEmail(''); setSenha(''); setConf('')
@@ -213,7 +234,8 @@ export default function Login() {
       !email.trim() ? 'Email é obrigatório.' :
       senha.length < 6 ? 'Senha mínima: 6 caracteres.' :
       senha !== conf ? 'As senhas não coincidem.' :
-      (usaMed && meds.some(m=>!m.nome.trim())) ? 'Preencha o nome de todos os medicamentos.' : ''
+      (usaMed && meds.some(m=>!m.nome.trim())) ? 'Preencha o nome de todos os medicamentos.' :
+      (termoAtual && !aceito) ? 'Você precisa ler e aceitar os termos do evento.' : ''
     if (erroValid) {
       setErro(erroValid); toast.aviso(erroValid); setLoading(false)
       try { window.scrollTo({ top: 0, behavior: 'smooth' }); document.querySelector('.auth-body,.auth-wrap,main')?.scrollTo({ top: 0, behavior: 'smooth' }) } catch {}
@@ -442,6 +464,8 @@ export default function Login() {
               fotoObrigatoria={true}
             />
 
+            {blocoTermos}
+
             <button type="submit" className="btn btn-primary btn-full btn-lg" disabled={loading} style={{marginTop:16}}>
               {loading?'Salvando cadastro...':'Concluir cadastro'}
             </button>
@@ -494,6 +518,8 @@ export default function Login() {
                 showReferencia={form.role_type==='encounterer'}
                 fotoObrigatoria={true}
               />
+
+              {blocoTermos}
 
               <button type="submit" className="btn btn-primary btn-full btn-lg" disabled={loading} style={{marginTop:16}}>
                 {loading?'Enviando inscrição...':'Enviar inscrição'}
