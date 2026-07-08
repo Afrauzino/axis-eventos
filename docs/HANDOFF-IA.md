@@ -57,7 +57,11 @@ await s.from('theaters').insert({...}) // RLS admin permite
 11. **Botão Voltar universal** no cabeçalho (`BotaoVoltar` em `src/App.tsx`) — aparece em todas as telas menos a inicial, faz `navigate(-1)`.
 12. **10 teatros criados** do PDF "TEATROS - ENCONTRO (COMPLETO)" com cenas fiéis (blocos + personagens sem ator). event_id acima. Personagens globais reaproveitados (IDs em `personagens_globais`).
 
-## 5. ⚠️ TAREFA EM ANDAMENTO (parei no meio) — data/hora amarrada ao evento
+## 5. ✅ CONCLUÍDO (deploy bd5a3be) — data/hora amarrada ao evento
+> Parte 3 (editar traz hora SALVA): trocado `toISOString().slice(0,16)` por `toLocalInput()` em
+> Cronograma/Escalas/Ministracoes/FichaMedica. Partes 1-2: `DataHora` ganhou `min`/`max` (trava dias fora
+> do período e abre no mês do evento); aplicado em Cronograma e Escalas (`min={evento.start_date} max={evento.end_date}`).
+> Cadastro/Financeiro/Saúde/Admin ficaram livres de propósito. (Detalhe histórico abaixo.)
 **Pedido do Anderson (3 partes):**
 1. Toda data/hora amarrada ao período do evento (start_date/end_date), incl. telas com calendário.
 2. Telas de calendário centralizam no evento.
@@ -94,7 +98,10 @@ As ministrações "sumiram" porque mudei a query pra `.order('ordem')` e a colun
 - Vínculos antigos teatro↔ministração (theaters.ministracao_id) continuam no banco; se quiser 100% pelo cronograma, limpar (perguntar antes).
 - Impressão do Teatro/Ministração: revisar se os blocos novos saem 100% na impressão.
 
-## 7b. 🔴 BUGS REPORTADOS NO FIM DA SESSÃO (corrigir PRIMEIRO — afetam cadastro real durante o evento)
+## 7b. ✅ RESOLVIDOS (deploy 990cedc) — bugs de cadastro real
+> Bug A: `criarConta` (Login) agora mostra **toast** (visível em qualquer scroll) + rola pro topo quando falta
+> foto/campo obrigatório. Bug B: lista "Adicionar membro" (Equipes) mostra **foto** (não só iniciais).
+> Texto original mantido abaixo p/ referência.
 
 ### Bug A — "Menor de idade trava na tela de cadastro" (ALTA prioridade)
 - Tela: **Primeiro acesso → completar cadastro** (`src/pages/Login.tsx`, função `criarConta`, usa `components/CadastroPessoa.tsx`).
