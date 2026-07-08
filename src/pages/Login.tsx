@@ -162,12 +162,14 @@ export default function Login() {
     // Cria o próprio registro de pessoa (fica pendente de aprovação do admin)
     const { data: nova, error: pErr } = await supabase.from('people').insert({
       event_id: eventoAtivo.id, user_id: uid, name: form.name, phone: tel,
-      contact_phone: form.contact_phone || null, church: form.church || null,
+      // church e role_type sao NOT NULL no banco — nunca mandar null
+      contact_phone: form.contact_phone || null, church: (form.church || '').trim(),
+      role_type: form.role_type || 'encounterer',
       ano_encontro: form.ano_encontro ? Number(form.ano_encontro) : null, sexo: form.sexo || null,
       birth_date: form.birth_date || null, cpf: form.cpf || null, rg: form.rg || null,
       cidade: form.cidade || null, estado: form.estado || null, endereco: form.endereco || null,
       bairro: form.bairro || null, cep: form.cep || null, notes: form.notes || null,
-      photo_url: form.photo_url || null, role_type: form.role_type, team_pref: form.team_pref || null,
+      photo_url: form.photo_url || null, team_pref: form.team_pref || null,
     }).select('id').single()
     if (pErr) { setErro('Erro ao salvar inscrição: ' + pErr.message + ' (o admin precisa rodar sql/41_inscricao_aberta.sql)'); setLoading(false); return }
     const personId = nova.id
