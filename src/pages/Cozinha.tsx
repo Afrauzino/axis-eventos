@@ -8,25 +8,44 @@ import { useRegistrarChrome } from '../lib/chrome'
 import Seletor from '../components/Seletor'
 import { useEvento } from '../hooks/useEvento'
 import { usePermissao } from '../hooks/usePermissao'
-import { isAdmin } from '../utils'
+import { isAdmin, getInitials } from '../utils'
 import type { Profile } from '../App'
 
 type RefTipo = { id:string; nome:string; cor:string; ordem:number; emoji?:string|null }
 type Cardapio = { id:string; refeicao_tipo_id:string|null; tipo_refeicao_nome:string|null; titulo:string|null; itens:string|null }
+type Restricao = { person_id:string; name:string; photo_url:string|null; texto:string; alergias:string }
 
 const CORES = ['#00A99D','#6B46C1','#2F855A','#D69E2E','#E53E3E','#3182CE','#DD6B20','#805AD5']
 
 export default function Cozinha({ profile }: { profile?: Profile }) {
   const { evento, loading:evLoading } = useEvento()
-  const [aba, setAba] = useState<'cardapio'|'tipo'>('cardapio')
+  const [aba, setAba] = useState<'cardapio'|'tipo'|'restricao'>('cardapio')
   const [tipos, setTipos] = useState<RefTipo[]>([])
   const [cardapios, setCardapios] = useState<Cardapio[]>([])
+  const [restricoes, setRestricoes] = useState<Restricao[]>([])
   const [loading, setLoading] = useState(true)
   const [imprimir, setImprimir] = useState(false)
 
   const { pode } = usePermissao(profile ?? null)
   // Admin OU liberação (individual/equipe) "ver e editar Cozinha" na tela do Admin
   const canEdit = (!!profile && isAdmin(profile.user_role)) || pode('cozinha','editar')
+
+  // Restrição alimentar — puxa da Ficha Médica (saude_fichas)
+  async function carregarRestricoes(eid: string) {
+    const { data: fichas } = await supabase.from('saude_fichas')
+      .select('person_id,restricao_alimentar,restricoes_alimentares,alergias').eq('event_id', eid)
+    const com = (fichas ?? []).filter((f:any) => f.restricao_alimentar || (f.restricoes_alimentares && f.restricoes_alimentares.trim()))
+    if (!com.length) { setRestricoes([]); return }
+    const ids = com.map((f:any) => f.person_id)
+    const { data: pes } = await supabase.from('people').select('id,name,photo_url').in('id', ids)
+    const pmap = new Map((pes ?? []).map((p:any) => [p.id, p]))
+    const out: Restricao[] = com.map((f:any) => {
+      const p = pmap.get(f.person_id)
+      return { person_id:f.person_id, name:p?.name ?? '—', photo_url:p?.photo_url ?? null, texto:(f.restricoes_alimentares || '').trim(), alergias:(f.alergias || '').trim() }
+    }).filter(r => r.name !== '—').sort((a,b) => a.name.localeCompare(b.name))
+    setRestricoes(out)
+  }
+  useEffect(() => { if (aba === 'restricao' && evento?.id) carregarRestricoes(evento.id) }, [aba, evento?.id])
 
   // modal tipo
   const [modalTipo, setModalTipo] = useState(false)
@@ -121,6 +140,7 @@ export default function Cozinha({ profile }: { profile?: Profile }) {
       <div className="tabs mb-4">
         <button className={`tab ${aba==='cardapio'?'active':''}`} onClick={()=>setAba('cardapio')}>Cardápio</button>
         <button className={`tab ${aba==='tipo'?'active':''}`} onClick={()=>setAba('tipo')}>Tipo</button>
+        <button className={`tab ${aba==='restricao'?'active':''}`} onClick={()=>setAba('restricao')}>Restrições</button>
       </div>
 
 
@@ -162,8 +182,29 @@ export default function Cozinha({ profile }: { profile?: Profile }) {
           ))
       )}
 
-      {/* FAB - botão redondo de + conforme a aba */}
-      {canEdit && <button className="fab" onClick={()=> aba==='cardapio' ? abrirNovoCardapio() : abrirNovoTipo()}>
+      {/* ABA RESTRIÇÃO ALIMENTAR — vem da Ficha Médica */}
+      {aba==='restricao' && (
+        restricoes.length===0
+          ? <div className="empty"><p className="empty-title">Nenhuma restrição</p><p className="empty-sub">Ninguém marcou restrição alimentar na ficha médica.</p></div>
+          : <>
+              <p style={{fontSize:12,color:'var(--muted)',marginBottom:10,lineHeight:1.5}}>{restricoes.length} pessoa(s) com restrição alimentar — dados vindos da <b>Ficha Médica</b>.</p>
+              {restricoes.map(r=>(
+                <CardItem
+                  key={r.person_id}
+                  ehPessoa
+                  fotoUrl={r.photo_url}
+                  iniciais={getInitials(r.name)}
+                  cor="#E53E3E"
+                  titulo={r.name}
+                  subtitulo={r.texto || 'Tem restrição alimentar'}
+                  extra={r.alergias ? <p style={{fontSize:12,color:'var(--danger)',fontWeight:600}}>⚠️ Alergia: {r.alergias}</p> : undefined}
+                />
+              ))}
+            </>
+      )}
+
+      {/* FAB - botão redondo de + conforme a aba (não aparece em Restrições) */}
+      {canEdit && aba!=='restricao' && <button className="fab" onClick={()=> aba==='cardapio' ? abrirNovoCardapio() : abrirNovoTipo()}>
         <span className="icon">add</span>
       </button>}
 

@@ -12,6 +12,7 @@ import ContagemRegressiva from '../components/ContagemRegressiva'
 import ProximoItem from '../components/ProximoItem'
 import MuralGratidao from '../components/MuralGratidao'
 import Aniversariantes from '../components/Aniversariantes'
+import FichaMedica from '../components/FichaMedica'
 import MetaEncontristas from '../components/MetaEncontristas'
 import VersiculoDia from '../components/VersiculoDia'
 import PlaylistHome from '../components/PlaylistHome'
@@ -55,6 +56,12 @@ export default function Dashboard({ profile }: { profile: Profile }) {
   const irSe = (rota:string) => { if (podeIr(rota)) navigate(rota) }
   const navigate  = useNavigate()
   const { evento, loading: evLoading } = useEvento()
+  const [meuPersonId, setMeuPersonId] = useState<string|null>(null)
+  useEffect(() => {
+    if (!evento?.id || !profile?.user_id) { setMeuPersonId(null); return }
+    supabase.from('people').select('id').eq('event_id', evento.id).eq('user_id', profile.user_id).maybeSingle()
+      .then(({ data }) => setMeuPersonId(data?.id ?? null))
+  }, [evento?.id, profile?.user_id])
   const [stats,    setStats]    = useState<Stats|null>(null)
   const [progresso, setProgresso] = useState<{pct:number;total:number;feitos:number}|null>(null)
   const [loading,  setLoading]  = useState(true)
@@ -302,16 +309,25 @@ export default function Dashboard({ profile }: { profile: Profile }) {
 
   return (
     <div className="page slide-up">
-      {/* Faixa AO VIVO: cronômetro de um bloco em andamento (visível a todos, não clicável) */}
-      <CronometroAoVivo eventoId={evento?.id} />
+      {/* Faixa AO VIVO: só para quem tem acesso (encontrista não vê) */}
+      {!semLiberacao && <CronometroAoVivo eventoId={evento?.id} />}
 
-      {/* Relógio digital: contagem regressiva para o 1º dia do evento */}
+      {/* Relógio digital: contagem regressiva para o 1º dia do evento (todos veem) */}
       <ContagemRegressiva evento={evento} admin={admin} />
 
       {semLiberacao ? (
+        /* Encontrista / nível mais baixo: só contagem (acima), carrossel, boas-vindas,
+           aniversariantes e a própria ficha médica */
         <>
           <HomeCarousel admin={admin} />
           <BoasVindas variante={variante} admin={false} />
+          {evento && <Aniversariantes eventoId={evento.id} />}
+          {evento && meuPersonId && (
+            <div style={{ background:'white', borderRadius:14, boxShadow:'var(--shadow-sm)', padding:'14px', marginBottom:16 }}>
+              <p style={{ fontWeight:800, fontSize:15, marginBottom:10, display:'flex', alignItems:'center', gap:6 }}>⛑️ Minha ficha médica</p>
+              <FichaMedica personId={meuPersonId} eventId={evento.id} startOpen />
+            </div>
+          )}
         </>
       ) : !evento ? (
         <>

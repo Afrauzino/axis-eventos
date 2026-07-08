@@ -44,10 +44,15 @@ export async function montarNotificacoes(profile: Profile, eventoId: string | nu
 
   // Meu cadastro no evento
   let personId: string | null = null
+  let meuTipo: string | null = null
   try {
-    const { data } = await supabase.from('people').select('id').eq('event_id', eventoId).eq('user_id', userId).maybeSingle()
+    const { data } = await supabase.from('people').select('id,role_type').eq('event_id', eventoId).eq('user_id', userId).maybeSingle()
     personId = data?.id ?? null
+    meuTipo = (data as any)?.role_type ?? null
   } catch {}
+
+  // Encontrista (nível mais baixo) NÃO recebe notificações
+  if (meuTipo === 'encounterer' && !(isAdmin(profile.user_role) || profile.is_admin)) return out
 
   // Avisos gerais recentes
   try {
