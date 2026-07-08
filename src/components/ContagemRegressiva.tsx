@@ -28,6 +28,7 @@ export default function ContagemRegressiva({ evento, admin }: { evento: any; adm
   const [ativa, setAtiva] = useState(true)
   const [salvando, setSalvando] = useState(false)
   const [confete, setConfete] = useState(0)
+  const [testeContagem, setTesteContagem] = useState<number | null>(null)
   const bgFileRef = useRef<HTMLInputElement>(null)
   const ctxRef = useRef<AudioContext | null>(null)
   const bufRef = useRef<AudioBuffer | null>(null)
@@ -82,9 +83,34 @@ export default function ContagemRegressiva({ evento, admin }: { evento: any; adm
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [estado, eventoAtiva])
 
+  // Simulação real: fecha a janela e começa a contagem de 5s
   function testar() {
-    tocarBuzina()
-    setConfete(c => c + 1)
+    setEditando(false)
+    setTesteContagem(5)
+  }
+  // Contagem 5→0; ao zerar dispara corneta + confete e volta ao normal
+  useEffect(() => {
+    if (testeContagem == null) return
+    if (testeContagem <= 0) {
+      tocarBuzina()
+      setConfete(c => c + 1)
+      const t = setTimeout(() => setTesteContagem(null), 2000)
+      return () => clearTimeout(t)
+    }
+    const t = setTimeout(() => setTesteContagem(v => (v == null ? null : v - 1)), 1000)
+    return () => clearTimeout(t)
+  }, [testeContagem])
+
+  function overlayTeste() {
+    if (testeContagem == null) return null
+    return (
+      <div style={{ position: 'fixed', inset: 0, zIndex: 9997, background: 'rgba(0,0,0,0.85)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'white', textAlign: 'center', padding: 20 }}>
+        <p style={{ fontSize: 13, fontWeight: 700, letterSpacing: '0.12em', opacity: 0.8, marginBottom: 18 }}>SIMULAÇÃO · O ENCONTRO COMEÇA EM</p>
+        {testeContagem > 0
+          ? <div key={testeContagem} style={{ fontSize: 128, fontWeight: 800, lineHeight: 1, animation: 'pulse 1s ease' }}>{testeContagem}</div>
+          : <div style={{ fontSize: 56, fontWeight: 800 }}>É HOJE! 🎉</div>}
+      </div>
+    )
   }
 
   async function tocarBuzina() {
@@ -212,6 +238,7 @@ export default function ContagemRegressiva({ evento, admin }: { evento: any; adm
         <span style={{ fontSize: 12, color: 'var(--muted)' }}>⏳ Contagem regressiva desativada</span>
         <button onClick={abrirEdicao} style={{ background: 'var(--primary)', color: 'white', border: 'none', borderRadius: 8, padding: '6px 14px', cursor: 'pointer', fontSize: 12, fontWeight: 700, fontFamily: 'inherit' }}>Reativar</button>
         {editando && modal()}
+        {overlayTeste()}
         <Confete disparo={confete} />
       </div>
     )
@@ -290,6 +317,7 @@ export default function ContagemRegressiva({ evento, admin }: { evento: any; adm
       </div>
 
       {editando && modal()}
+      {overlayTeste()}
       <Confete disparo={confete} />
     </div>
   )
