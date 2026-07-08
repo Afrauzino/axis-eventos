@@ -76,8 +76,12 @@ export default function Nav({ profile, onClose }: { profile: Profile; onClose: (
   }
 
   function navegar(rota: string) {
-    navigate(rota)
     onClose()
+    // MENU = recomeço: abrir uma tela pelo menu faz o "voltar" ir pra Início (não pra tela anterior).
+    // Links DENTRO do app continuam empurrando normal (voltar volta pra tela de origem).
+    if (rota === '/') { navigate('/'); return }
+    navigate('/', { replace: true })  // troca a tela atual pela Início no histórico
+    navigate(rota)                    // e abre a escolhida por cima → voltar vai pra Início
   }
 
   function ativo(item: Item): boolean {
