@@ -390,11 +390,11 @@ export default function Escalas({ profile }: { profile?: Profile }) {
               <div className="form-grid-2">
                 <div className="form-group">
                   <label className="form-label">4. Início <span className="req">*</span></label>
-                  <DataHora modo="datetime" value={form.start_time} onChange={v=>setForm(f=>({...f,start_time:v}))}/>
+                  <DataHora modo="datetime" value={form.start_time} onChange={v=>setForm(f=>({...f,start_time:v}))} min={(evento as any)?.start_date} max={(evento as any)?.end_date}/>
                 </div>
                 <div className="form-group">
                   <label className="form-label">Fim <span className="req">*</span></label>
-                  <DataHora modo="datetime" value={form.end_time} onChange={v=>setForm(f=>({...f,end_time:v}))}/>
+                  <DataHora modo="datetime" value={form.end_time} onChange={v=>setForm(f=>({...f,end_time:v}))} min={(evento as any)?.start_date} max={(evento as any)?.end_date}/>
                 </div>
               </div>
 

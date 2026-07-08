@@ -519,7 +519,7 @@ export default function Cronograma({ profile }: { profile?: Profile }) {
               <div className="form-grid-2">
                 <div className="form-group">
                   <label className="form-label">Data e hora programada <span className="req">*</span></label>
-                  <DataHora modo="datetime" value={form.hora_inicio} onChange={v=>setForm(f=>({...f,hora_inicio:v}))}/>
+                  <DataHora modo="datetime" value={form.hora_inicio} onChange={v=>setForm(f=>({...f,hora_inicio:v}))} min={(evento as any)?.start_date} max={(evento as any)?.end_date}/>
                 </div>
                 <div className="form-group">
                   <label className="form-label">Duração <span className="req">*</span></label>

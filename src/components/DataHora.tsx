@@ -15,6 +15,8 @@ type Props = {
   disabled?: boolean
   placeholder?: string
   titulo?: string
+  min?: string   // 'YYYY-MM-DD' — trava dias ANTES (ex.: início do evento)
+  max?: string   // 'YYYY-MM-DD' — trava dias DEPOIS (ex.: fim do evento)
 }
 
 const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
@@ -56,13 +58,20 @@ function rotulo(value: string, modo: ModoDataHora): string {
   return `${dataFmt} ${pad(p.h)}:${pad(isNaN(p.min) ? 0 : p.min)}`
 }
 
-export default function DataHora({ value, onChange, modo = 'date', disabled, placeholder, titulo }: Props) {
+export default function DataHora({ value, onChange, modo = 'date', disabled, placeholder, titulo, min, max }: Props) {
   const [aberto, setAberto] = useState(false)
   const [work, setWork] = useState<Partes>(() => parse(value, modo))
+  // sem valor, o calendário centraliza no INÍCIO do evento (min) em vez de "hoje"
+  const baseView = () => {
+    if (min) return { y: +min.slice(0,4), m: +min.slice(5,7) - 1 }
+    const hoje = new Date(); return { y: hoje.getFullYear(), m: hoje.getMonth() }
+  }
+  const dataCel = (y:number,m:number,d:number) => `${y}-${pad(m+1)}-${pad(d)}`
+  const foraFaixa = (y:number,m:number,d:number) => { const s = dataCel(y,m,d); return (!!min && s < min) || (!!max && s > max) }
   const [view, setView] = useState<{ y: number; m: number }>(() => {
     const p = parse(value, modo)
-    const hoje = new Date()
-    return { y: isNaN(p.y) ? hoje.getFullYear() : p.y, m: isNaN(p.m) ? hoje.getMonth() : p.m }
+    const b = baseView()
+    return { y: isNaN(p.y) ? b.y : p.y, m: isNaN(p.m) ? b.m : p.m }
   })
 
   const usaData = modo === 'date' || modo === 'datetime'
@@ -77,8 +86,8 @@ export default function DataHora({ value, onChange, modo = 'date', disabled, pla
     // Se vai usar hora e ainda não tem, começa na hora atual (fica visível)
     if (usaHora && isNaN(p.h)) { const agora = new Date(); p.h = agora.getHours(); p.min = agora.getMinutes() }
     setWork(p)
-    const hoje = new Date()
-    setView({ y: isNaN(p.y) ? hoje.getFullYear() : p.y, m: isNaN(p.m) ? hoje.getMonth() : p.m })
+    const b = baseView()
+    setView({ y: isNaN(p.y) ? b.y : p.y, m: isNaN(p.m) ? b.m : p.m })
     setAberto(true)
   }
 
@@ -143,10 +152,12 @@ export default function DataHora({ value, onChange, modo = 'date', disabled, pla
                   {celulas.map((c, i) => {
                     const sel = c.d === work.d && c.m === work.m && c.y === work.y && !isNaN(work.d)
                     const ehHoje = c.d === hoje.getDate() && c.m === hoje.getMonth() && c.y === hoje.getFullYear()
+                    const bloq = foraFaixa(c.y, c.m, c.d)
                     return (
-                      <button key={i} type="button" onClick={() => escolherDia(c.d, c.m, c.y)}
-                        style={{ padding: 0, height: 34, borderRadius: '50%', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 13,
+                      <button key={i} type="button" disabled={bloq} onClick={() => !bloq && escolherDia(c.d, c.m, c.y)}
+                        style={{ padding: 0, height: 34, borderRadius: '50%', border: 'none', cursor: bloq ? 'not-allowed' : 'pointer', fontFamily: 'inherit', fontSize: 13,
                           fontWeight: sel || ehHoje ? 700 : 500,
+                          opacity: bloq ? 0.25 : 1,
                           background: sel ? 'var(--primary)' : 'transparent',
                           color: sel ? 'white' : c.outro ? 'var(--muted-light)' : ehHoje ? 'var(--primary)' : 'var(--text)' }}>
                         {c.d}
