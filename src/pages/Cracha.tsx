@@ -52,11 +52,18 @@ function estiloTexto(e:Estilo, fontSize:number) {
 }
 
 // ---- Crachá visual (com modo edição: arrastar/selecionar) ----
-function CrachaView({ pessoa, equipeTxt, m, edit, sel, onSelect, onMove }:{
+function CrachaView({ pessoa, equipeTxt, m, edit, sel, onSelect, onMove, exibirEm }:{
   pessoa:Pessoa; equipeTxt:string; m:ModeloCfg;
   edit?:boolean; sel?:string|null; onSelect?:(k:string)=>void; onMove?:(k:string,x:number,y:number)=>void
+  exibirEm?:{ maxW:number; maxH:number }  // trava o tamanho NA TELA (mantém proporção); impressão usa o real
 }) {
-  const { W, H } = dimsPx(m)
+  const real = dimsPx(m)
+  let W = real.W, H = real.H
+  if (exibirEm) {
+    // encaixa na caixa de edição mantendo a proporção → visualizador não cresce ao mudar o tamanho
+    const s = Math.min(exibirEm.maxW / real.W, exibirEm.maxH / real.H)
+    W = real.W * s; H = real.H * s
+  }
   const cfg = m.cfg
   const px=(p:number)=>W*p/100
   const ref = useRef<HTMLDivElement>(null)
@@ -264,8 +271,8 @@ export default function Cracha({ profile }: { profile?: Profile }) {
       </div>
 
       <p style={{fontSize:12,color:'var(--muted)',marginBottom:8}}>Arraste os elementos no crachá para posicionar. Toque para selecionar e editar abaixo.</p>
-      <div style={{display:'flex',justifyContent:'center',marginBottom:14,padding:12,background:'var(--bg)',borderRadius:12,overflow:'auto'}}>
-        <CrachaView pessoa={amostra} equipeTxt={equipeDe[amostra.id]??'Equipe'} m={m} edit={canEdit} sel={sel} onSelect={setSel} onMove={move}/>
+      <div style={{display:'flex',justifyContent:'center',marginBottom:14,padding:12,background:'var(--bg)',borderRadius:12}}>
+        <CrachaView pessoa={amostra} equipeTxt={equipeDe[amostra.id]??'Equipe'} m={m} edit={canEdit} sel={sel} onSelect={setSel} onMove={move} exibirEm={{maxW:210, maxH:350}}/>
       </div>
 
       {/* Controles do elemento selecionado */}
