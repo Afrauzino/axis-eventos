@@ -1054,6 +1054,16 @@ body {
   }
 }
 
+/* No PC/telas grandes: não esticar — mantém largura de celular, centralizado (visual de app) */
+@media (min-width: 768px) {
+  body { background: #e4e7ec; }
+  .app-root, .auth-wrap {
+    max-width: 480px;
+    margin: 0 auto;
+    box-shadow: 0 0 60px rgba(0,0,0,0.14);
+  }
+}
+
 /* Animação do alerta crítico */
 @keyframes pulse {
   0%, 100% { opacity: 1; }

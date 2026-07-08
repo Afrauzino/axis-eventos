@@ -44,7 +44,13 @@ export function aplicarCor(hex: string) {
 }
 
 const COR_PADRAO = '#00A99D'
-let cacheCor: string | null = null
+// cache persistido no aparelho (localStorage) → aplica a cor certa ANTES de buscar no banco (sem piscar)
+let cacheCor: string | null = (() => { try { return localStorage.getItem('axis_cor') } catch { return null } })()
+
+// Aplica na hora a cor guardada no aparelho (chamar bem cedo, no main.tsx)
+export function aplicarCorLocal() {
+  if (cacheCor && /^#[0-9a-fA-F]{6}$/.test(cacheCor)) aplicarCor(cacheCor)
+}
 
 // Lê a cor salva no banco (configuracoes) e aplica
 export async function carregarCorSalva() {
@@ -55,6 +61,7 @@ export async function carregarCorSalva() {
       .select('valor').eq('chave', 'cor_primaria').maybeSingle()
     const cor = data?.valor || COR_PADRAO
     cacheCor = cor
+    try { localStorage.setItem('axis_cor', cor) } catch {}
     aplicarCor(cor)
     return cor
   } catch {
@@ -66,6 +73,7 @@ export async function carregarCorSalva() {
 // Salva a nova cor no banco e aplica
 export async function salvarCor(hex: string) {
   cacheCor = hex
+  try { localStorage.setItem('axis_cor', hex) } catch {}
   aplicarCor(hex)
   try {
     await supabase.from('configuracoes')
