@@ -8,6 +8,7 @@ import { toast } from '../components/Toast'
 import { carregarConfig, salvarConfig } from '../lib/tema'
 import HomeCarousel from '../components/HomeCarousel'
 import CronometroAoVivo from '../components/CronometroAoVivo'
+import PlaylistHome from '../components/PlaylistHome'
 import BoasVindas, { type BVVariante } from '../components/BoasVindas'
 import { MENUS_CATALOGO } from '../lib/permCatalog'
 import type { Profile } from '../App'
@@ -15,7 +16,7 @@ import type { Profile } from '../App'
 type Stats = { encontristas:number; encontreiros:number; equipes:number; alertas:number }
 
 // #tela-inicial — blocos reordenáveis (o admin arrasta e salva a ordem)
-const ORDEM_PADRAO = ['evento','ranking','indicadores','carrossel','boasvindas']
+const ORDEM_PADRAO = ['evento','ranking','indicadores','carrossel','playlist','boasvindas']
 function normalizarOrdem(arr:any): string[] {
   const base = ORDEM_PADRAO
   const filtrada = Array.isArray(arr) ? arr.filter((id:string)=>base.includes(id)) : []
@@ -232,6 +233,8 @@ export default function Dashboard({ profile }: { profile: Profile }) {
         ) : null
       case 'carrossel':
         return <HomeCarousel admin={admin} />
+      case 'playlist':
+        return <PlaylistHome admin={admin} />
       case 'boasvindas':
         return admin ? <BoasVindas variante={variante} admin={true} /> : null
       default:
