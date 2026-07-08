@@ -4,7 +4,6 @@ import { useVoltarFecha } from '../hooks/useVoltarFecha'
 import EmojiGrid from '../components/EmojiGrid'
 import PrintOverlay from '../components/PrintOverlay'
 import CardItem from '../components/CardItem'
-import { useRegistrarChrome } from '../lib/chrome'
 import Seletor from '../components/Seletor'
 import { useEvento } from '../hooks/useEvento'
 import { usePermissao } from '../hooks/usePermissao'
@@ -34,7 +33,8 @@ export default function Cozinha({ profile }: { profile?: Profile }) {
   async function carregarRestricoes(eid: string) {
     const { data: fichas } = await supabase.from('saude_fichas')
       .select('person_id,restricao_alimentar,restricoes_alimentares,alergias').eq('event_id', eid)
-    const com = (fichas ?? []).filter((f:any) => f.restricao_alimentar || (f.restricoes_alimentares && f.restricoes_alimentares.trim()))
+    // Só quem marcou SIM em "restrição alimentar" na ficha médica
+    const com = (fichas ?? []).filter((f:any) => f.restricao_alimentar === true)
     if (!com.length) { setRestricoes([]); return }
     const ids = com.map((f:any) => f.person_id)
     const { data: pes } = await supabase.from('people').select('id,name,photo_url').in('id', ids)
@@ -127,21 +127,40 @@ export default function Cozinha({ profile }: { profile?: Profile }) {
     setCardapios(prev=>prev.filter(c=>c.id!==id))
   }
 
-  useRegistrarChrome({
-    impressoes: cardapios.length>0 ? [{ label:'Imprimir cardápios (com detalhes)', onClick:()=>setImprimir(true) }] : undefined,
-  }, [cardapios.length])
+  // (sem engrenagem: a impressão fica num botão inline na aba Cardápio)
 
   if (evLoading||loading) return <div className="page">{[1,2,3].map(i=><div key={i} className="skeleton" style={{height:80,marginBottom:10,borderRadius:14}}/>)}</div>
   if (!evento) return <div className="page"><div className="empty"><p className="empty-title">Nenhum evento ativo</p></div></div>
 
   return (
     <div className="page slide-up">
-      {/* Abas no topo (padrão Admin) */}
-      <div className="tabs mb-4">
-        <button className={`tab ${aba==='cardapio'?'active':''}`} onClick={()=>setAba('cardapio')}>Cardápio</button>
-        <button className={`tab ${aba==='tipo'?'active':''}`} onClick={()=>setAba('tipo')}>Tipo</button>
-        <button className={`tab ${aba==='restricao'?'active':''}`} onClick={()=>setAba('restricao')}>Restrições</button>
+      {/* Menu vertical (sem engrenagem) */}
+      <div style={{display:'flex',flexDirection:'column',gap:8,marginBottom:16}}>
+        {([
+          {k:'cardapio' as const, emoji:'🍽️', label:'Cardápio'},
+          {k:'tipo' as const,     emoji:'🏷️', label:'Tipo de refeição'},
+          {k:'restricao' as const,emoji:'🥗', label:'Restrições alimentares'},
+        ]).map(item=>{
+          const on = aba===item.k
+          return (
+            <button key={item.k} onClick={()=>setAba(item.k)}
+              style={{display:'flex',alignItems:'center',gap:12,padding:'13px 16px',borderRadius:12,border:on?'1.5px solid var(--primary)':'1px solid var(--border)',cursor:'pointer',fontFamily:'inherit',textAlign:'left',fontSize:15,fontWeight:on?800:600,background:on?'var(--primary-light)':'white',color:on?'var(--primary-dark)':'var(--text)',boxShadow:'var(--shadow-sm)'}}>
+              <span style={{fontSize:20}}>{item.emoji}</span>
+              <span style={{flex:1}}>{item.label}</span>
+              <span className="icon icon-sm" style={{color:on?'var(--primary)':'var(--muted-light)'}}>chevron_right</span>
+            </button>
+          )
+        })}
       </div>
+
+      {/* Imprimir (inline, na aba Cardápio) */}
+      {aba==='cardapio' && cardapios.length>0 && (
+        <div style={{display:'flex',justifyContent:'flex-end',marginBottom:10}}>
+          <button className="btn btn-ghost btn-sm" onClick={()=>setImprimir(true)}>
+            <span className="icon icon-sm">print</span> Imprimir cardápios
+          </button>
+        </div>
+      )}
 
 
       {/* ABA CARDÁPIO */}
@@ -196,8 +215,7 @@ export default function Cozinha({ profile }: { profile?: Profile }) {
                   iniciais={getInitials(r.name)}
                   cor="#E53E3E"
                   titulo={r.name}
-                  subtitulo={r.texto || 'Tem restrição alimentar'}
-                  extra={r.alergias ? <p style={{fontSize:12,color:'var(--danger)',fontWeight:600}}>⚠️ Alergia: {r.alergias}</p> : undefined}
+                  subtitulo={r.texto || 'Restrição não especificada'}
                 />
               ))}
             </>
