@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { formatName, getInitials, ROLE_LABELS } from '../utils'
 import { useEvento } from '../hooks/useEvento'
+import RecortarFoto from '../components/RecortarFoto'
 import type { Profile } from '../App'
 
 export default function Perfil({ profile, onUpdate }: { profile: Profile; onUpdate: () => void }) {
@@ -41,19 +42,24 @@ export default function Perfil({ profile, onUpdate }: { profile: Profile; onUpda
   const [uploading, setUploading] = useState(false)
   const [erro, setErro]           = useState('')
   const [ok, setOk]               = useState('')
+  const [recorte, setRecorte]     = useState<{ src: string; remoto: boolean } | null>(null)
 
-  async function uploadFoto(file: File) {
+  // Escolheu um arquivo → abre o ENQUADRAMENTO (não envia direto)
+  function aoEscolherFoto(file: File) { setErro(''); setOk(''); setRecorte({ src: URL.createObjectURL(file), remoto: false }) }
+  function fecharRecorte() { if (recorte && !recorte.remoto) { try { URL.revokeObjectURL(recorte.src) } catch {} } setRecorte(null) }
+
+  // Recebe o Blob já enquadrado (do RecortarFoto) e envia
+  async function enviarFoto(blob: Blob) {
     setUploading(true); setErro(''); setOk('')
-    const ext  = file.name.split('.').pop()
     // Usa timestamp para garantir URL única e quebrar cache do browser
-    const path = `avatars/${profile.user_id}_${Date.now()}.${ext}`
+    const path = `avatars/${profile.user_id}_${Date.now()}.jpg`
     // Remove fotos antigas deste usuário antes de enviar nova
     const { data: listData } = await supabase.storage.from('avatars').list('', { search: profile.user_id })
     if (listData && listData.length > 0) {
       const toDelete = listData.map(f => f.name)
       await supabase.storage.from('avatars').remove(toDelete)
     }
-    const { error: upErr } = await supabase.storage.from('avatars').upload(path, file, { upsert: false })
+    const { error: upErr } = await supabase.storage.from('avatars').upload(path, blob, { upsert: false, contentType: 'image/jpeg' })
     if (upErr) { setErro('Erro ao enviar foto: ' + upErr.message); setUploading(false); return }
     const { data } = supabase.storage.from('avatars').getPublicUrl(path)
     // Adiciona timestamp na URL para forçar refresh do browser
@@ -119,19 +125,35 @@ export default function Perfil({ profile, onUpdate }: { profile: Profile; onUpda
         </div>
         <p style={{fontSize:18,fontWeight:700,marginBottom:2}}>{profile.full_name ?? '—'}</p>
         <p style={{fontSize:13,color:'var(--muted)',marginBottom:14}}>{ROLE_LABELS[profile.user_role] ?? profile.user_role}</p>
-        <button
-          className="btn btn-outline btn-sm"
-          onClick={()=>fileRef.current?.click()}
-          disabled={uploading}
-        >
-          <span className="icon icon-sm">photo_camera</span>
-          {uploading ? 'Enviando...' : 'Alterar foto'}
-        </button>
+        <div style={{display:'flex',gap:8,flexWrap:'wrap',justifyContent:'center'}}>
+          <button
+            className="btn btn-outline btn-sm"
+            onClick={()=>fileRef.current?.click()}
+            disabled={uploading}
+          >
+            <span className="icon icon-sm">photo_camera</span>
+            {uploading ? 'Enviando...' : 'Alterar foto'}
+          </button>
+          {profile.avatar_url && !uploading && (
+            <button className="btn btn-ghost btn-sm" onClick={()=>setRecorte({ src: String(profile.avatar_url).split('?')[0], remoto: true })}>
+              <span className="icon icon-sm">crop</span> Reposicionar
+            </button>
+          )}
+        </div>
         <input
           ref={fileRef} type="file" accept="image/*"
           style={{display:'none'}}
-          onChange={e=>e.target.files?.[0] && uploadFoto(e.target.files[0])}
+          onChange={e=>{ if(e.target.files?.[0]) aoEscolherFoto(e.target.files[0]); e.target.value='' }}
         />
+
+        {recorte && (
+          <RecortarFoto
+            src={recorte.src}
+            crossOrigin={recorte.remoto}
+            onCancel={fecharRecorte}
+            onConfirm={(blob)=>{ fecharRecorte(); enviarFoto(blob) }}
+          />
+        )}
       </div>
 
       {/* Dados pessoais */}
