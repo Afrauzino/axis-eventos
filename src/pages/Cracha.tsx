@@ -232,13 +232,8 @@ export default function Cracha({ profile }: { profile?: Profile }) {
     return true
   })
 
-  if (evLoading || loading) return <div className="page">{[1,2].map(i=><div key={i} className="skeleton" style={{height:120,marginBottom:12,borderRadius:14}}/>)}</div>
-  if (!evento) return <div className="page"><div className="empty"><p className="empty-title">Nenhum evento ativo</p></div></div>
-
-  const amostra = pessoasFiltradas[0] ?? pessoas[0] ?? { id:'x', name:'Nome da Pessoa', photo_url:null }
-
   // Nome do crachá: 2 primeiros nomes; se dois baterem, acrescenta o próximo até diferenciar
-  // (ex.: "Ana Clara Martins" e "Ana Clara Freitas" em vez de dois "Ana Clara").
+  // (ex.: "Ana Clara Martins" e "Ana Clara Freitas"). HOOK: fica ANTES de qualquer return.
   const nomeCracha = useMemo(() => {
     const pre = (nm: string, n: number) => (nm || '').trim().split(/\s+/).filter(Boolean).slice(0, n).join(' ').toLowerCase()
     const base = pessoasFiltradas.length ? pessoasFiltradas : pessoas
@@ -251,6 +246,11 @@ export default function Cracha({ profile }: { profile?: Profile }) {
     }
     return map
   }, [pessoasFiltradas, pessoas])
+
+  if (evLoading || loading) return <div className="page">{[1,2].map(i=><div key={i} className="skeleton" style={{height:120,marginBottom:12,borderRadius:14}}/>)}</div>
+  if (!evento) return <div className="page"><div className="empty"><p className="empty-title">Nenhum evento ativo</p></div></div>
+
+  const amostra = pessoasFiltradas[0] ?? pessoas[0] ?? { id:'x', name:'Nome da Pessoa', photo_url:null }
 
   if (imprimir) {
     return (
