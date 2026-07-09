@@ -12,7 +12,7 @@ import { toast } from '../components/Toast'
 import type { Profile } from '../App'
 
 import Editor from '../editor/Editor'
-import ImprimirView from '../editor/render/Imprimir'
+import ImprimirView, { encaixe, type Orientacao } from '../editor/render/Imprimir'
 import { criarElemento } from '../editor/elementos'
 import { novoId, type Documento } from '../editor/tipos'
 
@@ -59,6 +59,7 @@ export default function Impressao({ profile }: { profile?: Profile }) {
 
   const [modelos, setModelos] = useState<Modelo[]>([])
   const [doc, setDoc] = useState<Documento>(() => docPadrao())
+  const [orientacao, setOrientacao] = useState<Orientacao>('auto')
   const [imprimindo, setImprimindo] = useState<Documento|null>(null)
   const [abrirModelos, setAbrirModelos] = useState(false)
 
@@ -114,16 +115,25 @@ export default function Impressao({ profile }: { profile?: Profile }) {
 
   async function guardar(novos: Modelo[]) { setModelos(novos); await salvarConfig(CHAVE, JSON.stringify(novos)) }
 
+  /** Salva por NOME: nome novo = modelo novo; nome existente = atualiza aquele.
+   *  Assim dá pra ter quantos modelos quiser (e "salvar como" é só trocar o nome). */
   async function salvarModelo(d: Documento) {
-    const nome = prompt('Nome do modelo:', d.nome || 'Meu modelo')
+    const nome = (prompt('Nome do modelo:', d.nome || 'Meu modelo') || '').trim()
     if (!nome) return
-    const existe = modelos.find(m => m.id === d.id)
-    const doc2 = { ...d, nome }
-    setDoc(doc2)
-    const novos = existe ? modelos.map(m => m.id===d.id ? { ...m, nome, doc: doc2 } : m)
-                         : [...modelos, { id: d.id, nome, doc: doc2 }]
-    await guardar(novos)
-    toast.sucesso('Modelo salvo!')
+    const mesmoNome = modelos.find(m => m.nome.trim().toLowerCase() === nome.toLowerCase())
+
+    if (mesmoNome) {
+      const doc2 = { ...d, id: mesmoNome.id, nome }
+      setDoc(doc2)
+      await guardar(modelos.map(m => m.id===mesmoNome.id ? { ...m, nome, doc: doc2 } : m))
+      toast.sucesso('Modelo atualizado!')
+    } else {
+      const id = novoId()
+      const doc2 = { ...d, id, nome }
+      setDoc(doc2)
+      await guardar([...modelos, { id, nome, doc: doc2 }])
+      toast.sucesso('Novo modelo salvo!')
+    }
   }
 
   async function excluirModelo(id:string) {
@@ -134,7 +144,7 @@ export default function Impressao({ profile }: { profile?: Profile }) {
   if (evLoading || loading) return <div className="page">{[1,2].map(i=><div key={i} className="skeleton" style={{height:110,marginBottom:12,borderRadius:14}}/>)}</div>
   if (!evento) return <div className="page"><div className="empty"><p className="empty-title">Nenhum evento ativo</p></div></div>
 
-  if (imprimindo) return <ImprimirView doc={imprimindo} dados={dados} onVoltar={()=>setImprimindo(null)} />
+  if (imprimindo) return <ImprimirView doc={imprimindo} dados={dados} orientacao={orientacao} onVoltar={()=>setImprimindo(null)} />
 
   return (
     <div style={{ display:'flex', flexDirection:'column', height:'calc(100dvh - 56px)', minHeight:0 }}>
@@ -155,6 +165,22 @@ export default function Impressao({ profile }: { profile?: Profile }) {
           <option value="">Todas as equipes</option>
           {equipes.map(t=><option key={t.id} value={t.id}>{t.name}</option>)}
         </select>
+        {doc.fonteDados === 'pessoas' && (() => {
+          const e = encaixe(doc.papel, orientacao)
+          const prox: Orientacao = orientacao==='auto' ? 'retrato' : orientacao==='retrato' ? 'paisagem' : 'auto'
+          return (
+            <button type="button" onClick={()=>setOrientacao(prox)}
+              title="Folha onde os modelos serão impressos. Toque para forçar em pé/deitada."
+              style={{ display:'flex', alignItems:'center', gap:6, padding:'5px 10px', borderRadius:8,
+                border:'1px solid var(--border)', background: e.cabe?'white':'var(--danger-bg)', cursor:'pointer', fontFamily:'inherit' }}>
+              <span className="icon icon-sm" style={{ color: e.cabe?'var(--primary)':'var(--danger)' }}>print</span>
+              <span style={{ fontSize:11.5, fontWeight:700, color: e.cabe?'var(--text2)':'var(--danger)' }}>
+                {e.cabe ? `A4 ${e.orientacao==='retrato'?'em pé':'deitada'} · ${e.total}/folha` : 'Não cabe no A4'}
+              </span>
+              <span style={{ fontSize:10, color:'var(--muted)' }}>{orientacao==='auto'?'auto':'fixo'}</span>
+            </button>
+          )
+        })()}
         <span style={{ fontSize:12, color:'var(--muted)', marginLeft:'auto' }}>{lista.length} pessoa(s)</span>
       </div>
 

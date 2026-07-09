@@ -9,9 +9,11 @@
 import type { Documento } from '../tipos'
 import Folha from './Folha'
 
-const A4 = { retrato: { l: 210, a: 297 }, paisagem: { l: 297, a: 210 } }
+export const A4 = { retrato: { l: 210, a: 297 }, paisagem: { l: 297, a: 210 } }
 const MARGEM = 8   // mm
 const ESPACO = 3   // mm entre os cartões
+
+export type Orientacao = 'auto' | 'retrato' | 'paisagem'
 
 /** Quantos cartões cabem numa folha. */
 function cabem(folha: { l: number; a: number }, card: { l: number; a: number }) {
@@ -21,23 +23,32 @@ function cabem(folha: { l: number; a: number }, card: { l: number; a: number }) 
   return { cols: Math.max(0, cols), rows: Math.max(0, rows), total: Math.max(0, cols) * Math.max(0, rows) }
 }
 
-export default function Imprimir({ doc, dados, onVoltar }: {
+/** Em qual folha A4 o modelo será impresso e quantos cabem.
+ *  'auto' escolhe a orientação que encaixa mais. Usado também pelo indicador da tela. */
+export function encaixe(papel: { largura: number; altura: number }, forcar: Orientacao = 'auto') {
+  const card = { l: papel.largura, a: papel.altura }
+  const r = cabem(A4.retrato, card)
+  const p = cabem(A4.paisagem, card)
+  const orientacao: 'retrato' | 'paisagem' =
+    forcar === 'auto' ? (p.total > r.total ? 'paisagem' : 'retrato') : forcar
+  const enc = orientacao === 'paisagem' ? p : r
+  return { orientacao, cols: enc.cols, rows: enc.rows, total: enc.total, cabe: enc.total > 0 }
+}
+
+export default function Imprimir({ doc, dados, orientacao: forcar = 'auto', onVoltar }: {
   doc: Documento
   dados: Record<string, any>[]          // uma entrada por pessoa
+  orientacao?: Orientacao
   onVoltar: () => void
 }) {
   const porPessoa = doc.fonteDados === 'pessoas'
   const card = { l: doc.papel.largura, a: doc.papel.altura }
 
-  // Escolhe a folha A4 que encaixa mais cartões (empate → em pé)
-  const r = cabem(A4.retrato, card)
-  const p = cabem(A4.paisagem, card)
-  const orientacao: 'retrato' | 'paisagem' = p.total > r.total ? 'paisagem' : 'retrato'
-  const enc = orientacao === 'paisagem' ? p : r
-
+  const enc = encaixe(doc.papel, forcar)
+  const orientacao = enc.orientacao
   const cols = Math.max(1, enc.cols)
   const porFolha = Math.max(1, enc.total)
-  const cabeu = enc.total > 0
+  const cabeu = enc.cabe
 
   const paginas: Record<string, any>[][] = []
   if (porPessoa) for (let i = 0; i < dados.length; i += porFolha) paginas.push(dados.slice(i, i + porFolha))
@@ -63,7 +74,7 @@ export default function Imprimir({ doc, dados, onVoltar }: {
         <button className="btn btn-ghost" onClick={onVoltar}>Voltar</button>
         <span style={{ fontSize: 12, color: 'var(--muted)' }}>
           {porPessoa
-            ? `${dados.length} pessoa(s) · ${porFolha} por folha (${enc.cols}×${enc.rows}) · A4 ${orientacao === 'retrato' ? 'em pé' : 'deitada'} (escolhida automaticamente)`
+            ? `${dados.length} pessoa(s) · ${porFolha} por folha (${enc.cols}×${enc.rows}) · A4 ${orientacao === 'retrato' ? 'em pé' : 'deitada'}${forcar === 'auto' ? ' (automática)' : ''}`
             : `${doc.paginas.length} página(s)`}
         </span>
       </div>
