@@ -2,9 +2,10 @@ import { useEffect, useState } from 'react'
 
 // Explorador de pastas do Google Drive DENTRO do app (usa a API do Drive com uma
 // chave). Navega subpastas aqui mesmo, tem Voltar, breadcrumb e +/- de tamanho.
-// Arquivos (pdf, música, vídeo...) abrem no Drive em nova aba.
+// Arquivos (pdf, música, vídeo...) abrem com o link direto (o dispositivo abre
+// com o app dele: galeria/player/leitor de pdf).
 
-type Item = { id: string; name: string; mimeType: string; thumbnailLink?: string; webViewLink?: string }
+type Item = { id: string; name: string; mimeType: string; thumbnailLink?: string; webViewLink?: string; webContentLink?: string }
 const FOLDER = 'application/vnd.google-apps.folder'
 
 function iconFor(mime: string): string {
@@ -24,6 +25,7 @@ export default function DriveBrowser({ rootId, rootName = 'Mídia', apiKey }: { 
   const [loading, setLoading] = useState(true)
   const [erro, setErro] = useState('')
   const [col, setCol] = useState(130)
+  const [falhou, setFalhou] = useState<Set<string>>(new Set())
 
   useEffect(() => { setPilha([{ id: rootId, name: rootName }]) }, [rootId, rootName])
 
@@ -33,7 +35,7 @@ export default function DriveBrowser({ rootId, rootName = 'Mídia', apiKey }: { 
     let ativo = true
     setLoading(true); setErro('')
     const q = `'${atual.id}' in parents and trashed=false`
-    const fields = 'files(id,name,mimeType,thumbnailLink,webViewLink)'
+    const fields = 'files(id,name,mimeType,thumbnailLink,webViewLink,webContentLink)'
     const url = `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&key=${apiKey}` +
       `&fields=${encodeURIComponent(fields)}&orderBy=folder,name&pageSize=1000&supportsAllDrives=true&includeItemsFromAllDrives=true`
     fetch(url).then(r => r.json()).then(j => {
@@ -46,8 +48,10 @@ export default function DriveBrowser({ rootId, rootName = 'Mídia', apiKey }: { 
   }, [atual.id, apiKey])
 
   function abrir(it: Item) {
-    if (it.mimeType === FOLDER) setPilha(p => [...p, { id: it.id, name: it.name }])
-    else if (it.webViewLink) window.open(it.webViewLink, '_blank', 'noopener')
+    if (it.mimeType === FOLDER) { setPilha(p => [...p, { id: it.id, name: it.name }]); return }
+    // Link direto: o dispositivo abre com a ferramenta dele (galeria/player/pdf).
+    const link = it.webContentLink || it.webViewLink || `https://drive.google.com/uc?id=${it.id}`
+    window.open(link, '_blank', 'noopener')
   }
   function voltar() { setPilha(p => (p.length > 1 ? p.slice(0, -1) : p)) }
 
@@ -68,8 +72,8 @@ export default function DriveBrowser({ rootId, rootName = 'Mídia', apiKey }: { 
           ))}
         </div>
         <div style={{ display: 'flex', gap: 4 }}>
-          <button onClick={() => setCol(c => Math.max(90, c - 26))} className="btn btn-ghost btn-sm" title="Diminuir" style={{ minWidth: 34, fontWeight: 800, fontSize: 16, padding: '4px 8px' }}>−</button>
-          <button onClick={() => setCol(c => Math.min(260, c + 26))} className="btn btn-ghost btn-sm" title="Aumentar" style={{ minWidth: 34, fontWeight: 800, fontSize: 16, padding: '4px 8px' }}>+</button>
+          <button onClick={() => setCol(c => Math.max(80, c - 40))} className="btn btn-ghost btn-sm" title="Diminuir" style={{ minWidth: 36, fontWeight: 800, fontSize: 18, padding: '2px 8px', lineHeight: 1 }}>−</button>
+          <button onClick={() => setCol(c => Math.min(320, c + 40))} className="btn btn-ghost btn-sm" title="Aumentar" style={{ minWidth: 36, fontWeight: 800, fontSize: 18, padding: '2px 8px', lineHeight: 1 }}>+</button>
         </div>
       </div>
 
@@ -83,17 +87,18 @@ export default function DriveBrowser({ rootId, rootName = 'Mídia', apiKey }: { 
         <div style={{ display: 'grid', gridTemplateColumns: `repeat(auto-fill, minmax(${col}px, 1fr))`, gap: 10 }}>
           {itens.map(it => {
             const pasta = it.mimeType === FOLDER
+            const temThumb = !!it.thumbnailLink && !falhou.has(it.id)
             return (
               <button key={it.id} onClick={() => abrir(it)}
                 style={{ background: 'white', border: '1px solid var(--border)', borderRadius: 12, padding: 8, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, boxShadow: 'var(--shadow-sm)' }}>
                 <div style={{ width: '100%', aspectRatio: '1', borderRadius: 8, background: pasta ? 'var(--primary-light)' : 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
                   {pasta
-                    ? <span style={{ fontSize: Math.round(col * 0.38) }}>📁</span>
-                    : it.thumbnailLink
-                      ? <img src={it.thumbnailLink} alt="" referrerPolicy="no-referrer" style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={e => { const t = e.currentTarget as HTMLImageElement; t.replaceWith(Object.assign(document.createElement('span'), { textContent: iconFor(it.mimeType), style: `font-size:${Math.round(col * 0.34)}px` })) }} />
-                      : <span style={{ fontSize: Math.round(col * 0.34) }}>{iconFor(it.mimeType)}</span>}
+                    ? <span style={{ fontSize: Math.round(col * 0.4) }}>📁</span>
+                    : temThumb
+                      ? <img src={it.thumbnailLink} alt="" referrerPolicy="no-referrer" style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={() => setFalhou(s => new Set(s).add(it.id))} />
+                      : <span style={{ fontSize: Math.round(col * 0.36) }}>{iconFor(it.mimeType)}</span>}
                 </div>
-                <span style={{ fontSize: 12, fontWeight: pasta ? 700 : 500, width: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'var(--text)' }}>{it.name}</span>
+                <span style={{ fontSize: Math.max(11, Math.round(col * 0.1)), fontWeight: pasta ? 700 : 500, width: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'var(--text)' }}>{it.name}</span>
               </button>
             )
           })}
