@@ -8,14 +8,16 @@ import { useEvento } from '../hooks/useEvento'
 import { usePermissao } from '../hooks/usePermissao'
 import PersonSelect from '../components/PersonSelect'
 import Seletor from '../components/Seletor'
+import { toast } from '../components/Toast'
 import DataHora from '../components/DataHora'
 import BarraData from '../components/BarraData'
 import CardItem from '../components/CardItem'
 import FotoAmpliada from '../components/FotoAmpliada'
 import type { Profile } from '../App'
 
-type Escala  = { id:string; person_id:string; team_id:string|null; title:string; start_time:string; end_time:string; location:string|null; notes:string|null; status:string }
+type Escala  = { id:string; person_id:string; team_id:string|null; title:string; start_time:string; end_time:string; location:string|null; notes:string|null; status:string; created_by?:string|null }
 type Pessoa  = { id:string; name:string; photo_url:string|null }
+type Solic   = { id:string; escala_id:string; solicitante_user_id:string|null; solicitante_nome:string|null; escala_titulo:string|null; lider_user_id:string|null; mensagem:string|null; status:string; created_at:string }
 type Equipe  = { id:string; name:string; color:string }
 type Local   = { id:string; nome:string }
 
@@ -61,6 +63,13 @@ export default function Escalas({ profile }: { profile?: Profile }) {
   const [myPersonId, setMyPersonId] = useState<string|null>(null)
   const [myTeamIds, setMyTeamIds]   = useState<string[]>([])
 
+  // Solicitações de alteração de escala
+  const [solicitacoes, setSolicitacoes] = useState<Solic[]>([])
+  const [modalSolic, setModalSolic] = useState<Escala|null>(null)
+  useVoltarFecha(!!modalSolic, () => setModalSolic(null))
+  const [msgSolic, setMsgSolic] = useState('')
+  const [enviandoSolic, setEnviandoSolic] = useState(false)
+
   useEffect(() => { if (evLoading) return; if (!evento) { setLoading(false); return }; carregar() }, [evento, evLoading])
 
   async function carregar() {
@@ -80,6 +89,8 @@ export default function Escalas({ profile }: { profile?: Profile }) {
     const allEquipes = eq.data ?? []
     setEscalas(es.data ?? [])
     setPessoas(pe.data ?? [])
+    supabase.from('escala_solicitacoes').select('*').eq('event_id', evento.id).order('created_at', { ascending: false })
+      .then(({ data }) => setSolicitacoes((data as Solic[]) ?? []))
     setEquipes(allEquipes)
     setVinculos(vi.data ?? [])
     setLocais(lo.data ?? [])
@@ -212,7 +223,7 @@ export default function Escalas({ profile }: { profile?: Profile }) {
     }
     let err, escalaId = editando?.id
     if (editando) { const r = await supabase.from('escalas').update(payload).eq('id',editando.id); err = r.error }
-    else { const r = await supabase.from('escalas').insert(payload).select('id').single(); err = r.error; escalaId = r.data?.id }
+    else { const r = await supabase.from('escalas').insert({ ...payload, created_by: profile?.user_id ?? null }).select('id').single(); err = r.error; escalaId = r.data?.id }
     if (err) { setErro('Erro: '+err.message); setSalvando(false); return }
     // Sincroniza o checklist (apaga e regrava; preserva o "feito" de cada item)
     if (escalaId) {
@@ -227,6 +238,30 @@ export default function Escalas({ profile }: { profile?: Profile }) {
     if (!confirm('Excluir esta escala?')) return
     await supabase.from('escalas').delete().eq('id', id)
     carregar()
+  }
+
+  // Solicitação de alteração (usuário comum) → vai pro líder que criou
+  async function enviarSolicitacao() {
+    if (!modalSolic || !evento) return
+    const t = msgSolic.trim()
+    if (!t) { toast.aviso('Escreva o motivo da solicitação.'); return }
+    setEnviandoSolic(true)
+    const { error } = await supabase.from('escala_solicitacoes').insert({
+      escala_id: modalSolic.id, event_id: evento.id,
+      solicitante_user_id: profile?.user_id ?? null, solicitante_nome: profile?.full_name ?? null,
+      escala_titulo: modalSolic.title, lider_user_id: modalSolic.created_by ?? null,
+      mensagem: t, status: 'pendente',
+    })
+    setEnviandoSolic(false)
+    if (error) { toast.falha('Não foi possível enviar. Rode o SQL 44_escala_solicitacoes.sql.', error); return }
+    setModalSolic(null); setMsgSolic('')
+    toast.sucesso('Solicitação enviada ao líder.')
+    carregar()
+  }
+  async function resolverSolic(s: Solic, status: 'aprovada'|'recusada') {
+    await supabase.from('escala_solicitacoes').update({ status, resolved_at: new Date().toISOString() }).eq('id', s.id)
+    setSolicitacoes(prev => prev.map(x => x.id === s.id ? { ...x, status } : x))
+    toast.sucesso(status === 'aprovada' ? 'Solicitação aprovada.' : 'Solicitação recusada.')
   }
 
   function resetForm() {
@@ -270,6 +305,27 @@ export default function Escalas({ profile }: { profile?: Profile }) {
       {/* Navegação por data — barra de semana (só os dias do evento abrem) */}
       <BarraData value={dataSel} onChange={setDataSel} inicio={evento?.start_date} fim={evento?.end_date} hoje={hoje} />
 
+      {/* Líder: solicitações de alteração das escalas que ELE criou */}
+      {solicitacoes.some(s=>s.status==='pendente' && (s.lider_user_id===profile?.user_id || adminFull)) && (
+        <div style={{marginBottom:14}}>
+          <p style={{fontSize:12,fontWeight:800,color:'#B7791F',marginBottom:8,display:'flex',alignItems:'center',gap:6}}>✋ Solicitações de alteração</p>
+          {solicitacoes.filter(s=>s.status==='pendente' && (s.lider_user_id===profile?.user_id || adminFull)).map(s=>{
+            const esc = escalas.find(e=>e.id===s.escala_id)
+            return (
+              <div key={s.id} style={{background:'white',borderRadius:12,boxShadow:'var(--shadow-sm)',borderLeft:'4px solid var(--warning)',padding:'12px 14px',marginBottom:8}}>
+                <p style={{fontSize:13}}><b>{s.solicitante_nome ?? 'Alguém'}</b> <span style={{color:'var(--muted)'}}>pediu alteração em</span> <b>{s.escala_titulo ?? 'escala'}</b></p>
+                <p style={{fontSize:13,color:'var(--text2)',margin:'4px 0 10px',whiteSpace:'pre-wrap'}}>{s.mensagem}</p>
+                <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+                  {esc && canEdit && <button className="btn btn-sm btn-ghost" onClick={()=>{ resolverSolic(s,'aprovada'); abrirEdicao(esc) }}><span className="icon icon-sm">edit</span> Editar/Substituir</button>}
+                  <button className="btn btn-sm" style={{background:'var(--success-bg)',color:'var(--success)',border:'none'}} onClick={()=>resolverSolic(s,'aprovada')}>Aprovar</button>
+                  <button className="btn btn-sm" style={{background:'var(--danger-bg)',color:'var(--danger)',border:'none'}} onClick={()=>resolverSolic(s,'recusada')}>Recusar</button>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
 
       {loading ? [1,2,3].map(i=><div key={i} className="skeleton" style={{height:68,marginBottom:8,borderRadius:14}}/>) :
       escalasDia.length === 0 ? (
@@ -298,11 +354,31 @@ export default function Escalas({ profile }: { profile?: Profile }) {
             onVer={canEdit ? ()=>abrirEdicao(e) : undefined}
             onEditar={canEdit ? ()=>abrirEdicao(e) : undefined}
             onFoto={()=>p?.photo_url && setFotoAmpliada(p.photo_url)}
+            direita={(!canEdit && myPersonId && e.person_id === myPersonId) ? (
+              solicitacoes.some(s=>s.escala_id===e.id && s.status==='pendente' && s.solicitante_user_id===profile?.user_id)
+                ? <span style={{fontSize:11,color:'var(--warning)',fontWeight:700,whiteSpace:'nowrap'}}>⏳ Solicitado</span>
+                : <button onClick={()=>{ setMsgSolic(''); setModalSolic(e) }} className="btn btn-ghost btn-sm" style={{whiteSpace:'nowrap'}}><span className="icon icon-sm">edit_note</span> Solicitar</button>
+            ) : undefined}
           />
         )
       })}
 
       {canEdit && <button className="fab" onClick={abrirNovo}><span className="icon">add</span></button>}
+
+      {/* Modal — solicitar alteração */}
+      {modalSolic && (
+        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.5)',zIndex:400,display:'flex',flexDirection:'column',justifyContent:'flex-end'}} onClick={e=>e.target===e.currentTarget&&setModalSolic(null)}>
+          <div style={{background:'white',borderRadius:'20px 20px 0 0',padding:'8px 20px 28px',maxWidth:480,width:'100%',margin:'0 auto'}}>
+            <div style={{width:36,height:4,background:'var(--border)',borderRadius:2,margin:'12px auto 16px'}}/>
+            <p style={{fontSize:16,fontWeight:800,marginBottom:4}}>Solicitar alteração</p>
+            <p className="form-hint mb-2"><b>{modalSolic.title}</b> · {fmtHora(modalSolic.start_time)}–{fmtHora(modalSolic.end_time)}. O pedido vai para o líder que criou a escala.</p>
+            {!modalSolic.created_by && <div className="alert-box alert-info mb-2" style={{fontSize:12}}>Esta escala foi criada antes deste recurso — sem líder definido. O pedido ficará visível para os administradores.</div>}
+            <textarea className="form-textarea" value={msgSolic} onChange={e=>setMsgSolic(e.target.value)} rows={4} placeholder="Ex: não consigo neste horário, posso em outro..." style={{marginBottom:12}}/>
+            <button className="btn btn-primary btn-full" onClick={enviarSolicitacao} disabled={enviandoSolic} style={{marginBottom:8}}>{enviandoSolic?'Enviando...':'Enviar solicitação'}</button>
+            <button className="btn btn-ghost btn-full" onClick={()=>setModalSolic(null)}>Cancelar</button>
+          </div>
+        </div>
+      )}
 
       {/* ===== IMPRESSÃO — escala do dia (reflete a tela) ===== */}
       {imprimir && (

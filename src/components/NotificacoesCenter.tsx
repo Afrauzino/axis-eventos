@@ -117,6 +117,17 @@ export async function montarNotificacoes(profile: Profile, eventoId: string | nu
     }
   } catch {}
 
+  // Solicitações de alteração de escala (para o LÍDER que criou a escala)
+  try {
+    const { data } = await supabase.from('escala_solicitacoes')
+      .select('id,solicitante_nome,escala_titulo,created_at')
+      .eq('event_id', eventoId).eq('lider_user_id', userId).eq('status', 'pendente')
+      .order('created_at', { ascending: false }).limit(10)
+    for (const s of data ?? []) {
+      out.push({ id: 'escsolic-' + s.id, emoji: '✋', titulo: `${s.solicitante_nome ?? 'Alguém'} pediu alteração de escala`, sub: s.escala_titulo || 'Escala', quando: s.created_at, rota: '/escalas' })
+    }
+  } catch {}
+
   // Ordena: mais recentes/próximos primeiro (quem tem "quando" vem por data desc; sem data, no fim)
   out.sort((a, b) => (b.quando ?? '').localeCompare(a.quando ?? ''))
   return out
