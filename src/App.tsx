@@ -94,6 +94,10 @@ const ROTA_PERM = ([
 
 function permDaRota(path: string): string | null {
   if (path === '/' || path === '/perfil') return null
+  // Link direto a UMA ministração (/ministracoes/:id): a própria tela controla o acesso
+  // (o ministrante vê a sua com acesso total; quem não é dono só vê a info básica).
+  // Assim o ministrante chega pela "Minhas Atividades" sem precisar do menu Ministrações.
+  if (/^\/ministracoes\/[^/]+$/.test(path)) return null
   for (const [pref, perm] of ROTA_PERM) {
     if (path === pref || path.startsWith(pref + '/')) return perm
   }
