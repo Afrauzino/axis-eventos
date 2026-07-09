@@ -51,7 +51,7 @@ export default function MuralGratidao({ eventoId, profile, fundo, onEditar }: { 
 
   async function carregar(eid: string) {
     const [po, pe, cu, co] = await Promise.all([
-      supabase.from('mural_posts').select('*').eq('event_id', eid).order('created_at', { ascending: false }).limit(50),
+      supabase.from('mural_posts').select('*').eq('event_id', eid).order('created_at', { ascending: false }),
       supabase.from('people').select('id,name,photo_url').eq('event_id', eid).order('name'),
       supabase.from('mural_curtidas').select('post_id,user_id').eq('event_id', eid),
       supabase.from('mural_comentarios').select('*').eq('event_id', eid).order('created_at'),
