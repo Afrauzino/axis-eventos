@@ -31,7 +31,7 @@ export default function MinhasAtividades({ profile }: { profile: Profile }) {
   useVoltarFecha(!!cardapioDetalhe, () => setCardapioDetalhe(null))
   const [meusAfilhados, setMeusAfilhados] = useState<{id:string;name:string;photo_url:string|null;pct:number;status:string}[]>([])
   // #11 — atividades vindas do Cronograma (sou ministrante / estou no elenco)
-  const [cronoAtividades, setCronoAtividades] = useState<(Escala & { tipo:'ministracao'|'teatro' })[]>([])
+  const [cronoAtividades, setCronoAtividades] = useState<(Escala & { tipo:'ministracao'|'teatro'; refId:string|null })[]>([])
   // Admin: aprovações pendentes caem aqui e somem ao aprovar
   const admin = isAdmin(profile.user_role) || profile.is_admin
   const [aprovacoes, setAprovacoes] = useState<{user_id:string;name:string;user_role:string|null;photo_url:string|null;church:string|null}[]>([])
@@ -185,6 +185,8 @@ export default function MinhasAtividades({ profile }: { profile: Profile }) {
         // mantém o status real do cronograma (concluido/cancelado/pendente) p/ a barra de progresso
         status: c.status === 'concluido' ? 'concluido' : c.status === 'cancelado' ? 'cancelado' : 'pendente', team_id: null,
         tipo: (c.ministracao_id && minhasMinIds.has(c.ministracao_id)) ? 'ministracao' as const : 'teatro' as const,
+        // id real (ministração/teatro) p/ abrir a tela com acesso total
+        refId: (c.ministracao_id && minhasMinIds.has(c.ministracao_id)) ? c.ministracao_id : c.theater_id,
       }))
     setCronoAtividades(atv)
   }
@@ -349,11 +351,11 @@ export default function MinhasAtividades({ profile }: { profile: Profile }) {
         <>
           <div className="section-label" style={{marginTop:14}}>Minha agenda (Cronograma)</div>
           {cronoAtividades.map(item => (
-            <div key={item.id} onClick={()=>setDetalhe(item)}
+            <div key={item.id} onClick={()=> item.tipo==='ministracao' && item.refId ? navigate('/ministracoes/'+item.refId) : setDetalhe(item)}
               style={{background:'white',borderRadius:14,boxShadow:'var(--shadow-sm)',marginBottom:8,display:'flex',alignItems:'center',overflow:'hidden',cursor:'pointer',opacity:item.status==='concluido'?0.7:1}}>
               <div style={{width:4,alignSelf:'stretch',flexShrink:0,background:item.tipo==='teatro'?'#E8821A':'#6B46C1'}}/>
               <div style={{flex:1,padding:'12px 14px',minWidth:0}}>
-                <p style={{fontSize:11,color:'var(--muted)',marginBottom:2}}>{item.tipo==='teatro'?'🎭 Teatro':'🎤 Ministração'} · {fmtHora(item.start_time)} — {fmtHora(item.end_time)}</p>
+                <p style={{fontSize:11,color:'var(--muted)',marginBottom:2}}>{item.tipo==='teatro'?'🎭 Teatro':'🎤 Ministração'} · {fmtHora(item.start_time)} — {fmtHora(item.end_time)}{item.tipo==='ministracao'?' · toque para abrir':''}</p>
                 <p style={{fontWeight:700,fontSize:14,textDecoration:item.status==='cancelado'?'line-through':'none'}}>{item.title}</p>
                 {item.location && <p style={{fontSize:12,color:'var(--muted)',marginTop:1}}>{item.location}</p>}
               </div>

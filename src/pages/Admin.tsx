@@ -170,6 +170,7 @@ export default function Admin({ profile }: { profile?: Profile }) {
   const [salvandoTermos, setSalvandoTermos] = useState(false)
   // Permissões
   const [permsPessoa, setPermsPessoa]   = useState<any[]>([])
+  const [detMinistracoes, setDetMinistracoes] = useState<string[]>([])
   const [permsAba, setPermsAba]         = useState<'liberacoes'|'acoes'|'menus_visiveis'>('liberacoes')
   const [equipesPerm, setEquipesPerm]   = useState<any[]>([])
   const [equipePermSel, setEquipePermSel] = useState<any|null>(null)
@@ -236,6 +237,11 @@ export default function Admin({ profile }: { profile?: Profile }) {
     if (!p?.id) return
     const { data } = await supabase.from('permissoes').select('*').eq('person_id', p.id)
     setPermsPessoa(data ?? [])
+    // Ministrações em que ESTA pessoa é o ministrante — dá acesso automático à própria ministração
+    try {
+      const { data: mins } = await supabase.from('ministrações').select('titulo').eq('ministrante_id', p.id)
+      setDetMinistracoes((mins ?? []).map((m:any)=>m.titulo).filter(Boolean))
+    } catch { setDetMinistracoes([]) }
   }
   // Define estado explícito: true=liberado, false=bloqueado, null=remove (neutro)
   async function definirPermPessoa(p: any, modulo: string, acao: string, estado: boolean|null) {
@@ -1270,6 +1276,17 @@ export default function Admin({ profile }: { profile?: Profile }) {
                     </button>
                   )}
                 </>
+              )}
+              {detMinistracoes.length > 0 && (
+                <div style={{marginTop:12,paddingTop:12,borderTop:'1px solid var(--border)',display:'flex',alignItems:'flex-start',gap:8}}>
+                  <span style={{fontSize:16,flexShrink:0}}>🎤</span>
+                  <div>
+                    <p style={{fontSize:12.5,fontWeight:700,color:'var(--text2)'}}>Ministrante — acesso automático</p>
+                    <p style={{fontSize:11.5,color:'var(--muted)',lineHeight:1.5,marginTop:2}}>
+                      Tem acesso total à própria ministração (conteúdo, arquivos, anotações) pelo Cronograma / Minhas Atividades. Não edita o teatro. Ministração: {detMinistracoes.join(', ')}.
+                    </p>
+                  </div>
+                </div>
               )}
             </div>
 

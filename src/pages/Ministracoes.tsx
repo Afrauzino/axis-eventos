@@ -135,6 +135,14 @@ export default function Ministracoes({ profile }: { profile?: Profile }) {
 
   function getPessoa(id:string|null) { return id ? pessoas.find(p=>p.id===id) : null }
 
+  // A pessoa logada é o MINISTRANTE desta ministração?
+  // Se for, ela tem acesso total à PRÓPRIA ministração (conteúdo, arquivos, notas) — menos o teatro.
+  function souMinistranteDe(m: { ministrante_id:string|null } | null) {
+    if (!m || !userId) return false
+    const p = getPessoa(m.ministrante_id)
+    return !!p?.user_id && p.user_id === userId
+  }
+
   function abrirNovo() {
     setEditando(null); setForm({...FORM_VAZIO}); setErro(''); setAbaForm('basico'); setBlocos([]); setModal(true)
   }
@@ -177,8 +185,9 @@ export default function Ministracoes({ profile }: { profile?: Profile }) {
     if (editando) { const r=await supabase.from('ministrações').update(payload).eq('id',editando.id); err=r.error }
     else { const r=await supabase.from('ministrações').insert({...payload,event_id:evento.id}).select('id').single(); err=r.error; minId=r.data?.id }
     if (err) { setErro('Erro: '+err.message); setSalvando(false); return }
-    // Sync teatro link — garante que só UM teatro fica vinculado
-    if (minId) {
+    // Sync teatro link — garante que só UM teatro fica vinculado.
+    // Só o admin/liberado mexe no teatro; o ministrante NÃO altera o vínculo do teatro.
+    if (minId && canEdit) {
       // primeiro desvincula QUALQUER teatro que esteja nesta ministração
       await supabase.from('theaters').update({ ministracao_id: null }).eq('ministracao_id', minId)
       // depois vincula só o escolhido (se houver)
@@ -222,6 +231,9 @@ export default function Ministracoes({ profile }: { profile?: Profile }) {
 
   const STATUS_LABEL: Record<string,string> = { planejado:'Planejado', em_andamento:'Em andamento', concluido:'Concluído', cancelado:'Cancelado' }
 
+  // Ministrante comum (sem admin/líder/liberação) enxerga na lista SÓ a própria ministração.
+  const listaVisivel = (canEdit || isLiderPlus) ? mins : mins.filter(m => souMinistranteDe(m))
+
   return (
     <div className="page">
       {restrito ? (
@@ -231,13 +243,13 @@ export default function Ministracoes({ profile }: { profile?: Profile }) {
           <button className="btn btn-primary btn-sm" onClick={()=>navigate('/cronograma')}>Ir para o Cronograma</button>
         </div>
       ) : loading ? [1,2,3].map(i=><div key={i} className="skeleton" style={{height:80,marginBottom:8,borderRadius:14}}/>) :
-      mins.length===0 ? (
+      listaVisivel.length===0 ? (
         <div className="empty">
           <div className="empty-icon"><span className="icon" style={{color:'var(--muted-light)'}}>church</span></div>
           <p className="empty-title">Nenhuma ministração</p>
           {canEdit && <button className="btn btn-primary btn-sm" onClick={abrirNovo}>Cadastrar</button>}
         </div>
-      ) : mins.map((m,i) => {
+      ) : listaVisivel.map((m,i) => {
         const min = getPessoa(m.ministrante_id)
         return (
           <CardItem
@@ -261,7 +273,7 @@ export default function Ministracoes({ profile }: { profile?: Profile }) {
             onEditar={canEdit ? ()=>abrirEdicao(m) : undefined}
             acoes={canEdit ? [
               ...(i>0 ? [{ label:'Mover para cima', icon:'arrow_upward', onClick:()=>moverMin(m.id,'up') }] : []),
-              ...(i<mins.length-1 ? [{ label:'Mover para baixo', icon:'arrow_downward', onClick:()=>moverMin(m.id,'down') }] : []),
+              ...(i<listaVisivel.length-1 ? [{ label:'Mover para baixo', icon:'arrow_downward', onClick:()=>moverMin(m.id,'down') }] : []),
             ] : undefined}
             onExcluir={canEdit ? ()=>excluir(m.id) : undefined}
           />
@@ -276,7 +288,7 @@ export default function Ministracoes({ profile }: { profile?: Profile }) {
       {detalhe && (() => {
         const min = getPessoa(detalhe.ministrante_id)
         const isEuMinistrant = !!min?.user_id && min.user_id === userId
-        const canSeeConteudo = isLiderPlus || (restrito && isEuMinistrant)
+        const canSeeConteudo = isLiderPlus || canEdit || isEuMinistrant
 
         return (
           <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.5)',zIndex:300,display:'flex',flexDirection:'column',justifyContent:'flex-end'}} onClick={e=>e.target===e.currentTarget&&fecharDetalhe()}>
@@ -349,11 +361,14 @@ export default function Ministracoes({ profile }: { profile?: Profile }) {
                         <span className="icon icon-sm">arrow_back</span> Voltar ao Cronograma
                       </button>
                     )}
-                    {canEdit && (
+                    {(canEdit || isEuMinistrant) && (
                       <div style={{display:'flex',gap:8}}>
-                        <button className="btn btn-ghost" style={{flex:1}} onClick={()=>{setDetalhe(null);abrirEdicao(detalhe)}}>Editar</button>
-                        <button className="btn" style={{flex:1,background:'var(--danger-bg)',color:'var(--danger)',border:'none'}} onClick={()=>excluir(detalhe.id)}>Excluir</button>
+                        <button className="btn btn-ghost" style={{flex:1}} onClick={()=>{setDetalhe(null);abrirEdicao(detalhe)}}>{canEdit ? 'Editar' : 'Editar minha ministração'}</button>
+                        {canEdit && <button className="btn" style={{flex:1,background:'var(--danger-bg)',color:'var(--danger)',border:'none'}} onClick={()=>excluir(detalhe.id)}>Excluir</button>}
                       </div>
+                    )}
+                    {!canEdit && isEuMinistrant && (
+                      <p style={{fontSize:11,color:'var(--muted)',textAlign:'center',marginTop:8}}>Você é o ministrante — pode editar o conteúdo, anexar arquivos e anotar. O teatro é gerenciado pela equipe de teatro.</p>
                     )}
                   </>
                 )}
@@ -411,7 +426,7 @@ export default function Ministracoes({ profile }: { profile?: Profile }) {
       })()}
 
       {/* ===== MODAL CRIAR/EDITAR ===== */}
-      {modal && canEdit && (
+      {modal && (canEdit || (editando && souMinistranteDe(editando))) && (
         <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.5)',zIndex:300,display:'flex',flexDirection:'column',justifyContent:'flex-end'}} onClick={e=>e.target===e.currentTarget&&setModal(false)}>
           <div style={{background:'white',borderRadius:'20px 20px 0 0',maxHeight:'95vh',overflowY:'auto'}}>
             <div style={{width:36,height:4,background:'var(--border)',borderRadius:2,margin:'12px auto 0'}}/>
