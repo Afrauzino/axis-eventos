@@ -8,8 +8,10 @@ export default function Pending({ profile }: { profile: Profile | null }) {
   useEffect(() => { carregarConfig('logo_url').then(setLogoUrl) }, [])
 
   const st = profile?.role_status
-  const titulo = st==='rejected' ? 'Acesso negado' : st==='suspended' ? 'Conta suspensa' : 'Aguardando aprovação'
-  const msg = st==='rejected'
+  const titulo = st==='blocked' ? 'Conta bloqueada' : st==='rejected' ? 'Acesso negado' : st==='suspended' ? 'Conta suspensa' : 'Aguardando aprovação'
+  const msg = st==='blocked'
+    ? 'Sua conta foi bloqueada pelo administrador. Entre em contato para reativar o seu acesso.'
+    : st==='rejected'
     ? 'Seu acesso foi negado pelo administrador. Entre em contato para mais informações.'
     : st==='suspended'
     ? 'Sua conta foi suspensa temporariamente. Entre em contato com o administrador.'

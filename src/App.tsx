@@ -320,7 +320,7 @@ export default function App() {
   if (!session) return <Login />
   if (!profile) return <Login />
   // Show pending screen for anyone awaiting admin approval
-  if (profile.role_status === 'pending' || profile.role_status === 'rejected' || profile.user_role === 'visitante') return <Pending profile={profile}/>
+  if (profile.role_status === 'pending' || profile.role_status === 'rejected' || profile.role_status === 'blocked' || profile.role_status === 'suspended' || profile.user_role === 'visitante') return <Pending profile={profile}/>
 
   return (
     <BrowserRouter>

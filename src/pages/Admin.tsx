@@ -492,6 +492,35 @@ export default function Admin({ profile }: { profile?: Profile }) {
     await supabase.from('people').update({ invite_code: code }).eq('id', p.id)
     setPessoas(prev => prev.map(x => x.id === p.id ? { ...x, invite_code: code } : x))
     setPessoaDetalhe(prev => prev && prev.id === p.id ? { ...prev, invite_code: code } : prev)
+    return code
+  }
+
+  // Bloquear conta — mantém o login e o cadastro, só NEGA o acesso (reversível, sem mexer no Supabase)
+  async function bloquearConta(p: typeof pessoas[0]) {
+    if (!p.user_id) return
+    if (p.user_role === 'admin' || p.user_role === 'pastor') { toast.aviso('Administradores não podem ser bloqueados. Rebaixe o cargo antes, se precisar.'); return }
+    if (!confirm(`Bloquear "${p.name}"?\n\nA pessoa perde o acesso ao app (verá "Conta bloqueada"), mas o cadastro e o login são MANTIDOS. Você pode reverter a qualquer momento enviando um novo código.`)) return
+    await supabase.from('profiles').update({ role_status: 'blocked' }).eq('user_id', p.user_id)
+    setPessoas(prev => prev.map(x => x.user_id === p.user_id ? { ...x, role_status: 'blocked' } : x))
+    setPessoaDetalhe(prev => prev && prev.user_id === p.user_id ? { ...prev, role_status: 'blocked' } : prev)
+    registrarLog({ action:'update', entity:'profiles', entityId:p.id, description:`Bloqueou a conta de ${p.name}`, eventId:eventoAtivoId() })
+    toast.sucesso('Conta bloqueada. Reverta quando quiser pelo botão "Reativar".')
+  }
+
+  // Reativar conta bloqueada — libera o acesso e gera um novo código de primeiro acesso pra reenviar
+  async function reativarConta(p: typeof pessoas[0]) {
+    if (!p.user_id) return
+    await supabase.from('profiles').update({ role_status: 'approved' }).eq('user_id', p.user_id)
+    setPessoas(prev => prev.map(x => x.user_id === p.user_id ? { ...x, role_status: 'approved' } : x))
+    setPessoaDetalhe(prev => prev && prev.user_id === p.user_id ? { ...prev, role_status: 'approved' } : prev)
+    // Novo código de primeiro acesso (só faz sentido para quem tem cadastro no evento)
+    const temCadastro = p.role_type === 'worker' || p.role_type === 'encounterer'
+    const code = temCadastro ? await gerarNovoCodigo(p) : null
+    if (code) copiarComMsg(p.name, code)
+    registrarLog({ action:'update', entity:'profiles', entityId:p.id, description:`Reativou a conta de ${p.name}`, eventId:eventoAtivoId() })
+    toast.sucesso(code
+      ? 'Conta reativada! A mensagem com o novo código foi copiada — cole no WhatsApp da pessoa.'
+      : 'Conta reativada! A pessoa já pode entrar com o login que tinha.')
   }
 
   // Trocar tipo: encontrista <-> encontreiro
@@ -1021,10 +1050,10 @@ export default function Admin({ profile }: { profile?: Profile }) {
               <>
                 <button
                   onClick={e=>{e.stopPropagation(); if(p.role_status==='pending') aprovarPessoa(p)}}
-                  title={p.role_status==='pending'?'Clique para aprovar':'Ativo'}
-                  className={`badge ${p.role_status==='pending'?'badge-warning':'badge-success'}`}
+                  title={p.role_status==='pending'?'Clique para aprovar':p.role_status==='blocked'?'Conta bloqueada':'Ativo'}
+                  className={`badge ${p.role_status==='pending'?'badge-warning':p.role_status==='blocked'?'badge-danger':'badge-success'}`}
                   style={{fontSize:9,border:'none',cursor:p.role_status==='pending'?'pointer':'default',fontFamily:'inherit'}}>
-                  {p.role_status==='pending'?'⏳ Aprovar':'✓ Ativo'}
+                  {p.role_status==='pending'?'⏳ Aprovar':p.role_status==='blocked'?'🔒 Bloqueado':'✓ Ativo'}
                 </button>
                 <Seletor sheet compact titulo="Cargo / Nível de acesso"
                   value={cargoKey(p)} onChange={v=>alterarRole(p.user_id!,v)}
@@ -1174,8 +1203,8 @@ export default function Admin({ profile }: { profile?: Profile }) {
                 <>
                   <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:10}}>
                     <span style={{fontSize:13,color:'var(--text2)'}}>Status</span>
-                    <span className={`badge ${pessoaDetalhe.role_status==='pending'?'badge-warning':'badge-success'}`}>
-                      {pessoaDetalhe.role_status==='pending'?'⏳ Aguardando aprovação':'✓ Ativo'}
+                    <span className={`badge ${pessoaDetalhe.role_status==='pending'?'badge-warning':pessoaDetalhe.role_status==='blocked'?'badge-danger':'badge-success'}`}>
+                      {pessoaDetalhe.role_status==='pending'?'⏳ Aguardando aprovação':pessoaDetalhe.role_status==='blocked'?'🔒 Bloqueado':'✓ Ativo'}
                     </span>
                   </div>
                   <div style={{marginBottom:6}}>
@@ -1190,6 +1219,31 @@ export default function Admin({ profile }: { profile?: Profile }) {
                       style={{width:'100%',marginTop:8,padding:'10px',background:'var(--success)',color:'white',border:'none',borderRadius:10,cursor:'pointer',fontSize:13,fontWeight:700,fontFamily:'inherit',display:'flex',alignItems:'center',justifyContent:'center',gap:6}}>
                       <span className="icon icon-sm" style={{color:'white'}}>check_circle</span> Aprovar agora
                     </button>
+                  )}
+
+                  {/* Bloquear / Reativar — mantém o login, reversível */}
+                  {pessoaDetalhe.role_status==='blocked' ? (
+                    <button onClick={()=>reativarConta(pessoaDetalhe)}
+                      style={{width:'100%',marginTop:8,padding:'10px',background:'var(--success)',color:'white',border:'none',borderRadius:10,cursor:'pointer',fontSize:13,fontWeight:700,fontFamily:'inherit',display:'flex',alignItems:'center',justifyContent:'center',gap:6}}>
+                      <span className="icon icon-sm" style={{color:'white'}}>lock_open</span> Reativar e enviar novo código
+                    </button>
+                  ) : (pessoaDetalhe.role_status!=='pending' && pessoaDetalhe.user_role!=='admin' && pessoaDetalhe.user_role!=='pastor') && (
+                    <button onClick={()=>bloquearConta(pessoaDetalhe)}
+                      style={{width:'100%',marginTop:8,padding:'10px',background:'var(--danger-bg)',color:'var(--danger)',border:'1px solid var(--danger)',borderRadius:10,cursor:'pointer',fontSize:13,fontWeight:700,fontFamily:'inherit',display:'flex',alignItems:'center',justifyContent:'center',gap:6}}>
+                      <span className="icon icon-sm" style={{color:'var(--danger)'}}>block</span> Bloquear conta
+                    </button>
+                  )}
+
+                  {/* Código de primeiro acesso para reenviar (aparece após reativar) */}
+                  {pessoaDetalhe.invite_code && (
+                    <div style={{display:'flex',alignItems:'center',gap:8,background:'white',border:'1px solid var(--border)',borderRadius:8,padding:'10px 12px',marginTop:8}}>
+                      <span style={{fontFamily:'monospace',fontSize:16,fontWeight:800,letterSpacing:'0.1em',color:'var(--primary)',flex:1}}>{pessoaDetalhe.invite_code}</span>
+                      <button onClick={()=>copiarComMsg(pessoaDetalhe.name, pessoaDetalhe.invite_code??'')}
+                        title="Copia a mensagem pronta (Admin → MSG) com o código para colar no WhatsApp"
+                        style={{background:'var(--primary)',color:'white',border:'none',borderRadius:8,padding:'6px 12px',cursor:'pointer',fontSize:12,fontWeight:700,fontFamily:'inherit',display:'flex',alignItems:'center',gap:4}}>
+                        <span className="icon icon-sm" style={{color:'white'}}>content_copy</span> Copiar msg
+                      </button>
+                    </div>
                   )}
                 </>
               ) : (
