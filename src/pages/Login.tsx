@@ -170,6 +170,15 @@ export default function Login() {
       return
     }
 
+    // Anti-duplicidade por NOME COMPLETO (checagem no servidor — sql/49)
+    try {
+      const { data: existe } = await supabase.rpc('nome_ja_existe', { p_event: eventoAtivo.id, p_nome: form.name })
+      if (existe === true) {
+        const m = 'Já existe alguém inscrito com esse nome. Se for você, faça login. Se for outra pessoa, acrescente um sobrenome.'
+        setErro(m); toast.aviso(m); setLoading(false); return
+      }
+    } catch {}
+
     const { data: authData, error: authErr } = await supabase.auth.signUp({
       email: email.trim().toLowerCase(), password: senha, options: { data: { full_name: form.name } },
     })
@@ -241,6 +250,15 @@ export default function Login() {
       try { window.scrollTo({ top: 0, behavior: 'smooth' }); document.querySelector('.auth-body,.auth-wrap,main')?.scrollTo({ top: 0, behavior: 'smooth' }) } catch {}
       return
     }
+
+    // Anti-duplicidade por NOME COMPLETO (ignora o próprio pré-cadastro) — sql/49
+    try {
+      const { data: existe } = await supabase.rpc('nome_ja_existe', { p_event: pessoa.event_id, p_nome: form.name, p_exceto: pessoa.id })
+      if (existe === true) {
+        const m = 'Já existe outra pessoa com esse nome neste evento. Acrescente um sobrenome para diferenciar.'
+        setErro(m); toast.aviso(m); setLoading(false); return
+      }
+    } catch {}
 
     // Criar conta Supabase Auth
     const { data: authData, error: authErr } = await supabase.auth.signUp({
