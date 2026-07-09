@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from 'react'
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useVoltarFecha } from '../hooks/useVoltarFecha'
-import { getInitials, fmtHora, fmtData, isAdmin, hasRole, toLocalInput } from '../utils'
+import { getInitials, fmtHora, fmtData, isAdmin, toLocalInput } from '../utils'
 import { useEvento } from '../hooks/useEvento'
 import { usePermissao } from '../hooks/usePermissao'
 import { toast } from '../components/Toast'
@@ -64,10 +64,11 @@ export default function Ministracoes({ profile }: { profile?: Profile }) {
   const blocoArqRef = useRef<HTMLInputElement>(null)
 
   const { pode } = usePermissao(profile ?? null)
-  // Admin OU liberação (individual/equipe) "ver e editar Ministrações" na tela do Admin
+  // Admin OU liberação (individual/equipe) de Ministrações. Líder NÃO tem acesso automático:
+  // só quem é admin, quem recebe a liberação pessoal/equipe, ou o próprio ministrante da sua.
   const canEdit    = (!!profile && isAdmin(profile.user_role)) || pode('ministracoes','editar')
+  const canVer     = canEdit || pode('ministracoes','ver')   // liberação "Ver" mostra a lista (só leitura)
   const userId     = profile?.user_id
-  const isLiderPlus = profile && hasRole(profile.user_role, 'lider')
   // #16 — Ministrante (cargo "Ministrante" = coordenador, e não admin): acesso mínimo.
   // Só vê a PRÓPRIA ministração + bloco de notas; entra só pelo Cronograma; ao sair volta pro Cronograma.
   const restrito   = profile?.user_role === 'coordenador' && !canEdit
@@ -239,7 +240,7 @@ export default function Ministracoes({ profile }: { profile?: Profile }) {
   const STATUS_LABEL: Record<string,string> = { planejado:'Planejado', em_andamento:'Em andamento', concluido:'Concluído', cancelado:'Cancelado' }
 
   // Ministrante comum (sem admin/líder/liberação) enxerga na lista SÓ a própria ministração.
-  const listaVisivel = (canEdit || isLiderPlus) ? mins : mins.filter(m => souMinistranteDe(m))
+  const listaVisivel = canVer ? mins : mins.filter(m => souMinistranteDe(m))
 
   return (
     <div className="page">
@@ -298,7 +299,7 @@ export default function Ministracoes({ profile }: { profile?: Profile }) {
       {detalhe && (() => {
         const min = getPessoa(detalhe.ministrante_id)
         const isEuMinistrant = !!min?.user_id && min.user_id === userId
-        const canSeeConteudo = isLiderPlus || canEdit || isEuMinistrant
+        const canSeeConteudo = canVer || isEuMinistrant
 
         return (
           <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.5)',zIndex:300,display:'flex',flexDirection:'column',justifyContent: modoFoco ? 'flex-start' : 'flex-end'}} onClick={e=>e.target===e.currentTarget&&fecharDetalhe()}>
