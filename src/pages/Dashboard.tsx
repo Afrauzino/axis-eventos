@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { isAdmin } from '../utils'
 import { useEvento, invalidarEventoAtivo } from '../hooks/useEvento'
@@ -55,6 +55,7 @@ export default function Dashboard({ profile }: { profile: Profile }) {
   const podeIr = (rota:string) => admin || pode(PERM_ROTA[rota] ?? '')
   const irSe = (rota:string) => { if (podeIr(rota)) navigate(rota) }
   const navigate  = useNavigate()
+  const location  = useLocation()
   const { evento, loading: evLoading } = useEvento()
   const [meuPersonId, setMeuPersonId] = useState<string|null>(null)
   useEffect(() => {
@@ -111,6 +112,25 @@ export default function Dashboard({ profile }: { profile: Profile }) {
   const [arrastando, setArrastando] = useState<string|null>(null)
   const dragId = useRef<string|null>(null)
   const blocosRef = useRef<Record<string, HTMLDivElement|null>>({})
+
+  // Notificação que aponta um bloco da home (ex.: ?ir=mural) → rola até ele e destaca
+  useEffect(() => {
+    if (evLoading || loading) return
+    const alvo = new URLSearchParams(location.search).get('ir')
+    if (!alvo) return
+    const t = setTimeout(() => {
+      const el = blocosRef.current[alvo]
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+        el.style.transition = 'box-shadow 0.3s'
+        el.style.boxShadow = '0 0 0 3px var(--primary)'
+        el.style.borderRadius = '14px'
+        setTimeout(() => { el.style.boxShadow = '' }, 1800)
+      }
+      navigate('/', { replace: true })  // limpa o ?ir pra não repetir
+    }, 350)
+    return () => clearTimeout(t)
+  }, [location.search, evLoading, loading])
 
   useEffect(() => { carregarConfig('home_ordem').then(v => { if (v) { try { setOrdem(normalizarOrdem(JSON.parse(v))) } catch {} } }) }, [])
   useEffect(() => { carregarConfig('home_ocultos').then(v => { if (v) { try { setOcultos(JSON.parse(v)) } catch {} } }) }, [])

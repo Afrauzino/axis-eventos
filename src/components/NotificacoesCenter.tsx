@@ -113,7 +113,7 @@ export async function montarNotificacoes(profile: Profile, eventoId: string | nu
       .contains('mencionados', [personId])
       .order('created_at', { ascending: false }).limit(10)
     for (const m of data ?? []) {
-      out.push({ id: 'mural-' + m.id, emoji: '🙌', titulo: `${m.autor_nome ?? 'Alguém'} marcou você no mural`, sub: (m.texto || '').slice(0, 60), quando: m.created_at, rota: '/' })
+      out.push({ id: 'mural-' + m.id, emoji: '🙌', titulo: `${m.autor_nome ?? 'Alguém'} marcou você no mural`, sub: (m.texto || '').slice(0, 60), quando: m.created_at, rota: '/?ir=mural' })
     }
   } catch {}
 
