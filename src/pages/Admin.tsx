@@ -1256,7 +1256,7 @@ export default function Admin({ profile }: { profile?: Profile }) {
                 onClick={()=>excluirCadastro(pessoaDetalhe)}
                 style={{marginTop:8,width:'100%',padding:'10px',background:'var(--danger-bg)',color:'var(--danger)',border:'1px solid var(--danger)',borderRadius:10,cursor:'pointer',fontSize:13,fontWeight:700,fontFamily:'inherit',display:'flex',alignItems:'center',justifyContent:'center',gap:6}}>
                 <span className="icon icon-sm">person_remove</span>
-                {pessoaDetalhe.user_id ? 'Bloquear e excluir cadastro' : 'Excluir cadastro'}
+                {pessoaDetalhe.user_id ? 'Excluir conta e liberar email' : 'Excluir cadastro'}
               </button>
             )}
           </div>
