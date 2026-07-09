@@ -8,9 +8,9 @@ import type { Profile } from '../App'
 type Pessoa = { id:string; name:string; photo_url:string|null; role_type?:string }
 type Equipe = { id:string; name:string }
 type Estilo = { fonte?:string; negrito?:boolean; italico?:boolean; sublinhado?:boolean; cor?:string }
-type Campo  = { on:boolean; x:number; y:number; size:number } & Estilo
+type Campo  = { on:boolean; x:number; y:number; size:number; largura?:number } & Estilo
 type FotoCampo = Campo & { formato?:'redondo'|'quadrado' }
-type TextoLivre = { id:string; conteudo:string; x:number; y:number; size:number } & Estilo
+type TextoLivre = { id:string; conteudo:string; x:number; y:number; size:number; largura?:number } & Estilo
 type ImgLayer = { id:string; url:string; x:number; y:number; w:number } // x,y = centro %, w = largura %
 type Config = { foto:FotoCampo; nome:Campo; equipe:Campo; textos:TextoLivre[] }
 type ModeloCfg = { tamanho:string; cw:number; ch:number; unidade:'mm'|'cm'|'px'; fundo:string; cfg:Config; imagens:ImgLayer[] }
@@ -94,13 +94,13 @@ function CrachaView({ pessoa, equipeTxt, m, edit, sel, onSelect, onMove, exibirE
         </div>
       )}
       {cfg.nome.on && (
-        <div onPointerDown={e=>pointerDown('nome',e)} style={{position:'absolute',left:`${cfg.nome.x}%`,top:`${cfg.nome.y}%`,transform:'translate(-50%,-50%)',width:'92%',textAlign:'center',lineHeight:1.15,...estiloTexto(cfg.nome,px(cfg.nome.size)),...selStyle('nome')}}>{pessoa.name}</div>
+        <div onPointerDown={e=>pointerDown('nome',e)} style={{position:'absolute',left:`${cfg.nome.x}%`,top:`${cfg.nome.y}%`,transform:'translate(-50%,-50%)',width:`${cfg.nome.largura ?? 92}%`,textAlign:'center',lineHeight:1.15,...estiloTexto(cfg.nome,px(cfg.nome.size)),...selStyle('nome')}}>{pessoa.name}</div>
       )}
       {cfg.equipe.on && equipeTxt && (
-        <div onPointerDown={e=>pointerDown('equipe',e)} style={{position:'absolute',left:`${cfg.equipe.x}%`,top:`${cfg.equipe.y}%`,transform:'translate(-50%,-50%)',width:'92%',textAlign:'center',...estiloTexto(cfg.equipe,px(cfg.equipe.size)),...selStyle('equipe')}}>{equipeTxt}</div>
+        <div onPointerDown={e=>pointerDown('equipe',e)} style={{position:'absolute',left:`${cfg.equipe.x}%`,top:`${cfg.equipe.y}%`,transform:'translate(-50%,-50%)',width:`${cfg.equipe.largura ?? 92}%`,textAlign:'center',...estiloTexto(cfg.equipe,px(cfg.equipe.size)),...selStyle('equipe')}}>{equipeTxt}</div>
       )}
       {cfg.textos.map(tx=>(
-        <div key={tx.id} onPointerDown={e=>pointerDown('t:'+tx.id,e)} style={{position:'absolute',left:`${tx.x}%`,top:`${tx.y}%`,transform:'translate(-50%,-50%)',width:'92%',textAlign:'center',...estiloTexto(tx,px(tx.size)),...selStyle('t:'+tx.id)}}>{tx.conteudo||' '}</div>
+        <div key={tx.id} onPointerDown={e=>pointerDown('t:'+tx.id,e)} style={{position:'absolute',left:`${tx.x}%`,top:`${tx.y}%`,transform:'translate(-50%,-50%)',width:`${tx.largura ?? 92}%`,textAlign:'center',...estiloTexto(tx,px(tx.size)),...selStyle('t:'+tx.id)}}>{tx.conteudo||' '}</div>
       ))}
 
       {/* PNGs em camadas (independentes) — por cima, fáceis de arrastar */}
@@ -332,6 +332,16 @@ export default function Cracha({ profile }: { profile?: Profile }) {
             <span style={{minWidth:28,textAlign:'center',fontWeight:700}}>{ehImg?s.w:s.size}</span>
             <button className="btn btn-outline btn-sm" onClick={()=>patchSel(ehImg?{w:Math.min(100,s.w+2)}:{size:Math.min(80,s.size+1)})}>+</button>
           </div>
+          {/* Largura da CAIXA de texto (onde o nome quebra a linha) — só p/ texto/nome/equipe */}
+          {!ehImg && sel!=='foto' && (
+            <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:10}}>
+              <span style={{fontSize:12,color:'var(--muted)'}}>Largura da caixa</span>
+              <button className="btn btn-outline btn-sm" onClick={()=>patchSel({largura:Math.max(20,(s.largura??92)-4)})}>−</button>
+              <span style={{minWidth:36,textAlign:'center',fontWeight:700}}>{s.largura??92}%</span>
+              <button className="btn btn-outline btn-sm" onClick={()=>patchSel({largura:Math.min(100,(s.largura??92)+4)})}>+</button>
+              <input type="range" min={20} max={100} value={s.largura??92} onChange={e=>patchSel({largura:Number(e.target.value)})} style={{flex:1}}/>
+            </div>
+          )}
           {/* Fonte/estilo/cor (texto/nome/equipe) */}
           {!ehImg && sel!=='foto' && (
             <div style={{display:'flex',alignItems:'center',gap:8}}>
