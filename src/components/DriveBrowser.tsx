@@ -35,9 +35,13 @@ export default function DriveBrowser({ rootId, rootName = 'Mídia', apiKey }: { 
   const [itens, setItens] = useState<Item[]>([])
   const [loading, setLoading] = useState(true)
   const [erro, setErro] = useState('')
-  const [col, setCol] = useState(130)
-  const [vista, setVista] = useState<'grade' | 'lista'>('grade')
+  const [col, setCol] = useState(() => { const v = Number(localStorage.getItem('drive_col')); return v > 0 ? v : 130 })
+  const [vista, setVista] = useState<'grade' | 'lista'>(() => (localStorage.getItem('drive_vista') === 'lista' ? 'lista' : 'grade'))
   const [falhou, setFalhou] = useState<Set<string>>(new Set())
+
+  // Lembra as preferências de visualização no aparelho
+  useEffect(() => { try { localStorage.setItem('drive_vista', vista) } catch {} }, [vista])
+  useEffect(() => { try { localStorage.setItem('drive_col', String(col)) } catch {} }, [col])
 
   useEffect(() => { setPilha([{ id: rootId, name: rootName }]) }, [rootId, rootName])
 

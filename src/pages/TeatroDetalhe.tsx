@@ -68,6 +68,7 @@ export default function TeatroDetalhe({ profile }: { profile?: Profile }) {
   const [cenas, setCenas]       = useState<Cena[]>([])
   const [elenco, setElenco]     = useState<ElencoItem[]>([])
   const [pessoas, setPessoas]   = useState<Pessoa[]>([])
+  const [equipeTeatroIds, setEquipeTeatroIds] = useState<Set<string>>(new Set())
   const [personagens, setPersonagens] = useState<Personagem[]>([])
   const [objetos, setObjetos]   = useState<Objeto[]>([])
   const [ministracao, setMinistracao] = useState<Ministracao|null>(null)
@@ -133,9 +134,18 @@ export default function TeatroDetalhe({ profile }: { profile?: Profile }) {
     if (te.data) {
       const { data: ev } = await supabase.from('theaters').select('event_id').eq('id', id).single()
       if (ev?.event_id) setEventId(ev.event_id)
-      if (ev) {
+      if (ev?.event_id) {
         const { data: pe } = await supabase.from('people').select('id,name,photo_url').eq('event_id', ev.event_id).order('name')
         setPessoas(pe ?? [])
+        // Quem faz parte da EQUIPE TEATRO (qualquer equipe com "teatro" no nome)
+        const ids = new Set<string>()
+        const { data: times } = await supabase.from('teams').select('id,leader_id,co_leader_id').eq('event_id', ev.event_id).ilike('name', '%teatro%')
+        if (times && times.length) {
+          times.forEach((t: any) => { if (t.leader_id) ids.add(t.leader_id); if (t.co_leader_id) ids.add(t.co_leader_id) })
+          const { data: membros } = await supabase.from('people_teams').select('person_id').in('team_id', times.map((t: any) => t.id))
+          ;(membros ?? []).forEach((m: any) => ids.add(m.person_id))
+        }
+        setEquipeTeatroIds(ids)
       }
     }
     // Load linked ministração if exists
@@ -657,10 +667,10 @@ export default function TeatroDetalhe({ profile }: { profile?: Profile }) {
                         {(pg?.multiplo || cp.person_ids.length===0) && (
                           <div style={{marginTop:4}}>
                             <PersonSelect
-                              pessoas={pessoas.filter(p=>elenco.some(e=>e.person_id===p.id) && !cp.person_ids.includes(p.id))}
+                              pessoas={pessoas.filter(p=>equipeTeatroIds.has(p.id) && !cp.person_ids.includes(p.id))}
                               value=""
                               onChange={pid=>{ if(pid) addAtor(idx,pid) }}
-                              placeholder={elenco.length===0 ? 'Adicione atores no Elenco primeiro' : 'Adicionar ator...'}
+                              placeholder={equipeTeatroIds.size===0 ? 'Ninguém na Equipe Teatro ainda' : 'Adicionar ator...'}
                             />
                           </div>
                         )}
