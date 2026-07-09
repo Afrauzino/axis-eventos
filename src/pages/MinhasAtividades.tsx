@@ -351,7 +351,7 @@ export default function MinhasAtividades({ profile }: { profile: Profile }) {
         <>
           <div className="section-label" style={{marginTop:14}}>Minha agenda (Cronograma)</div>
           {cronoAtividades.map(item => (
-            <div key={item.id} onClick={()=> item.tipo==='ministracao' && item.refId ? navigate('/ministracoes/'+item.refId) : setDetalhe(item)}
+            <div key={item.id} onClick={()=> item.tipo==='ministracao' && item.refId ? navigate('/ministracoes/'+item.refId+'?foco=1') : setDetalhe(item)}
               style={{background:'white',borderRadius:14,boxShadow:'var(--shadow-sm)',marginBottom:8,display:'flex',alignItems:'center',overflow:'hidden',cursor:'pointer',opacity:item.status==='concluido'?0.7:1}}>
               <div style={{width:4,alignSelf:'stretch',flexShrink:0,background:item.tipo==='teatro'?'#E8821A':'#6B46C1'}}/>
               <div style={{flex:1,padding:'12px 14px',minWidth:0}}>

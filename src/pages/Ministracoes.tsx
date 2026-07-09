@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useVoltarFecha } from '../hooks/useVoltarFecha'
 import { getInitials, fmtHora, fmtData, isAdmin, hasRole, toLocalInput } from '../utils'
@@ -74,11 +74,12 @@ export default function Ministracoes({ profile }: { profile?: Profile }) {
 
   const { id: paramId } = useParams()
   const navigate = useNavigate()
+  const location = useLocation()
 
-  // MODO FOCO: pessoa comum (não admin/líder/liberado) abrindo UMA ministração por link
-  // direto (ex.: clicou na ministração em "Minhas Atividades"). Abre só a dela, em tela
-  // cheia, sem lista, e ao fechar SEMPRE volta pra Minhas Atividades.
-  const modoFoco = !!paramId && !canEdit && !isLiderPlus
+  // MODO FOCO: quando a pessoa CLICA na ministração em "Minhas Atividades" (link com ?foco=1).
+  // Abre só a dela, em tela cheia, sem lista, e ao fechar SEMPRE volta pra Minhas Atividades —
+  // independente do cargo/liberação da pessoa. É o que garante "só a dela, todas as vezes".
+  const modoFoco = !!paramId && new URLSearchParams(location.search).get('foco') === '1'
 
   useEffect(() => { if (evLoading) return; if (!evento) { setLoading(false); return }; carregar() }, [evento, evLoading])
 
