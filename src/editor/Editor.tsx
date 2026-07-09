@@ -74,6 +74,7 @@ export default function Editor({ inicial, dados, onSalvar, onImprimir, onChange,
         doc={ed.doc} paginaAtual={ed.paginaAtual}
         selecao={ed.selecao} selecionar={ed.selecionar}
         moverSelecao={moverSelecao} dados={dados}
+        onExcluir={ids => ed.dispatch({ t: 'excluir', ids })}
       />
 
       {/* Painel da ferramenta ativa */}

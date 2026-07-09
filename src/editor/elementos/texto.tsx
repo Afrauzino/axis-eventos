@@ -5,6 +5,27 @@ import { registrarElemento } from './registry'
 // Texto. Pode ser fixo OU ligado a um campo do cadastro (props.campo).
 // Ex: props.campo='nome' → na impressão vira o nome de cada pessoa.
 
+const PARTICULAS = new Set(['de', 'da', 'das', 'do', 'dos', 'e', 'di', 'du', 'del', 'della', 'van', 'von', 'y', 'la', 'le'])
+
+/** Corta o nome nos N primeiros. As preposições grudam no nome seguinte,
+ *  então "Clarice Gonçalves Pereira da Silva" com 4 termina em "…da Silva",
+ *  nunca num "da" solto. Com 0 (ou nada) devolve o nome inteiro. */
+export function primeirosNomes(nome: string, quantos: number): string {
+  if (!quantos || quantos <= 0) return nome
+  const grupos: string[] = []
+  let pendente = ''
+  for (const palavra of nome.trim().split(/\s+/).filter(Boolean)) {
+    if (PARTICULAS.has(palavra.toLowerCase())) { pendente = pendente ? `${pendente} ${palavra}` : palavra; continue }
+    grupos.push(pendente ? `${pendente} ${palavra}` : palavra)
+    pendente = ''
+  }
+  if (pendente) {
+    if (grupos.length) grupos[grupos.length - 1] += ` ${pendente}`
+    else grupos.push(pendente)
+  }
+  return grupos.slice(0, quantos).join(' ')
+}
+
 registrarElemento({
   tipo: 'texto',
   nome: 'Texto',
@@ -13,12 +34,13 @@ registrarElemento({
 
   criar: () => ({
     ...ELEMENTO_PADRAO, w: 60, h: 10,
-    props: { conteudo: 'Texto', campo: null, fonte: 'Padrão', tam: 5, cor: '#111827', negrito: true, italico: false, sublinhado: false, alinhar: 'center' },
+    props: { conteudo: 'Texto', campo: null, nomes: 0, fonte: 'Padrão', tam: 5, cor: '#111827', negrito: true, italico: false, sublinhado: false, alinhar: 'center' },
   }),
 
   Render: ({ el, dados }) => {
     const p = el.props
-    const texto = p.campo ? (dados?.[p.campo] ?? `{{${p.campo}}}`) : (p.conteudo ?? '')
+    let texto = p.campo ? (dados?.[p.campo] ?? `{{${p.campo}}}`) : (p.conteudo ?? '')
+    if (p.campo === 'nome' && p.nomes > 0) texto = primeirosNomes(String(texto), p.nomes)
     return (
       <div style={{
         width: '100%', height: '100%', display: 'flex', alignItems: 'center',
@@ -50,6 +72,23 @@ registrarElemento({
         {!p.campo && (
           <input className="form-input" value={p.conteudo ?? ''} placeholder="Escreva o texto"
             onChange={e => setProps({ conteudo: e.target.value })} />
+        )}
+
+        {/* Só faz sentido pro nome da pessoa: quantos nomes puxar do cadastro */}
+        {p.campo === 'nome' && (
+          <div>
+            <p style={{ fontSize: 13, color: 'var(--text2)', marginBottom: 5 }}>Quantos nomes</p>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              {([0, 1, 2, 3, 4] as const).map(n => (
+                <button key={n} type="button" style={btn((p.nomes ?? 0) === n)} onClick={() => setProps({ nomes: n })}>
+                  {n === 0 ? 'Completo' : n}
+                </button>
+              ))}
+            </div>
+            <p style={{ fontSize: 11, color: 'var(--muted)', marginTop: 5 }}>
+              Ex.: “Clarice Gonçalves Pereira da Silva” com <b>2</b> vira “Clarice Gonçalves”.
+            </p>
+          </div>
         )}
         <label style={{ fontSize: 13, color: 'var(--text2)' }}>
           Fonte

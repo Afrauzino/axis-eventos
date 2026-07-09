@@ -18,6 +18,7 @@ type Props = {
   selecao: Id[]
   selecionar: (ids: Id[]) => void
   moverSelecao: (patch: Partial<Elemento>) => void
+  onExcluir?: (ids: Id[]) => void
   dados?: Record<string, any>
   onZoom?: (z: number) => void
 }
@@ -28,7 +29,7 @@ type Arraste =
   | { modo: 'girar'; id: Id; cx: number; cy: number; ang0: number; rot0: number }
   | null
 
-export default function Canvas({ doc, paginaAtual, selecao, selecionar, moverSelecao, dados }: Props) {
+export default function Canvas({ doc, paginaAtual, selecao, selecionar, moverSelecao, onExcluir, dados }: Props) {
   const wrapRef = useRef<HTMLDivElement>(null)
   const folhaRef = useRef<HTMLDivElement>(null)
   const [escala, setEscala] = useState(1)
@@ -170,6 +171,21 @@ export default function Canvas({ doc, paginaAtual, selecao, selecionar, moverSel
                       }}>
                       <span className="icon" style={{ fontSize: 13 / escala }}>rotate_right</span>
                     </span>
+
+                    {/* Lixeira: apaga o que está selecionado, sem precisar abrir painel nenhum */}
+                    {onExcluir && (
+                      <span title="Excluir" role="button"
+                        onPointerDown={e => e.stopPropagation()}
+                        onClick={e => { e.stopPropagation(); onExcluir(selecao.length ? selecao : [el.id]) }}
+                        style={{
+                          position: 'absolute', right: -12 / escala, top: -30 / escala,
+                          width: 20 / escala, height: 20 / escala, borderRadius: '50%', background: 'white',
+                          border: `${1.5 / escala}px solid var(--danger)`, cursor: 'pointer',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--danger)',
+                        }}>
+                        <span className="icon" style={{ fontSize: 13 / escala }}>delete</span>
+                      </span>
+                    )}
                   </>
                 )}
               </div>
