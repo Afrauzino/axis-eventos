@@ -2,6 +2,7 @@
 // Adicionar ferramenta = criar o arquivo e importá-lo aqui. Só isso.
 import './adicionar'
 import './propriedades'
+import './dados'
 import './alinhar'
 import './pagina'
 
