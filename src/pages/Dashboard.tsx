@@ -210,6 +210,20 @@ export default function Dashboard({ profile }: { profile: Profile }) {
 
   async function salvarOrdem() { setSalvandoOrdem(true); await salvarConfig('home_ordem', JSON.stringify(ordem)); setSalvandoOrdem(false); setReordenando(false) }
 
+  // Reordenar por setas ↑↓ (troca com o bloco vizinho VISÍVEL na tela)
+  function moverBloco(id: string, dir: 'up'|'down') {
+    setOrdem(prev => {
+      const vis = prev.filter(x => !!renderSecao(x))  // blocos mostrados no modo reordenar
+      const vi = vis.indexOf(id)
+      const vj = dir === 'up' ? vi - 1 : vi + 1
+      if (vi < 0 || vj < 0 || vj >= vis.length) return prev
+      const i = prev.indexOf(vis[vi]), j = prev.indexOf(vis[vj])
+      const novo = [...prev]
+      ;[novo[i], novo[j]] = [novo[j], novo[i]]
+      return novo
+    })
+  }
+
   useEffect(() => {
     if (evLoading) return
     if (!evento) { setLoading(false); return }
@@ -336,7 +350,7 @@ export default function Dashboard({ profile }: { profile: Profile }) {
       case 'carrossel':
         return <HomeCarousel admin={admin} />
       case 'carrossel_fotos':
-        return <HomeCarousel admin={admin} grupo="fotos" titulo="Carrossel de fotos" podeEditar={admin || pode('carrossel_fotos','editar')} />
+        return <HomeCarousel admin={admin} grupo="fotos" titulo="Carrossel de fotos" podeEditar={admin || pode('carrossel_fotos','editar')} instagram profile={profile} />
       case 'playlist':
         return <PlaylistHome admin={admin} fundo={estilos[id]} onEditar={admin?(asp:number)=>abrirEstilo(id, asp):undefined} />
       case 'boasvindas':
@@ -381,7 +395,7 @@ export default function Dashboard({ profile }: { profile: Profile }) {
           {/* Admin pode reordenar os blocos da tela inicial (arrastar) */}
           {admin && (
             <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:10,gap:8}}>
-              <span style={{fontSize:12,color:'var(--muted)'}}>{reordenando?'Arraste pela alça e toque em Salvar.':''}</span>
+              <span style={{fontSize:12,color:'var(--muted)'}}>{reordenando?'Use as setas ↑↓ e toque em Salvar.':''}</span>
               <div style={{display:'flex',gap:8}}>
                 {reordenando ? (
                   <>
@@ -412,9 +426,15 @@ export default function Dashboard({ profile }: { profile: Profile }) {
                       style={{position:'absolute',top:-1,left:-1,zIndex:5,background:oculto?'var(--muted)':'var(--success)',color:'white',borderTopLeftRadius:12,borderBottomRightRadius:12,padding:'5px 10px',cursor:'pointer',border:'none',fontFamily:'inherit',userSelect:'none',display:'flex',alignItems:'center',gap:4,fontSize:12,fontWeight:800}}>
                       <span className="icon icon-sm">{oculto?'visibility_off':'visibility'}</span> {oculto?'Oculto':'Visível'}
                     </button>
-                    <div onPointerDown={(e)=>{ e.preventDefault(); dragId.current=id; setArrastando(id) }}
-                      style={{position:'absolute',top:-1,right:-1,zIndex:5,background:'var(--primary)',color:'white',borderTopRightRadius:12,borderBottomLeftRadius:12,padding:'5px 10px',cursor:'grab',touchAction:'none',userSelect:'none',display:'flex',alignItems:'center',gap:4,fontSize:12,fontWeight:800}}>
-                      <span className="icon icon-sm">drag_indicator</span> arrastar
+                    <div style={{position:'absolute',top:-1,right:-1,zIndex:5,display:'flex',gap:0}}>
+                      <button onClick={()=>moverBloco(id,'up')} title="Mover para cima"
+                        style={{background:'var(--primary)',color:'white',border:'none',borderTopRightRadius:0,padding:'5px 9px',cursor:'pointer',fontFamily:'inherit',display:'flex',alignItems:'center'}}>
+                        <span className="icon icon-sm">keyboard_arrow_up</span>
+                      </button>
+                      <button onClick={()=>moverBloco(id,'down')} title="Mover para baixo"
+                        style={{background:'var(--primary)',color:'white',border:'none',borderLeft:'1px solid rgba(255,255,255,0.25)',borderTopRightRadius:12,borderBottomLeftRadius:12,padding:'5px 9px',cursor:'pointer',fontFamily:'inherit',display:'flex',alignItems:'center'}}>
+                        <span className="icon icon-sm">keyboard_arrow_down</span>
+                      </button>
                     </div>
                   </>
                 )}

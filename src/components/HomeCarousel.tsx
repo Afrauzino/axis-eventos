@@ -2,14 +2,17 @@ import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import YouTubePlayer from './YouTubePlayer'
 import { toast } from './Toast'
+import type { Profile } from '../App'
 
 type Item = { id:string; tipo:string; url:string; ordem:number; duracao?:number }
+type Curtida = { midia_id:string; user_id:string }
+type Coment  = { id:string; midia_id:string; autor_nome:string|null; autor_foto:string|null; texto:string; created_at:string }
 
 const ehYoutube = (u:string) => /youtube\.com|youtu\.be/.test(u)
 const ytId = (u:string) => { const m = u.match(/(?:v=|youtu\.be\/|embed\/)([\w-]{11})/); return m ? m[1] : '' }
 const detectarTipo = (u:string) => (ehYoutube(u) || /\.(mp4|webm|ogg|mov)(\?|$)/i.test(u)) ? 'video' : 'imagem'
 
-export default function HomeCarousel({ admin, grupo='principal', podeEditar, titulo }: { admin: boolean; grupo?: string; podeEditar?: boolean; titulo?: string }) {
+export default function HomeCarousel({ admin, grupo='principal', podeEditar, titulo, instagram=false, profile }: { admin: boolean; grupo?: string; podeEditar?: boolean; titulo?: string; instagram?: boolean; profile?: Profile }) {
   // Quem pode postar/remover: por padrão o admin; no carrossel de fotos, quem tem a liberação.
   const podeMexer = podeEditar ?? admin
   const [itens, setItens] = useState<Item[]>([])
@@ -21,6 +24,11 @@ export default function HomeCarousel({ admin, grupo='principal', podeEditar, tit
   const [dur, setDur] = useState(5)
   const [subindo, setSubindo] = useState(false)
   const timer = useRef<any>(null)
+  // Instagram: curtidas + comentários por foto
+  const [curtidas, setCurtidas] = useState<Curtida[]>([])
+  const [coments, setComents] = useState<Coment[]>([])
+  const [novoComent, setNovoComent] = useState('')
+  const [verComents, setVerComents] = useState(false)
 
   const proximo = () => setIdx(i => (itens.length ? (i + 1) % itens.length : 0))
 
@@ -44,6 +52,38 @@ export default function HomeCarousel({ admin, grupo='principal', podeEditar, tit
     const arr = (data ?? []).filter((d:any)=> (d.grupo ?? 'principal') === grupo)
     setItens(arr); setCarregado(true)
     setIdx(i => (i >= arr.length ? 0 : i))
+    // Instagram: carrega curtidas e comentários das fotos
+    if (instagram && arr.length) {
+      const ids = arr.map(a => a.id)
+      const [cu, co] = await Promise.all([
+        supabase.from('home_midias_curtidas').select('midia_id,user_id').in('midia_id', ids),
+        supabase.from('home_midias_comentarios').select('*').in('midia_id', ids).order('created_at'),
+      ])
+      setCurtidas((cu.data as Curtida[]) ?? [])
+      setComents((co.data as Coment[]) ?? [])
+    }
+  }
+
+  async function toggleCurtir(midiaId: string) {
+    if (!profile) return
+    const ja = curtidas.some(c => c.midia_id === midiaId && c.user_id === profile.user_id)
+    if (ja) {
+      setCurtidas(prev => prev.filter(c => !(c.midia_id === midiaId && c.user_id === profile.user_id)))
+      await supabase.from('home_midias_curtidas').delete().eq('midia_id', midiaId).eq('user_id', profile.user_id)
+    } else {
+      setCurtidas(prev => [...prev, { midia_id: midiaId, user_id: profile.user_id }])
+      const { error } = await supabase.from('home_midias_curtidas').insert({ midia_id: midiaId, user_id: profile.user_id })
+      if (error) toast.falha('Não foi possível curtir. Rode o SQL 47_carrossel_interacoes.sql.', error)
+    }
+  }
+  async function enviarComentario(midiaId: string) {
+    const t = novoComent.trim(); if (!t || !profile) return
+    const { error } = await supabase.from('home_midias_comentarios').insert({
+      midia_id: midiaId, user_id: profile.user_id,
+      autor_nome: profile.full_name, autor_foto: profile.avatar_url, texto: t.slice(0, 300),
+    })
+    if (error) { toast.falha('Não foi possível comentar. Rode o SQL 47_carrossel_interacoes.sql.', error); return }
+    setNovoComent(''); carregar()
   }
 
   async function enviarImagem(file: File) {
@@ -93,7 +133,7 @@ export default function HomeCarousel({ admin, grupo='principal', podeEditar, tit
   return (
     <div style={{marginBottom:16}}>
       {titulo && <p style={{fontSize:12,fontWeight:800,color:'var(--muted)',textTransform:'uppercase',letterSpacing:'0.06em',marginBottom:8}}>{titulo}</p>}
-      <div style={{position:'relative',width:'100%',aspectRatio:'16 / 7',borderRadius:14,overflow:'hidden',background:'#000',boxShadow:'var(--shadow-sm)'}}>
+      <div style={{position:'relative',width:'100%',aspectRatio: instagram ? '1 / 1' : '16 / 7',borderRadius:14,overflow:'hidden',background:'#000',boxShadow:'var(--shadow-sm)'}}>
         {atual.tipo === 'video'
           ? (ehYoutube(atual.url)
               ? <YouTubePlayer key={atual.id} videoId={ytId(atual.url)} onEnded={proximo} loop={itens.length<=1}/>
@@ -119,6 +159,55 @@ export default function HomeCarousel({ admin, grupo='principal', podeEditar, tit
           </button>
         )}
       </div>
+
+      {/* Instagram: curtir + comentar na foto atual */}
+      {instagram && (() => {
+        const euCurti = !!profile && curtidas.some(c => c.midia_id===atual.id && c.user_id===profile.user_id)
+        const totalCurt = curtidas.filter(c => c.midia_id===atual.id).length
+        const comentsFoto = coments.filter(c => c.midia_id===atual.id)
+        return (
+          <div style={{marginTop:6}}>
+            <div style={{display:'flex',alignItems:'center',gap:18,padding:'4px 2px 8px'}}>
+              <button onClick={()=>toggleCurtir(atual.id)} disabled={!profile} title="Curtir"
+                style={{background:'none',border:'none',cursor:profile?'pointer':'default',display:'flex',alignItems:'center',gap:6,fontFamily:'inherit',padding:0}}>
+                <span style={{fontSize:23,lineHeight:1}}>{euCurti?'❤️':'🤍'}</span>
+                {totalCurt>0 && <span style={{fontSize:13,fontWeight:800,color:'var(--text)'}}>{totalCurt}</span>}
+              </button>
+              <button onClick={()=>setVerComents(v=>!v)} title="Comentários"
+                style={{background:'none',border:'none',cursor:'pointer',display:'flex',alignItems:'center',gap:6,fontFamily:'inherit',padding:0,color:'var(--text)'}}>
+                <span style={{fontSize:20,lineHeight:1}}>💬</span>
+                {comentsFoto.length>0 && <span style={{fontSize:13,fontWeight:800}}>{comentsFoto.length}</span>}
+              </button>
+            </div>
+            {verComents && (
+              <div style={{background:'var(--bg)',borderRadius:12,padding:'10px 12px'}}>
+                {comentsFoto.length===0
+                  ? <p style={{fontSize:12,color:'var(--muted)',fontStyle:'italic',marginBottom:profile?8:0}}>Sem comentários ainda. Seja o primeiro!</p>
+                  : comentsFoto.map(c => (
+                      <div key={c.id} style={{display:'flex',gap:8,alignItems:'flex-start',marginBottom:8}}>
+                        {c.autor_foto
+                          ? <img src={c.autor_foto} alt="" style={{width:26,height:26,borderRadius:'50%',objectFit:'cover',flexShrink:0}}/>
+                          : <div style={{width:26,height:26,borderRadius:'50%',background:'var(--primary-light)',color:'var(--primary)',display:'flex',alignItems:'center',justifyContent:'center',fontWeight:700,fontSize:12,flexShrink:0}}>{(c.autor_nome||'?').charAt(0)}</div>}
+                        <div style={{flex:1,minWidth:0}}>
+                          <span style={{fontSize:13,fontWeight:700}}>{(c.autor_nome||'Alguém').split(' ')[0]} </span>
+                          <span style={{fontSize:13,color:'var(--text)'}}>{c.texto}</span>
+                        </div>
+                      </div>
+                    ))}
+                {profile && (
+                  <div style={{display:'flex',gap:8,marginTop:4}}>
+                    <input value={novoComent} onChange={e=>setNovoComent(e.target.value.slice(0,300))} placeholder="Comentar..."
+                      onKeyDown={e=>{ if(e.key==='Enter') enviarComentario(atual.id) }}
+                      style={{flex:1,border:'1px solid var(--border)',borderRadius:99,padding:'7px 12px',fontFamily:'inherit',fontSize:13,outline:'none'}}/>
+                    <button onClick={()=>enviarComentario(atual.id)} disabled={!novoComent.trim()}
+                      style={{background:'var(--primary)',color:'white',border:'none',borderRadius:99,padding:'0 14px',cursor:'pointer',fontFamily:'inherit',fontWeight:700,fontSize:13}}>Enviar</button>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )
+      })()}
 
       {modal && <ModalAdd {...{link,setLink,dur,setDur,subindo,enviarImagem,adicionarLink,fechar:()=>setModal(false)}}/>}
     </div>
