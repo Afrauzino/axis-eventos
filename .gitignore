@@ -12,6 +12,11 @@ dist
 dist-ssr
 *.local
 
+# Variaveis de ambiente (segredos por maquina/deploy) - .env.example fica versionado
+.env
+.env.*
+!.env.example
+
 # Export de conversas do Claude (grande, pessoal)
 data-*.zip
 
