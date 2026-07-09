@@ -34,6 +34,7 @@ export const PERM_CATALOGO: PermArea[] = [
   { modulo:'alertas',      label:'Alertas',      emoji:'📢', funcoes:[{acao:'ver',label:'Ver'},{acao:'editar',label:'Criar'}] },
   { modulo:'relatorios',   label:'Relatórios',   emoji:'📊', funcoes:[{acao:'ver',label:'Ver / Exportar'}] },
   { modulo:'carrossel_fotos', label:'Carrossel de fotos (Início)', emoji:'🖼️', funcoes:[{acao:'editar',label:'Postar fotos'}] },
+  { modulo:'impressao',    label:'Impressão',    emoji:'🖨️', funcoes:[{acao:'ver',label:'Ver / Imprimir'},{acao:'editar',label:'Salvar modelos'}] },
 ]
 
 // Menus (visibilidade no menu lateral) — o que aparece pra pessoa/equipe
@@ -50,6 +51,7 @@ export const MENUS_CATALOGO: MenuItemCat[] = [
   { modulo:'menu_logistica',       label:'Logística',           emoji:'📦' },
   { modulo:'menu_midia',           label:'Mídia',               emoji:'🎬' },
   { modulo:'menu_cracha',          label:'Crachá',              emoji:'🪪' },
+  { modulo:'menu_impressao',       label:'Impressão',           emoji:'🖨️' },
   { modulo:'menu_equipes',         label:'Equipes',             emoji:'🛡️' },
   { modulo:'menu_teatro',          label:'Teatro',              emoji:'🎭' },
   { modulo:'menu_evento',          label:'Evento (Locais/Ocorrências)', emoji:'📍' },
