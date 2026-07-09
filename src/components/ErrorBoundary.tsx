@@ -15,7 +15,16 @@ export default class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(erro: Error) {
-    // Log leve; em produção pode-se plugar um serviço (Sentry etc.)
+    // Erro de "chunk" (pós-deploy, cache velho no celular) → recarrega uma vez sozinho
+    const m = erro?.message || ''
+    if (/Loading chunk|dynamically imported module|Importing a module script failed|ChunkLoadError/i.test(m)) {
+      try {
+        const agora = Date.now()
+        const ultimo = Number(sessionStorage.getItem('axis_reload_chunk') || '0')
+        if (agora - ultimo > 15000) { sessionStorage.setItem('axis_reload_chunk', String(agora)); location.reload() }
+      } catch { location.reload() }
+      return
+    }
     console.error('Erro de render capturado pelo ErrorBoundary:', erro)
   }
 

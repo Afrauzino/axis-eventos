@@ -8,6 +8,24 @@ import { aplicarCorLocal } from './lib/tema'
 // Aplica a cor guardada no aparelho ANTES de renderizar (evita o "piscar" da cor)
 aplicarCorLocal()
 
+// Auto-recuperação: depois de um deploy, o celular pode ter um index.html velho
+// em cache apontando para pedaços (chunks) de JS que já não existem → tela branca.
+// Ao detectar essa falha, recarrega UMA vez para pegar a versão nova.
+function recarregarUmaVez() {
+  try {
+    const agora = Date.now()
+    const ultimo = Number(sessionStorage.getItem('axis_reload_chunk') || '0')
+    if (agora - ultimo > 15000) {
+      sessionStorage.setItem('axis_reload_chunk', String(agora))
+      location.reload()
+    }
+  } catch { location.reload() }
+}
+const ehErroDeChunk = (m: string) => /Loading chunk|dynamically imported module|Importing a module script failed|ChunkLoadError|error loading dynamically/i.test(m || '')
+window.addEventListener('vite:preloadError', (e: any) => { e?.preventDefault?.(); recarregarUmaVez() })
+window.addEventListener('error', (e: any) => { if (ehErroDeChunk(e?.message)) recarregarUmaVez() })
+window.addEventListener('unhandledrejection', (e: any) => { if (ehErroDeChunk(String(e?.reason?.message ?? e?.reason ?? ''))) recarregarUmaVez() })
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ErrorBoundary>
@@ -18,7 +36,16 @@ createRoot(document.getElementById('root')!).render(
 
 // #2 — PWA: registra o service worker (instalável como app). Só em produção (https/localhost).
 if ('serviceWorker' in navigator) {
+  // Quando um SW novo assume o controle (deploy novo), recarrega uma vez pra usar os assets novos.
+  let recarregando = false
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (recarregando) return
+    recarregando = true
+    location.reload()
+  })
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').catch(() => {})
+    navigator.serviceWorker.register('/sw.js').then(reg => {
+      try { reg.update() } catch {}
+    }).catch(() => {})
   })
 }
