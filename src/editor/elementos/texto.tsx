@@ -1,4 +1,5 @@
 import { ELEMENTO_PADRAO } from '../tipos'
+import { FONTES, fontFamilyDe } from '../fontes'
 import { registrarElemento } from './registry'
 
 // Texto. Pode ser fixo OU ligado a um campo do cadastro (props.campo).
@@ -12,7 +13,7 @@ registrarElemento({
 
   criar: () => ({
     ...ELEMENTO_PADRAO, w: 60, h: 10,
-    props: { conteudo: 'Texto', campo: null, tam: 5, cor: '#111827', negrito: true, italico: false, sublinhado: false, alinhar: 'center' },
+    props: { conteudo: 'Texto', campo: null, fonte: 'Padrão', tam: 5, cor: '#111827', negrito: true, italico: false, sublinhado: false, alinhar: 'center' },
   }),
 
   Render: ({ el, dados }) => {
@@ -26,6 +27,7 @@ registrarElemento({
       }}>
         <span style={{
           fontSize: `${p.tam}mm`, color: p.cor, lineHeight: 1.2,
+          fontFamily: fontFamilyDe(p.fonte),
           fontWeight: p.negrito ? 800 : 400,
           fontStyle: p.italico ? 'italic' : 'normal',
           textDecoration: p.sublinhado ? 'underline' : 'none',
@@ -49,6 +51,17 @@ registrarElemento({
           <input className="form-input" value={p.conteudo ?? ''} placeholder="Escreva o texto"
             onChange={e => setProps({ conteudo: e.target.value })} />
         )}
+        <label style={{ fontSize: 13, color: 'var(--text2)' }}>
+          Fonte
+          <select value={p.fonte ?? 'Padrão'} onChange={e => setProps({ fonte: e.target.value })}
+            style={{ width: '100%', marginTop: 4, padding: '9px 10px', border: '1px solid var(--border)', borderRadius: 8,
+              fontFamily: fontFamilyDe(p.fonte), fontSize: 14, background: 'white' }}>
+            {FONTES.map(f => (
+              <option key={f} value={f} style={{ fontFamily: fontFamilyDe(f) }}>{f}</option>
+            ))}
+          </select>
+        </label>
+
         <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
           <button type="button" style={{ ...btn(!!p.negrito), fontWeight: 800 }} onClick={() => setProps({ negrito: !p.negrito })}>B</button>
           <button type="button" style={{ ...btn(!!p.italico), fontStyle: 'italic' }} onClick={() => setProps({ italico: !p.italico })}>I</button>
