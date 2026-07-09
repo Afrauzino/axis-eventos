@@ -136,11 +136,14 @@ export default function Impressao({ profile }: { profile?: Profile }) {
           <option value="">Todas as equipes</option>
           {equipes.map(t=><option key={t.id} value={t.id}>{t.name}</option>)}
         </select>
-        <select className="form-input" style={{ width:'auto', padding:'6px 10px', fontSize:13 }}
-          value={orientacao} onChange={e=>setOrientacao(e.target.value as any)}>
-          <option value="retrato">A4 em pé</option>
-          <option value="paisagem">A4 deitada</option>
-        </select>
+        {doc.fonteDados === 'pessoas' && (
+          <select className="form-input" title="Folha onde os modelos são encaixados na impressão"
+            style={{ width:'auto', padding:'6px 10px', fontSize:13 }}
+            value={orientacao} onChange={e=>setOrientacao(e.target.value as any)}>
+            <option value="retrato">Imprimir em A4 em pé</option>
+            <option value="paisagem">Imprimir em A4 deitada</option>
+          </select>
+        )}
         <span style={{ fontSize:12, color:'var(--muted)', marginLeft:'auto' }}>{lista.length} pessoa(s)</span>
       </div>
 
