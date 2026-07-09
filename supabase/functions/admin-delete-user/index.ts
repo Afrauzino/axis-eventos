@@ -1,6 +1,6 @@
 // Edge Function: admin-delete-user
 // Exclui DE VERDADE uma conta (perfil + login auth.users), com service_role.
-// Regras: só ADMIN pode chamar; NUNCA exclui outro admin.
+// Regras: só ADMIN/PASTOR (ou is_admin) pode chamar; NUNCA exclui outro admin.
 // Deploy: supabase functions deploy admin-delete-user
 // (SUPABASE_URL, SUPABASE_ANON_KEY e SUPABASE_SERVICE_ROLE_KEY são injetados pelo Supabase.)
 
@@ -13,6 +13,9 @@ const cors = {
 }
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { ...cors, 'Content-Type': 'application/json' } })
+
+// Mesma regra do app: admin OU pastor OU flag is_admin
+const ehAdmin = (p: any) => p?.is_admin === true || p?.user_role === 'admin' || p?.user_role === 'pastor'
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors })
@@ -29,9 +32,9 @@ Deno.serve(async (req) => {
 
     const admin = createClient(url, serviceKey)
 
-    // 2) O chamador é admin?
-    const { data: me } = await admin.from('profiles').select('user_role').eq('user_id', user.id).maybeSingle()
-    if (me?.user_role !== 'admin') return json({ error: 'Apenas administradores podem excluir contas.' }, 403)
+    // 2) O chamador é admin/pastor/is_admin?
+    const { data: me } = await admin.from('profiles').select('user_role, is_admin').eq('user_id', user.id).maybeSingle()
+    if (!ehAdmin(me)) return json({ error: 'Apenas administradores podem excluir contas.' }, 403)
 
     // 3) Alvo (por user_id ou por person_id)
     const { target_user_id, target_person_id } = await req.json().catch(() => ({}))
@@ -42,10 +45,10 @@ Deno.serve(async (req) => {
     }
     if (!targetUserId) return json({ error: 'Alvo sem conta (user_id). Nada para excluir aqui.' }, 400)
 
-    // 4) NUNCA excluir admin
+    // 4) NUNCA excluir a si mesmo nem outro admin/pastor
     if (targetUserId === user.id) return json({ error: 'Você não pode excluir a própria conta.' }, 400)
-    const { data: tgt } = await admin.from('profiles').select('user_role').eq('user_id', targetUserId).maybeSingle()
-    if (tgt?.user_role === 'admin') return json({ error: 'Administradores não podem ser excluídos.' }, 403)
+    const { data: tgt } = await admin.from('profiles').select('user_role, is_admin').eq('user_id', targetUserId).maybeSingle()
+    if (ehAdmin(tgt)) return json({ error: 'Administradores não podem ser excluídos.' }, 403)
 
     // 5) Exclui de verdade: perfil + login (os dados de pessoa são limpos pelo app antes de chamar)
     await admin.from('profiles').delete().eq('user_id', targetUserId)
