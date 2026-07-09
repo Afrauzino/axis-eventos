@@ -49,7 +49,6 @@ export default function Impressao({ profile }: { profile?: Profile }) {
 
   const [modelos, setModelos] = useState<Modelo[]>([])
   const [doc, setDoc] = useState<Documento>(() => docPadrao())
-  const [orientacao, setOrientacao] = useState<'retrato'|'paisagem'>('retrato')
   const [imprimindo, setImprimindo] = useState<Documento|null>(null)
   const [abrirModelos, setAbrirModelos] = useState(false)
 
@@ -115,7 +114,7 @@ export default function Impressao({ profile }: { profile?: Profile }) {
   if (evLoading || loading) return <div className="page">{[1,2].map(i=><div key={i} className="skeleton" style={{height:110,marginBottom:12,borderRadius:14}}/>)}</div>
   if (!evento) return <div className="page"><div className="empty"><p className="empty-title">Nenhum evento ativo</p></div></div>
 
-  if (imprimindo) return <ImprimirView doc={imprimindo} dados={dados} orientacao={orientacao} onVoltar={()=>setImprimindo(null)} />
+  if (imprimindo) return <ImprimirView doc={imprimindo} dados={dados} onVoltar={()=>setImprimindo(null)} />
 
   return (
     <div style={{ display:'flex', flexDirection:'column', height:'calc(100dvh - 56px)', minHeight:0 }}>
@@ -136,14 +135,6 @@ export default function Impressao({ profile }: { profile?: Profile }) {
           <option value="">Todas as equipes</option>
           {equipes.map(t=><option key={t.id} value={t.id}>{t.name}</option>)}
         </select>
-        {doc.fonteDados === 'pessoas' && (
-          <select className="form-input" title="Folha onde os modelos são encaixados na impressão"
-            style={{ width:'auto', padding:'6px 10px', fontSize:13 }}
-            value={orientacao} onChange={e=>setOrientacao(e.target.value as any)}>
-            <option value="retrato">Imprimir em A4 em pé</option>
-            <option value="paisagem">Imprimir em A4 deitada</option>
-          </select>
-        )}
         <span style={{ fontSize:12, color:'var(--muted)', marginLeft:'auto' }}>{lista.length} pessoa(s)</span>
       </div>
 

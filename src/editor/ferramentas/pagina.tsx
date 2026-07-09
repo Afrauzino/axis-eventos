@@ -1,11 +1,15 @@
 import { registrarFerramenta } from './registry'
 
-const PAPEIS: { nome: string; l: number; a: number }[] = [
-  { nome: 'A4 em pé',   l: 210, a: 297 },
-  { nome: 'A4 deitada', l: 297, a: 210 },
-  { nome: 'Crachá',     l: 90,  a: 130 },
-  { nome: 'Cartão',     l: 90,  a: 50  },
-  { nome: 'Etiqueta',   l: 60,  a: 80  },
+// Medidas em mm. A descrição mostra em cm (como o pessoal fala).
+const PAPEIS: { nome: string; desc: string; l: number; a: number }[] = [
+  { nome: 'A4 em pé',        desc: '21 × 29,7 cm',  l: 210, a: 297 },
+  { nome: 'A4 deitada',      desc: '29,7 × 21 cm',  l: 297, a: 210 },
+  { nome: 'Crachá grande',   desc: '10 × 15 cm',    l: 100, a: 150 },
+  { nome: 'Crachá em pé',    desc: '5,4 × 8,6 cm',  l: 54,  a: 86  },
+  { nome: 'Crachá deitado',  desc: '8,6 × 5,4 cm',  l: 86,  a: 54  },
+  { nome: 'Cartão em pé',    desc: '5 × 9 cm',      l: 50,  a: 90  },
+  { nome: 'Cartão deitado',  desc: '9 × 5 cm',      l: 90,  a: 50  },
+  { nome: 'Etiqueta',        desc: '6 × 8 cm',      l: 60,  a: 80  },
 ]
 
 // Página: tamanho do papel (presets, personalizado e girar), fundo e páginas.
@@ -35,19 +39,20 @@ registrarFerramenta({
               const ativo = L === p.l && A === p.a
               return (
                 <button key={p.nome} type="button" onClick={() => dispatch({ t: 'papel', patch: { largura: p.l, altura: p.a } })}
-                  style={{ padding: '9px', borderRadius: 10, cursor: 'pointer', fontFamily: 'inherit', fontSize: 12.5, fontWeight: 700,
+                  style={{ padding: '8px 10px', borderRadius: 10, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
                     border: ativo ? '2px solid var(--primary)' : '1px solid var(--border)',
-                    background: ativo ? 'var(--primary-light)' : 'white', color: ativo ? 'var(--primary)' : 'var(--text2)' }}>
-                  {p.nome}
+                    background: ativo ? 'var(--primary-light)' : 'white' }}>
+                  <span style={{ display: 'block', fontSize: 12.5, fontWeight: 700, color: ativo ? 'var(--primary)' : 'var(--text2)' }}>{p.nome}</span>
+                  <span style={{ display: 'block', fontSize: 10.5, color: 'var(--muted)', marginTop: 1 }}>{p.desc}</span>
                 </button>
               )
             })}
-            <button type="button" onClick={() => dispatch({ t: 'papel', patch: { largura: L, altura: A } })}
-              style={{ padding: '9px', borderRadius: 10, cursor: 'pointer', fontFamily: 'inherit', fontSize: 12.5, fontWeight: 700,
-                border: !ehPreset ? '2px solid var(--primary)' : '1px solid var(--border)',
-                background: !ehPreset ? 'var(--primary-light)' : 'white', color: !ehPreset ? 'var(--primary)' : 'var(--text2)' }}>
-              Personalizado
-            </button>
+            <div style={{ padding: '8px 10px', borderRadius: 10, textAlign: 'left',
+              border: !ehPreset ? '2px solid var(--primary)' : '1px dashed var(--border)',
+              background: !ehPreset ? 'var(--primary-light)' : 'white' }}>
+              <span style={{ display: 'block', fontSize: 12.5, fontWeight: 700, color: !ehPreset ? 'var(--primary)' : 'var(--text2)' }}>Personalizado</span>
+              <span style={{ display: 'block', fontSize: 10.5, color: 'var(--muted)', marginTop: 1 }}>digite abaixo</span>
+            </div>
           </div>
 
           {/* Personalizado + girar */}
