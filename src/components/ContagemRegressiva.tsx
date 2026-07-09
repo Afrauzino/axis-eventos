@@ -8,6 +8,7 @@ import { toast } from './Toast'
 import AberturaCerimonia from './AberturaCerimonia'
 import { MSG_ABERTURA_PADRAO } from './AberturaGate'
 import BotaoImagemFundo from './BotaoImagemFundo'
+import DataHora from './DataHora'
 
 // Relógio digital de contagem regressiva para o 1º dia do evento.
 //  - dias / horas / min / seg + barra de progresso (janela de 30 dias);
@@ -16,7 +17,6 @@ import BotaoImagemFundo from './BotaoImagemFundo'
 //  - o botão "Testar" roda a MESMA cerimônia do dia (mensagem → Iniciar →
 //    contagem → corneta + confete).
 
-const JANELA_DIAS = 30
 const CORES = ['#00A99D','#1565C0','#6B46C1','#2F855A','#C53030','#D69E2E','#E8821A','#0F766E','#B83280','#1A202C']
 
 function hojeLocalStr(): string {
@@ -35,6 +35,9 @@ export default function ContagemRegressiva({ evento, admin }: { evento: any; adm
   const [salvando, setSalvando] = useState(false)
   const [testando, setTestando] = useState(false)
   const [aspecto, setAspecto] = useState(16 / 9)
+  const [janela, setJanela] = useState(30)           // dias da barra de progresso
+  const [dispAtivo, setDispAtivo] = useState(true)   // disparador de abertura ligado?
+  const [dispData, setDispData] = useState('')       // data do disparador ('' = usa início do evento)
   const cardRef = useRef<HTMLDivElement>(null)
   useVoltarFecha(editando, () => setEditando(false))
 
@@ -44,7 +47,12 @@ export default function ContagemRegressiva({ evento, admin }: { evento: any; adm
   const estado: 'antes' | 'hoje' | 'passou' =
     !startStr ? 'passou' : hoje < startStr ? 'antes' : hoje === startStr ? 'hoje' : 'passou'
 
-  useEffect(() => { carregarConfig('abertura_mensagem').then(v => setMensagem(v || '')) }, [])
+  useEffect(() => {
+    carregarConfig('abertura_mensagem').then(v => setMensagem(v || ''))
+    carregarConfig('contagem_janela_dias').then(v => { const n = Number(v); setJanela(n > 0 ? n : 30) })
+    carregarConfig('disparador_ativo').then(v => setDispAtivo(v !== 'false'))
+    carregarConfig('disparador_data').then(v => setDispData(v || ''))
+  }, [])
 
   useEffect(() => {
     if (!evento) return
@@ -86,6 +94,9 @@ export default function ContagemRegressiva({ evento, admin }: { evento: any; adm
       contagem_ativa: ativa, contagem_cor: cor || null, contagem_bg_url: bg || null,
     }).eq('id', evento.id)
     await salvarConfig('abertura_mensagem', mensagem)
+    await salvarConfig('contagem_janela_dias', String(Math.max(1, Math.round(janela) || 30)))
+    await salvarConfig('disparador_ativo', dispAtivo ? 'true' : 'false')
+    await salvarConfig('disparador_data', dispData || '')
     setSalvando(false)
     if (error) { toast.falha('Não foi possível salvar. Rode o SQL 38_contagem_regressiva.sql no Supabase.', error); return }
     invalidarEventoAtivo()
@@ -112,8 +123,8 @@ export default function ContagemRegressiva({ evento, admin }: { evento: any; adm
           {/* Ligar/desligar */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', background: 'var(--bg)', borderRadius: 12, marginBottom: 16 }}>
             <div>
-              <p style={{ fontSize: 14, fontWeight: 700 }}>Mostrar na tela inicial</p>
-              <p style={{ fontSize: 12, color: 'var(--muted)' }}>Desligue para parar a contagem e a abertura do dia.</p>
+              <p style={{ fontSize: 14, fontWeight: 700 }}>Mostrar contagem na tela inicial</p>
+              <p style={{ fontSize: 12, color: 'var(--muted)' }}>A barra e os números na home.</p>
             </div>
             <button onClick={() => setAtiva(a => !a)} aria-label="Ligar/desligar"
               style={{ width: 50, height: 28, borderRadius: 99, border: 'none', cursor: 'pointer', background: ativa ? 'var(--primary)' : 'var(--border)', position: 'relative', transition: 'background 0.15s', flexShrink: 0 }}>
@@ -121,8 +132,33 @@ export default function ContagemRegressiva({ evento, admin }: { evento: any; adm
             </button>
           </div>
 
+          {/* Janela da barra de progresso */}
+          <label className="form-label">Barra de progresso — quantos dias antes começa a encher?</label>
+          <input className="form-input" type="number" min={1} value={janela} onChange={e => setJanela(Number(e.target.value) || 0)} placeholder="30" style={{ marginBottom: 16 }} />
+
+          {/* Disparador de abertura (cerimônia do dia) */}
+          <div style={{ border: '1px solid var(--border)', borderRadius: 12, padding: '12px 14px', marginBottom: 16 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+              <div>
+                <p style={{ fontSize: 14, fontWeight: 700 }}>Disparador de abertura</p>
+                <p style={{ fontSize: 12, color: 'var(--muted)' }}>No dia: mensagem → contagem → corneta + confete.</p>
+              </div>
+              <button onClick={() => setDispAtivo(a => !a)} aria-label="Ligar/desligar disparador"
+                style={{ width: 50, height: 28, borderRadius: 99, border: 'none', cursor: 'pointer', background: dispAtivo ? 'var(--primary)' : 'var(--border)', position: 'relative', transition: 'background 0.15s', flexShrink: 0 }}>
+                <span style={{ position: 'absolute', top: 3, left: dispAtivo ? 25 : 3, width: 22, height: 22, borderRadius: '50%', background: 'white', transition: 'left 0.15s', boxShadow: '0 1px 3px rgba(0,0,0,0.3)' }} />
+              </button>
+            </div>
+            {dispAtivo && (
+              <div style={{ marginTop: 12 }}>
+                <label className="form-label">Data do disparador</label>
+                <p className="form-hint mb-2">Vazio = usa o 1º dia do evento{startStr ? ` (${startStr.split('-').reverse().join('/')})` : ''}.</p>
+                <DataHora modo="date" value={dispData} onChange={setDispData} placeholder="Usar 1º dia do evento" />
+              </div>
+            )}
+          </div>
+
           {/* Mensagem de abertura do dia */}
-          <label className="form-label">Mensagem de abertura (aparece no dia do evento)</label>
+          <label className="form-label">Mensagem de abertura (aparece no disparo)</label>
           <textarea className="form-textarea" value={mensagem} onChange={e => setMensagem(e.target.value)} rows={3}
             placeholder={MSG_ABERTURA_PADRAO} style={{ marginBottom: 16 }} />
 
@@ -193,7 +229,7 @@ export default function ContagemRegressiva({ evento, admin }: { evento: any; adm
   const seg = totalSeg % 60
   const pad = (n: number) => String(n).padStart(2, '0')
 
-  const janelaMs = JANELA_DIAS * 86400 * 1000
+  const janelaMs = (janela > 0 ? janela : 30) * 86400 * 1000
   const inicioJanela = alvoMs - janelaMs
   const pct = estado === 'hoje' ? 100 : Math.max(0, Math.min(100, Math.round(((agora - inicioJanela) / (alvoMs - inicioJanela)) * 100)))
 
@@ -244,7 +280,7 @@ export default function ContagemRegressiva({ evento, admin }: { evento: any; adm
       {/* Barra de progresso (janela de 30 dias) */}
       <div style={{ marginTop: 14 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-          <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.8)', fontWeight: 600 }}>Últimos {JANELA_DIAS} dias</span>
+          <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.8)', fontWeight: 600 }}>Últimos {janela > 0 ? janela : 30} dias</span>
           <span style={{ fontSize: 13, fontWeight: 800, color: 'white' }}>{pct}%</span>
         </div>
         <div style={{ height: 8, background: 'rgba(255,255,255,0.25)', borderRadius: 99, overflow: 'hidden' }}>

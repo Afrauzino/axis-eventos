@@ -18,26 +18,38 @@ function hojeLocalStr(): string {
 export default function AberturaGate() {
   const { evento } = useEvento()
   const [mensagem, setMensagem] = useState('')
+  const [dispAtivo, setDispAtivo] = useState(true)   // disparador ligado?
+  const [dispData, setDispData] = useState('')       // data do disparo ('' = 1º dia do evento)
   const [pronto, setPronto] = useState(false)
   const [mostrar, setMostrar] = useState(false)
 
   useEffect(() => {
-    carregarConfig('abertura_mensagem').then(v => { setMensagem(v || MSG_ABERTURA_PADRAO); setPronto(true) })
+    Promise.all([
+      carregarConfig('abertura_mensagem'),
+      carregarConfig('disparador_ativo'),
+      carregarConfig('disparador_data'),
+    ]).then(([m, a, d]) => {
+      setMensagem(m || MSG_ABERTURA_PADRAO)
+      setDispAtivo(a !== 'false')
+      setDispData(d || '')
+      setPronto(true)
+    })
   }, [])
 
   useEffect(() => {
-    if (!pronto || !evento?.id || !evento?.start_date) return
-    const start = String(evento.start_date).slice(0, 10)
-    const ativa = (evento as any).contagem_ativa !== false
-    const chave = 'abertura_' + evento.id
-    const jaFez = localStorage.getItem(chave)
-    if (ativa && hojeLocalStr() === start && !jaFez) {
-      // Marca AGORA (na 1ª entrada do dia): dispara UMA única vez por aparelho,
-      // mesmo que a pessoa feche o app antes de concluir a cerimônia.
+    if (!pronto || !evento?.id) return
+    // Data do disparo: a configurada OU o 1º dia do evento
+    const data = (dispData || (evento.start_date ? String(evento.start_date).slice(0, 10) : '')).slice(0, 10)
+    if (!data) return
+    // Chave inclui a data → se o admin mudar a data, re-arma (não fica preso)
+    const chave = `abertura_${evento.id}_${data}`
+    if (dispAtivo && hojeLocalStr() === data && !localStorage.getItem(chave)) {
+      // Marca AGORA (1ª entrada do dia): dispara UMA única vez por aparelho,
+      // mesmo que feche o app antes de concluir a cerimônia.
       localStorage.setItem(chave, '1')
       setMostrar(true)
     }
-  }, [pronto, evento?.id, (evento as any)?.start_date, (evento as any)?.contagem_ativa])
+  }, [pronto, evento?.id, evento?.start_date, dispAtivo, dispData])
 
   function concluir() { setMostrar(false) }
 
