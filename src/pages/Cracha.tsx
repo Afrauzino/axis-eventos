@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useMemo } from 'react'
 import { supabase } from '../lib/supabase'
 import { getInitials, isAdmin } from '../utils'
 import { useEvento } from '../hooks/useEvento'
@@ -237,17 +237,44 @@ export default function Cracha({ profile }: { profile?: Profile }) {
 
   const amostra = pessoasFiltradas[0] ?? pessoas[0] ?? { id:'x', name:'Nome da Pessoa', photo_url:null }
 
+  // Nome do crachá: 2 primeiros nomes; se dois baterem, acrescenta o próximo até diferenciar
+  // (ex.: "Ana Clara Martins" e "Ana Clara Freitas" em vez de dois "Ana Clara").
+  const nomeCracha = useMemo(() => {
+    const pre = (nm: string, n: number) => (nm || '').trim().split(/\s+/).filter(Boolean).slice(0, n).join(' ').toLowerCase()
+    const base = pessoasFiltradas.length ? pessoasFiltradas : pessoas
+    const map: Record<string, string> = {}
+    for (const p of base) {
+      const w = (p.name || '').trim().split(/\s+/).filter(Boolean)
+      let n = Math.min(2, w.length)
+      while (n < w.length && base.some(o => o.id !== p.id && pre(o.name, n) === pre(p.name, n))) n++
+      map[p.id] = w.slice(0, n).join(' ')
+    }
+    return map
+  }, [pessoasFiltradas, pessoas])
+
   if (imprimir) {
     return (
       <div style={{padding:16,background:'white'}}>
-        <style>{`@media print { .no-print { display:none !important; } @page { margin:8mm; } }`}</style>
+        <style>{`
+          @media print {
+            /* solta a "gaiola" do app (main tem overflow:auto e cortava tudo na 1a folha) */
+            html, body, #root, .app-root, .app-root > main { height:auto !important; max-height:none !important; overflow:visible !important; display:block !important; background:#fff !important; }
+            .app-root > header { display:none !important; }
+            .no-print { display:none !important; }
+            /* NÃO corta um crachá no meio entre as folhas */
+            .cracha-item { break-inside:avoid; page-break-inside:avoid; }
+            /* imprime as CORES e as imagens de fundo */
+            * { -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important; }
+            @page { margin:8mm; }
+          }
+        `}</style>
         <div className="no-print" style={{display:'flex',gap:8,marginBottom:8}}>
           <button className="btn btn-primary" onClick={()=>window.print()}>Imprimir / Salvar PDF</button>
           <button className="btn btn-ghost" onClick={()=>setImprimir(false)}>Voltar</button>
         </div>
         <p className="no-print" style={{fontSize:12,color:'var(--muted)',marginBottom:16}}>Modelo: {MODELOS.find(x=>x.key===modeloAtivo)?.label}. {pessoasFiltradas.length} crachá(s).</p>
-        <div style={{display:'flex',flexWrap:'wrap',gap:12}}>
-          {pessoasFiltradas.map(p => <CrachaView key={p.id} pessoa={p} equipeTxt={equipeDe[p.id]??''} m={m}/>)}
+        <div style={{display:'flex',flexWrap:'wrap',gap:12,alignContent:'flex-start'}}>
+          {pessoasFiltradas.map(p => <div key={p.id} className="cracha-item"><CrachaView pessoa={{...p, name: nomeCracha[p.id] ?? p.name}} equipeTxt={equipeDe[p.id]??''} m={m}/></div>)}
         </div>
       </div>
     )
@@ -272,7 +299,7 @@ export default function Cracha({ profile }: { profile?: Profile }) {
 
       <p style={{fontSize:12,color:'var(--muted)',marginBottom:8}}>Arraste os elementos no crachá para posicionar. Toque para selecionar e editar abaixo.</p>
       <div style={{display:'flex',justifyContent:'center',marginBottom:14,padding:12,background:'var(--bg)',borderRadius:12}}>
-        <CrachaView pessoa={amostra} equipeTxt={equipeDe[amostra.id]??'Equipe'} m={m} edit={canEdit} sel={sel} onSelect={setSel} onMove={move} exibirEm={{maxW:210, maxH:350}}/>
+        <CrachaView pessoa={{...amostra, name: nomeCracha[amostra.id] ?? amostra.name}} equipeTxt={equipeDe[amostra.id]??'Equipe'} m={m} edit={canEdit} sel={sel} onSelect={setSel} onMove={move} exibirEm={{maxW:210, maxH:350}}/>
       </div>
 
       {/* Controles do elemento selecionado */}

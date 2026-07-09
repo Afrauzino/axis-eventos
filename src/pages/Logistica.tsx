@@ -8,6 +8,7 @@ import FotoAmpliada from '../components/FotoAmpliada'
 import { useRegistrarChrome } from '../lib/chrome'
 import { getInitials, isAdmin, formatName } from '../utils'
 import { useEvento } from '../hooks/useEvento'
+import { usePermissao } from '../hooks/usePermissao'
 import type { Profile } from '../App'
 
 type Pessoa   = { id:string; name:string; photo_url:string|null }
@@ -20,6 +21,7 @@ const OBJETOS_PADRAO = ['Colchão','Roupa de cama','Travesseiro','Remédios','Ca
 
 export default function Logistica({ profile }: { profile?: Profile }) {
   const { evento, loading: evLoading } = useEvento()
+  const { pode } = usePermissao(profile ?? null)
   const [loading, setLoading] = useState(true)
   const [encontristas, setEncontristas] = useState<Pessoa[]>([])
   const [itens, setItens]     = useState<ItemChk[]>([])
@@ -58,7 +60,8 @@ export default function Logistica({ profile }: { profile?: Profile }) {
     setFichaMap(fm); setMedMap(mm); setGerando(false); setImprimir(true)
   }
 
-  const canConfig = isAdmin(profile?.user_role)
+  // Admin OU liberação "Logística → Criar/editar checklist" (aba Liberações do Admin)
+  const canConfig = isAdmin(profile?.user_role) || pode('logistica','checklist')
 
   useEffect(() => { if (evLoading) return; if (!evento) { setLoading(false); return }; carregar() }, [evento, evLoading])
 
