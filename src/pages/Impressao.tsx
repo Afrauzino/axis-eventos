@@ -188,8 +188,8 @@ export default function Impressao({ profile }: { profile?: Profile }) {
         {/* Nome */}
         <Linha label="Nomes mostrados">
           <div style={{display:'flex', gap:6}}>
-            {[1,2].map(n=>(
-              <button key={n} onClick={()=>set({nomes:n})} className="btn btn-sm" style={{border: cfg.nomes===n?'2px solid var(--primary)':'1px solid var(--border)', background: cfg.nomes===n?'var(--primary-light)':'white', color: cfg.nomes===n?'var(--primary)':'var(--text2)'}}>{n===1?'1º nome':'1º e 2º'}</button>
+            {([[1,'1º'],[2,'1º e 2º'],[3,'até 3º'],[4,'até 4º']] as const).map(([n,l])=>(
+              <button key={n} onClick={()=>set({nomes:n})} className="btn btn-sm" style={{border: cfg.nomes===n?'2px solid var(--primary)':'1px solid var(--border)', background: cfg.nomes===n?'var(--primary-light)':'white', color: cfg.nomes===n?'var(--primary)':'var(--text2)'}}>{l}</button>
             ))}
           </div>
         </Linha>

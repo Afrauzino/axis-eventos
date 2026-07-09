@@ -423,7 +423,7 @@ export default function Cracha({ profile }: { profile?: Profile }) {
       )}
 
       {canEdit && <button className="btn btn-ghost btn-full btn-sm mb-2" onClick={restaurarPadrao} style={{color:'var(--danger)'}}><span className="icon icon-sm">restart_alt</span> Restaurar padrão deste modelo</button>}
-      {canEdit && <button className="btn btn-primary btn-full" onClick={salvar} disabled={salvando}>{salvando?'Salvando...':'Salvar configuração'}</button>}
+      {canEdit && <button className="btn btn-primary btn-full" onClick={salvar} disabled={salvando}>{salvando?'Salvando...':'💾 Salvar modelos (cada aba guarda o seu)'}</button>}
       {msg && <p style={{fontSize:12,textAlign:'center',marginTop:8,color:msg.startsWith('Erro')?'var(--danger)':'var(--success)'}}>{msg}</p>}
       <button className="btn btn-outline btn-full" onClick={()=>setImprimir(true)} disabled={pessoasFiltradas.length===0} style={{marginTop:10}}>
         <span className="icon icon-sm">print</span> Gerar crachás ({pessoasFiltradas.length}) — imprimir / PDF
