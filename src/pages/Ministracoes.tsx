@@ -75,14 +75,20 @@ export default function Ministracoes({ profile }: { profile?: Profile }) {
   const { id: paramId } = useParams()
   const navigate = useNavigate()
 
+  // MODO FOCO: pessoa comum (não admin/líder/liberado) abrindo UMA ministração por link
+  // direto (ex.: clicou na ministração em "Minhas Atividades"). Abre só a dela, em tela
+  // cheia, sem lista, e ao fechar SEMPRE volta pra Minhas Atividades.
+  const modoFoco = !!paramId && !canEdit && !isLiderPlus
+
   useEffect(() => { if (evLoading) return; if (!evento) { setLoading(false); return }; carregar() }, [evento, evLoading])
 
   // #16 — ministrante nunca vê a lista geral: sem id na URL, volta pro cronograma
   useEffect(() => { if (restrito && !paramId) navigate('/cronograma', { replace: true }) }, [restrito, paramId])
   // Sincroniza o rascunho das "Minhas notas" ao abrir uma ministração
   useEffect(() => { setNota(detalhe?.anotacoes_pessoais ?? '') }, [detalhe?.id])
-  // Fechar/voltar do ministrante SEMPRE volta pro cronograma (nunca pra lista de ministrações)
+  // Fechar/voltar: no modo foco volta pra Minhas Atividades (sempre); restrito volta pro Cronograma.
   const fecharDetalhe = () => {
+    if (modoFoco) { navigate('/minhas-atividades'); return }
     if (restrito) { navigate('/cronograma'); return }
     // Se abriu por link direto (ex: veio do Cronograma/Teatro), fechar volta pra origem
     if (paramId) { if (window.history.length > 1) navigate(-1); else navigate('/ministracoes'); return }
@@ -236,7 +242,10 @@ export default function Ministracoes({ profile }: { profile?: Profile }) {
 
   return (
     <div className="page">
-      {restrito ? (
+      {modoFoco ? (
+        // Só a ministração da pessoa, em tela cheia (o detalhe abre por cima). Sem lista.
+        !detalhe ? [1,2].map(i=><div key={i} className="skeleton" style={{height:120,marginBottom:8,borderRadius:14}}/>) : null
+      ) : restrito ? (
         <div className="empty" style={{textAlign:'center'}}>
           <div className="empty-icon"><span className="icon" style={{color:'var(--muted-light)'}}>event</span></div>
           <p className="empty-title">Abra sua ministração pelo Cronograma</p>
@@ -291,9 +300,17 @@ export default function Ministracoes({ profile }: { profile?: Profile }) {
         const canSeeConteudo = isLiderPlus || canEdit || isEuMinistrant
 
         return (
-          <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.5)',zIndex:300,display:'flex',flexDirection:'column',justifyContent:'flex-end'}} onClick={e=>e.target===e.currentTarget&&fecharDetalhe()}>
-            <div style={{background:'white',borderRadius:'20px 20px 0 0',maxHeight:'90vh',overflowY:'auto'}}>
-              <div style={{width:36,height:4,background:'var(--border)',borderRadius:2,margin:'12px auto 0'}}/>
+          <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.5)',zIndex:300,display:'flex',flexDirection:'column',justifyContent: modoFoco ? 'flex-start' : 'flex-end'}} onClick={e=>e.target===e.currentTarget&&fecharDetalhe()}>
+            <div style={{background:'white',borderRadius: modoFoco ? 0 : '20px 20px 0 0',maxHeight: modoFoco ? '100dvh' : '90vh',height: modoFoco ? '100dvh' : undefined,width:'100%',overflowY:'auto'}}>
+              {modoFoco ? (
+                <div style={{position:'sticky',top:0,zIndex:2,background:'white',display:'flex',alignItems:'center',gap:8,padding:'12px 16px',borderBottom:'1px solid var(--border)'}}>
+                  <button onClick={fecharDetalhe} style={{background:'var(--bg)',border:'1px solid var(--border)',borderRadius:10,padding:'8px 12px',cursor:'pointer',fontFamily:'inherit',fontWeight:700,fontSize:13,display:'flex',alignItems:'center',gap:6}}>
+                    <span className="icon icon-sm">arrow_back</span> Minhas Atividades
+                  </button>
+                </div>
+              ) : (
+                <div style={{width:36,height:4,background:'var(--border)',borderRadius:2,margin:'12px auto 0'}}/>
+              )}
 
               {/* Header roxo */}
               <div style={{background:(detalhe as any).cor??'#6B46C1',padding:'14px 20px',marginTop:8,color:'white'}}>
@@ -339,7 +356,7 @@ export default function Ministracoes({ profile }: { profile?: Profile }) {
                     </div>
                     {/* Teatro vinculado (ministrante restrito não navega pra fora) */}
                     {(() => {
-                      const teatroLink = restrito ? null : teatros.find(t=>t.ministracao_id===detalhe.id)
+                      const teatroLink = (restrito || modoFoco) ? null : teatros.find(t=>t.ministracao_id===detalhe.id)
                       return teatroLink ? (
                         <button onClick={()=>{ setDetalhe(null); navigate('/teatro/'+teatroLink.id) }} style={{width:'100%',background:teatroLink.cor?teatroLink.cor+'22':'#FFF3E0',border:`1px solid ${teatroLink.cor??'var(--accent)'}`,borderRadius:12,padding:'12px 14px',marginBottom:12,cursor:'pointer',fontFamily:'inherit',textAlign:'left',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
                           <div>

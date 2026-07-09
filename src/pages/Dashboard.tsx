@@ -346,7 +346,7 @@ export default function Dashboard({ profile }: { profile: Profile }) {
       case 'aniversarios':
         return <Aniversariantes eventoId={evento.id} fundo={estilos[id]} onEditar={admin?(asp:number)=>abrirEstilo(id, asp):undefined} />
       case 'versiculo':
-        return <VersiculoDia fundo={estilos[id]} onEditar={admin?(asp:number)=>abrirEstilo(id, asp):undefined} />
+        return <VersiculoDia fundo={estilos[id]} admin={admin} onEditar={admin?(asp:number)=>abrirEstilo(id, asp):undefined} />
       case 'carrossel':
         return <HomeCarousel admin={admin} />
       case 'carrossel_fotos':
