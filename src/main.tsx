@@ -35,14 +35,10 @@ createRoot(document.getElementById('root')!).render(
 )
 
 // #2 — PWA: registra o service worker (instalável como app). Só em produção (https/localhost).
+// O SW é network-first: sempre pega a versão nova quando online. Por isso NÃO
+// recarregamos no controllerchange (evita o "piscar" da tela antiga). A recarga
+// só acontece via a rede de segurança acima, quando um pedaço realmente falha.
 if ('serviceWorker' in navigator) {
-  // Quando um SW novo assume o controle (deploy novo), recarrega uma vez pra usar os assets novos.
-  let recarregando = false
-  navigator.serviceWorker.addEventListener('controllerchange', () => {
-    if (recarregando) return
-    recarregando = true
-    location.reload()
-  })
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js').then(reg => {
       try { reg.update() } catch {}
