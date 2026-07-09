@@ -75,6 +75,10 @@ export default function Cadastros({ profile }: { profile: Profile }) {
     e.preventDefault(); setErro(''); setSalvando(true)
     if (!evento || !form.name.trim()) { setErro('Nome é obrigatório.'); setSalvando(false); return }
     if (!form.photo_url) { setErro('A foto é obrigatória. Adicione uma foto para cadastrar.'); setSalvando(false); return }
+    // Anti-duplicidade: mesmo NOME COMPLETO (ignora acento/maiúscula) já existe neste evento
+    const norm = (s:string) => (s||'').trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/\s+/g,' ')
+    const dup = lista.find(p => p.id !== editando?.id && norm(p.name) === norm(form.name))
+    if (dup) { setErro(`Essa pessoa já foi cadastrada: "${dup.name}". Se for outra pessoa com o mesmo nome, acrescente um sobrenome.`); setSalvando(false); return }
 
     // Gerar código de acesso
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
