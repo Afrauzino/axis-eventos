@@ -17,7 +17,6 @@ import MetaEncontristas from '../components/MetaEncontristas'
 import VersiculoDia from '../components/VersiculoDia'
 import PlaylistHome from '../components/PlaylistHome'
 import BoasVindas, { type BVVariante } from '../components/BoasVindas'
-import { MENUS_CATALOGO } from '../lib/permCatalog'
 import { estiloFundo, medirAspecto } from '../lib/blocoFundo'
 import BotaoImagemFundo from '../components/BotaoImagemFundo'
 import type { Profile } from '../App'
@@ -35,7 +34,7 @@ function normalizarOrdem(arr:any): string[] {
 }
 
 export default function Dashboard({ profile }: { profile: Profile }) {
-  const { pode, carregado: permsCarregadas } = usePermissao(profile)
+  const { pode } = usePermissao(profile)
   const admin = isAdmin(profile.user_role) || profile.is_admin
   // Indicadores (Encontristas/Encontreiros/Equipes/Alertas) só p/ Admin e Financeiro
   const podeVerStats = admin || profile.user_role === 'financeiro'
@@ -48,8 +47,6 @@ export default function Dashboard({ profile }: { profile: Profile }) {
   }, [profile?.user_id])
   // #8 — visitante (sem cadastro no evento) tem tela própria; senão encontreiro/encontrista
   const variante: BVVariante = roleType === 'worker' ? 'encontreiro' : roleType === 'encounterer' ? 'encontrista' : 'visitante'
-  // "Sem liberação" = não é admin e não enxerga NENHUM menu do sistema
-  const semLiberacao = permsCarregadas && !admin && !MENUS_CATALOGO.some(m => pode(m.modulo))
   // mapa rota -> permissao de menu
   const PERM_ROTA: Record<string,string> = { '/encontristas':'menu_encontristas','/cadastros':'menu_cadastros','/equipes':'menu_equipes','/alertas':'menu_alertas_lideres','/cronograma':'menu_cronograma','/minhas-atividades':'menu_atividades','/locais':'menu_evento','/financeiro':'menu_financeiro','/admin':'menu_admin','/ranking':'menu_ranking' }
   const podeIr = (rota:string) => admin || pode(PERM_ROTA[rota] ?? '')
@@ -101,6 +98,7 @@ export default function Dashboard({ profile }: { profile: Profile }) {
   // #tela-inicial — ordem dos blocos + modo "arrastar" (admin)
   const [ordem, setOrdem] = useState<string[]>(ORDEM_PADRAO)
   const [ocultos, setOcultos] = useState<string[]>([])  // blocos que o admin escondeu
+  const [publicos, setPublicos] = useState<Record<string, string[]>>({})  // quem vê cada bloco (encounterer/worker)
   const [estilos, setEstilos] = useState<Record<string, { cor?: string; bg?: string }>>({})  // cor/imagem por bloco
   const [estiloEditId, setEstiloEditId] = useState<string | null>(null)
   const [estiloAspecto, setEstiloAspecto] = useState(16 / 9)
@@ -140,6 +138,19 @@ export default function Dashboard({ profile }: { profile: Profile }) {
     setOcultos(novo)
     await salvarConfig('home_ocultos', JSON.stringify(novo))
   }
+
+  // Visível para quem (encontrista=encounterer / encontreiro=worker). Sem config = os dois.
+  useEffect(() => { carregarConfig('home_publicos').then(v => { if (v) { try { setPublicos(JSON.parse(v)) } catch {} } }) }, [])
+  const publicoTem = (id: string, tipo: string) => (publicos[id] ?? ['encounterer', 'worker']).includes(tipo)
+  async function togglePublico(id: string, tipo: string) {
+    const atual = publicos[id] ?? ['encounterer', 'worker']
+    const novo = atual.includes(tipo) ? atual.filter(x => x !== tipo) : [...atual, tipo]
+    const map = { ...publicos, [id]: novo }
+    setPublicos(map)
+    await salvarConfig('home_publicos', JSON.stringify(map))
+  }
+  // Admin sempre vê; sem config = todos; senão precisa incluir o tipo da pessoa
+  const veBloco = (id: string) => admin || publicos[id] === undefined || !roleType || publicos[id].includes(roleType)
 
   // Cor / imagem de fundo por bloco (genérico, vale para todos os blocos)
   useEffect(() => { carregarConfig('home_estilos').then(v => { if (v) { try { setEstilos(JSON.parse(v)) } catch {} } }) }, [])
@@ -321,7 +332,7 @@ export default function Dashboard({ profile }: { profile: Profile }) {
       case 'playlist':
         return <PlaylistHome admin={admin} fundo={estilos[id]} onEditar={admin?(asp:number)=>abrirEstilo(id, asp):undefined} />
       case 'boasvindas':
-        return admin ? <BoasVindas variante={variante} admin={true} /> : null
+        return <BoasVindas variante={variante} admin={admin} />
       default:
         return null
     }
@@ -330,27 +341,20 @@ export default function Dashboard({ profile }: { profile: Profile }) {
   return (
     <div className="page slide-up">
       {/* Encontrista: a própria ficha médica vem PRIMEIRO (encolhe ao salvar) */}
-      {semLiberacao && evento && meuPersonId && (
+      {roleType === 'encounterer' && evento && meuPersonId && (
         <div style={{ background:'white', borderRadius:14, boxShadow:'var(--shadow-sm)', padding:'14px', marginBottom:16 }}>
           <p style={{ fontWeight:800, fontSize:15, marginBottom:10, display:'flex', alignItems:'center', gap:6 }}>⛑️ Minha ficha médica</p>
           <FichaMedica personId={meuPersonId} eventId={evento.id} startOpen />
         </div>
       )}
 
-      {/* Faixa AO VIVO: só para quem tem acesso (encontrista não vê) */}
-      {!semLiberacao && <CronometroAoVivo eventoId={evento?.id} />}
+      {/* Faixa AO VIVO: cronômetro de um bloco em andamento */}
+      <CronometroAoVivo eventoId={evento?.id} />
 
       {/* Relógio digital: contagem regressiva para o 1º dia do evento (todos veem) */}
       <ContagemRegressiva evento={evento} admin={admin} />
 
-      {semLiberacao ? (
-        /* Encontrista / nível mais baixo: carrossel, boas-vindas e aniversariantes */
-        <>
-          <HomeCarousel admin={admin} />
-          <BoasVindas variante={variante} admin={false} />
-          {evento && <Aniversariantes eventoId={evento.id} />}
-        </>
-      ) : !evento ? (
+      {!evento ? (
         <>
           <HomeCarousel admin={admin} />
           {admin && <BoasVindas variante={variante} admin={true} />}
@@ -381,8 +385,8 @@ export default function Dashboard({ profile }: { profile: Profile }) {
 
           {ordem.map(id => {
             const oculto = escondido(id)
-            // Fora do modo reordenar, bloco oculto some para todos (inclusive admin)
-            if (oculto && !reordenando) return null
+            // Fora do modo reordenar: some se oculto OU se a pessoa não está na audiência
+            if (!reordenando && (oculto || !veBloco(id))) return null
             const conteudo = renderSecao(id)
             if (!conteudo) return null
             return (
@@ -402,7 +406,20 @@ export default function Dashboard({ profile }: { profile: Profile }) {
                     </div>
                   </>
                 )}
-                {reordenando && <div style={{height:26}}/>}
+                {reordenando && (
+                  <div style={{paddingTop:30,display:'flex',gap:6,justifyContent:'center',flexWrap:'wrap',marginBottom:6}}>
+                    <span style={{fontSize:11,color:'var(--muted)',alignSelf:'center'}}>Visível para:</span>
+                    {([['encounterer','Encontrista'],['worker','Encontreiro']] as const).map(([tipo,label])=>{
+                      const on = publicoTem(id, tipo)
+                      return (
+                        <button key={tipo} onClick={()=>togglePublico(id, tipo)}
+                          style={{display:'flex',alignItems:'center',gap:4,padding:'4px 10px',borderRadius:99,border:on?'1.5px solid var(--primary)':'1px solid var(--border)',background:on?'var(--primary-light)':'white',color:on?'var(--primary-dark)':'var(--muted)',cursor:'pointer',fontFamily:'inherit',fontSize:11,fontWeight:700}}>
+                          <span className="icon" style={{fontSize:14}}>{on?'check':'block'}</span> {label}
+                        </button>
+                      )
+                    })}
+                  </div>
+                )}
                 {conteudo}
               </div>
             )
