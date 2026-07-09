@@ -59,12 +59,26 @@ export default function Impressao({ profile }: { profile?: Profile }) {
 
   const [modelos, setModelos] = useState<Modelo[]>([])
   const [doc, setDoc] = useState<Documento>(() => docPadrao())
+  /** O documento como está AGORA dentro do editor (o `doc` acima é só o inicial).
+   *  É ele que manda no indicador da folha e no destaque do modelo aberto. */
+  const [docAtual, setDocAtual] = useState<Documento>(doc)
   const [orientacao, setOrientacao] = useState<Orientacao>('auto')
   const [imprimindo, setImprimindo] = useState<Documento|null>(null)
   const [abrirModelos, setAbrirModelos] = useState(false)
+  const [salvando, setSalvando] = useState<Documento|null>(null)   // modal "Salvar modelo"
+  const [nomeModelo, setNomeModelo] = useState('')
 
   useEffect(() => { if (evLoading) return; if (!evento) { setLoading(false); return }; carregar() }, [evento, evLoading])
-  useEffect(() => { carregarConfig(CHAVE).then(v => { if (v) { try { setModelos(JSON.parse(v)) } catch {} } }) }, [])
+  useEffect(() => {
+    carregarConfig(CHAVE).then(v => {
+      if (!v) return
+      try {
+        const arr: Modelo[] = JSON.parse(v)
+        setModelos(arr)
+        if (arr.length) setAbrirModelos(true)   // tem modelo salvo? já mostra pra puxar
+      } catch {}
+    })
+  }, [])
 
   async function carregar() {
     if (!evento) return
@@ -117,23 +131,31 @@ export default function Impressao({ profile }: { profile?: Profile }) {
 
   /** Salva por NOME: nome novo = modelo novo; nome existente = atualiza aquele.
    *  Assim dá pra ter quantos modelos quiser (e "salvar como" é só trocar o nome). */
-  async function salvarModelo(d: Documento) {
-    const nome = (prompt('Nome do modelo:', d.nome || 'Meu modelo') || '').trim()
-    if (!nome) return
+  async function confirmarSalvar() {
+    const d = salvando
+    const nome = nomeModelo.trim()
+    if (!d || !nome) return
     const mesmoNome = modelos.find(m => m.nome.trim().toLowerCase() === nome.toLowerCase())
 
     if (mesmoNome) {
       const doc2 = { ...d, id: mesmoNome.id, nome }
-      setDoc(doc2)
+      setDoc(doc2); setDocAtual(doc2); setSalvando(null)
       await guardar(modelos.map(m => m.id===mesmoNome.id ? { ...m, nome, doc: doc2 } : m))
-      toast.sucesso('Modelo atualizado!')
+      toast.sucesso(`"${nome}" atualizado!`)
     } else {
-      const id = novoId()
+      // reaproveita o id do documento quando ele ainda não pertence a outro modelo
+      const id = modelos.some(m => m.id === d.id) ? novoId() : d.id
       const doc2 = { ...d, id, nome }
-      setDoc(doc2)
+      setDoc(doc2); setDocAtual(doc2); setSalvando(null)
       await guardar([...modelos, { id, nome, doc: doc2 }])
-      toast.sucesso('Novo modelo salvo!')
+      toast.sucesso(`"${nome}" salvo! Agora ele aparece em Modelos.`)
     }
+  }
+
+  /** Puxa um modelo salvo pro editor. */
+  function abrirModelo(m: Modelo) {
+    setDoc(m.doc); setDocAtual(m.doc); setAbrirModelos(false)
+    toast.info(`Modelo "${m.nome}" aberto.`)
   }
 
   async function excluirModelo(id:string) {
@@ -152,7 +174,7 @@ export default function Impressao({ profile }: { profile?: Profile }) {
       {/* Barra: modelos, quem entra, orientação */}
       <div style={{ background:'white', borderBottom:'1px solid var(--border)', padding:'8px 12px', display:'flex', gap:8, alignItems:'center', flexWrap:'wrap', flexShrink:0 }}>
         <button className="btn btn-ghost btn-sm" onClick={()=>setAbrirModelos(v=>!v)}>
-          <span className="icon icon-sm">bookmarks</span> Modelos ({modelos.length})
+          <span className="icon icon-sm">bookmarks</span> Meus modelos ({modelos.length})
         </button>
         <select className="form-input" style={{ width:'auto', padding:'6px 10px', fontSize:13 }}
           value={filtroTipo} onChange={e=>setFiltroTipo(e.target.value as any)}>
@@ -165,8 +187,8 @@ export default function Impressao({ profile }: { profile?: Profile }) {
           <option value="">Todas as equipes</option>
           {equipes.map(t=><option key={t.id} value={t.id}>{t.name}</option>)}
         </select>
-        {doc.fonteDados === 'pessoas' && (() => {
-          const e = encaixe(doc.papel, orientacao)
+        {docAtual.fonteDados === 'pessoas' && (() => {
+          const e = encaixe(docAtual.papel, orientacao)
           const prox: Orientacao = orientacao==='auto' ? 'retrato' : orientacao==='retrato' ? 'paisagem' : 'auto'
           return (
             <button type="button" onClick={()=>setOrientacao(prox)}
@@ -187,17 +209,20 @@ export default function Impressao({ profile }: { profile?: Profile }) {
       {/* Modelos salvos */}
       {abrirModelos && (
         <div className="ed-tira" style={{ background:'var(--bg)', padding:'10px 12px', borderBottom:'1px solid var(--border)', display:'flex', gap:8, overflowX:'auto', scrollbarWidth:'none', flexShrink:0 }}>
-          <button className="btn btn-primary btn-sm" style={{ flexShrink:0 }} onClick={()=>{ setDoc(docVazio()); setAbrirModelos(false) }}>
+          <button className="btn btn-primary btn-sm" style={{ flexShrink:0 }} onClick={()=>{ const d=docVazio(); setDoc(d); setDocAtual(d); setAbrirModelos(false) }}>
             <span className="icon icon-sm">note_add</span> Começar do zero
           </button>
-          <button className="btn btn-ghost btn-sm" style={{ flexShrink:0 }} onClick={()=>{ setDoc(docPadrao()); setAbrirModelos(false) }}>Modelo pronto</button>
-          {modelos.map(m => (
-            <div key={m.id} style={{ flexShrink:0, display:'flex', alignItems:'center', gap:4, background: doc.id===m.id?'var(--primary)':'white', color: doc.id===m.id?'white':'var(--text)', border:'1px solid var(--border)', borderRadius:99, padding:'4px 6px 4px 12px' }}>
-              <button onClick={()=>{ setDoc(m.doc); setAbrirModelos(false) }} style={{ background:'none', border:'none', cursor:'pointer', color:'inherit', fontFamily:'inherit', fontWeight:700, fontSize:13 }}>{m.nome}</button>
-              {canEdit && <button onClick={()=>excluirModelo(m.id)} style={{ background:'none', border:'none', cursor:'pointer', color:'inherit', opacity:0.7, display:'flex' }}><span className="icon icon-sm">close</span></button>}
-            </div>
-          ))}
-          {modelos.length===0 && <span style={{ fontSize:12, color:'var(--muted)', alignSelf:'center' }}>Nenhum modelo salvo ainda.</span>}
+          <button className="btn btn-ghost btn-sm" style={{ flexShrink:0 }} onClick={()=>{ const d=docPadrao(); setDoc(d); setDocAtual(d); setAbrirModelos(false) }}>Modelo pronto</button>
+          {modelos.map(m => {
+            const aberto = docAtual.id === m.id
+            return (
+              <div key={m.id} style={{ flexShrink:0, display:'flex', alignItems:'center', gap:4, background: aberto?'var(--primary)':'white', color: aberto?'white':'var(--text)', border:'1px solid var(--border)', borderRadius:99, padding:'4px 6px 4px 12px' }}>
+                <button onClick={()=>abrirModelo(m)} style={{ background:'none', border:'none', cursor:'pointer', color:'inherit', fontFamily:'inherit', fontWeight:700, fontSize:13 }}>{m.nome}</button>
+                {canEdit && <button onClick={()=>excluirModelo(m.id)} title="Excluir modelo" style={{ background:'none', border:'none', cursor:'pointer', color:'inherit', opacity:0.7, display:'flex' }}><span className="icon icon-sm">close</span></button>}
+              </div>
+            )
+          })}
+          {modelos.length===0 && <span style={{ fontSize:12, color:'var(--muted)', alignSelf:'center' }}>Nenhum modelo salvo ainda — monte e toque em <b>Salvar</b>.</span>}
         </div>
       )}
 
@@ -208,10 +233,54 @@ export default function Impressao({ profile }: { profile?: Profile }) {
           inicial={doc}
           dados={dadosPrevia}
           subirImagem={subirImagem}
-          onSalvar={canEdit ? salvarModelo : undefined}
+          onChange={setDocAtual}
+          onSalvar={canEdit ? (d)=>{ setNomeModelo(d.nome && d.nome!=='Sem título' ? d.nome : ''); setSalvando(d) } : undefined}
           onImprimir={(d)=>{ if (lista.length===0) { toast.info('Ninguém neste filtro.'); return } setImprimindo(d) }}
         />
       </div>
+
+      {/* Salvar modelo — modal de verdade (o prompt do navegador não abre no celular) */}
+      {salvando && (
+        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.5)', zIndex:300, display:'flex', flexDirection:'column', justifyContent:'flex-end' }}
+          onClick={e => e.target===e.currentTarget && setSalvando(null)}>
+          <div style={{ background:'white', borderRadius:'20px 20px 0 0', padding:'8px 20px 32px', maxHeight:'92vh', overflowY:'auto' }}>
+            <div style={{ width:36, height:4, background:'var(--border)', borderRadius:2, margin:'12px auto 0' }}/>
+            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'18px 0 16px', borderBottom:'1px solid var(--border)', marginBottom:20 }}>
+              <span style={{ fontSize:17, fontWeight:700 }}>Salvar modelo</span>
+              <button onClick={()=>setSalvando(null)} style={{ background:'var(--bg)', border:'1px solid var(--border)', borderRadius:'50%', width:32, height:32, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', fontFamily:'inherit' }}><span className="icon icon-sm">close</span></button>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Nome do modelo <span className="req">*</span></label>
+              <input className="form-input" autoFocus placeholder="Ex: Crachá dos encontristas"
+                value={nomeModelo} onChange={e=>setNomeModelo(e.target.value)}
+                onKeyDown={e=>{ if (e.key==='Enter') confirmarSalvar() }} />
+              <p style={{ fontSize:12, color:'var(--muted)', marginTop:6 }}>
+                Nome novo cria um modelo novo. Nome que já existe substitui aquele.
+              </p>
+            </div>
+
+            {modelos.length > 0 && (
+              <div className="form-group">
+                <label className="form-label">Ou substituir um salvo</label>
+                <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
+                  {modelos.map(m => (
+                    <button key={m.id} type="button" onClick={()=>setNomeModelo(m.nome)}
+                      style={{ border: nomeModelo.trim().toLowerCase()===m.nome.trim().toLowerCase() ? '2px solid var(--primary)' : '1px solid var(--border)',
+                        background:'white', borderRadius:99, padding:'6px 14px', cursor:'pointer', fontFamily:'inherit', fontSize:13, fontWeight:600 }}>
+                      {m.nome}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <button className="btn btn-primary" style={{ width:'100%' }} disabled={!nomeModelo.trim()} onClick={confirmarSalvar}>
+              Salvar
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

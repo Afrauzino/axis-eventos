@@ -42,7 +42,8 @@ registrarElemento({
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         <div style={{ display: 'flex', gap: 6 }}>
           <button type="button" style={btn(!!p.redonda)} onClick={() => setProps({ redonda: true })}>Redonda</button>
-          <button type="button" style={btn(!p.redonda)} onClick={() => setProps({ redonda: false })}>Quadrada</button>
+          {/* Quadrada = canto reto de verdade (senão ficava arredondada e não parecia quadrada) */}
+          <button type="button" style={btn(!p.redonda)} onClick={() => setProps({ redonda: false, raio: 0 })}>Quadrada</button>
         </div>
         {!p.redonda && (
           <label style={{ fontSize: 13, color: 'var(--text2)' }}>

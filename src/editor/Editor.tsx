@@ -3,7 +3,7 @@
 // barra inferior (montada pelo registro) + painel da ferramenta.
 // A tela fica limpa: cada botão abre só o painel dele.
 // ─────────────────────────────────────────────────────────────
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { Documento, Elemento, SubirImagem } from './tipos'
 import { useEditor } from './store'
 import Canvas from './Canvas'
@@ -15,12 +15,15 @@ type Props = {
   dados?: Record<string, any>          // pessoa de exemplo pra prévia
   onSalvar?: (doc: Documento) => void
   onImprimir?: (doc: Documento) => void
+  onChange?: (doc: Documento) => void   // avisa a tela a cada mudança (indicador da folha, etc.)
   subirImagem?: SubirImagem            // a tela decide onde guardar a imagem
 }
 
-export default function Editor({ inicial, dados, onSalvar, onImprimir, subirImagem }: Props) {
+export default function Editor({ inicial, dados, onSalvar, onImprimir, onChange, subirImagem }: Props) {
   const ed = useEditor(inicial)
   const [ferramenta, setFerramenta] = useState<string | null>(null)
+
+  useEffect(() => { onChange?.(ed.doc) }, [ed.doc])   // eslint-disable-line react-hooks/exhaustive-deps
 
   const ferramentas = listarFerramentas()
   const ativa = ferramentas.find(f => f.id === ferramenta)
