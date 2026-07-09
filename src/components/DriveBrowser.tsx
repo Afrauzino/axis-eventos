@@ -25,6 +25,7 @@ export default function DriveBrowser({ rootId, rootName = 'Mídia', apiKey }: { 
   const [loading, setLoading] = useState(true)
   const [erro, setErro] = useState('')
   const [col, setCol] = useState(130)
+  const [vista, setVista] = useState<'grade' | 'lista'>('grade')
   const [falhou, setFalhou] = useState<Set<string>>(new Set())
 
   useEffect(() => { setPilha([{ id: rootId, name: rootName }]) }, [rootId, rootName])
@@ -72,8 +73,13 @@ export default function DriveBrowser({ rootId, rootName = 'Mídia', apiKey }: { 
           ))}
         </div>
         <div style={{ display: 'flex', gap: 4 }}>
-          <button onClick={() => setCol(c => Math.max(80, c - 40))} className="btn btn-ghost btn-sm" title="Diminuir" style={{ minWidth: 36, fontWeight: 800, fontSize: 18, padding: '2px 8px', lineHeight: 1 }}>−</button>
-          <button onClick={() => setCol(c => Math.min(320, c + 40))} className="btn btn-ghost btn-sm" title="Aumentar" style={{ minWidth: 36, fontWeight: 800, fontSize: 18, padding: '2px 8px', lineHeight: 1 }}>+</button>
+          <button onClick={() => setVista(v => v === 'grade' ? 'lista' : 'grade')} className="btn btn-ghost btn-sm" title={vista === 'grade' ? 'Ver como lista' : 'Ver como grade'} style={{ padding: '4px 8px' }}>
+            <span className="icon icon-sm">{vista === 'grade' ? 'view_list' : 'grid_view'}</span>
+          </button>
+          {vista === 'grade' && <>
+            <button onClick={() => setCol(c => Math.max(80, c - 40))} className="btn btn-ghost btn-sm" title="Diminuir" style={{ minWidth: 36, fontWeight: 800, fontSize: 18, padding: '2px 8px', lineHeight: 1 }}>−</button>
+            <button onClick={() => setCol(c => Math.min(320, c + 40))} className="btn btn-ghost btn-sm" title="Aumentar" style={{ minWidth: 36, fontWeight: 800, fontSize: 18, padding: '2px 8px', lineHeight: 1 }}>+</button>
+          </>}
         </div>
       </div>
 
@@ -83,6 +89,21 @@ export default function DriveBrowser({ rootId, rootName = 'Mídia', apiKey }: { 
         <div className="alert-box alert-error" style={{ fontSize: 13 }}>{erro}</div>
       ) : itens.length === 0 ? (
         <div className="empty"><p className="empty-title">Pasta vazia</p></div>
+      ) : vista === 'lista' ? (
+        /* Lista (estilo explorador do PC) */
+        <div style={{ background: 'white', borderRadius: 12, boxShadow: 'var(--shadow-sm)', overflow: 'hidden' }}>
+          {itens.map((it, i) => {
+            const pasta = it.mimeType === FOLDER
+            return (
+              <button key={it.id} onClick={() => abrir(it)}
+                style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: '11px 14px', border: 'none', borderBottom: i < itens.length - 1 ? '1px solid var(--border)' : 'none', background: 'white', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' }}>
+                <span style={{ fontSize: 22, width: 28, textAlign: 'center', flexShrink: 0 }}>{pasta ? '📁' : iconFor(it.mimeType)}</span>
+                <span style={{ flex: 1, minWidth: 0, fontSize: 14, fontWeight: pasta ? 700 : 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'var(--text)' }}>{it.name}</span>
+                <span className="icon icon-sm" style={{ color: 'var(--muted-light)', flexShrink: 0 }}>{pasta ? 'chevron_right' : 'open_in_new'}</span>
+              </button>
+            )
+          })}
+        </div>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: `repeat(auto-fill, minmax(${col}px, 1fr))`, gap: 10 }}>
           {itens.map(it => {
