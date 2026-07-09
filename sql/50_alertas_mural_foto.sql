@@ -15,39 +15,77 @@
 -- ────────────────────────────────────────────────────────────
 
 -- O CHECK antigo só aceitava 'all', 'team' e 'multiple'.
-ALTER TABLE public.alerts DROP CONSTRAINT IF EXISTS alerts_target_type_check;
+-- Removemos QUALQUER check de target_type (o nome pode variar de banco pra banco),
+-- senão sobraria uma regra velha barrando 'worker'/'encounterer'.
+DO $$
+DECLARE c record;
+BEGIN
+  FOR c IN
+    SELECT con.conname
+    FROM pg_constraint con
+    JOIN pg_class t ON t.oid = con.conrelid
+    JOIN pg_namespace n ON n.oid = t.relnamespace
+    WHERE n.nspname = 'public' AND t.relname = 'alerts' AND con.contype = 'c'
+      AND pg_get_constraintdef(con.oid) ILIKE '%target_type%'
+  LOOP
+    EXECUTE format('ALTER TABLE public.alerts DROP CONSTRAINT %I', c.conname);
+  END LOOP;
+END $$;
+
 ALTER TABLE public.alerts ADD CONSTRAINT alerts_target_type_check
   CHECK (target_type IN ('all', 'team', 'multiple', 'worker', 'encounterer'));
 
 -- Quem enxerga o alerta. Acrescenta a regra por tipo de pessoa:
 -- o alerta com target_type = 'worker' aparece só para quem tem
 -- people.role_type = 'worker' naquele evento (idem 'encounterer').
-DROP POLICY IF EXISTS alerts_select_approved ON public.alerts;
-CREATE POLICY "alerts_select_approved" ON public.alerts
-  FOR SELECT USING (
-    is_approved()
-    AND (
-      target_type = 'all'
-      OR is_admin()
-      OR has_permission('alerts', 'view', event_id)
+--
+-- OBS: nem todo banco tem a função has_permission(text,text,uuid).
+-- Só incluímos essa linha na política se a função realmente existir.
+DO $$
+DECLARE
+  tem_has_permission boolean;
+  linha_permissao    text := '';
+BEGIN
+  SELECT EXISTS (
+    SELECT 1 FROM pg_proc p
+    JOIN pg_namespace n ON n.oid = p.pronamespace
+    WHERE n.nspname = 'public' AND p.proname = 'has_permission'
+  ) INTO tem_has_permission;
 
-      -- Por tipo de pessoa: encontreiro (worker) ou encontrista (encounterer)
-      OR EXISTS (
-        SELECT 1 FROM public.people p
-        WHERE p.user_id   = auth.uid()
-          AND p.event_id  = alerts.event_id
-          AND p.role_type = alerts.target_type
-      )
+  IF tem_has_permission THEN
+    linha_permissao := 'OR has_permission(''alerts'', ''view'', event_id)';
+  END IF;
 
-      -- Por equipe (regra antiga, intacta)
-      OR EXISTS (
-        SELECT 1 FROM public.people p
-        WHERE p.user_id  = auth.uid()
-          AND p.event_id = alerts.event_id
-          AND p.team_id  = ANY(alerts.target_team_ids)
+  DROP POLICY IF EXISTS alerts_select_approved ON public.alerts;
+
+  EXECUTE format($f$
+    CREATE POLICY "alerts_select_approved" ON public.alerts
+      FOR SELECT USING (
+        is_approved()
+        AND (
+          target_type = 'all'
+          OR is_admin()
+          %s
+
+          -- Por tipo de pessoa: encontreiro (worker) ou encontrista (encounterer)
+          OR EXISTS (
+            SELECT 1 FROM public.people p
+            WHERE p.user_id   = auth.uid()
+              AND p.event_id  = alerts.event_id
+              AND p.role_type = alerts.target_type
+          )
+
+          -- Por equipe (regra antiga, intacta)
+          OR EXISTS (
+            SELECT 1 FROM public.people p
+            WHERE p.user_id  = auth.uid()
+              AND p.event_id = alerts.event_id
+              AND p.team_id  = ANY(alerts.target_team_ids)
+          )
+        )
       )
-    )
-  );
+  $f$, linha_permissao);
+END $$;
 
 
 -- ────────────────────────────────────────────────────────────
@@ -134,3 +172,7 @@ BEGIN
     ALTER PUBLICATION supabase_realtime ADD TABLE public.people;
   END IF;
 END $$;
+
+
+-- Faz o Supabase enxergar a função nova na hora (sem esperar o cache).
+NOTIFY pgrst, 'reload schema';
