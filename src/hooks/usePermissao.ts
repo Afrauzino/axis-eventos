@@ -12,18 +12,21 @@ type Perm = {
 let cachePerms: Perm[] | null = null
 let cacheTeams: Record<string,string[]> = {}  // user_id -> [team_id]
 let cachePersonId: Record<string,string> = {}  // user_id -> people.id
+let cacheRoleType: Record<string,string|null> = {}  // user_id -> role_type (encounterer/worker)
 
 // Limpa o cache de permissões (chamar após mudar permissões no Admin)
 export function limparCachePermissoes() {
   cachePerms = null
   cacheTeams = {}
   cachePersonId = {}
+  cacheRoleType = {}
 }
 
 export function usePermissao(profile: Profile | null) {
   const [perms, setPerms]   = useState<Perm[]>(cachePerms ?? [])
   const [myTeams, setMyTeams] = useState<string[]>([])
   const [myPersonId, setMyPersonId] = useState<string|null>(null)
+  const [myRoleType, setMyRoleType] = useState<string|null>(null)
   const [carregado, setCarregado] = useState(false)
 
   useEffect(() => {
@@ -45,11 +48,15 @@ export function usePermissao(profile: Profile | null) {
         if (cachePersonId[profile.user_id]) {
           setMyPersonId(cachePersonId[profile.user_id])
           setMyTeams(cacheTeams[profile.user_id] ?? [])
+          setMyRoleType(cacheRoleType[profile.user_id] ?? null)
         } else {
           // user_id -> people.id (TODOS os registros desta pessoa, não importa o evento)
           const { data: pessoas } = await supabase.from('people')
-            .select('id').eq('user_id', profile.user_id)
+            .select('id,role_type').eq('user_id', profile.user_id)
           const personIds = (pessoas ?? []).map(p => p.id)
+          const rt = (pessoas ?? []).map((p:any) => p.role_type).find(Boolean) ?? null
+          cacheRoleType[profile.user_id] = rt
+          setMyRoleType(rt)
           if (personIds.length > 0) {
             // usa o primeiro como "principal", mas considera todos nas buscas
             cachePersonId[profile.user_id] = personIds[0]
@@ -97,11 +104,19 @@ export function usePermissao(profile: Profile | null) {
     )
     if (equipeLibera) return true
 
+    // Liberação FIXA por tipo: Encontrista (encounterer) / Encontreiro (worker)
+    const roleKey = myRoleType === 'worker' ? 'encontreiro' : myRoleType === 'encounterer' ? 'encontrista' : null
+    if (roleKey) {
+      const roleLibera = perms.some(p => p.role === roleKey && p.modulo === modulo && p.acao === acao && p.permitido)
+      if (roleLibera) return true
+    }
+
     // "Editar implica visualizar": se pede 'ver' e tem 'editar', libera ver
     if (acao === 'ver') {
       const temEditarInd = perms.some(p => p.person_id && allIds.includes(p.person_id) && p.modulo === modulo && p.acao === 'editar' && p.permitido)
       const temEditarEq = perms.some(p => p.team_id && myTeams.includes(p.team_id) && p.modulo === modulo && p.acao === 'editar' && p.permitido)
-      if (temEditarInd || temEditarEq) return true
+      const temEditarRole = !!roleKey && perms.some(p => p.role === roleKey && p.modulo === modulo && p.acao === 'editar' && p.permitido)
+      if (temEditarInd || temEditarEq || temEditarRole) return true
     }
 
     return false

@@ -306,6 +306,40 @@ export default function Admin({ profile }: { profile?: Profile }) {
       setPermsEquipe(prev => prev.filter(x => x.id !== existe.id))
     }
   }
+
+  // Liberações FIXAS por tipo (role): 'encontrista' / 'encontreiro'
+  async function carregarPermsRole(role: string) {
+    const { data } = await supabase.from('permissoes').select('*').eq('role', role).is('person_id', null).is('team_id', null)
+    setPermsEquipe(data ?? [])
+  }
+  async function togglePermRole(role: string, modulo: string, acao: string = 'ver') {
+    limparCachePermissoes()
+    const existe = permsEquipe.find(x => x.role === role && x.modulo === modulo && x.acao === acao)
+    if (existe) {
+      await supabase.from('permissoes').update({ permitido: !existe.permitido }).eq('id', existe.id)
+      setPermsEquipe(prev => prev.map(x => x.id === existe.id ? { ...x, permitido: !existe.permitido } : x))
+    } else {
+      const { data: n } = await supabase.from('permissoes').insert({ role, modulo, acao, permitido: true }).select().single()
+      if (n) setPermsEquipe(prev => [...prev, n])
+    }
+  }
+  async function removerPermRole(role: string, modulo: string, acao: string = 'ver') {
+    limparCachePermissoes()
+    const existe = permsEquipe.find(x => x.role === role && x.modulo === modulo && x.acao === acao)
+    if (existe) {
+      await supabase.from('permissoes').delete().eq('id', existe.id)
+      setPermsEquipe(prev => prev.filter(x => x.id !== existe.id))
+    }
+  }
+  // Dispatch: se o selecionado é um tipo (role) usa role; senão usa equipe
+  function toggleSelPerm(modulo: string, acao: string) {
+    const sel: any = equipePermSel
+    if (sel?.role) togglePermRole(sel.role, modulo, acao); else togglePermEquipe(sel.id, modulo, acao)
+  }
+  function removerSelPerm(modulo: string, acao: string) {
+    const sel: any = equipePermSel
+    if (sel?.role) removerPermRole(sel.role, modulo, acao); else removerPermEquipe(sel.id, modulo, acao)
+  }
   const permEquipe = (modulo: string, acao: string): boolean => {
     const x = permsEquipe.find(p => p.modulo === modulo && p.acao === acao)
     return x ? x.permitido : false
@@ -1260,7 +1294,20 @@ export default function Admin({ profile }: { profile?: Profile }) {
       {aba==='equipes_perm' && (
         !equipePermSel ? (
           <>
-            <p style={{fontSize:13,color:'var(--muted)',marginBottom:12}}>Selecione uma equipe para ver e editar as liberações dela. Isso não altera nada na tela de Equipes.</p>
+            <p style={{fontSize:13,color:'var(--muted)',marginBottom:12}}>Selecione um <b>tipo fixo</b> (Encontrista/Encontreiro) ou uma equipe para ver e editar as liberações. Tudo acumula (união).</p>
+            {/* Tipos fixos por role */}
+            {([{role:'encontrista',name:'Encontrista',emoji:'🙋',desc:'Liberações de todo encontrista'},{role:'encontreiro',name:'Encontreiro',emoji:'🛡️',desc:'Liberações de todo encontreiro'}]).map(t=>(
+              <button key={t.role} onClick={()=>{setEquipePermSel(t as any);carregarPermsRole(t.role)}}
+                style={{width:'100%',display:'flex',alignItems:'center',gap:12,padding:'14px 16px',background:'var(--primary-light)',border:'1.5px solid var(--primary)',borderRadius:14,marginBottom:8,cursor:'pointer',fontFamily:'inherit',textAlign:'left'}}>
+                <span style={{fontSize:24}}>{t.emoji}</span>
+                <div style={{flex:1}}>
+                  <p style={{fontWeight:800,fontSize:14,color:'var(--primary-dark)'}}>{t.name}</p>
+                  <p style={{fontSize:11,color:'var(--primary)'}}>{t.desc}</p>
+                </div>
+                <span className="icon" style={{color:'var(--primary)'}}>chevron_right</span>
+              </button>
+            ))}
+            <p style={{fontSize:12,color:'var(--muted)',fontWeight:700,margin:'14px 0 8px'}}>Equipes</p>
             {equipesPerm.length === 0
               ? <div className="empty"><p className="empty-title">Nenhuma equipe criada</p></div>
               : equipesPerm.map(eq=>(
@@ -1306,12 +1353,12 @@ export default function Admin({ profile }: { profile?: Profile }) {
                       <div key={fn.acao} style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'10px 16px',borderBottom:'1px solid var(--border)'}}>
                         <p style={{fontSize:13}}>{fn.label}</p>
                         <div style={{display:'flex',gap:6,alignItems:'center'}}>
-                          <button onClick={()=>togglePermEquipe(equipePermSel.id,area.modulo,fn.acao)}
+                          <button onClick={()=>toggleSelPerm(area.modulo,fn.acao)}
                             style={{width:44,height:24,borderRadius:12,border:'none',cursor:'pointer',background:liberado?'var(--primary)':'var(--border)',transition:'background 0.2s',position:'relative',flexShrink:0}}>
                             <span style={{position:'absolute',top:3,left:liberado?23:3,width:18,height:18,borderRadius:'50%',background:'white',transition:'left 0.2s',boxShadow:'0 1px 3px rgba(0,0,0,0.2)'}}/>
                           </button>
                           {perm && (
-                            <button onClick={()=>removerPermEquipe(equipePermSel.id,area.modulo,fn.acao)} title="Remover"
+                            <button onClick={()=>removerSelPerm(area.modulo,fn.acao)} title="Remover"
                               style={{width:24,height:24,borderRadius:6,border:'1px solid var(--border)',background:'white',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}>
                               <span className="icon" style={{fontSize:14,color:'var(--muted)'}}>delete</span>
                             </button>
@@ -1334,12 +1381,12 @@ export default function Admin({ profile }: { profile?: Profile }) {
                         <p style={{fontSize:13,fontWeight:600}}>{label}</p>
                       </div>
                       <div style={{display:'flex',gap:6,alignItems:'center'}}>
-                        <button onClick={()=>togglePermEquipe(equipePermSel.id,modulo,'ver')}
+                        <button onClick={()=>toggleSelPerm(modulo,'ver')}
                           style={{width:44,height:24,borderRadius:12,border:'none',cursor:'pointer',background:liberado?'var(--primary)':'var(--border)',transition:'background 0.2s',position:'relative',flexShrink:0}}>
                           <span style={{position:'absolute',top:3,left:liberado?23:3,width:18,height:18,borderRadius:'50%',background:'white',transition:'left 0.2s',boxShadow:'0 1px 3px rgba(0,0,0,0.2)'}}/>
                         </button>
                         {perm && (
-                          <button onClick={()=>removerPermEquipe(equipePermSel.id,modulo,'ver')} title="Remover"
+                          <button onClick={()=>removerSelPerm(modulo,'ver')} title="Remover"
                             style={{width:24,height:24,borderRadius:6,border:'1px solid var(--border)',background:'white',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}>
                             <span className="icon" style={{fontSize:14,color:'var(--muted)'}}>delete</span>
                           </button>

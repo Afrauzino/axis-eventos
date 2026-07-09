@@ -55,11 +55,17 @@ export default function Dashboard({ profile }: { profile: Profile }) {
   const location  = useLocation()
   const { evento, loading: evLoading } = useEvento()
   const [meuPersonId, setMeuPersonId] = useState<string|null>(null)
+  const [fichaConcluida, setFichaConcluida] = useState(false)  // encontrista já preencheu a ficha na home?
   useEffect(() => {
     if (!evento?.id || !profile?.user_id) { setMeuPersonId(null); return }
     supabase.from('people').select('id').eq('event_id', evento.id).eq('user_id', profile.user_id).maybeSingle()
       .then(({ data }) => setMeuPersonId(data?.id ?? null))
   }, [evento?.id, profile?.user_id])
+  useEffect(() => {
+    if (!evento?.id || !meuPersonId) { setFichaConcluida(false); return }
+    supabase.from('saude_fichas').select('concluida').eq('person_id', meuPersonId).eq('event_id', evento.id).maybeSingle()
+      .then(({ data }) => setFichaConcluida(!!(data as any)?.concluida))
+  }, [evento?.id, meuPersonId])
   const [stats,    setStats]    = useState<Stats|null>(null)
   const [progresso, setProgresso] = useState<{pct:number;total:number;feitos:number}|null>(null)
   const [loading,  setLoading]  = useState(true)
@@ -340,11 +346,15 @@ export default function Dashboard({ profile }: { profile: Profile }) {
 
   return (
     <div className="page slide-up">
-      {/* Encontrista: a própria ficha médica vem PRIMEIRO (encolhe ao salvar) */}
-      {roleType === 'encounterer' && evento && meuPersonId && (
+      {/* Encontrista: preenche a ficha médica aqui; após concluir, some da home
+          (um responsável com liberação ainda edita pela Saúde). */}
+      {roleType === 'encounterer' && evento && meuPersonId && !fichaConcluida && (
         <div style={{ background:'white', borderRadius:14, boxShadow:'var(--shadow-sm)', padding:'14px', marginBottom:16 }}>
-          <p style={{ fontWeight:800, fontSize:15, marginBottom:10, display:'flex', alignItems:'center', gap:6 }}>⛑️ Minha ficha médica</p>
-          <FichaMedica personId={meuPersonId} eventId={evento.id} startOpen />
+          <p style={{ fontWeight:800, fontSize:15, marginBottom:10, display:'flex', alignItems:'center', gap:6 }}>⛑️ Preencha sua ficha médica</p>
+          <FichaMedica personId={meuPersonId} eventId={evento.id} startOpen onSaved={async () => {
+            await supabase.from('saude_fichas').update({ concluida: true }).eq('person_id', meuPersonId).eq('event_id', evento.id)
+            setFichaConcluida(true)
+          }} />
         </div>
       )}
 
