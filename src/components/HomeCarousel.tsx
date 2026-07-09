@@ -9,7 +9,9 @@ const ehYoutube = (u:string) => /youtube\.com|youtu\.be/.test(u)
 const ytId = (u:string) => { const m = u.match(/(?:v=|youtu\.be\/|embed\/)([\w-]{11})/); return m ? m[1] : '' }
 const detectarTipo = (u:string) => (ehYoutube(u) || /\.(mp4|webm|ogg|mov)(\?|$)/i.test(u)) ? 'video' : 'imagem'
 
-export default function HomeCarousel({ admin }: { admin: boolean }) {
+export default function HomeCarousel({ admin, grupo='principal', podeEditar, titulo }: { admin: boolean; grupo?: string; podeEditar?: boolean; titulo?: string }) {
+  // Quem pode postar/remover: por padrão o admin; no carrossel de fotos, quem tem a liberação.
+  const podeMexer = podeEditar ?? admin
   const [itens, setItens] = useState<Item[]>([])
   const [idx, setIdx] = useState(0)
   const [carregado, setCarregado] = useState(false)
@@ -38,8 +40,10 @@ export default function HomeCarousel({ admin }: { admin: boolean }) {
   async function carregar() {
     const { data, error } = await supabase.from('home_midias').select('*').order('ordem')
     setErro(!!error)
-    setItens(data ?? []); setCarregado(true)
-    setIdx(i => (data && i >= data.length ? 0 : i))
+    // Separa os carrosséis por grupo (linhas antigas sem grupo = 'principal')
+    const arr = (data ?? []).filter((d:any)=> (d.grupo ?? 'principal') === grupo)
+    setItens(arr); setCarregado(true)
+    setIdx(i => (i >= arr.length ? 0 : i))
   }
 
   async function enviarImagem(file: File) {
@@ -50,14 +54,14 @@ export default function HomeCarousel({ admin }: { admin: boolean }) {
     if (!error) {
       const { data:u } = supabase.storage.from('arquivos').getPublicUrl(path)
       const tipo = file.type.startsWith('video') ? 'video' : 'imagem'
-      await supabase.from('home_midias').insert({ tipo, url:u.publicUrl, ordem:itens.length, duracao:dur })
+      await supabase.from('home_midias').insert({ tipo, url:u.publicUrl, ordem:itens.length, duracao:dur, grupo })
       await carregar()
     } else toast.falha('Não foi possível enviar. Tente de novo.', error)
     setSubindo(false); setModal(false)
   }
   async function adicionarLink() {
     const u = link.trim(); if (!u) return
-    await supabase.from('home_midias').insert({ tipo:detectarTipo(u), url:u, ordem:itens.length, duracao:dur })
+    await supabase.from('home_midias').insert({ tipo:detectarTipo(u), url:u, ordem:itens.length, duracao:dur, grupo })
     setLink(''); setModal(false); await carregar()
   }
   async function remover(id: string) {
@@ -68,16 +72,17 @@ export default function HomeCarousel({ admin }: { admin: boolean }) {
 
   if (!carregado) return null
   if (itens.length === 0) {
-    if (!admin) return null
+    if (!podeMexer) return null
     return (
       <>
         {erro && (
           <div className="alert-box alert-warning mb-2" style={{fontSize:12}}>
-            A tabela do carrossel não existe ainda. Rode <b>sql/18_home_carousel.sql</b> (e o <b>sql/20_home_duracao.sql</b>) no Supabase.
+            A tabela do carrossel não existe ainda. Rode <b>sql/18_home_carousel.sql</b>, <b>sql/20_home_duracao.sql</b> e <b>sql/46_carrossel_fotos.sql</b> no Supabase.
           </div>
         )}
+        {titulo && <p style={{fontSize:12,fontWeight:800,color:'var(--muted)',textTransform:'uppercase',letterSpacing:'0.06em',marginBottom:8}}>{titulo}</p>}
         <button onClick={()=>setModal(true)} style={{width:'100%',border:'2px dashed var(--border)',background:'var(--bg)',borderRadius:14,padding:'18px',cursor:'pointer',fontFamily:'inherit',color:'var(--muted)',fontSize:13,fontWeight:600,marginBottom:16,display:'flex',alignItems:'center',justifyContent:'center',gap:8}}>
-          <span className="icon icon-sm">add_photo_alternate</span> Adicionar banner na Início
+          <span className="icon icon-sm">add_photo_alternate</span> {titulo ? `Adicionar em ${titulo}` : 'Adicionar banner na Início'}
         </button>
         {modal && <ModalAdd {...{link,setLink,dur,setDur,subindo,enviarImagem,adicionarLink,fechar:()=>setModal(false)}}/>}
       </>
@@ -87,6 +92,7 @@ export default function HomeCarousel({ admin }: { admin: boolean }) {
   const atual = itens[idx]
   return (
     <div style={{marginBottom:16}}>
+      {titulo && <p style={{fontSize:12,fontWeight:800,color:'var(--muted)',textTransform:'uppercase',letterSpacing:'0.06em',marginBottom:8}}>{titulo}</p>}
       <div style={{position:'relative',width:'100%',aspectRatio:'16 / 7',borderRadius:14,overflow:'hidden',background:'#000',boxShadow:'var(--shadow-sm)'}}>
         {atual.tipo === 'video'
           ? (ehYoutube(atual.url)
@@ -94,7 +100,7 @@ export default function HomeCarousel({ admin }: { admin: boolean }) {
               : <video key={atual.id} src={atual.url} autoPlay muted playsInline loop={itens.length<=1} onEnded={proximo} style={{width:'100%',height:'100%',objectFit:'cover'}}/>)
           : <img src={atual.url} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}}/>}
 
-        {admin && (
+        {podeMexer && (
           <button onClick={()=>remover(atual.id)} title="Remover" style={{position:'absolute',top:8,right:8,width:30,height:30,borderRadius:'50%',background:'rgba(0,0,0,0.55)',border:'none',cursor:'pointer',color:'white',display:'flex',alignItems:'center',justifyContent:'center'}}>
             <span className="icon icon-sm">close</span>
           </button>
@@ -107,7 +113,7 @@ export default function HomeCarousel({ admin }: { admin: boolean }) {
           <button key={it.id} onClick={()=>setIdx(i)} aria-label={`slide ${i+1}`}
             style={{width:i===idx?18:7,height:7,borderRadius:99,border:'none',cursor:'pointer',background:i===idx?'var(--primary)':'var(--border)',transition:'all 0.2s',padding:0}}/>
         ))}
-        {admin && (
+        {podeMexer && (
           <button onClick={()=>setModal(true)} title="Adicionar" style={{marginLeft:6,width:22,height:22,borderRadius:'50%',border:'1px solid var(--border)',background:'white',cursor:'pointer',color:'var(--primary)',display:'flex',alignItems:'center',justifyContent:'center'}}>
             <span className="icon" style={{fontSize:15}}>add</span>
           </button>

@@ -24,7 +24,7 @@ import type { Profile } from '../App'
 type Stats = { encontristas:number; encontreiros:number; equipes:number; alertas:number }
 
 // #tela-inicial — blocos reordenáveis (o admin arrasta e salva a ordem)
-const ORDEM_PADRAO = ['evento','proximo','meta','mural','aniversarios','versiculo','ranking','indicadores','carrossel','playlist','boasvindas']
+const ORDEM_PADRAO = ['evento','proximo','meta','mural','aniversarios','versiculo','ranking','indicadores','carrossel','carrossel_fotos','playlist','boasvindas']
 const HOME_CORES = ['#00A99D','#1565C0','#6B46C1','#2F855A','#C53030','#D69E2E','#E8821A','#0F766E','#B83280','#1A202C','#2D3748']
 function normalizarOrdem(arr:any): string[] {
   const base = ORDEM_PADRAO
@@ -335,6 +335,8 @@ export default function Dashboard({ profile }: { profile: Profile }) {
         return <VersiculoDia fundo={estilos[id]} onEditar={admin?(asp:number)=>abrirEstilo(id, asp):undefined} />
       case 'carrossel':
         return <HomeCarousel admin={admin} />
+      case 'carrossel_fotos':
+        return <HomeCarousel admin={admin} grupo="fotos" titulo="Carrossel de fotos" podeEditar={admin || pode('carrossel_fotos','editar')} />
       case 'playlist':
         return <PlaylistHome admin={admin} fundo={estilos[id]} onEditar={admin?(asp:number)=>abrirEstilo(id, asp):undefined} />
       case 'boasvindas':

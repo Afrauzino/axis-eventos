@@ -33,6 +33,7 @@ export const PERM_CATALOGO: PermArea[] = [
   { modulo:'ocorrencias',  label:'Ocorrências',  emoji:'⚠️', funcoes:[{acao:'ver',label:'Ver'},{acao:'editar',label:'Registrar/resolver'}] },
   { modulo:'alertas',      label:'Alertas',      emoji:'📢', funcoes:[{acao:'ver',label:'Ver'},{acao:'editar',label:'Criar'}] },
   { modulo:'relatorios',   label:'Relatórios',   emoji:'📊', funcoes:[{acao:'ver',label:'Ver / Exportar'}] },
+  { modulo:'carrossel_fotos', label:'Carrossel de fotos (Início)', emoji:'🖼️', funcoes:[{acao:'editar',label:'Postar fotos'}] },
 ]
 
 // Menus (visibilidade no menu lateral) — o que aparece pra pessoa/equipe
