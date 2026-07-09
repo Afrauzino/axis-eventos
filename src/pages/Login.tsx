@@ -174,7 +174,7 @@ export default function Login() {
     try {
       const { data: existe } = await supabase.rpc('nome_ja_existe', { p_event: eventoAtivo.id, p_nome: form.name })
       if (existe === true) {
-        const m = 'Já existe alguém inscrito com esse nome. Se for você, faça login. Se for outra pessoa, acrescente um sobrenome.'
+        const m = 'Já existe um cadastro com esse nome. Se for você, use o CÓDIGO de primeiro acesso que te enviaram (ou faça login). Se você não tem código, fale com a liderança. Se for outra pessoa com o mesmo nome, acrescente um sobrenome.'
         setErro(m); toast.aviso(m); setLoading(false); return
       }
     } catch {}
