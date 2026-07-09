@@ -559,6 +559,7 @@ export default function Admin({ profile }: { profile?: Profile }) {
   async function salvarEdicaoCompleta() {
     if (!editPessoaId) return
     if (!editForm.name.trim()) { toast.aviso('O nome é obrigatório.'); return }
+    if (!editForm.photo_url) { toast.aviso('A foto é obrigatória. Adicione uma foto para salvar.'); return }
     setSalvandoEdit(true)
     const { error } = await supabase.from('people').update({
       name: editForm.name,
@@ -1351,6 +1352,7 @@ export default function Admin({ profile }: { profile?: Profile }) {
               showStatus={false}
               showTeam={true}
               showReferencia={false}
+              fotoObrigatoria={true}
             />
             <div style={{display:'flex',gap:8,marginTop:18}}>
               <button className="btn btn-primary" style={{flex:1}} onClick={salvarEdicaoCompleta} disabled={salvandoEdit}>{salvandoEdit?'Salvando...':'Salvar alterações'}</button>

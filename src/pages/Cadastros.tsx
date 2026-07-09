@@ -74,6 +74,7 @@ export default function Cadastros({ profile }: { profile: Profile }) {
   async function salvar(e: React.FormEvent) {
     e.preventDefault(); setErro(''); setSalvando(true)
     if (!evento || !form.name.trim()) { setErro('Nome é obrigatório.'); setSalvando(false); return }
+    if (!form.photo_url) { setErro('A foto é obrigatória. Adicione uma foto para cadastrar.'); setSalvando(false); return }
 
     // Gerar código de acesso
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
@@ -224,8 +225,8 @@ export default function Cadastros({ profile }: { profile: Profile }) {
             </p>
             {erro && <div className="alert-box alert-error mb-3">{erro}</div>}
             <form onSubmit={salvar}>
-              {/* Foto (opcional) — vale pra encontrista e encontreiro */}
-              <div style={{display:'flex',justifyContent:'center',marginBottom:18}}>
+              {/* Foto (OBRIGATÓRIA) — vale pra encontrista e encontreiro */}
+              <div style={{display:'flex',flexDirection:'column',alignItems:'center',marginBottom:18,gap:4}}>
                 <UploadFoto
                   bucket="pessoas"
                   path={`pessoa-${editando?.id ?? Date.now()}`}
@@ -235,6 +236,7 @@ export default function Cadastros({ profile }: { profile: Profile }) {
                   size={96}
                   shape="circle"
                 />
+                {!form.photo_url && <span style={{fontSize:11,fontWeight:700,color:'var(--danger)'}}>Foto obrigatória</span>}
               </div>
 
               {/* Tipo */}
