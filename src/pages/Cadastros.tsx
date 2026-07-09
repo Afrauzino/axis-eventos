@@ -123,12 +123,15 @@ export default function Cadastros({ profile }: { profile: Profile }) {
     await supabase.from('med_controlados').delete().eq('person_id', p.id)
     await supabase.from('people_teams').delete().eq('person_id', p.id)
 
-    // Remover vínculo de conta (não deleta auth.user - precisa do Dashboard)
-    if (p.user_id) {
-      await supabase.from('profiles').update({ role_status:'rejected' }).eq('user_id', p.user_id)
-    }
-
     await supabase.from('people').delete().eq('id', p.id)
+
+    // Apaga a CONTA de verdade (perfil + login auth) via Edge Function — libera o email
+    if (p.user_id) {
+      const { error: fnErr } = await supabase.functions.invoke('admin-delete-user', { body: { target_user_id: p.user_id } })
+      if (fnErr) {
+        await supabase.from('profiles').update({ role_status:'rejected', user_role:'visitante' }).eq('user_id', p.user_id)
+      }
+    }
     carregar()
   }
 
