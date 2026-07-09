@@ -26,17 +26,20 @@ export default function AberturaGate() {
   }, [])
 
   useEffect(() => {
-    if (!pronto || !evento?.start_date) return
+    if (!pronto || !evento?.id || !evento?.start_date) return
     const start = String(evento.start_date).slice(0, 10)
     const ativa = (evento as any).contagem_ativa !== false
-    const jaFez = localStorage.getItem('abertura_' + evento.id)
-    if (ativa && hojeLocalStr() === start && !jaFez) setMostrar(true)
-  }, [pronto, evento])
+    const chave = 'abertura_' + evento.id
+    const jaFez = localStorage.getItem(chave)
+    if (ativa && hojeLocalStr() === start && !jaFez) {
+      // Marca AGORA (na 1ª entrada do dia): dispara UMA única vez por aparelho,
+      // mesmo que a pessoa feche o app antes de concluir a cerimônia.
+      localStorage.setItem(chave, '1')
+      setMostrar(true)
+    }
+  }, [pronto, evento?.id, (evento as any)?.start_date, (evento as any)?.contagem_ativa])
 
-  function concluir() {
-    if (evento?.id) localStorage.setItem('abertura_' + evento.id, '1')
-    setMostrar(false)
-  }
+  function concluir() { setMostrar(false) }
 
   if (!mostrar) return null
   return <AberturaCerimonia mensagem={mensagem || MSG_ABERTURA_PADRAO} onFechar={concluir} />
