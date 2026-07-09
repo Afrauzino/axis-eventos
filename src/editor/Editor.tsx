@@ -75,9 +75,9 @@ export default function Editor({ inicial, dados, onSalvar, onImprimir, subirImag
 
       {/* Painel da ferramenta ativa */}
       {ativa && (
-        <div style={{ background: 'white', borderTop: '1px solid var(--border)', padding: '12px 14px 10px', maxHeight: '42vh', overflowY: 'auto', flexShrink: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-            <span style={{ fontSize: 13, fontWeight: 800 }}>{ativa.nome}</span>
+        <div style={{ background: 'white', borderTop: '1px solid var(--border)', padding: '8px 12px', maxHeight: '30vh', overflowY: 'auto', flexShrink: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 7 }}>
+            <span style={{ fontSize: 12, fontWeight: 800, color: 'var(--muted)' }}>{ativa.nome}</span>
             <button type="button" onClick={() => setFerramenta(null)}
               style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted)', display: 'flex', fontFamily: 'inherit' }}>
               <span className="icon icon-sm">close</span>

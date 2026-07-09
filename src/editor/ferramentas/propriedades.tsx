@@ -20,11 +20,11 @@ registrarFerramenta({
     const set = (patch: any) => dispatch({ t: 'patch', ids: selecao, patch })
 
     const btnIcone = (icone: string, titulo: string, onClick: () => void, perigo = false) => (
-      <button type="button" title={titulo} onClick={onClick}
+      <button key={titulo} type="button" title={titulo} onClick={onClick}
         style={{
-          flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, padding: '9px 4px',
+          flex: '0 0 auto', width: 60, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, padding: '8px 3px',
           border: '1px solid var(--border)', borderRadius: 10, background: 'white', cursor: 'pointer', fontFamily: 'inherit',
-          color: perigo ? 'var(--danger)' : 'var(--text2)', fontSize: 10, fontWeight: 600,
+          color: perigo ? 'var(--danger)' : 'var(--text2)', fontSize: 9.5, fontWeight: 600, lineHeight: 1.1,
         }}>
         <span className="icon icon-sm">{icone}</span>{titulo}
       </button>
@@ -50,14 +50,11 @@ registrarFerramenta({
             onChange={e => set({ rot: Number(e.target.value) })} style={{ width: '100%' }} />
         </label>
 
-        <div style={{ display: 'flex', gap: 6 }}>
+        <div className="ed-tira" style={{ display: 'flex', gap: 6, overflowX: 'auto', scrollbarWidth: 'none', paddingBottom: 2 }}>
           {btnIcone('flip_to_front', 'Frente', () => dispatch({ t: 'ordem', ids: selecao, para: 'frente' }))}
           {btnIcone('flip_to_back', 'Trás', () => dispatch({ t: 'ordem', ids: selecao, para: 'tras' }))}
           {btnIcone('vertical_align_top', 'Topo', () => dispatch({ t: 'ordem', ids: selecao, para: 'topo' }))}
           {btnIcone('vertical_align_bottom', 'Fundo', () => dispatch({ t: 'ordem', ids: selecao, para: 'fundo' }))}
-        </div>
-
-        <div style={{ display: 'flex', gap: 6 }}>
           {btnIcone(el.bloqueado ? 'lock' : 'lock_open', el.bloqueado ? 'Desbloq.' : 'Bloquear', () => set({ bloqueado: !el.bloqueado }))}
           {btnIcone('content_copy', 'Duplicar', () => dispatch({ t: 'duplicar', ids: selecao }))}
           {els.length > 1

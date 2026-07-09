@@ -49,28 +49,30 @@ function PainelAdicionar({ ctx }: { ctx: CtxEditor }) {
     selecionar([el.id])
   }
 
+  // Tira horizontal (estilo Canva): compacta, rola pro lado, ocupa pouca altura.
   const botao = (chave: string, icone: string, nome: string, onClick: () => void) => (
     <button key={chave} type="button" disabled={ocupado} onClick={onClick}
       style={{
-        display: 'flex', alignItems: 'center', gap: 10, padding: '14px 12px',
-        border: '1px dashed var(--border)', borderRadius: 12, background: 'white',
-        cursor: ocupado ? 'default' : 'pointer', opacity: ocupado ? 0.5 : 1,
-        fontFamily: 'inherit', fontSize: 13, fontWeight: 700, color: 'var(--text2)', textAlign: 'left',
+        flex: '0 0 auto', width: 66, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
+        padding: '9px 4px', border: '1px solid var(--border)', borderRadius: 10, background: 'white',
+        cursor: ocupado ? 'default' : 'pointer', opacity: ocupado ? 0.5 : 1, fontFamily: 'inherit',
       }}>
-      <span className="icon" style={{ color: 'var(--primary)' }}>{icone}</span>
-      {nome}
+      <span className="icon" style={{ color: 'var(--primary)', fontSize: 22 }}>{icone}</span>
+      <span style={{ fontSize: 9.5, fontWeight: 700, color: 'var(--text2)', lineHeight: 1.1, textAlign: 'center' }}>{nome}</span>
     </button>
   )
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8 }}>
-      {listarElementos().flatMap(def => [
-        botao(def.tipo, def.icone, def.nome, () => inserir(def)),
-        ...(def.presets ?? []).map(pr =>
-          botao(def.tipo + ':' + pr.nome, pr.icone ?? def.icone, pr.nome, () => inserir(def, pr)),
-        ),
-      ])}
-      {ocupado && <p style={{ gridColumn: '1/-1', fontSize: 12, color: 'var(--muted)' }}>Enviando imagem...</p>}
-    </div>
+    <>
+      <div className="ed-tira" style={{ display: 'flex', gap: 7, overflowX: 'auto', scrollbarWidth: 'none', paddingBottom: 2 }}>
+        {listarElementos().flatMap(def => [
+          botao(def.tipo, def.icone, def.nome, () => inserir(def)),
+          ...(def.presets ?? []).map(pr =>
+            botao(def.tipo + ':' + pr.nome, pr.icone ?? def.icone, pr.nome, () => inserir(def, pr)),
+          ),
+        ])}
+      </div>
+      {ocupado && <p style={{ fontSize: 11, color: 'var(--muted)', marginTop: 6 }}>Enviando imagem...</p>}
+    </>
   )
 }

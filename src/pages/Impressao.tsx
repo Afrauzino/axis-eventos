@@ -21,6 +21,16 @@ type Modelo = { id:string; nome:string; doc:Documento }
 
 const CHAVE = 'impressao_modelos_v2'
 
+/** Folha em branco (crachá em pé), sem nenhum elemento. Não mexe nos modelos salvos. */
+function docVazio(): Documento {
+  return {
+    id: novoId(), nome: 'Sem título',
+    papel: { largura: 54, altura: 86 },
+    paginas: [{ id: novoId(), fundo: '#ffffff', elementos: [] }],
+    fonteDados: 'pessoas',
+  }
+}
+
 /** Modelo inicial: crachá em pé (5,4 × 8,6 cm) com foto e nome, repetido por pessoa. */
 function docPadrao(): Documento {
   const foto = criarElemento('foto', { x: 12, y: 12, w: 30, h: 30 })!
@@ -150,10 +160,13 @@ export default function Impressao({ profile }: { profile?: Profile }) {
 
       {/* Modelos salvos */}
       {abrirModelos && (
-        <div style={{ background:'var(--bg)', padding:'10px 12px', borderBottom:'1px solid var(--border)', display:'flex', gap:8, flexWrap:'wrap', flexShrink:0 }}>
-          <button className="btn btn-ghost btn-sm" onClick={()=>{ setDoc(docPadrao()); setAbrirModelos(false) }}>+ Novo modelo</button>
+        <div className="ed-tira" style={{ background:'var(--bg)', padding:'10px 12px', borderBottom:'1px solid var(--border)', display:'flex', gap:8, overflowX:'auto', scrollbarWidth:'none', flexShrink:0 }}>
+          <button className="btn btn-primary btn-sm" style={{ flexShrink:0 }} onClick={()=>{ setDoc(docVazio()); setAbrirModelos(false) }}>
+            <span className="icon icon-sm">note_add</span> Começar do zero
+          </button>
+          <button className="btn btn-ghost btn-sm" style={{ flexShrink:0 }} onClick={()=>{ setDoc(docPadrao()); setAbrirModelos(false) }}>Modelo pronto</button>
           {modelos.map(m => (
-            <div key={m.id} style={{ display:'flex', alignItems:'center', gap:4, background: doc.id===m.id?'var(--primary)':'white', color: doc.id===m.id?'white':'var(--text)', border:'1px solid var(--border)', borderRadius:99, padding:'4px 6px 4px 12px' }}>
+            <div key={m.id} style={{ flexShrink:0, display:'flex', alignItems:'center', gap:4, background: doc.id===m.id?'var(--primary)':'white', color: doc.id===m.id?'white':'var(--text)', border:'1px solid var(--border)', borderRadius:99, padding:'4px 6px 4px 12px' }}>
               <button onClick={()=>{ setDoc(m.doc); setAbrirModelos(false) }} style={{ background:'none', border:'none', cursor:'pointer', color:'inherit', fontFamily:'inherit', fontWeight:700, fontSize:13 }}>{m.nome}</button>
               {canEdit && <button onClick={()=>excluirModelo(m.id)} style={{ background:'none', border:'none', cursor:'pointer', color:'inherit', opacity:0.7, display:'flex' }}><span className="icon icon-sm">close</span></button>}
             </div>

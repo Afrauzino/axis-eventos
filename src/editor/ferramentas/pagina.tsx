@@ -30,24 +30,24 @@ registrarFerramenta({
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         <div>
           <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--muted)', marginBottom: 6 }}>Tamanho da folha que você desenha</p>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 6, marginBottom: 8 }}>
+          <div className="ed-tira" style={{ display: 'flex', gap: 6, overflowX: 'auto', scrollbarWidth: 'none', paddingBottom: 2, marginBottom: 8 }}>
             {PAPEIS.map(p => {
               const ativo = L === p.l && A === p.a
               return (
                 <button key={p.nome} type="button" onClick={() => dispatch({ t: 'papel', patch: { largura: p.l, altura: p.a } })}
-                  style={{ padding: '8px 10px', borderRadius: 10, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
+                  style={{ flex: '0 0 auto', width: 96, padding: '7px 8px', borderRadius: 10, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
                     border: ativo ? '2px solid var(--primary)' : '1px solid var(--border)',
                     background: ativo ? 'var(--primary-light)' : 'white' }}>
-                  <span style={{ display: 'block', fontSize: 12.5, fontWeight: 700, color: ativo ? 'var(--primary)' : 'var(--text2)' }}>{p.nome}</span>
-                  <span style={{ display: 'block', fontSize: 10.5, color: 'var(--muted)', marginTop: 1 }}>{p.desc}</span>
+                  <span style={{ display: 'block', fontSize: 11.5, fontWeight: 700, color: ativo ? 'var(--primary)' : 'var(--text2)', lineHeight: 1.2 }}>{p.nome}</span>
+                  <span style={{ display: 'block', fontSize: 9.5, color: 'var(--muted)', marginTop: 1 }}>{p.desc}</span>
                 </button>
               )
             })}
-            <div style={{ padding: '8px 10px', borderRadius: 10, textAlign: 'left',
+            <div style={{ flex: '0 0 auto', width: 96, padding: '7px 8px', borderRadius: 10, textAlign: 'left',
               border: !ehPreset ? '2px solid var(--primary)' : '1px dashed var(--border)',
               background: !ehPreset ? 'var(--primary-light)' : 'white' }}>
-              <span style={{ display: 'block', fontSize: 12.5, fontWeight: 700, color: !ehPreset ? 'var(--primary)' : 'var(--text2)' }}>Personalizado</span>
-              <span style={{ display: 'block', fontSize: 10.5, color: 'var(--muted)', marginTop: 1 }}>digite abaixo</span>
+              <span style={{ display: 'block', fontSize: 11.5, fontWeight: 700, color: !ehPreset ? 'var(--primary)' : 'var(--text2)', lineHeight: 1.2 }}>Personalizado</span>
+              <span style={{ display: 'block', fontSize: 9.5, color: 'var(--muted)', marginTop: 1 }}>digite abaixo</span>
             </div>
           </div>
 

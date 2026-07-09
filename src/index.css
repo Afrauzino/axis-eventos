@@ -1022,6 +1022,9 @@ body {
 /* Barra de data (semana) — esconde a barra de rolagem */
 .barra-data-scroll::-webkit-scrollbar { display: none; height: 0; }
 
+/* Editor de impressão — tiras horizontais (estilo Canva) sem barra de rolagem */
+.ed-tira::-webkit-scrollbar { display: none; height: 0; }
+
 /* ── RESPONSIVE ─────────────────────────────────── */
 @media (min-width: 768px) {
   .page { max-width: 900px; padding: 20px 28px 80px; }
