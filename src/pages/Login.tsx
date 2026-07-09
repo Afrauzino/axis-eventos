@@ -4,6 +4,7 @@ import { carregarConfig } from '../lib/tema'
 import CadastroPessoa, { FORM_VAZIO, MED_VAZIO, type PessoaForm, type MedCtrl } from '../components/CadastroPessoa'
 import InstallPWA from '../components/InstallPWA'
 import { toast } from '../components/Toast'
+import { formatName } from '../utils'
 
 type Modo = 'login' | 'codigo' | 'cadastro' | 'recuperar' | 'inscrever'
 
@@ -170,9 +171,12 @@ export default function Login() {
       return
     }
 
+    // Nome sempre gravado na norma do português (MARIA DA SILVA → Maria da Silva)
+    const nome = formatName(form.name)
+
     // Anti-duplicidade por NOME COMPLETO (checagem no servidor — sql/49)
     try {
-      const { data: existe } = await supabase.rpc('nome_ja_existe', { p_event: eventoAtivo.id, p_nome: form.name })
+      const { data: existe } = await supabase.rpc('nome_ja_existe', { p_event: eventoAtivo.id, p_nome: nome })
       if (existe === true) {
         const m = 'Já existe um cadastro com esse nome. Se for você, use o CÓDIGO de primeiro acesso que te enviaram (ou faça login). Se você não tem código, fale com a liderança. Se for outra pessoa com o mesmo nome, acrescente um sobrenome.'
         setErro(m); toast.aviso(m); setLoading(false); return
@@ -180,7 +184,7 @@ export default function Login() {
     } catch {}
 
     const { data: authData, error: authErr } = await supabase.auth.signUp({
-      email: email.trim().toLowerCase(), password: senha, options: { data: { full_name: form.name } },
+      email: email.trim().toLowerCase(), password: senha, options: { data: { full_name: nome } },
     })
     if (authErr) {
       const msg = authErr.message || ''
@@ -193,7 +197,7 @@ export default function Login() {
     const tel = form.phone.trim()
     // Cria o próprio registro de pessoa (fica pendente de aprovação do admin)
     const { data: nova, error: pErr } = await supabase.from('people').insert({
-      event_id: eventoAtivo.id, user_id: uid, name: form.name, phone: tel,
+      event_id: eventoAtivo.id, user_id: uid, name: nome, phone: tel,
       // church e role_type sao NOT NULL no banco — nunca mandar null
       contact_phone: form.contact_phone || null, church: (form.church || '').trim(),
       role_type: form.role_type || 'encounterer',
@@ -207,7 +211,7 @@ export default function Login() {
     const personId = nova.id
 
     const r2 = await supabase.from('profiles').upsert({
-      user_id: uid, name: form.name, phone: tel, user_role: 'visitante', role_status: 'pending',
+      user_id: uid, name: nome, phone: tel, user_role: 'visitante', role_status: 'pending',
     }, { onConflict: 'user_id' })
     if (r2.error) { setErro('Erro ao criar perfil: ' + r2.error.message); setLoading(false); return }
 
@@ -251,9 +255,12 @@ export default function Login() {
       return
     }
 
+    // Nome sempre gravado na norma do português (MARIA DA SILVA → Maria da Silva)
+    const nome = formatName(form.name)
+
     // Anti-duplicidade por NOME COMPLETO (ignora o próprio pré-cadastro) — sql/49
     try {
-      const { data: existe } = await supabase.rpc('nome_ja_existe', { p_event: pessoa.event_id, p_nome: form.name, p_exceto: pessoa.id })
+      const { data: existe } = await supabase.rpc('nome_ja_existe', { p_event: pessoa.event_id, p_nome: nome, p_exceto: pessoa.id })
       if (existe === true) {
         const m = 'Já existe outra pessoa com esse nome neste evento. Acrescente um sobrenome para diferenciar.'
         setErro(m); toast.aviso(m); setLoading(false); return
@@ -264,7 +271,7 @@ export default function Login() {
     const { data: authData, error: authErr } = await supabase.auth.signUp({
       email: email.trim().toLowerCase(),
       password: senha,
-      options: { data: { full_name: form.name } }
+      options: { data: { full_name: nome } }
     })
 
     if (authErr) {
@@ -290,7 +297,7 @@ export default function Login() {
     const r1 = await supabase.from('people').update({
       user_id: uid,
       invite_code: null,
-      name: form.name,
+      name: nome,
       phone: telefoneLimpo,
       contact_phone: form.contact_phone || null,
       church: form.church || null,
@@ -314,7 +321,7 @@ export default function Login() {
     // ETAPA 2 — Profile
     const r2 = await supabase.from('profiles').upsert({
       user_id: uid,
-      name: form.name,
+      name: nome,
       phone: telefoneLimpo,
       user_role: 'visitante',
       role_status: 'pending',

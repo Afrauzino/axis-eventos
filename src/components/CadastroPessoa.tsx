@@ -8,6 +8,7 @@ import { supabase } from '../lib/supabase'
 import UploadFoto from './UploadFoto'
 import Seletor from './Seletor'
 import DataHora from './DataHora'
+import { formatName } from '../utils'
 
 export type MedCtrl = {
   nome:string; tipo:'comprimido'|'gotas'|'outros'
@@ -329,7 +330,9 @@ export default function CadastroPessoa({
 
       <div className="form-group">
         <label className="form-label">Nome completo <span className="req">*</span></label>
-        {inp('name',{required:true,placeholder:'Nome como no documento'})}
+        {/* ao sair do campo já mostra o nome arrumado — "MARIA DA SILVA" vira "Maria da Silva" */}
+        {inp('name',{required:true,placeholder:'Nome como no documento',
+          onBlur:(e:React.FocusEvent<HTMLInputElement>)=>s('name', formatName(e.target.value))})}
       </div>
 
       <div className="form-grid-2">

@@ -118,7 +118,7 @@ function SemAcesso() {
   )
 }
 
-function AppRoutes({ profile, onProfileUpdate }: { profile: Profile; onProfileUpdate: () => void }) {
+function AppRoutes({ profile, onProfileUpdate, versaoFotos }: { profile: Profile; onProfileUpdate: () => void; versaoFotos: number }) {
   const loc = useLocation()
   const { pode, carregado } = usePermissao(profile)
   const admin = isAdmin(profile.user_role) || profile.is_admin
@@ -130,7 +130,8 @@ function AppRoutes({ profile, onProfileUpdate }: { profile: Profile; onProfileUp
   }
   return (
     <Suspense fallback={<div className="page">{[1,2,3].map(i=><div key={i} className="skeleton" style={{height:80,marginBottom:10,borderRadius:14}}/>)}</div>}>
-    <Routes>
+    {/* key muda quando ALGUÉM troca a foto → a tela aberta recarrega sozinha */}
+    <Routes key={versaoFotos}>
       <Route path="/"                      element={<Dashboard profile={profile} />} />
       <Route path="/minhas-atividades"     element={<MinhasAtividades profile={profile} />} />
       <Route path="/cronograma"            element={<Cronograma profile={profile} />} />
@@ -239,7 +240,32 @@ export default function App() {
   // #6 — central de notificações
   const [notifOpen, setNotifOpen] = useState(false)
   const [notifUnread, setNotifUnread] = useState(0)
+  const [versaoFotos, setVersaoFotos] = useState(0)
   const { evento: eventoAtivo } = useEvento()
+
+  // Troca de foto em tempo real: quando qualquer pessoa muda a foto, a tela
+  // aberta recarrega. Só reage à FOTO (o banco manda o valor antigo junto —
+  // REPLICA IDENTITY FULL no sql/50), senão qualquer salvamento recarregaria tudo.
+  useEffect(() => {
+    if (!session) return
+    const mudouFoto = (payload: any) => {
+      const n = payload.new ?? {}, v = payload.old ?? {}
+      const antes = v.photo_url ?? v.avatar_url
+      const depois = n.photo_url ?? n.avatar_url
+      return depois !== undefined && antes !== depois
+    }
+    const meu = (p: any) => (p.new as any)?.user_id === session.user.id
+    const canal = supabase.channel('fotos-globais')
+      // Foto de OUTRA pessoa: recarrega a tela aberta (Equipes, Escalas, Crachá…).
+      // A minha própria eu já atualizo na tela de Perfil — remontar aqui apagaria o aviso de sucesso.
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'people' },
+        p => { if (mudouFoto(p) && !meu(p)) setVersaoFotos(v => v + 1) })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles' },
+        p => { if (!mudouFoto(p)) return
+               if (meu(p)) loadProfile(session.user.id); else setVersaoFotos(v => v + 1) })
+      .subscribe()
+    return () => { supabase.removeChannel(canal) }
+  }, [session])
 
   useEffect(() => {
     carregarCorSalva()
@@ -361,7 +387,7 @@ export default function App() {
         {/* Main content — scroller principal (sem transform: senao FAB/modais position:fixed grudam no main em vez da tela) */}
         <main style={{flex:1,overflowY:'auto',position:'relative',WebkitOverflowScrolling:'touch'}}>
           <CriticoWatcher profile={profile} />
-          <AppRoutes profile={profile} onProfileUpdate={()=>loadProfile(profile.user_id)} />
+          <AppRoutes profile={profile} onProfileUpdate={()=>loadProfile(profile.user_id)} versaoFotos={versaoFotos} />
           {/* #2 — Botão de instalar SEMPRE no final de tudo (aparece sozinho quando dá pra instalar) */}
           <div style={{padding:'0 16px 24px'}}><InstallPWA autoShow /></div>
         </main>

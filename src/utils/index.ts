@@ -1,12 +1,23 @@
-// ── Nome formatado (primeira letra maiúscula) ──────
+// ── Nome formatado (norma do português) ────────────
+// "MARIA DA SILVA" e "maria da silva" viram "Maria da Silva".
+// Preposições ficam minúsculas — menos quando abrem o nome.
+const PARTICULAS = new Set(['de', 'da', 'das', 'do', 'dos', 'e', 'di', 'du', 'del', 'della', 'van', 'von', 'y', 'la', 'le'])
+
+/** Capitaliza um pedaço, respeitando hífen e apóstrofo: "d'avila" → "D'Avila", "ana-maria" → "Ana-Maria". */
+function capitalizarPedaco(p: string): string {
+  const cap = (s: string) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s)
+  return p.split('-').map(h => h.split("'").map(cap).join("'")).join('-')
+}
+
 export function formatName(name: string): string {
   if (!name) return ''
   return name
-    .toLowerCase()
-    .split(' ')
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(' ')
     .trim()
+    .toLowerCase()
+    .replace(/\s+/g, ' ')            // "Maria   Silva" → "Maria Silva"
+    .split(' ')
+    .map((palavra, i) => (i > 0 && PARTICULAS.has(palavra) ? palavra : capitalizarPedaco(palavra)))
+    .join(' ')
 }
 
 // ── Iniciais do nome ───────────────────────────────

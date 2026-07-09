@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase'
 import { useVoltarFecha } from '../hooks/useVoltarFecha'
 import ConfigCor from './ConfigCor'
 import { limparCachePermissoes } from '../hooks/usePermissao'
-import { fmtDataHora, isAdmin } from '../utils'
+import { fmtDataHora, isAdmin, formatName } from '../utils'
 import { invalidarEventoAtivo } from '../hooks/useEvento'
 import { registrarLog } from '../lib/audit'
 import { useNavigate } from 'react-router-dom'
@@ -562,7 +562,7 @@ export default function Admin({ profile }: { profile?: Profile }) {
     if (!editForm.photo_url) { toast.aviso('A foto é obrigatória. Adicione uma foto para salvar.'); return }
     setSalvandoEdit(true)
     const { error } = await supabase.from('people').update({
-      name: editForm.name,
+      name: formatName(editForm.name),
       phone: (editForm.phone || '').replace(/\D/g,'') || editForm.phone || '',
       contact_phone: editForm.contact_phone || null,
       church: editForm.church || null,

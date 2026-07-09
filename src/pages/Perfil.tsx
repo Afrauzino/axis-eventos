@@ -66,7 +66,13 @@ export default function Perfil({ profile, onUpdate }: { profile: Profile; onUpda
     const urlComCache = data.publicUrl + '?t=' + Date.now()
     const { error: upErr2 } = await supabase.from('profiles').update({ avatar_url: urlComCache }).eq('user_id', profile.user_id)
     if (upErr2) { setErro('Foto enviada mas erro ao salvar: ' + upErr2.message); setUploading(false); return }
-    setOk('Foto atualizada!'); setUploading(false); onUpdate()
+
+    // Propaga a foto para TUDO que a pessoa está ligada (cadastro no evento, mural…).
+    // Sem isso, Equipes/Escalas/Crachá/Impressão continuam com a foto velha (sql/50).
+    const { error: syncErr } = await supabase.rpc('sincronizar_meu_perfil', { p_foto: urlComCache })
+    if (syncErr) { setErro('Foto salva no perfil, mas não atualizou nas outras telas. O admin precisa rodar o sql/50_alertas_mural_foto.sql.'); setUploading(false); onUpdate(); return }
+
+    setOk('Foto atualizada em todas as telas!'); setUploading(false); onUpdate()
   }
 
   async function salvarDados(e: React.FormEvent) {
@@ -77,7 +83,10 @@ export default function Perfil({ profile, onUpdate }: { profile: Profile; onUpda
       .update({ name: nome, phone: form.phone || null, church: form.church || null })
       .eq('user_id', profile.user_id)
     if (error) { setErro('Erro ao salvar: ' + error.message) }
-    else { setOk('Dados atualizados!'); onUpdate() }
+    else {
+      await supabase.rpc('sincronizar_meu_perfil', { p_nome: nome })   // nome também é copiado no mural/cadastro
+      setOk('Dados atualizados!'); onUpdate()
+    }
     setSalvando(false)
   }
 

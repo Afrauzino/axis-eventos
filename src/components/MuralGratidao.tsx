@@ -91,7 +91,10 @@ export default function MuralGratidao({ eventoId, profile, fundo, onEditar }: { 
 
   async function excluir(p: Post) {
     if (!confirm('Apagar esta mensagem?')) return
-    await supabase.from('mural_posts').delete().eq('id', p.id)
+    // .delete() bloqueado pela RLS não dá erro — só não apaga nada. Por isso conferimos o retorno.
+    const { data, error } = await supabase.from('mural_posts').delete().eq('id', p.id).select('id')
+    if (error) { toast.falha('Não foi possível apagar.', error); return }
+    if (!data?.length) { toast.aviso('Sem permissão para apagar. O admin precisa rodar o sql/50_alertas_mural_foto.sql.'); return }
     if (eventoId) carregar(eventoId)
   }
 
@@ -125,7 +128,9 @@ export default function MuralGratidao({ eventoId, profile, fundo, onEditar }: { 
   }
 
   async function excluirComent(c: Comentario) {
-    await supabase.from('mural_comentarios').delete().eq('id', c.id)
+    const { data, error } = await supabase.from('mural_comentarios').delete().eq('id', c.id).select('id')
+    if (error) { toast.falha('Não foi possível apagar o comentário.', error); return }
+    if (!data?.length) { toast.aviso('Sem permissão para apagar. O admin precisa rodar o sql/50_alertas_mural_foto.sql.'); return }
     if (eventoId) carregar(eventoId)
   }
 

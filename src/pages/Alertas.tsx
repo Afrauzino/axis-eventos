@@ -9,6 +9,15 @@ import type { Profile } from '../App'
 type Alerta = { id:string; title:string; message:string; priority:string; created_at:string; target_type:string; requires_read:boolean }
 type Leitura = { alert_id:string; user_id:string }
 
+// Para quem o alerta foi mandado (sql/50 permite 'worker' e 'encounterer')
+const DESTINO: Record<string,{label:string;icone:string}> = {
+  all:         { label:'Todos',        icone:'groups' },
+  worker:      { label:'Encontreiros', icone:'engineering' },
+  encounterer: { label:'Encontristas', icone:'favorite' },
+  team:        { label:'Equipe',       icone:'diversity_3' },
+  multiple:    { label:'Equipes',      icone:'diversity_3' },
+}
+
 const PRIOR: Record<string,{label:string;border:string;badge:string}> = {
   critico:   {label:'Critico',    border:'var(--danger)',  badge:'badge-danger'},
   urgente:   {label:'Urgente',    border:'var(--danger)',  badge:'badge-danger'},
@@ -44,25 +53,26 @@ export default function Alertas({ profile }: { profile?: Profile }) {
       supabase.from('alert_reads').select('alert_id,user_id').eq('user_id',profile.user_id),
     ])
 
-    // Find my teams if lider
+    // Meu cadastro no evento: diz se sou encontreiro ou encontrista, e quais equipes lidero
+    const { data: myPerson } = await supabase.from('people').select('id,role_type')
+      .eq('event_id', evento.id).eq('user_id', profile.user_id).maybeSingle()
+
     let teamIds: string[] = []
-    if (!isAdmin(profile.user_role) && isLider(profile.user_role)) {
-      const { data: myPerson } = await supabase.from('people').select('id')
-        .eq('event_id', evento.id).eq('user_id', profile.user_id).maybeSingle()
-      if (myPerson) {
-        const { data: myTeams } = await supabase.from('teams').select('id')
-          .or(`leader_id.eq.${myPerson.id},co_leader_id.eq.${myPerson.id}`)
-        teamIds = myTeams?.map(t=>t.id) ?? []
-      }
+    if (!isAdmin(profile.user_role) && isLider(profile.user_role) && myPerson) {
+      const { data: myTeams } = await supabase.from('teams').select('id')
+        .or(`leader_id.eq.${myPerson.id},co_leader_id.eq.${myPerson.id}`)
+      teamIds = myTeams?.map(t=>t.id) ?? []
     }
     setMyTeamIds(teamIds)
 
-    // Lider vê: alertas 'all' + alertas direcionados para sua equipe
+    // Quem vê o quê: 'all' (todos) + do meu tipo (encontreiro/encontrista) + da minha equipe.
+    // O banco (sql/50) já barra o resto; aqui é só pra tela ficar coerente.
     const todos = al.data ?? []
     const filtrados = adminFull
       ? todos
       : todos.filter(a =>
           a.target_type === 'all' ||
+          (!!myPerson?.role_type && a.target_type === myPerson.role_type) ||
           (a.target_type === 'team' && (
             teamIds.length === 0 ||
             !a.target_team_ids?.length ||
@@ -93,7 +103,11 @@ export default function Alertas({ profile }: { profile?: Profile }) {
       created_by: authUser?.id ?? null,
       target_team_ids: teamIds,
     })
-    if (error) { setErro('Erro: '+error.message); setSalvando(false); return }
+    if (error) {
+      const faltaSql = error.message.includes('target_type')
+      setErro(faltaSql ? 'Para mandar só para encontreiros/encontristas, rode antes o sql/50_alertas_mural_foto.sql.' : 'Erro: '+error.message)
+      setSalvando(false); return
+    }
     setModal(false); setSalvando(false)
     setForm({title:'',message:'',priority:'info',target_type:'all',requires_read:false})
     carregar()
@@ -133,6 +147,13 @@ export default function Alertas({ profile }: { profile?: Profile }) {
                 <p style={{fontWeight:700,fontSize:14,flex:1,marginRight:8}}>{a.title}</p>
                 <span className={`badge ${cfg.badge}`} style={{flexShrink:0}}>{cfg.label}</span>
               </div>
+              {/* Para quem foi — só faz sentido pra quem manda */}
+              {canCreate && DESTINO[a.target_type] && (
+                <p style={{display:'inline-flex',alignItems:'center',gap:4,fontSize:11,fontWeight:700,color:'var(--muted)',marginBottom:6}}>
+                  <span className="icon" style={{fontSize:14}}>{DESTINO[a.target_type].icone}</span>
+                  {DESTINO[a.target_type].label}
+                </p>
+              )}
               <p style={{fontSize:13,color:'var(--text2)',marginBottom:10,lineHeight:1.5}}>{a.message}</p>
               <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
                 <p style={{fontSize:11,color:'var(--muted)'}}>{fmtDataHora(a.created_at)}</p>
@@ -176,9 +197,13 @@ export default function Alertas({ profile }: { profile?: Profile }) {
                     ]}/>
                 </div>
                 <div className="form-group"><label className="form-label">Destino</label>
-                  <Seletor titulo="Destino" value={form.target_type} onChange={v=>setForm(f=>({...f,target_type:v}))}
+                  <Seletor titulo="Quem vai receber" value={form.target_type} onChange={v=>setForm(f=>({...f,target_type:v}))}
                     opcoes={[
-                      ...(profile && isAdmin(profile.user_role) ? [{value:'all',label:'Todos'}] : []),
+                      ...(profile && isAdmin(profile.user_role) ? [
+                        {value:'all',         label:'Todos'},
+                        {value:'worker',      label:'Só encontreiros'},
+                        {value:'encounterer', label:'Só encontristas'},
+                      ] : []),
                       {value:'team',label:'Minha equipe'},
                     ]}/>
                 </div>
