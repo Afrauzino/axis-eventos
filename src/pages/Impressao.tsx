@@ -12,9 +12,11 @@ import type { Profile } from '../App'
 
 type Pessoa = { id:string; name:string; photo_url:string|null; role_type?:string|null }
 type Cfg = {
-  tipo:'grade'|'tira'|'pagina'   // pagina = 1 pessoa por folha
+  tipo:'grade'|'tira'|'pagina'        // pagina = N pessoas por folha (grandes)
+  orientacao:'retrato'|'paisagem'     // A4 em pé ou deitada
+  porFolha:number                     // pagina: quantas pessoas por folha (1-4)
   fotoOn:boolean; fotoTam:number; fotoRedonda:boolean
-  nomes:number            // base de nomes (1 ou 2) — a regra do 3º completa quando repete
+  nomes:number            // base de nomes — a regra do 3º completa quando repete
   nomeTam:number          // tamanho da letra do nome (px)
   nomePos:'baixo'|'cima'  // nome abaixo ou acima da foto
   colunas:number          // grade: colunas por folha
@@ -22,7 +24,7 @@ type Cfg = {
 }
 type Modelo = { id:string; nome:string; cfg:Cfg }
 
-const CFG_PADRAO: Cfg = { tipo:'grade', fotoOn:true, fotoTam:74, fotoRedonda:true, nomes:2, nomeTam:14, nomePos:'baixo', colunas:4, corFundo:'#ffffff', corTexto:'#111827', corBorda:'#e5e7eb' }
+const CFG_PADRAO: Cfg = { tipo:'grade', orientacao:'paisagem', porFolha:1, fotoOn:true, fotoTam:74, fotoRedonda:true, nomes:2, nomeTam:14, nomePos:'baixo', colunas:4, corFundo:'#ffffff', corTexto:'#111827', corBorda:'#e5e7eb' }
 const CORES = ['#ffffff','#F3F4F6','#1E2D4D','#00A99D','#2B6CB0','#6B46C1','#2F855A','#C53030','#D69E2E','#111827']
 
 export default function Impressao({ profile }: { profile?: Profile }) {
@@ -98,27 +100,32 @@ export default function Impressao({ profile }: { profile?: Profile }) {
 
   // ---------- Cartão de uma pessoa ----------
   const Cartao = ({ p, grande=false }: { p: Pessoa; grande?:boolean }) => {
-    const ft = grande ? cfg.fotoTam*3.4 : cfg.fotoTam
+    const ft = cfg.fotoTam * (grande ? Math.max(1.3, 3.4/cfg.porFolha) : 1)
     const fotoStyle: React.CSSProperties = { width:ft, height:cfg.fotoRedonda?ft:ft*1.25, borderRadius:cfg.fotoRedonda?'50%':10, objectFit:'cover', flexShrink:0, background:'#e5e7eb' }
     const foto = cfg.fotoOn && (
       p.photo_url
         ? <img src={p.photo_url} alt="" style={fotoStyle}/>
         : <div style={{...fotoStyle, display:'flex', alignItems:'center', justifyContent:'center', fontWeight:800, color:'#6b7280', fontSize:ft*0.34}}>{getInitials(p.name)}</div>
     )
-    const nomeSz = grande ? cfg.nomeTam*2.4 : cfg.nomeTam
+    const nomeSz = cfg.nomeTam * (grande ? Math.max(1.4, 2.6/cfg.porFolha) : 1)
     const nome = <span style={{fontWeight:700, fontSize:nomeSz, color:cfg.corTexto, lineHeight:1.2, textAlign:cfg.tipo==='tira'?'left':'center'}}>{nomeDe[p.id] ?? p.name}</span>
     if (cfg.tipo==='tira') {
       return <div className="imp-item" style={{display:'flex', alignItems:'center', gap:12, padding:'8px 12px', background:cfg.corFundo, border:`1px solid ${cfg.corBorda}`, borderRadius:8}}>{foto}{nome}</div>
     }
     const corpo = cfg.nomePos==='cima' ? <>{nome}{foto}</> : <>{foto}{nome}</>
-    return <div className="imp-item" style={{display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:grande?22:8, padding:grande?24:'12px 8px', background:cfg.corFundo, border:`1px solid ${cfg.corBorda}`, borderRadius:grande?16:10, ...(grande?{minHeight:'90vh'}:{})}}>{corpo}</div>
+    return <div className="imp-item" style={{display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:grande?16:8, padding:grande?16:'12px 8px', background:cfg.corFundo, border:`1px solid ${cfg.corBorda}`, borderRadius:grande?16:10, ...(grande?{flex:1, minHeight:0, width:'100%'}:{})}}>{corpo}</div>
   }
 
   if (evLoading || loading) return <div className="page">{[1,2].map(i=><div key={i} className="skeleton" style={{height:110,marginBottom:12,borderRadius:14}}/>)}</div>
   if (!evento) return <div className="page"><div className="empty"><p className="empty-title">Nenhum evento ativo</p></div></div>
 
-  // ---------- MODO IMPRESSÃO (A4 deitada) ----------
+  // ---------- MODO IMPRESSÃO ----------
   if (imprimir) {
+    const porFolha = Math.max(1, cfg.porFolha)
+    const folhas: Pessoa[][] = []
+    if (cfg.tipo==='pagina') for (let i=0;i<lista.length;i+=porFolha) folhas.push(lista.slice(i, i+porFolha))
+    const orientLabel = cfg.orientacao==='retrato' ? 'A4 em pé' : 'A4 deitada'
+    const tipoLabel = cfg.tipo==='grade'?'Grade':cfg.tipo==='tira'?'Tira':`${porFolha} por folha`
     return (
       <div style={{padding:16, background:'white'}}>
         <style>{`
@@ -127,18 +134,19 @@ export default function Impressao({ profile }: { profile?: Profile }) {
             .app-root > header { display:none !important; }
             .no-print { display:none !important; }
             .imp-item { break-inside:avoid; page-break-inside:avoid; }
-            .imp-pagina .imp-item { break-after: page; page-break-after: always; }
+            .imp-folha { height:${cfg.orientacao==='retrato'?'275mm':'188mm'}; display:flex; flex-direction:column; gap:8px; }
+            .imp-folha:not(:last-child) { break-after: page; page-break-after: always; }
             * { -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important; }
-            @page { size: ${cfg.tipo==='pagina'?'A4 portrait':'A4 landscape'}; margin: 8mm; }
+            @page { size: A4 ${cfg.orientacao==='retrato'?'portrait':'landscape'}; margin: 8mm; }
           }
         `}</style>
         <div className="no-print" style={{display:'flex', gap:8, marginBottom:10}}>
           <button className="btn btn-primary" onClick={()=>window.print()}>Imprimir / Salvar PDF</button>
           <button className="btn btn-ghost" onClick={()=>setImprimir(false)}>Voltar</button>
         </div>
-        <p className="no-print" style={{fontSize:12, color:'var(--muted)', marginBottom:12}}>{cfg.tipo==='grade'?'Grade':cfg.tipo==='tira'?'Tira':'1 por folha'} · {lista.length} pessoa(s) · {cfg.tipo==='pagina'?'A4 em pé':'A4 deitada'}.</p>
+        <p className="no-print" style={{fontSize:12, color:'var(--muted)', marginBottom:12}}>{tipoLabel} · {lista.length} pessoa(s) · {orientLabel}.</p>
         {cfg.tipo==='pagina'
-          ? <div className="imp-pagina">{lista.map(p=><Cartao key={p.id} p={p} grande/>)}</div>
+          ? <div>{folhas.map((g,gi)=><div key={gi} className="imp-folha">{g.map(p=><Cartao key={p.id} p={p} grande/>)}</div>)}</div>
           : cfg.tipo==='grade'
             ? <div style={{display:'grid', gridTemplateColumns:`repeat(${cfg.colunas}, 1fr)`, gap:10}}>{lista.map(p=><Cartao key={p.id} p={p}/>)}</div>
             : <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:10}}>{lista.map(p=><Cartao key={p.id} p={p}/>)}</div>}
@@ -165,9 +173,15 @@ export default function Impressao({ profile }: { profile?: Profile }) {
       </div>
 
       {/* Tipo */}
-      <div style={{display:'flex', gap:6, marginBottom:14, background:'var(--bg)', padding:4, borderRadius:10}}>
-        {([['grade','▦ Grade'],['tira','▤ Tira'],['pagina','▢ 1 por folha']] as const).map(([v,l])=>(
+      <div style={{display:'flex', gap:6, marginBottom:10, background:'var(--bg)', padding:4, borderRadius:10}}>
+        {([['grade','▦ Grade'],['tira','▤ Tira'],['pagina','▢ Por folha']] as const).map(([v,l])=>(
           <button key={v} onClick={()=>set({tipo:v})} style={{flex:1, padding:'9px', borderRadius:8, border:'none', cursor:'pointer', fontFamily:'inherit', fontWeight:700, fontSize:13, background: cfg.tipo===v?'var(--primary)':'transparent', color: cfg.tipo===v?'white':'var(--text2)'}}>{l}</button>
+        ))}
+      </div>
+      {/* Orientação do papel (vale pra todos) */}
+      <div style={{display:'flex', gap:6, marginBottom:14, background:'var(--bg)', padding:4, borderRadius:10}}>
+        {([['retrato','📄 A4 em pé'],['paisagem','📃 A4 deitada']] as const).map(([v,l])=>(
+          <button key={v} onClick={()=>set({orientacao:v})} style={{flex:1, padding:'8px', borderRadius:8, border:'none', cursor:'pointer', fontFamily:'inherit', fontWeight:700, fontSize:12.5, background: cfg.orientacao===v?'var(--primary)':'transparent', color: cfg.orientacao===v?'white':'var(--text2)'}}>{l}</button>
         ))}
       </div>
 
@@ -207,6 +221,14 @@ export default function Impressao({ profile }: { profile?: Profile }) {
         )}
         {/* Grade colunas */}
         {cfg.tipo==='grade' && <Linha label={`Colunas por folha (${cfg.colunas})`}><input type="range" min={2} max={8} value={cfg.colunas} onChange={e=>set({colunas:Number(e.target.value)})} style={{flex:1}}/></Linha>}
+        {/* Por folha: quantas pessoas grandes por folha */}
+        {cfg.tipo==='pagina' && <Linha label="Pessoas por folha">
+          <div style={{display:'flex', gap:6}}>
+            {[1,2,3,4].map(n=>(
+              <button key={n} onClick={()=>set({porFolha:n})} className="btn btn-sm" style={{minWidth:38, border: cfg.porFolha===n?'2px solid var(--primary)':'1px solid var(--border)', background: cfg.porFolha===n?'var(--primary-light)':'white', color: cfg.porFolha===n?'var(--primary)':'var(--text2)'}}>{n}</button>
+            ))}
+          </div>
+        </Linha>}
         {/* Cores */}
         <Linha label="Cor de fundo"><Cores val={cfg.corFundo} onPick={c=>set({corFundo:c})}/></Linha>
         <Linha label="Cor do texto"><Cores val={cfg.corTexto} onPick={c=>set({corTexto:c})}/></Linha>
@@ -230,7 +252,7 @@ export default function Impressao({ profile }: { profile?: Profile }) {
       <p style={{fontSize:11, fontWeight:800, color:'var(--muted)', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:8}}>Prévia ({lista.length})</p>
       <div style={{background:'var(--bg)', borderRadius:12, padding:12, marginBottom:14}}>
         {cfg.tipo==='pagina'
-          ? <div style={{display:'flex', justifyContent:'center'}}>{lista.slice(0,1).map(p=><Cartao key={p.id} p={p}/>)}</div>
+          ? <div style={{display:'flex', flexDirection:'column', gap:8, alignItems:'center'}}>{lista.slice(0,cfg.porFolha).map(p=><Cartao key={p.id} p={p}/>)}</div>
           : cfg.tipo==='grade'
             ? <div style={{display:'grid', gridTemplateColumns:`repeat(${Math.min(cfg.colunas,4)}, 1fr)`, gap:8}}>{lista.slice(0,8).map(p=><Cartao key={p.id} p={p}/>)}</div>
             : <div style={{display:'flex', flexDirection:'column', gap:8}}>{lista.slice(0,5).map(p=><Cartao key={p.id} p={p}/>)}</div>}
@@ -240,7 +262,7 @@ export default function Impressao({ profile }: { profile?: Profile }) {
       {/* Ações */}
       <div style={{display:'flex', gap:8}}>
         <button className="btn btn-primary" style={{flex:1}} onClick={()=>setImprimir(true)} disabled={lista.length===0}>
-          <span className="icon icon-sm">print</span> Imprimir ({cfg.tipo==='pagina'?'A4 em pé, 1 por folha':'A4 deitada'})
+          <span className="icon icon-sm">print</span> Imprimir ({cfg.orientacao==='retrato'?'A4 em pé':'A4 deitada'}{cfg.tipo==='pagina'?`, ${cfg.porFolha}/folha`:''})
         </button>
         {canEdit && <button className="btn btn-ghost" onClick={salvarModelo}><span className="icon icon-sm">bookmark_add</span> Salvar modelo</button>}
       </div>
