@@ -92,6 +92,16 @@ export default function Impressao({ profile }: { profile?: Profile }) {
   /** Prévia dentro do editor: a primeira pessoa do filtro. */
   const dadosPrevia = dados[0] ?? { nome: 'Nome da Pessoa', foto: '', equipe: 'Equipe', igreja: '', funcao: '' }
 
+  /** Sobe a imagem escolhida no celular e devolve a URL pública. */
+  async function subirImagem(f: File): Promise<string|null> {
+    const ext = f.name.split('.').pop() || 'jpg'
+    const path = `impressao/${Date.now()}_${Math.random().toString(36).slice(2,7)}.${ext}`
+    const { error } = await supabase.storage.from('arquivos').upload(path, f, { upsert: true })
+    if (error) { toast.falha('Não foi possível enviar a imagem.', error); return null }
+    const { data } = supabase.storage.from('arquivos').getPublicUrl(path)
+    return data.publicUrl
+  }
+
   async function guardar(novos: Modelo[]) { setModelos(novos); await salvarConfig(CHAVE, JSON.stringify(novos)) }
 
   async function salvarModelo(d: Documento) {
@@ -158,6 +168,7 @@ export default function Impressao({ profile }: { profile?: Profile }) {
           key={doc.id}
           inicial={doc}
           dados={dadosPrevia}
+          subirImagem={subirImagem}
           onSalvar={canEdit ? salvarModelo : undefined}
           onImprimir={(d)=>{ if (lista.length===0) { toast.info('Ninguém neste filtro.'); return } setImprimindo(d) }}
         />

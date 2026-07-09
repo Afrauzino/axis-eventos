@@ -4,7 +4,7 @@
 // A tela fica limpa: cada botão abre só o painel dele.
 // ─────────────────────────────────────────────────────────────
 import { useState } from 'react'
-import type { Documento, Elemento } from './tipos'
+import type { Documento, Elemento, SubirImagem } from './tipos'
 import { useEditor } from './store'
 import Canvas from './Canvas'
 import { listarFerramentas } from './ferramentas'
@@ -15,9 +15,10 @@ type Props = {
   dados?: Record<string, any>          // pessoa de exemplo pra prévia
   onSalvar?: (doc: Documento) => void
   onImprimir?: (doc: Documento) => void
+  subirImagem?: SubirImagem            // a tela decide onde guardar a imagem
 }
 
-export default function Editor({ inicial, dados, onSalvar, onImprimir }: Props) {
+export default function Editor({ inicial, dados, onSalvar, onImprimir, subirImagem }: Props) {
   const ed = useEditor(inicial)
   const [ferramenta, setFerramenta] = useState<string | null>(null)
 
@@ -33,6 +34,7 @@ export default function Editor({ inicial, dados, onSalvar, onImprimir }: Props) 
     dispatch: ed.dispatch, selecionar: ed.selecionar, setPaginaAtual: ed.setPaginaAtual,
     desfazer: ed.desfazer, refazer: ed.refazer,
     podeDesfazer: ed.podeDesfazer, podeRefazer: ed.podeRefazer,
+    subirImagem,
   }
 
   const btnTopo = (icone: string, titulo: string, onClick: () => void, ativo = true) => (

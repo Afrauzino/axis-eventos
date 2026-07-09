@@ -10,7 +10,7 @@ registrarFerramenta({
   nome: 'Editar',
   icone: 'tune',
   precisaSelecao: true,
-  Painel: ({ doc, selecao, dispatch }) => {
+  Painel: ({ doc, selecao, dispatch, subirImagem }) => {
     const todos = doc.paginas.flatMap(p => p.elementos)
     const els = todos.filter(e => selecao.includes(e.id))
     if (!els.length) return <p style={{ fontSize: 13, color: 'var(--muted)' }}>Toque num elemento para editar.</p>
@@ -33,7 +33,7 @@ registrarFerramenta({
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         {/* específico do tipo */}
-        {els.length === 1 && def?.Painel && def.Painel({ el, setProps, set })}
+        {els.length === 1 && def?.Painel && def.Painel({ el, setProps, set, subirImagem })}
 
         <div style={{ height: 1, background: 'var(--border)' }} />
 

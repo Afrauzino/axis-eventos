@@ -68,6 +68,20 @@ export type Acao =
   | { t: 'pagina.duplicar'; paginaId: Id }
 
 // ── Registro de ELEMENTOS ──────────────────────────────────────
+/** Uma variação de inserção do mesmo tipo (ex.: "Imagem de fundo").
+ *  Aparece como um botão extra no painel "Adicionar". */
+export type PresetElemento = {
+  nome: string
+  icone?: string
+  /** Ajustes aplicados na criação (pode usar o tamanho do papel). */
+  aplicar: (papel: Papel) => Partial<Elemento>
+  /** Manda pro fundo logo após inserir (ex.: imagem de fundo). */
+  aoFundo?: boolean
+}
+
+/** Sobe uma imagem e devolve a URL pública. Vem de fora (a tela decide onde guardar). */
+export type SubirImagem = (arquivo: File) => Promise<string | null>
+
 /** Contrato de um tipo de elemento. Criar um tipo novo = implementar
  *  isto num arquivo e registrar. Ele já ganha todo o comportamento padrão. */
 export type DefElemento = {
@@ -79,9 +93,13 @@ export type DefElemento = {
   /** Como desenhar. `dados` traz os valores da pessoa quando há fonte de dados. */
   Render: (p: { el: Elemento; dados?: Record<string, any>; modo: 'tela' | 'papel' }) => ReactNode
   /** Painel de propriedades específicas do tipo (opcional). */
-  Painel?: (p: { el: Elemento; setProps: (props: Record<string, any>) => void; set: (patch: Partial<Elemento>) => void }) => ReactNode
+  Painel?: (p: { el: Elemento; setProps: (props: Record<string, any>) => void; set: (patch: Partial<Elemento>) => void; subirImagem?: SubirImagem }) => ReactNode
   /** Campos do sistema que este elemento aceita ligar (ex: ['nome','foto']). */
   camposLigaveis?: string[]
+  /** Variações de inserção (ex.: imagem livre / imagem de fundo). */
+  presets?: PresetElemento[]
+  /** Se true, o "Adicionar" pede uma imagem do aparelho antes de inserir. */
+  pedeImagem?: boolean
 }
 
 // ── Registro de FERRAMENTAS (barra inferior) ───────────────────
@@ -96,6 +114,8 @@ export type CtxEditor = {
   refazer: () => void
   podeDesfazer: boolean
   podeRefazer: boolean
+  /** Injetada pela tela: sobe uma imagem e devolve a URL. */
+  subirImagem?: SubirImagem
 }
 
 /** Um botão da barra inferior + o painel que ele abre. Adicionar
