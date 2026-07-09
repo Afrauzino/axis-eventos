@@ -2,14 +2,10 @@ import { registrarFerramenta } from './registry'
 
 // Medidas em mm. A descrição mostra em cm (como o pessoal fala).
 const PAPEIS: { nome: string; desc: string; l: number; a: number }[] = [
-  { nome: 'A4 em pé',        desc: '21 × 29,7 cm',  l: 210, a: 297 },
-  { nome: 'A4 deitada',      desc: '29,7 × 21 cm',  l: 297, a: 210 },
-  { nome: 'Crachá grande',   desc: '10 × 15 cm',    l: 100, a: 150 },
-  { nome: 'Crachá em pé',    desc: '5,4 × 8,6 cm',  l: 54,  a: 86  },
-  { nome: 'Crachá deitado',  desc: '8,6 × 5,4 cm',  l: 86,  a: 54  },
-  { nome: 'Cartão em pé',    desc: '5 × 9 cm',      l: 50,  a: 90  },
-  { nome: 'Cartão deitado',  desc: '9 × 5 cm',      l: 90,  a: 50  },
-  { nome: 'Etiqueta',        desc: '6 × 8 cm',      l: 60,  a: 80  },
+  { nome: 'Crachá em pé',   desc: '5,4 × 8,6 cm',  l: 54,  a: 86  },
+  { nome: 'Crachá deitado', desc: '8,6 × 5,4 cm',  l: 86,  a: 54  },
+  { nome: 'A4 em pé',       desc: '21 × 29,7 cm',  l: 210, a: 297 },
+  { nome: 'A4 deitada',     desc: '29,7 × 21 cm',  l: 297, a: 210 },
 ]
 
 // Página: tamanho do papel (presets, personalizado e girar), fundo e páginas.

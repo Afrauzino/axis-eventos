@@ -21,14 +21,14 @@ type Modelo = { id:string; nome:string; doc:Documento }
 
 const CHAVE = 'impressao_modelos_v2'
 
-/** Modelo inicial: etiqueta 60×80mm com foto e nome, repetida por pessoa. */
+/** Modelo inicial: crachá em pé (5,4 × 8,6 cm) com foto e nome, repetido por pessoa. */
 function docPadrao(): Documento {
-  const foto = criarElemento('foto', { x: 15, y: 8, w: 30, h: 30 })!
-  const nome = criarElemento('texto', { x: 4, y: 44, w: 52, h: 12 })!
+  const foto = criarElemento('foto', { x: 12, y: 12, w: 30, h: 30 })!
+  const nome = criarElemento('texto', { x: 4, y: 48, w: 46, h: 10 })!
   nome.props = { ...nome.props, campo: 'nome', tam: 4, alinhar: 'center' }
   return {
-    id: novoId(), nome: 'Etiqueta',
-    papel: { largura: 60, altura: 80 },
+    id: novoId(), nome: 'Crachá',
+    papel: { largura: 54, altura: 86 },
     paginas: [{ id: novoId(), fundo: '#ffffff', elementos: [foto, nome] }],
     fonteDados: 'pessoas',
   }
