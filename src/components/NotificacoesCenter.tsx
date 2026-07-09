@@ -33,10 +33,13 @@ export async function montarNotificacoes(profile: Profile, eventoId: string | nu
   const userId = profile.user_id
 
   // Aprovações pendentes (admin — por cargo OU flag)
+  // Id baseado em QUEM está pendente: cada nova inscrição vira uma notificação nova
+  // (não fica "lida pra sempre" quando chega gente nova).
   if (isAdmin(profile.user_role) || profile.is_admin) {
     try {
-      const { count } = await supabase.from('profiles').select('user_id', { count: 'exact', head: true }).eq('role_status', 'pending')
-      if (count && count > 0) out.push({ id: 'aprov', emoji: '🙋', titulo: `${count} pessoa(s) aguardando aprovação`, sub: 'Toque para revisar', rota: '/admin' })
+      const { data: pend } = await supabase.from('profiles').select('user_id').eq('role_status', 'pending')
+      const ids = (pend ?? []).map((p: any) => p.user_id).filter(Boolean).sort()
+      if (ids.length > 0) out.push({ id: 'aprov-' + ids.join('_'), emoji: '🙋', titulo: `${ids.length} pessoa(s) aguardando aprovação`, sub: 'Toque para revisar', rota: '/admin' })
     } catch {}
   }
 
@@ -68,7 +71,8 @@ export async function montarNotificacoes(profile: Profile, eventoId: string | nu
   // Avisos de liderança direcionados a mim (não lidos)
   try {
     const { data } = await supabase.from('alertas_lideres_dest').select('id,lido').eq('destinatario_id', personId).eq('lido', false)
-    if ((data ?? []).length > 0) out.push({ id: 'lider-avisos', emoji: '📨', titulo: `${data!.length} aviso(s) da liderança`, sub: 'Toque para ver', rota: '/alertas-lideres' })
+    const avIds = (data ?? []).map((d: any) => d.id).sort()
+    if (avIds.length > 0) out.push({ id: 'lider-avisos-' + avIds.join('_'), emoji: '📨', titulo: `${avIds.length} aviso(s) da liderança`, sub: 'Toque para ver', rota: '/alertas-lideres' })
   } catch {}
 
   // Minhas escalas
