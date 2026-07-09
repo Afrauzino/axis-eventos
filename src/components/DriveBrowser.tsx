@@ -8,6 +8,17 @@ import { useEffect, useState } from 'react'
 type Item = { id: string; name: string; mimeType: string; thumbnailLink?: string; webViewLink?: string; webContentLink?: string }
 const FOLDER = 'application/vnd.google-apps.folder'
 
+// Ordem natural: pastas antes; números primeiro (01,02...10,11 como número,
+// zero à esquerda ignorado) e depois letras (ex.: 1 2 3 A B).
+function ordenar(files: Item[]): Item[] {
+  return files.slice().sort((a, b) => {
+    const fa = a.mimeType === FOLDER ? 0 : 1
+    const fb = b.mimeType === FOLDER ? 0 : 1
+    if (fa !== fb) return fa - fb
+    return (a.name || '').localeCompare(b.name || '', 'pt', { numeric: true, sensitivity: 'base' })
+  })
+}
+
 function iconFor(mime: string): string {
   if (mime.includes('pdf')) return '📄'
   if (mime.startsWith('audio')) return '🎵'
@@ -42,7 +53,7 @@ export default function DriveBrowser({ rootId, rootName = 'Mídia', apiKey }: { 
     fetch(url).then(r => r.json()).then(j => {
       if (!ativo) return
       if (j.error) { setErro(j.error?.message || 'Não foi possível ler a pasta.'); setItens([]) }
-      else setItens(j.files ?? [])
+      else setItens(ordenar(j.files ?? []))
       setLoading(false)
     }).catch(() => { if (ativo) { setErro('Erro de conexão com o Google Drive.'); setLoading(false) } })
     return () => { ativo = false }
