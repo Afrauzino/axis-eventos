@@ -1,6 +1,6 @@
 // Service Worker do AXIS — network-first (nunca serve versão velha quando online).
 // Não intercepta o Supabase (outra origem) nem chamadas não-GET.
-const CACHE = 'axis-runtime-v9'
+const CACHE = 'axis-runtime-v10'
 
 self.addEventListener('install', () => self.skipWaiting())
 
@@ -34,5 +34,31 @@ self.addEventListener('fetch', (event) => {
       }
       throw new Error('offline')
     }
+  })())
+})
+
+// ===== Web Push — notificação com o app FECHADO =====
+self.addEventListener('push', (event) => {
+  let d = {}
+  try { d = event.data ? event.data.json() : {} } catch { d = { body: event.data && event.data.text() } }
+  const title = d.title || 'AXIS Eventos'
+  const options = {
+    body: d.body || '',
+    icon: '/axis-192.png',
+    badge: '/axis-192.png',
+    tag: d.tag || undefined,
+    renotify: !!d.tag,
+    data: { url: d.url || '/' },
+  }
+  event.waitUntil(self.registration.showNotification(title, options))
+})
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close()
+  const url = (event.notification.data && event.notification.data.url) || '/'
+  event.waitUntil((async () => {
+    const all = await self.clients.matchAll({ type: 'window', includeUncontrolled: true })
+    for (const c of all) { if ('focus' in c) { try { c.navigate(url) } catch {} ; return c.focus() } }
+    if (self.clients.openWindow) return self.clients.openWindow(url)
   })())
 })

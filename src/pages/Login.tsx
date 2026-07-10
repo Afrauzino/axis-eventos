@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { carregarConfig } from '../lib/tema'
+import { enviarPush } from '../lib/push'
 import CadastroPessoa, { FORM_VAZIO, MED_VAZIO, type PessoaForm, type MedCtrl } from '../components/CadastroPessoa'
 import InstallPWA from '../components/InstallPWA'
 import { toast } from '../components/Toast'
@@ -214,6 +215,9 @@ export default function Login() {
       user_id: uid, name: nome, phone: tel, user_role: 'visitante', role_status: 'pending',
     }, { onConflict: 'user_id' })
     if (r2.error) { setErro('Erro ao criar perfil: ' + r2.error.message); setLoading(false); return }
+
+    // Web Push: avisa os admins (mesmo com o app fechado) que tem gente aguardando
+    enviarPush({ notify_admins: true, title: '🙋 Nova inscrição', body: `${nome} se inscreveu — toque para aprovar`, url: '/admin', tag: 'aprov' })
 
     const r3 = await supabase.from('saude_fichas').upsert({
       person_id: personId, event_id: eventoAtivo.id,

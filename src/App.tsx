@@ -7,6 +7,7 @@ import { usePermissao } from './hooks/usePermissao'
 import Nav from './components/Nav'
 import CriticalAlert from './components/CriticalAlert'
 import NotificacoesCenter, { sincronizarPushLocal } from './components/NotificacoesCenter'
+import { ativarPush } from './lib/push'
 import InstallPWA from './components/InstallPWA'
 import { ToastHost } from './components/Toast'
 import BotaoConfig from './components/BotaoConfig'
@@ -326,6 +327,13 @@ export default function App() {
     return () => { ativo = false; clearInterval(t) }
   }, [profile, eventoAtivo?.id, notifOpen])
 
+  // Web Push — se a pessoa já permitiu notificação, garante a assinatura deste aparelho salva
+  useEffect(() => {
+    if (profile?.user_id && typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+      ativarPush(profile.user_id)
+    }
+  }, [profile?.user_id])
+
   // Contagem de alertas não lidos (tempo real, todos os usuários)
   useEffect(() => {
     if (!profile?.user_id) { setAlertCount(0); return }
@@ -366,7 +374,7 @@ export default function App() {
           <BotaoVoltar />
           <HeaderTitle />
           <BotaoConfig />
-          <button onClick={()=>{ try { if ('Notification' in window && Notification.permission==='default') Notification.requestPermission() } catch {} ; setNotifOpen(true) }} style={{background:'none',border:'none',cursor:'pointer',color:'white',display:'flex',alignItems:'center',justifyContent:'center',width:36,height:36,borderRadius:8,fontFamily:'inherit',position:'relative'}}>
+          <button onClick={()=>{ try { if ('Notification' in window && Notification.permission==='default') Notification.requestPermission().then(p=>{ if(p==='granted' && profile?.user_id) ativarPush(profile.user_id) }) } catch {} ; setNotifOpen(true) }} style={{background:'none',border:'none',cursor:'pointer',color:'white',display:'flex',alignItems:'center',justifyContent:'center',width:36,height:36,borderRadius:8,fontFamily:'inherit',position:'relative'}}>
             <span style={{fontFamily:"'Material Symbols Outlined'",fontSize:22,color:'white',fontVariationSettings:"'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24",fontWeight:'normal',fontStyle:'normal',lineHeight:1,letterSpacing:'normal',textTransform:'none',display:'inline-block',whiteSpace:'nowrap',userSelect:'none'}}>notifications</span>
             {notifUnread > 0 && (
               <span style={{position:'absolute',top:2,right:2,minWidth:16,height:16,background:'#E53E3E',borderRadius:99,fontSize:10,fontWeight:800,color:'white',display:'flex',alignItems:'center',justifyContent:'center',padding:'0 4px',border:'2px solid var(--primary)'}}>{notifUnread}</span>
