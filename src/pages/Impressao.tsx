@@ -14,6 +14,7 @@ import type { Profile } from '../App'
 import Editor from '../editor/Editor'
 import ImprimirView, { encaixe, type Orientacao } from '../editor/render/Imprimir'
 import GaleriaModelos, { type Modelo } from '../editor/GaleriaModelos'
+import EscolherPessoas from '../components/EscolherPessoas'
 import { criarElemento } from '../editor/elementos'
 import { novoId, type Documento } from '../editor/tipos'
 
@@ -54,9 +55,6 @@ export default function Impressao({ profile }: { profile?: Profile }) {
   const [equipeIds, setEquipeIds] = useState<Record<string,string[]>>({})
   const [loading, setLoading] = useState(true)
 
-  const [filtroTipo, setFiltroTipo] = useState<'todos'|'encounterer'|'worker'>('encounterer')
-  const [filtroEquipe, setFiltroEquipe] = useState('')
-
   const [modelos, setModelos] = useState<Modelo[]>([])
   const [doc, setDoc] = useState<Documento>(() => docPadrao())
   /** O documento como está AGORA dentro do editor (o `doc` acima é só o inicial).
@@ -77,7 +75,9 @@ export default function Impressao({ profile }: { profile?: Profile }) {
   /** Troca o documento aberto (carregar modelo, começar do zero, salvar). */
   const aplicarDoc = useCallback((d: Documento) => { docRef.current = d; setDoc(d); setDocAtual(d) }, [])
   const [orientacao, setOrientacao] = useState<Orientacao>('auto')
+  const [escolhendo, setEscolhendo] = useState<Documento|null>(null)  // tela "quem vai ser impresso"
   const [imprimindo, setImprimindo] = useState<Documento|null>(null)
+  const [idsImprimir, setIdsImprimir] = useState<string[]>([])
   const [galeria, setGaleria] = useState(false)
   const [painel, setPainel] = useState(false)   // janela flutuante com os ajustes
   const [salvando, setSalvando] = useState<Documento|null>(null)   // modal "Salvar modelo"
@@ -107,29 +107,29 @@ export default function Impressao({ profile }: { profile?: Profile }) {
     setLoading(false)
   }
 
-  const lista = useMemo(() => pessoas.filter(p => {
-    if (filtroTipo!=='todos' && p.role_type!==filtroTipo) return false
-    if (filtroEquipe && !(equipeIds[p.id]??[]).includes(filtroEquipe)) return false
-    return true
-  }), [pessoas, filtroTipo, filtroEquipe, equipeIds])
-
   const nomeEquipes = (pid:string) =>
     (equipeIds[pid]??[]).map(tid => equipes.find(t=>t.id===tid)?.name).filter(Boolean).join(', ')
 
   /** Um "registro de dados" por pessoa — é o que preenche {{nome}}, {{foto}}… */
-  const dados = useMemo(() => lista.map(p => ({
+  const registroDe = (p: Pessoa) => ({
     nome: formatName(p.name),
     foto: p.photo_url ?? '',
     equipe: nomeEquipes(p.id),
     igreja: p.church ?? '',
     funcao: p.role_type === 'worker' ? 'Encontreiro' : 'Encontrista',
-  })), [lista, equipeIds, equipes])
+  })
 
-  /** Prévia dentro do editor: a primeira pessoa do filtro.
+  /** Só quem foi escolhido na tela de impressão, na ordem alfabética da lista. */
+  const dados = useMemo(() => {
+    const escolhidos = new Set(idsImprimir)
+    return pessoas.filter(p => escolhidos.has(p.id)).map(registroDe)
+  }, [pessoas, idsImprimir, equipeIds, equipes])
+
+  /** Prévia dentro do editor: a primeira pessoa cadastrada.
    *  Memorizado pra não trocar de identidade e redesenhar o editor à toa. */
   const dadosPrevia = useMemo(
-    () => dados[0] ?? { nome: 'Nome da Pessoa', foto: '', equipe: 'Equipe', igreja: '', funcao: '' },
-    [dados])
+    () => (pessoas[0] ? registroDe(pessoas[0]) : { nome: 'Nome da Pessoa', foto: '', equipe: 'Equipe', igreja: '', funcao: '' }),
+    [pessoas, equipeIds, equipes])
 
   /** Sobe a imagem escolhida no celular e devolve a URL pública. */
   async function subirImagem(f: File): Promise<string|null> {
@@ -194,17 +194,28 @@ export default function Impressao({ profile }: { profile?: Profile }) {
 
   function comecarDoZero() { aplicarDoc(docVazio()); setGaleria(false) }
 
-  // O que a aba mostra quando a janela está fechada — o essencial, num respiro só.
+  // O que a aba mostra quando a janela está fechada.
   const enc = encaixe(docAtual.papel, orientacao)
-  const rotuloTipo = filtroTipo==='worker' ? 'Encontreiros' : filtroTipo==='todos' ? 'Todos' : 'Encontristas'
+  const folhaLabel = `A4 ${enc.orientacao==='retrato'?'em pé':'deitada'}`
   const resumo = docAtual.fonteDados === 'pessoas'
-    ? `${rotuloTipo} · ${lista.length} · ${enc.cabe ? `A4 ${enc.orientacao==='retrato'?'em pé':'deitada'} · ${enc.total}/folha` : 'não cabe no A4'}`
+    ? (enc.cabe ? `${folhaLabel} · ${enc.total}/folha` : 'Não cabe no A4')
     : 'Ajustes'
 
   if (evLoading || loading) return <div className="page">{[1,2].map(i=><div key={i} className="skeleton" style={{height:110,marginBottom:12,borderRadius:14}}/>)}</div>
   if (!evento) return <div className="page"><div className="empty"><p className="empty-title">Nenhum evento ativo</p></div></div>
 
   if (imprimindo) return <ImprimirView doc={imprimindo} dados={dados} orientacao={orientacao} onVoltar={()=>setImprimindo(null)} />
+
+  // Tocar em "Imprimir" abre a escolha de pessoas antes da folha
+  if (escolhendo) return (
+    <EscolherPessoas
+      pessoas={pessoas} equipes={equipes} equipeIds={equipeIds}
+      nomeModelo={escolhendo.nome || 'Sem título'}
+      folhaLabel={folhaLabel} porFolha={enc.total} cabe={enc.cabe}
+      onCancelar={()=>setEscolhendo(null)}
+      onImprimir={(ids)=>{ setIdsImprimir(ids); setImprimindo(escolhendo); setEscolhendo(null) }}
+    />
+  )
 
   return (
     <div style={{ display:'flex', flexDirection:'column', height:'calc(100dvh - 56px)', minHeight:0 }}>
@@ -242,7 +253,11 @@ export default function Impressao({ profile }: { profile?: Profile }) {
           subirImagem={subirImagem}
           onChange={aoMudarDoc}
           onSalvar={canEdit ? (d)=>{ setNomeModelo(d.nome && d.nome!=='Sem título' ? d.nome : ''); setSalvando(d) } : undefined}
-          onImprimir={(d)=>{ if (lista.length===0) { toast.info('Ninguém neste filtro.'); return } setImprimindo(d) }}
+          onImprimir={(d)=>{
+            if (d.fonteDados !== 'pessoas') { setIdsImprimir([]); setImprimindo(d); return }   // sem dados: imprime as páginas como estão
+            if (pessoas.length===0) { toast.info('Nenhuma pessoa cadastrada neste evento.'); return }
+            setEscolhendo(d)
+          }}
         />
 
         <div style={{
@@ -258,17 +273,6 @@ export default function Impressao({ profile }: { profile?: Profile }) {
           <button className="btn btn-ghost btn-sm" onClick={()=>{ setPainel(false); setGaleria(true) }}>
             <span className="icon icon-sm">bookmarks</span> Meus modelos ({modelos.length})
           </button>
-          <select className="form-input" style={{ width:'auto', padding:'6px 10px', fontSize:13 }}
-            value={filtroTipo} onChange={e=>setFiltroTipo(e.target.value as any)}>
-            <option value="encounterer">Encontristas</option>
-            <option value="worker">Encontreiros</option>
-            <option value="todos">Todos</option>
-          </select>
-          <select className="form-input" style={{ width:'auto', padding:'6px 10px', fontSize:13 }}
-            value={filtroEquipe} onChange={e=>setFiltroEquipe(e.target.value)}>
-            <option value="">Todas as equipes</option>
-            {equipes.map(t=><option key={t.id} value={t.id}>{t.name}</option>)}
-          </select>
           {docAtual.fonteDados === 'pessoas' && (() => {
             const prox: Orientacao = orientacao==='auto' ? 'retrato' : orientacao==='retrato' ? 'paisagem' : 'auto'
             return (
@@ -284,7 +288,7 @@ export default function Impressao({ profile }: { profile?: Profile }) {
               </button>
             )
           })()}
-          <span style={{ fontSize:12, color:'var(--muted)', marginLeft:'auto' }}>{lista.length} pessoa(s)</span>
+          <span style={{ fontSize:12, color:'var(--muted)', marginLeft:'auto' }}>{pessoas.length} cadastrada(s)</span>
         </div>
       </div>
 
