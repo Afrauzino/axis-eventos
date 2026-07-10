@@ -7,13 +7,12 @@ import { fmtDataHora, isAdmin, formatName } from '../utils'
 import { invalidarEventoAtivo } from '../hooks/useEvento'
 import { registrarLog } from '../lib/audit'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { NAV_GROUPS } from '../lib/navGroups'
 import { toast } from '../components/Toast'
 import Seletor from '../components/Seletor'
 import DataHora from '../components/DataHora'
 import CardItem from '../components/CardItem'
 import FotoAmpliada from '../components/FotoAmpliada'
-import { useRegistrarChrome } from '../lib/chrome'
+import { useRegistrarChromeAdmin } from '../lib/chrome'
 import type { Profile } from '../App'
 import EmojiGrid from '../components/EmojiGrid'
 import { PERM_CATALOGO, MENUS_CATALOGO } from '../lib/permCatalog'
@@ -85,6 +84,8 @@ const TIPOS_PADRÃO = [
 
 const CORES_TIPO = ['#00A99D','#6B46C1','#E8821A','#2F855A','#D53F8C','#2B6CB0','#C53030','#D69E2E','#718096','#1A202C']
 
+type AbaAdmin = 'usuarios'|'equipes_perm'|'eventos'|'tipos'|'backup'|'logs'|'aparencia'|'msg'
+
 // #18 — mensagem padrão que acompanha o código de acesso (editável no Admin → MSG)
 const MSG_CODIGO_PADRAO =
 `Olá {nome}! 🙌
@@ -109,7 +110,7 @@ const montarMsg = (template:string, nome:string, codigo:string) =>
     .split('{link}').join(`${window.location.origin}/?codigo=${codigo || ''}`)
 
 export default function Admin({ profile }: { profile?: Profile }) {
-  const [aba, setAba]               = useState<'usuarios'|'equipes_perm'|'eventos'|'tipos'|'backup'|'logs'|'aparencia'|'msg'>('usuarios')
+  const [aba, setAbaState]          = useState<AbaAdmin>('usuarios')
   const [logs, setLogs]             = useState<LogRow[]>([])
   const [logsLoading, setLogsLoading] = useState(false)
   const [logsErro, setLogsErro]     = useState('')
@@ -155,6 +156,15 @@ export default function Admin({ profile }: { profile?: Profile }) {
   const [filtroUserTipo, setFiltroUserTipo] = useState('todos')  // todos | encounterer | worker
   const navigate = useNavigate()
   const location = useLocation()
+  // A aba ativa vive na URL (?aba=xxx) — assim o menu ⚙️ (que é o mesmo em todas
+  // as telas admin) consegue trocar de aba mesmo vindo de outra página.
+  const setAba = (a: AbaAdmin) => navigate(`/admin?aba=${a}`, { replace: true })
+  useEffect(() => {
+    // Sem ?aba= (ex.: veio da gaveta pra /admin) volta pra "Usuários" — assim a
+    // aba renderizada e o destaque do menu nunca ficam dessincronizados.
+    const a = (new URLSearchParams(location.search).get('aba') as AbaAdmin | null) || 'usuarios'
+    setAbaState(prev => (prev === a ? prev : a))
+  }, [location.search])
   const aprovarParamFeito = useRef<string|null>(null)
   // #1 — admin edita 100% do cadastro de qualquer pessoa (reusa CadastroPessoa)
   const [editPessoaId, setEditPessoaId] = useState<string|null>(null)
@@ -301,6 +311,8 @@ export default function Admin({ profile }: { profile?: Profile }) {
   }
   // Rebusca as equipes quando a aba abre (carregarEquipesPerm acha o evento ativo sozinho)
   useEffect(() => { if (aba === 'equipes_perm') carregarEquipesPerm() }, [aba, eventos])
+  // Logs eram carregados no clique da aba; agora a aba vem da URL, então carrega por efeito.
+  useEffect(() => { if (aba === 'logs') carregarLogs() }, [aba]) // eslint-disable-line react-hooks/exhaustive-deps
   async function carregarPermsEquipe(team_id: string) {
     const { data } = await supabase.from('permissoes').select('*').eq('team_id', team_id).is('person_id', null).is('role', null)
     setPermsEquipe(data ?? [])
@@ -968,29 +980,17 @@ export default function Admin({ profile }: { profile?: Profile }) {
     setGerandoCodigos(false); carregar()
   }
 
-  // ⚙️ do topo — só a aba Usuários tem busca + filtro; nas outras o ⚙️ some.
-  // ⚙️ do topo — navegação (2 níveis de abas) organizada + busca/filtro na aba Usuários
-  useRegistrarChrome({
-    navegacao: [
-      { titulo:'Administração', itens: NAV_GROUPS.admin.map(it => ({ label:it.label, ativo: it.rota==='/admin', onClick:()=>{ if (it.rota!=='/admin') navigate(it.rota) } })) },
-      { titulo:'Seção', itens: [
-        { label:'Usuários',  ativo:aba==='usuarios',     onClick:()=>setAba('usuarios') },
-        { label:'Equipes',   ativo:aba==='equipes_perm', onClick:()=>{setAba('equipes_perm');carregarEquipesPerm()} },
-        { label:'Eventos',   ativo:aba==='eventos',      onClick:()=>setAba('eventos') },
-        { label:'Tipos',     ativo:aba==='tipos',        onClick:()=>setAba('tipos') },
-        { label:'Backup',    ativo:aba==='backup',       onClick:()=>setAba('backup') },
-        { label:'Logs',      ativo:aba==='logs',         onClick:()=>{setAba('logs');carregarLogs()} },
-        { label:'Aparência', ativo:aba==='aparencia',    onClick:()=>setAba('aparencia') },
-        { label:'MSG',       ativo:aba==='msg',          onClick:()=>setAba('msg') },
-      ] },
-    ],
-    ...(aba==='usuarios' ? {
+  // ⚙️ do topo — menu ÚNICO da Administração (4 grupos por assunto, vindo de
+  // ADMIN_GRUPOS). Só a aba Usuários acrescenta busca + filtro.
+  useRegistrarChromeAdmin(
+    aba==='usuarios' ? {
       busca: { value: buscaUser, onChange: setBuscaUser, placeholder: 'Buscar usuário...' },
       grupos: [{ chave:'tipo', label:'Tipo', opcoes:[{value:'todos',label:'Todos'},{value:'encounterer',label:'Encontristas'},{value:'worker',label:'Encontreiros'}] }],
       valores: { tipo: filtroUserTipo },
       onFiltro: (_:string,v:string)=>setFiltroUserTipo(v),
-    } : {}),
-  }, [aba, buscaUser, filtroUserTipo])
+    } : {},
+    [aba, buscaUser, filtroUserTipo],
+  )
 
   return (
     <div className="page">

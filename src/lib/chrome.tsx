@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { NAV_GROUPS } from './navGroups'
+import { NAV_GROUPS, ADMIN_GRUPOS } from './navGroups'
 
 const TITULOS_NAV: Record<string, string> = { admin:'Administração', equipes:'Equipes e Escalas', teatro:'Teatro', evento:'Evento', saude:'Saúde', financeiro:'Financeiro' }
 
@@ -41,6 +41,29 @@ export function useRegistrarChrome(chrome: Chrome, deps: any[]) {
     setChrome(chrome)
     return () => setChrome(null)
   }, deps) // eslint-disable-line react-hooks/exhaustive-deps
+}
+
+// Menu ÚNICO da Administração (4 grupos por assunto), montado a partir de
+// ADMIN_GRUPOS. Usado por TODAS as telas admin (Usuários, Menus, Notificações,
+// Saúde, Comparativo) — assim o ⚙️ fica idêntico em qualquer uma delas.
+// Item marcado como ativo pela rota OU, se for aba (/admin?aba=xxx), pelo ?aba=.
+export function useRegistrarChromeAdmin(extra: Chrome = {}, deps: any[] = []) {
+  const nav = useNavigate()
+  const loc = useLocation()
+  const abaAtual = new URLSearchParams(loc.search).get('aba') || 'usuarios'
+  const estaAtivo = (rota: string) => {
+    const [caminho, query] = rota.split('?')
+    if (query) return loc.pathname === caminho && `aba=${abaAtual}` === query
+    return loc.pathname === caminho
+  }
+  const grupos: NavGrupo[] = ADMIN_GRUPOS.map(g => ({
+    titulo: g.titulo,
+    itens: g.itens.map(it => ({ label: it.label, ativo: estaAtivo(it.rota), onClick: () => nav(it.rota) })),
+  }))
+  useRegistrarChrome(
+    { ...extra, navegacao: [...grupos, ...(extra.navegacao ?? [])] },
+    [loc.pathname, loc.search, ...deps], // eslint-disable-line react-hooks/exhaustive-deps
+  )
 }
 
 // Atalho: registra a NAVEGAÇÃO de um grupo de sub-abas (SubTabs) no ⚙️.

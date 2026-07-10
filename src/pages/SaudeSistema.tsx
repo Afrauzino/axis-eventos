@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import { useRegistrarChromeNav } from '../lib/chrome'
+import { useRegistrarChromeAdmin } from '../lib/chrome'
 import { isAdmin } from '../utils'
 import type { Profile } from '../App'
 
@@ -12,7 +12,7 @@ type Limites = {
 }
 
 export default function SaudeSistema({ profile }: { profile?: Profile }) {
-  useRegistrarChromeNav('admin')
+  useRegistrarChromeAdmin()
   const [limites, setLimites] = useState<Limites>({ limite_arquivos_gb:4, limite_uso_mensal:100, limite_usuarios:100, uso_mensal_atual:0 })
   const [arquivosGb, setArquivosGb] = useState(0)
   const [usuariosAtivos, setUsuariosAtivos] = useState(0)

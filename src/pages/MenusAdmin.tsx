@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useVoltarFecha } from '../hooks/useVoltarFecha'
-import { useRegistrarChromeNav } from '../lib/chrome'
+import { useRegistrarChromeAdmin } from '../lib/chrome'
 import EmojiGrid from '../components/EmojiGrid'
 import type { Profile } from '../App'
 
@@ -18,7 +18,7 @@ function MatIcon({ name, size=20, color='var(--text2)' }: {name:string;size?:num
 }
 
 export default function MenusAdmin({ profile }: { profile?: Profile }) {
-  useRegistrarChromeNav('admin')
+  useRegistrarChromeAdmin()
   const [menus, setMenus]       = useState<MenuItem[]>([])
   const [loading, setLoading]   = useState(true)
   const [editando, setEditando] = useState<MenuItem|null>(null)

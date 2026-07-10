@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { carregarConfig, salvarConfig } from '../lib/tema'
+import { useRegistrarChromeAdmin } from '../lib/chrome'
 import { toast } from '../components/Toast'
 import ParabensAniversario, { MSG_PADRAO, TITULO_PADRAO } from '../components/ParabensAniversario'
 import type { Profile } from '../App'
@@ -13,6 +14,8 @@ export default function ConfigNotificacoes({ profile }: { profile?: Profile }) {
   const [carregado, setCarregado] = useState(false)
   const [salvando, setSalvando] = useState(false)
   const [preview, setPreview] = useState<{ nome: string; titulo: string; mensagem: string } | null>(null)
+
+  useRegistrarChromeAdmin()   // mesmo menu ⚙️ das outras telas admin
 
   useEffect(() => {
     ;(async () => {

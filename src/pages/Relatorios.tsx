@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import { useRegistrarChromeNav } from '../lib/chrome'
+import { useRegistrarChromeAdmin } from '../lib/chrome'
 import { fmtBRL } from '../utils'
 import type { Profile } from '../App'
 
@@ -25,7 +25,7 @@ const LINHAS: { key:keyof Metricas; label:string; money?:boolean }[] = [
 const STATUS_LABEL: Record<string,string> = { active:'Ativo', finished:'Encerrado', inactive:'Inativo' }
 
 export default function Relatorios({ profile }: { profile?: Profile }) {
-  useRegistrarChromeNav('admin')
+  useRegistrarChromeAdmin()
   const [eventos, setEventos] = useState<Evento[]>([])
   const [sel, setSel] = useState<string[]>([])
   const [metricas, setMetricas] = useState<Record<string, Metricas>>({})
