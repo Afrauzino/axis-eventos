@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import { getInitials, isAdmin } from '../utils'
 import { usePermissao } from '../hooks/usePermissao'
 import { supabase } from '../lib/supabase'
+import { NAV_GROUPS } from '../lib/navGroups'
 import type { Profile } from '../App'
 
 type Override = { emoji?:string|null; label?:string|null; visivel?:boolean; ordem?:number|null }
@@ -36,7 +37,7 @@ function buildMenu(): Item[] {
     { id:'fin',     label:'Financeiro',           icon:'account_balance_wallet', emoji:'💰', perm:'menu_financeiro',
       sub:[ { label:'Pagamentos', rota:'/financeiro' }, { label:'Doações', rota:'/doacoes' } ] },
     { id:'admin',   label:'Administração',        icon:'admin_panel_settings', emoji:'⚙️', perm:'menu_admin',
-      sub:[ { label:'Usuários', rota:'/admin' }, { label:'Menus', rota:'/admin/menus' }, { label:'Notificações', rota:'/admin/notificacoes' }, { label:'Saúde do Sistema', rota:'/admin/saude-sistema' }, { label:'Relatórios', rota:'/relatorios' } ] },
+      sub: NAV_GROUPS.admin },   // mesma fonte do menu ⚙️ — não deixa os dois divergirem de novo
   ]
 }
 
