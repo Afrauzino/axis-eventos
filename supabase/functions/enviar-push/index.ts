@@ -32,10 +32,15 @@ Deno.serve(async (req) => {
 
     webpush.setVapidDetails('mailto:afrauzino@gmail.com', VAPID_PUBLIC, VAPID_PRIVATE)
 
-    const { user_ids, notify_admins, alerta, title, body, url: link, tag } = await req.json().catch(() => ({}))
+    const { user_ids, person_ids, notify_admins, alerta, title, body, url: link, tag } = await req.json().catch(() => ({}))
     const admin = createClient(url, serviceKey)
 
     const alvos = new Set<string>(Array.isArray(user_ids) ? user_ids.filter(Boolean) : [])
+    // Alvos por pessoa (people.id) — resolve pro user_id (escala, ministração, teatro, remédio…)
+    if (Array.isArray(person_ids) && person_ids.length) {
+      const { data } = await admin.from('people').select('user_id').in('id', person_ids.filter(Boolean)).not('user_id', 'is', null)
+      for (const p of data ?? []) if (p.user_id) alvos.add(p.user_id)
+    }
     // "avisar os admins": a função resolve sozinha (o cliente não precisa ler a lista)
     if (notify_admins) {
       const { data: adm } = await admin.from('profiles').select('user_id').or('is_admin.eq.true,user_role.in.(admin,pastor)')

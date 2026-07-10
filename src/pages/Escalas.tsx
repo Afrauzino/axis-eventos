@@ -9,6 +9,7 @@ import { usePermissao } from '../hooks/usePermissao'
 import PersonSelect from '../components/PersonSelect'
 import Seletor from '../components/Seletor'
 import { toast } from '../components/Toast'
+import { enviarPush } from '../lib/push'
 import DataHora from '../components/DataHora'
 import BarraData from '../components/BarraData'
 import CardItem from '../components/CardItem'
@@ -208,6 +209,8 @@ export default function Escalas({ profile }: { profile?: Profile }) {
           await supabase.from('escala_checklist').insert(itens.map((i,idx)=>({ escala_id:nova.id, texto:i.texto.trim(), ordem:idx, feito:false })))
         }
       }
+      // Avisa no celular quem foi escalado
+      enviarPush({ person_ids: pessoasSel, title: '📋 Você foi escalado', body: `${form.title}${form.location ? ' · ' + form.location : ''}`, url: '/minhas-atividades' })
       setModal(false); setSalvando(false); resetForm(); carregar(); return
     }
 
@@ -225,6 +228,8 @@ export default function Escalas({ profile }: { profile?: Profile }) {
     if (editando) { const r = await supabase.from('escalas').update(payload).eq('id',editando.id); err = r.error }
     else { const r = await supabase.from('escalas').insert({ ...payload, created_by: profile?.user_id ?? null }).select('id').single(); err = r.error; escalaId = r.data?.id }
     if (err) { setErro('Erro: '+err.message); setSalvando(false); return }
+    // Avisa no celular só quando é uma escala NOVA (não a cada edição)
+    if (!editando) enviarPush({ person_ids: [form.person_id], title: '📋 Você foi escalado', body: `${form.title}${form.location ? ' · ' + form.location : ''}`, url: '/minhas-atividades' })
     // Sincroniza o checklist (apaga e regrava; preserva o "feito" de cada item)
     if (escalaId) {
       await supabase.from('escala_checklist').delete().eq('escala_id', escalaId)

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { enviarPush } from '../lib/push'
 import { getInitials, isAdmin } from '../utils'
 import { useVoltarFecha } from '../hooks/useVoltarFecha'
 import { toast } from './Toast'
@@ -85,6 +86,10 @@ export default function MuralGratidao({ eventoId, profile, fundo, onEditar }: { 
     })
     setEnviando(false)
     if (error) { toast.falha('Não foi possível publicar. Rode o SQL 39_mural_gratidao.sql.', error); return }
+    // Avisa no celular quem foi marcado no mural
+    if (selecionados.length) {
+      enviarPush({ person_ids: selecionados, title: `🙌 ${profile.full_name ?? 'Alguém'} marcou você no mural`, body: t.slice(0, 120), url: '/?ir=mural' })
+    }
     setTexto(''); setSelecionados([])
     carregar(eventoId)
   }

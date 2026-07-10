@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from 'react'
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { enviarPush } from '../lib/push'
 import { useVoltarFecha } from '../hooks/useVoltarFecha'
 import { getInitials, fmtHora, fmtData, isAdmin, toLocalInput } from '../utils'
 import { useEvento } from '../hooks/useEvento'
@@ -193,6 +194,12 @@ export default function Ministracoes({ profile }: { profile?: Profile }) {
     if (editando) { const r=await supabase.from('ministrações').update(payload).eq('id',editando.id); err=r.error }
     else { const r=await supabase.from('ministrações').insert({...payload,event_id:evento.id}).select('id').single(); err=r.error; minId=r.data?.id }
     if (err) { setErro('Erro: '+err.message); setSalvando(false); return }
+    // Avisa no celular o ministrante — só quando é novo ou mudou de pessoa (não a cada edição)
+    const minAntigo = editando?.ministrante_id ?? null
+    const minNovo = form.ministrante_id || null
+    if (minNovo && minNovo !== minAntigo) {
+      enviarPush({ person_ids: [minNovo], title: '🎤 Você vai ministrar', body: form.titulo, url: '/minhas-atividades' })
+    }
     // Sync teatro link — garante que só UM teatro fica vinculado.
     // Só o admin/liberado mexe no teatro; o ministrante NÃO altera o vínculo do teatro.
     if (minId && canEdit) {
