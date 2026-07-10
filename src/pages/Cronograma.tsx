@@ -63,7 +63,7 @@ export default function Cronograma({ profile }: { profile?: Profile }) {
   const [podeCronometro, setPodeCronometro] = useState(false)
   const [cronometro, setCronometro]   = useState<Item|null>(null)
   const [modal, setModal]             = useState(false)
-  const [imprimir, setImprimir]       = useState<null|'inteiro'|'detalhado'|'resumido'>(null)
+  const [imprimir, setImprimir]       = useState<null|'inteiro'|'detalhado'|'resumido'|'resumido-slim'>(null)
   const [editando, setEditando]       = useState<Item|null>(null)
   const [salvando, setSalvando]       = useState(false)
   const [erro, setErro]               = useState('')
@@ -367,6 +367,7 @@ export default function Cronograma({ profile }: { profile?: Profile }) {
     onFiltro: (_,v)=>setFiltro(v),
     impressoes: itens.length>0 ? [
       { label:'Imprimir resumido (pôster)', icon:'grid_view', onClick:()=>setImprimir('resumido') },
+      { label:'Imprimir resumido SLIM (A4)', icon:'view_agenda', onClick:()=>setImprimir('resumido-slim') },
       { label:'Imprimir inteiro', onClick:()=>setImprimir('inteiro') },
       { label:'Imprimir com detalhes', onClick:()=>setImprimir('detalhado') },
     ] : undefined,
@@ -614,13 +615,13 @@ export default function Cronograma({ profile }: { profile?: Profile }) {
       )}
 
       {/* ===== IMPRESSÃO — reflete exatamente o que está na tela (mesmos grupos/filtro) ===== */}
-      {imprimir==='resumido' && (
-        <PrintOverlay titulo="Cronograma (resumo)" onClose={()=>setImprimir(null)}>
-          <CronogramaPoster titulo={`CRONOGRAMA ${evento?.name ? evento.name.toUpperCase() : 'ENCONTRO'}`} dias={diasPoster} />
+      {(imprimir==='resumido' || imprimir==='resumido-slim') && (
+        <PrintOverlay titulo={imprimir==='resumido-slim' ? 'Cronograma (slim)' : 'Cronograma (resumo)'} onClose={()=>setImprimir(null)}>
+          <CronogramaPoster titulo={`CRONOGRAMA ${evento?.name ? evento.name.toUpperCase() : 'ENCONTRO'}`} dias={diasPoster} slim={imprimir==='resumido-slim'} />
         </PrintOverlay>
       )}
 
-      {imprimir && imprimir!=='resumido' && (
+      {imprimir && imprimir!=='resumido' && imprimir!=='resumido-slim' && (
         <PrintOverlay titulo={imprimir==='inteiro'?'Cronograma':'Cronograma com detalhes'} onClose={()=>setImprimir(null)}>
           {Object.keys(grupos).length===0
             ? <p style={{fontSize:13,color:'#6b7280'}}>Nada para o filtro atual.</p>
