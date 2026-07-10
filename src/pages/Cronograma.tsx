@@ -110,6 +110,7 @@ export default function Cronograma({ profile }: { profile?: Profile }) {
   const { pode } = usePermissao(profile ?? null)
   // Admin OU liberação (individual/equipe) "ver e editar Cronograma" na tela do Admin
   const canEdit = (!!profile && isAdmin(profile.user_role)) || pode('cronograma','editar')
+  const ehAdmin = !!profile && (isAdmin(profile.user_role) || !!profile.is_admin)  // reverter status é só admin
 
   useEffect(() => { if (evLoading) return; if (!evento) { setLoading(false); return }; setLoading(true); carregar() }, [evento, evLoading])
 
@@ -240,6 +241,19 @@ export default function Cronograma({ profile }: { profile?: Profile }) {
       try { if (item?.theater_id)     await supabase.from('theaters').update({ status:'concluido' }).eq('id', item.theater_id) } catch {}
       try { if (item?.ministracao_id) await supabase.from('ministrações').update({ status:'concluido' }).eq('id', item.ministracao_id) } catch {}
     }
+    setItens(prev => prev.map(i => i.id === id ? { ...i, ...extra } : i))
+    setDetalhe(prev => prev?.id === id ? { ...prev, ...extra } : prev)
+  }
+
+  // Reverter (só admin): volta o item para "Planejado", zera o cronômetro e
+  // desfaz a conclusão do teatro/ministração vinculados.
+  async function reverterStatus(id: string) {
+    if (!confirm('Reverter este item para "Planejado"? Isso também reabre o teatro/ministração ligados.')) return
+    const extra: any = { status: 'planejado', cron_estado: null, cron_iniciado_em: null }
+    await supabase.from('cronograma_eventos').update(extra).eq('id', id)
+    const item = itens.find(i => i.id === id)
+    try { if (item?.theater_id)     await supabase.from('theaters').update({ status:'planejado' }).eq('id', item.theater_id) } catch {}
+    try { if (item?.ministracao_id) await supabase.from('ministrações').update({ status:'planejado' }).eq('id', item.ministracao_id) } catch {}
     setItens(prev => prev.map(i => i.id === id ? { ...i, ...extra } : i))
     setDetalhe(prev => prev?.id === id ? { ...prev, ...extra } : prev)
   }
@@ -506,6 +520,13 @@ export default function Cronograma({ profile }: { profile?: Profile }) {
                   <button className="btn btn-sm btn-ghost" onClick={()=>{setDetalhe(null);abrirEdicao(detalhe)}}>Editar</button>
                   <button className="btn btn-sm" style={{background:'var(--danger-bg)',color:'var(--danger)'}} onClick={()=>excluir(detalhe.id)}>Excluir</button>
                 </div>
+              )}
+
+              {/* Reverter status — SÓ admin, quando não está "Planejado" */}
+              {ehAdmin && detalhe.status!=='planejado' && (
+                <button className="btn btn-sm btn-full" style={{background:'var(--bg)',color:'var(--text2)',border:'1px solid var(--border)',marginBottom:12}} onClick={()=>reverterStatus(detalhe.id)}>
+                  <span className="icon icon-sm">undo</span> Reverter status (voltar pra Planejado)
+                </button>
               )}
 
               <button className="btn btn-ghost btn-full" onClick={()=>setDetalhe(null)}>Fechar</button>
