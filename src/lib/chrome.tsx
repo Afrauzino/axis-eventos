@@ -10,7 +10,7 @@ const TITULOS_NAV: Record<string, string> = { admin:'Administração', equipes:'
 export type FiltroGrupo = { chave: string; label: string; opcoes: { value: string; label: string }[] }
 export type ItemImpressao = { label: string; onClick: () => void; icon?: string; disabled?: boolean }
 export type ItemConfig = { label: string; onClick: () => void; icon?: string }
-export type NavItem = { label: string; ativo?: boolean; onClick: () => void; icone?: string }
+export type NavItem = { label: string; ativo?: boolean; onClick: () => void; icone?: string; emoji?: string }
 export type NavGrupo = { titulo: string; itens: NavItem[] }
 // Navegação em RAIL lateral (coluna de grupos com emoji + painel de itens ao lado).
 export type RailGrupo = { titulo: string; curto: string; emoji: string; itens: NavItem[] }
@@ -63,7 +63,7 @@ export function useRegistrarChromeAdmin(extra: Chrome = {}, deps: any[] = []) {
     titulo: g.titulo,
     curto: g.curto ?? g.titulo,
     emoji: g.emoji ?? '•',
-    itens: g.itens.map(it => ({ label: it.label, icone: it.icone, ativo: estaAtivo(it.rota), onClick: () => nav(it.rota) })),
+    itens: g.itens.map(it => ({ label: it.label, icone: it.icone, emoji: it.emoji, ativo: estaAtivo(it.rota), onClick: () => nav(it.rota) })),
   }))
   useRegistrarChrome(
     { ...extra, railGrupos, navegacao: extra.navegacao },
