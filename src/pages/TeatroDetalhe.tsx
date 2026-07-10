@@ -11,6 +11,7 @@ import RichEditor from '../components/RichEditor'
 import UploadFoto from '../components/UploadFoto'
 import Seletor from '../components/Seletor'
 import { toast } from '../components/Toast'
+import { enviarPush } from '../lib/push'
 import { usePermissao } from '../hooks/usePermissao'
 import { useRegistrarChrome } from '../lib/chrome'
 import type { Profile } from '../App'
@@ -95,6 +96,11 @@ export default function TeatroDetalhe({ profile }: { profile?: Profile }) {
   // Objetos da cena: lista de objeto_ids
   const [cenaObjetos, setCenaObjetos] = useState<string[]>([])
   const [cenaArq, setCenaArq] = useState<File[]>([]) // arquivos da cena
+  // Escalar elenco: personagem → ator(es). Múltiplo permite vários atores.
+  const [modalElenco, setModalElenco] = useState(false)
+  useVoltarFecha(modalElenco, () => setModalElenco(false))
+  const [elencoForm, setElencoForm] = useState<{ personagem_id:string; person_ids:string[] }>({ personagem_id:'', person_ids:[] })
+  const [salvandoElenco, setSalvandoElenco] = useState(false)
 
   const { pode } = usePermissao(profile ?? null)
   const canEdit = (!!profile && isAdmin(profile.user_role)) || pode('teatro','editar')
@@ -208,7 +214,9 @@ export default function TeatroDetalhe({ profile }: { profile?: Profile }) {
     // Colunas antigas: primeiro bloco de cada tipo vira texto puro (retrocompatível)
     const txtBloco = (tipo:string) => { const b = blocos.find(x=>x.tipo===tipo); return b ? stripHtml(b.conteudo)||null : null }
     const objetosLimpos = cenaObjetos.filter(Boolean)
-    const primPG  = cenaPersonagens[0]
+    // Personagens da cena com os atores SEMPRE atualizados do elenco (fonte da verdade).
+    const cenaPG = cenaPersonagens.filter(cp => cp.personagem_id).map(cp => ({ personagem_id: cp.personagem_id, person_ids: atoresDe(cp.personagem_id) }))
+    const primPG  = cenaPG[0]
     const primObj = objetosLimpos[0]
     const payload = {
       theater_id:id, ordem:ordemNova,
@@ -234,23 +242,11 @@ export default function TeatroDetalhe({ profile }: { profile?: Profile }) {
     // Colunas novas (blocos + vários personagens/objetos) — resiliente: avisa se faltar sql/32
     if (cenaId) {
       const rNovo = await supabase.from('teatro_cenas')
-        .update({ blocos: blocos, personagens: cenaPersonagens, objetos: objetosLimpos })
+        .update({ blocos: blocos, personagens: cenaPG, objetos: objetosLimpos })
         .eq('id', cenaId)
       if (rNovo.error) toast.info('Rode o sql/32 para salvar as caixas e vários personagens por cena.')
     }
-
-    // Sync elenco: remove old, add all new
-    if (cenaId) {
-      // Collect all person-personagem pairs from this cena
-      for (const cp of cenaPersonagens) {
-        for (const pid of cp.person_ids) {
-          const jaNoElenco = elenco.some(e=>e.person_id===pid && e.personagem_id===cp.personagem_id)
-          if (!jaNoElenco) {
-            await supabase.from('teatro_elenco').insert({ theater_id:id, person_id:pid, personagem_id:cp.personagem_id })
-          }
-        }
-      }
-    }
+    // O elenco agora é definido na aba Elenco (não mais a partir das cenas).
 
     // Arquivos da cena
     if (cenaId && cenaArq.length) { for (const f of cenaArq) await uploadArquivoCena(cenaId, f) }
@@ -282,6 +278,22 @@ export default function TeatroDetalhe({ profile }: { profile?: Profile }) {
     carregar()
   }
 
+  // Escala personagem → ator(es) no elenco DESTE teatro. Um registro por ator.
+  async function salvarElenco() {
+    if (!elencoForm.personagem_id || elencoForm.person_ids.length===0) { toast.aviso('Escolha o personagem e pelo menos um ator.'); return }
+    setSalvandoElenco(true)
+    const novos = elencoForm.person_ids
+      .filter(pid => !elenco.some(e => e.personagem_id===elencoForm.personagem_id && e.person_id===pid))
+      .map(pid => ({ theater_id:id, personagem_id:elencoForm.personagem_id, person_id:pid }))
+    if (novos.length) {
+      const { error } = await supabase.from('teatro_elenco').insert(novos)
+      if (error) { setSalvandoElenco(false); toast.falha('Não foi possível salvar o elenco.', error); return }
+      // avisa no celular quem entrou no elenco
+      enviarPush({ person_ids: novos.map(n=>n.person_id), title:'🎭 Você está no elenco', body: teatro?.nome ? `Elenco de ${teatro.nome}` : 'Você entrou no elenco de um teatro.', url:'/minhas-atividades' })
+    }
+    setSalvandoElenco(false); setModalElenco(false); setElencoForm({ personagem_id:'', person_ids:[] }); carregar(); toast.sucesso('Elenco atualizado!')
+  }
+
   async function salvarMidia(e: React.FormEvent) {
     e.preventDefault()
     const url = formMidia.url.trim()
@@ -308,14 +320,14 @@ export default function TeatroDetalhe({ profile }: { profile?: Profile }) {
   function removePersonagem(idx: number) {
     setCenaPersonagens(prev => prev.filter((_,i)=>i!==idx))
   }
+  // Atores de um personagem NESTE teatro, vindos do elenco (personagem múltiplo → vários).
+  function atoresDe(pgId: string | null): string[] {
+    if (!pgId) return []
+    return elenco.filter(e => e.personagem_id === pgId).map(e => e.person_id)
+  }
   function setPersonagemId(idx: number, pgId: string) {
-    setCenaPersonagens(prev => prev.map((cp,i)=>i===idx?{...cp,personagem_id:pgId,person_ids:[]}:cp))
-  }
-  function addAtor(idx: number, personId: string) {
-    setCenaPersonagens(prev => prev.map((cp,i)=>i===idx?{...cp,person_ids:[...cp.person_ids,personId]}:cp))
-  }
-  function removeAtor(idx: number, personId: string) {
-    setCenaPersonagens(prev => prev.map((cp,i)=>i===idx?{...cp,person_ids:cp.person_ids.filter(p=>p!==personId)}:cp))
+    // Ao escolher o personagem, o ator vem do elenco (fixo) — não se escolhe na cena.
+    setCenaPersonagens(prev => prev.map((cp,i)=>i===idx?{...cp,personagem_id:pgId,person_ids:atoresDe(pgId)}:cp))
   }
   // Objetos: caixas de seleção (igual personagem) — permite slot vazio até escolher
   function addObjeto() {
@@ -446,32 +458,51 @@ export default function TeatroDetalhe({ profile }: { profile?: Profile }) {
         </>
       )}
 
-      {/* ELENCO */}
+      {/* ELENCO — personagem → ator(es). É a fonte da verdade: a cena puxa daqui. */}
       {aba==='elenco' && (
         <>
+          {canEdit && (
+            <button type="button" onClick={()=>{ setElencoForm({ personagem_id:'', person_ids:[] }); setModalElenco(true) }}
+              style={{width:'100%',display:'flex',alignItems:'center',justifyContent:'center',gap:6,background:cor,color:'white',border:'none',borderRadius:12,padding:'12px',cursor:'pointer',fontFamily:'inherit',fontWeight:700,fontSize:14,marginBottom:14}}>
+              <span className="icon icon-sm">person_add</span> Escalar personagem
+            </button>
+          )}
+
           {elenco.length===0 ? (
             <div className="empty">
               <div className="empty-icon"><MatIcon name="group" size={28} color="var(--muted-light)"/></div>
-              <p className="empty-title">Nenhum ator</p>
-              <p className="empty-desc">Vincule pessoas ao criar ou editar cenas.</p>
+              <p className="empty-title">Nenhum ator escalado</p>
+              <p className="empty-desc">Toque em "Escalar personagem": escolha o personagem e quem faz. A cena puxa o ator sozinha.</p>
             </div>
-          ) : elenco.map(el => {
-            const p  = getPessoa(el.person_id)
-            const pg = getPersonagem(el.personagem_id)
-            if (!p) return null
-            return (
-              <CardItem
-                key={el.id}
-                cor={cor}
-                ehPessoa
-                fotoUrl={p.photo_url}
-                iniciais={getInitials(p.name)}
-                titulo={p.name}
-                extra={pg ? <span style={{fontSize:12,color:cor,fontWeight:600}}>{pg.nome}</span> : undefined}
-                onExcluir={canEdit ? ()=>removerDoElenco(el.id) : undefined}
-              />
-            )
-          })}
+          ) : (
+            // agrupa por personagem (múltiplo mostra vários atores)
+            [...new Set(elenco.map(e=>e.personagem_id))].map(pgId => {
+              const pg = getPersonagem(pgId)
+              const doPg = elenco.filter(e => e.personagem_id === pgId)
+              return (
+                <div key={pgId ?? 'sem'} style={{background:'white',borderRadius:14,boxShadow:'var(--shadow-sm)',marginBottom:10,overflow:'hidden'}}>
+                  <div style={{padding:'10px 14px',borderBottom:'1px solid var(--border)',display:'flex',alignItems:'center',gap:8}}>
+                    <MatIcon name="theater_comedy" size={18} color={cor}/>
+                    <span style={{fontSize:14,fontWeight:800}}>{pg?.nome ?? 'Sem personagem'}</span>
+                    {pg?.multiplo && <span style={{fontSize:11,color:'var(--muted)',fontWeight:700}}>· múltiplo</span>}
+                    <span style={{marginLeft:'auto',fontSize:12,color:'var(--muted)'}}>{doPg.length} ator(es)</span>
+                  </div>
+                  {doPg.map(el => {
+                    const p = getPessoa(el.person_id)
+                    return (
+                      <div key={el.id} style={{display:'flex',alignItems:'center',gap:10,padding:'9px 14px',borderBottom:'1px solid var(--border)'}}>
+                        <div style={{width:32,height:32,borderRadius:'50%',background:cor,display:'flex',alignItems:'center',justifyContent:'center',overflow:'hidden',flexShrink:0}}>
+                          {p?.photo_url?<img src={p.photo_url} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}}/>:<span style={{fontSize:11,fontWeight:700,color:'white'}}>{getInitials(p?.name??'?')}</span>}
+                        </div>
+                        <span style={{flex:1,fontSize:13,fontWeight:600}}>{p?.name ?? '—'}{!p?.name && ''}</span>
+                        {canEdit && <button onClick={()=>removerDoElenco(el.id)} title="Remover" style={{background:'none',border:'none',cursor:'pointer',color:'var(--muted)',fontFamily:'inherit',display:'flex'}}><span className="icon icon-sm">close</span></button>}
+                      </div>
+                    )
+                  })}
+                </div>
+              )
+            })
+          )}
         </>
       )}
 
@@ -525,6 +556,61 @@ export default function TeatroDetalhe({ profile }: { profile?: Profile }) {
       )}
 
       {/* MODAL MÍDIA */}
+      {/* MODAL ESCALAR ELENCO */}
+      {modalElenco && canEdit && (() => {
+        const pgSel = personagens.find(p=>p.id===elencoForm.personagem_id)
+        const multiplo = !!pgSel?.multiplo
+        const candidatos = pessoas.filter(p => equipeTeatroIds.size===0 ? true : equipeTeatroIds.has(p.id))
+        return (
+        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.5)',zIndex:300,display:'flex',flexDirection:'column',justifyContent:'flex-end'}} onClick={e=>e.target===e.currentTarget&&setModalElenco(false)}>
+          <div style={{background:'white',borderRadius:'20px 20px 0 0',padding:'8px 20px 32px',maxHeight:'90vh',overflowY:'auto'}}>
+            <div style={{width:36,height:4,background:'var(--border)',borderRadius:2,margin:'12px auto 0'}}/>
+            <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'16px 0 14px',borderBottom:'1px solid var(--border)',marginBottom:20}}>
+              <span style={{fontSize:17,fontWeight:700}}>Escalar personagem</span>
+              <button onClick={()=>setModalElenco(false)} style={{background:'var(--bg)',border:'1px solid var(--border)',borderRadius:'50%',width:32,height:32,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',fontFamily:'inherit'}}><span className="icon icon-sm">close</span></button>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Personagem <span className="req">*</span></label>
+              <Seletor titulo="Personagem" placeholder="Selecionar personagem" value={elencoForm.personagem_id}
+                onChange={v=>setElencoForm({ personagem_id:v, person_ids:[] })}
+                opcoes={[{value:'',label:'Selecionar personagem'}, ...personagens.map(p=>({value:p.id,label:`${p.nome}${p.multiplo?' (múltiplo)':''}`}))]}/>
+            </div>
+
+            {elencoForm.personagem_id && (
+              <div className="form-group">
+                <label className="form-label">{multiplo ? 'Atores (pode escolher vários)' : 'Ator'} <span className="req">*</span></label>
+                {elencoForm.person_ids.map(pid => {
+                  const p = getPessoa(pid)
+                  return (
+                    <div key={pid} style={{display:'flex',alignItems:'center',gap:8,marginBottom:6}}>
+                      <div style={{width:28,height:28,borderRadius:'50%',background:cor,display:'flex',alignItems:'center',justifyContent:'center',overflow:'hidden',flexShrink:0}}>
+                        {p?.photo_url?<img src={p.photo_url} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}}/>:<span style={{fontSize:11,fontWeight:700,color:'white'}}>{getInitials(p?.name??'?')}</span>}
+                      </div>
+                      <span style={{flex:1,fontSize:13,fontWeight:600}}>{p?.name}</span>
+                      <button type="button" onClick={()=>setElencoForm(f=>({...f,person_ids:f.person_ids.filter(x=>x!==pid)}))} style={{background:'none',border:'none',cursor:'pointer',color:'var(--danger)',fontFamily:'inherit'}}><span className="icon icon-sm">close</span></button>
+                    </div>
+                  )
+                })}
+                {(multiplo || elencoForm.person_ids.length===0) && (
+                  <PersonSelect
+                    pessoas={candidatos.filter(p=>!elencoForm.person_ids.includes(p.id))}
+                    value=""
+                    onChange={pid=>{ if(pid) setElencoForm(f=>({...f,person_ids:[...f.person_ids,pid]})) }}
+                    placeholder={equipeTeatroIds.size===0 ? 'Selecionar ator...' : 'Adicionar ator...'}
+                  />
+                )}
+              </div>
+            )}
+
+            <button type="button" className="btn btn-primary btn-full" disabled={salvandoElenco || !elencoForm.personagem_id || elencoForm.person_ids.length===0} onClick={salvarElenco}>
+              {salvandoElenco?'Salvando...':'Adicionar ao elenco'}
+            </button>
+          </div>
+        </div>
+        )
+      })()}
+
       {modalMidia && canEdit && (
         <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.5)',zIndex:300,display:'flex',flexDirection:'column',justifyContent:'flex-end'}} onClick={e=>e.target===e.currentTarget&&setModalMidia(false)}>
           <div style={{background:'white',borderRadius:'20px 20px 0 0',padding:'8px 20px 32px',maxHeight:'90vh',overflowY:'auto'}}>
@@ -630,15 +716,25 @@ export default function TeatroDetalhe({ profile }: { profile?: Profile }) {
                 </button>
               </div>
 
+              {elenco.length===0 && (
+                <div className="alert-box alert-info mb-3" style={{fontSize:12}}>
+                  Monte o <b>Elenco</b> primeiro (aba Elenco): defina quem é cada personagem. Aqui você só escolhe os personagens — o ator vem sozinho.
+                </div>
+              )}
+
               {cenaPersonagens.map((cp,idx) => {
                 const pg = personagens.find(p=>p.id===cp.personagem_id)
+                const atores = atoresDe(cp.personagem_id)   // do elenco
+                // personagens que têm ator no elenco deste teatro (distinct)
+                const idsNoElenco = [...new Set(elenco.map(e=>e.personagem_id).filter(Boolean))] as string[]
+                const opcoesPG = personagens.filter(p => idsNoElenco.includes(p.id))
                 return (
                   <div key={idx} style={{background:'var(--bg)',borderRadius:12,padding:'12px 14px',marginBottom:10,border:'1px solid var(--border)'}}>
-                    <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:10}}>
+                    <div style={{display:'flex',alignItems:'center',gap:8}}>
                       <div style={{flex:1}}>
                         <label className="form-label" style={{marginBottom:4}}>Personagem</label>
                         <Seletor titulo="Personagem" placeholder="Selecionar personagem" value={cp.personagem_id} onChange={v=>setPersonagemId(idx,v)}
-                          opcoes={[{value:'',label:'Selecionar personagem'}, ...personagens.map(p=>({value:p.id,label:`${p.nome}${p.multiplo?' (múltiplo)':''}`}))]}/>
+                          opcoes={[{value:'',label:'Selecionar personagem'}, ...opcoesPG.map(p=>({value:p.id,label:`${p.nome}${p.multiplo?' (múltiplo)':''}`}))]}/>
                       </div>
                       <button type="button" onClick={()=>removePersonagem(idx)} style={{background:'var(--danger-bg)',color:'var(--danger)',border:'none',borderRadius:8,padding:'6px',cursor:'pointer',fontFamily:'inherit',marginTop:20,flexShrink:0}}>
                         <span className="icon icon-sm">delete</span>
@@ -646,35 +742,26 @@ export default function TeatroDetalhe({ profile }: { profile?: Profile }) {
                     </div>
 
                     {cp.personagem_id && (
-                      <>
-                        <label className="form-label" style={{marginBottom:6}}>
-                          {pg?.multiplo ? 'Atores (múltiplos permitidos)' : 'Ator'}
-                        </label>
-                        {/* Atores já adicionados */}
-                        {cp.person_ids.map(pid => {
-                          const p = getPessoa(pid)
-                          return (
-                            <div key={pid} style={{display:'flex',alignItems:'center',gap:8,marginBottom:6}}>
-                              <div style={{width:28,height:28,borderRadius:'50%',background:'var(--primary)',display:'flex',alignItems:'center',justifyContent:'center',overflow:'hidden',flexShrink:0}}>
-                                {p?.photo_url?<img src={p.photo_url} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}}/>:<span style={{fontSize:11,fontWeight:700,color:'white'}}>{getInitials(p?.name??'?')}</span>}
-                              </div>
-                              <span style={{flex:1,fontSize:13,fontWeight:600}}>{p?.name}</span>
-                              <button type="button" onClick={()=>removeAtor(idx,pid)} style={{background:'none',border:'none',cursor:'pointer',color:'var(--danger)',fontFamily:'inherit'}}><span className="icon icon-sm">close</span></button>
-                            </div>
-                          )
-                        })}
-                        {/* Adicionar ator */}
-                        {(pg?.multiplo || cp.person_ids.length===0) && (
-                          <div style={{marginTop:4}}>
-                            <PersonSelect
-                              pessoas={pessoas.filter(p=>equipeTeatroIds.has(p.id) && !cp.person_ids.includes(p.id))}
-                              value=""
-                              onChange={pid=>{ if(pid) addAtor(idx,pid) }}
-                              placeholder={equipeTeatroIds.size===0 ? 'Ninguém na Equipe Teatro ainda' : 'Adicionar ator...'}
-                            />
-                          </div>
+                      <div style={{marginTop:10,paddingTop:10,borderTop:'1px solid var(--border)'}}>
+                        {atores.length===0 ? (
+                          <p style={{fontSize:12,color:'var(--warning)',fontWeight:700}}>⏳ Sem ator no elenco — escale {pg?.nome||'este personagem'} na aba Elenco.</p>
+                        ) : (
+                          <>
+                            <p style={{fontSize:11,color:'var(--muted)',fontWeight:700,marginBottom:6}}>{atores.length>1?'ATORES':'ATOR'} · puxado do elenco</p>
+                            {atores.map(pid => {
+                              const p = getPessoa(pid)
+                              return (
+                                <div key={pid} style={{display:'flex',alignItems:'center',gap:8,marginBottom:6}}>
+                                  <div style={{width:28,height:28,borderRadius:'50%',background:'var(--primary)',display:'flex',alignItems:'center',justifyContent:'center',overflow:'hidden',flexShrink:0}}>
+                                    {p?.photo_url?<img src={p.photo_url} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}}/>:<span style={{fontSize:11,fontWeight:700,color:'white'}}>{getInitials(p?.name??'?')}</span>}
+                                  </div>
+                                  <span style={{flex:1,fontSize:13,fontWeight:600}}>{p?.name}</span>
+                                </div>
+                              )
+                            })}
+                          </>
                         )}
-                      </>
+                      </div>
                     )}
                   </div>
                 )
