@@ -28,7 +28,7 @@ export default function Perfil({ profile, onUpdate }: { profile: Profile; onUpda
     const { data, error } = await supabase.from('people').insert({
       event_id: evento.id, user_id: profile.user_id,
       name: formatName(form.name || profile.full_name || ''),
-      church: form.church || (profile as any).church || null,
+      church: (form.church || (profile as any).church || '').trim(),
       phone: form.phone || (profile as any).phone || null,
       photo_url: foto, role_type: role, status: 'confirmado',
     }).select('id,role_type').single()
@@ -80,7 +80,7 @@ export default function Perfil({ profile, onUpdate }: { profile: Profile; onUpda
     const nome = formatName(form.name)
     if (!nome) { setErro('Nome obrigatório.'); setSalvando(false); return }
     const { error } = await supabase.from('profiles')
-      .update({ name: nome, phone: form.phone || null, church: form.church || null })
+      .update({ name: nome, phone: form.phone || null, church: (form.church || '').trim() })
       .eq('user_id', profile.user_id)
     if (error) { setErro('Erro ao salvar: ' + error.message) }
     else {

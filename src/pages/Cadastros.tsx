@@ -88,7 +88,7 @@ export default function Cadastros({ profile }: { profile: Profile }) {
     const dadosBase: any = {
       name: formatName(form.name),
       phone: form.phone || null,
-      church: form.church || null,
+      church: (form.church || '').trim(),  // igreja OPCIONAL — vazio em vez de null (não exige no banco)
       role_type: form.role_type,
       photo_url: form.photo_url || null,
     }

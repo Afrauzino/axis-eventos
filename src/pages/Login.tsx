@@ -300,7 +300,7 @@ export default function Login() {
       name: nome,
       phone: telefoneLimpo,
       contact_phone: form.contact_phone || null,
-      church: form.church || null,
+      church: (form.church || '').trim(),  // igreja opcional
       ano_encontro: form.ano_encontro ? Number(form.ano_encontro) : null,
       sexo: form.sexo || null,
       birth_date: form.birth_date || null,

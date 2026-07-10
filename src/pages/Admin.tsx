@@ -565,7 +565,7 @@ export default function Admin({ profile }: { profile?: Profile }) {
       name: formatName(editForm.name),
       phone: (editForm.phone || '').replace(/\D/g,'') || editForm.phone || '',
       contact_phone: editForm.contact_phone || null,
-      church: editForm.church || null,
+      church: (editForm.church || '').trim(),  // igreja opcional
       ano_encontro: editForm.ano_encontro ? Number(editForm.ano_encontro) : null,
       sexo: editForm.sexo || null,
       birth_date: editForm.birth_date || null,
