@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase'
 import { useVoltarFecha } from '../hooks/useVoltarFecha'
 import { fmtDataHora, isAdmin, isLider } from '../utils'
 import { useEvento } from '../hooks/useEvento'
+import { enviarPush } from '../lib/push'
 import Seletor from '../components/Seletor'
 import type { Profile } from '../App'
 
@@ -108,6 +109,13 @@ export default function Alertas({ profile }: { profile?: Profile }) {
       setErro(faltaSql ? 'Para mandar só para encontreiros/encontristas, rode antes o sql/50_alertas_mural_foto.sql.' : 'Erro: '+error.message)
       setSalvando(false); return
     }
+    // Notifica no celular (app fechado) o público-alvo — a Edge Function resolve quem recebe
+    enviarPush({
+      alerta: { event_id: evento.id, target_type: form.target_type, target_team_ids: teamIds },
+      title: `📢 ${form.title.trim()}`,
+      body: form.message.trim().slice(0, 140),
+      url: '/alertas',
+    })
     setModal(false); setSalvando(false)
     setForm({title:'',message:'',priority:'info',target_type:'all',requires_read:false})
     carregar()

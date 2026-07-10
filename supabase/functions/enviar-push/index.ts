@@ -32,7 +32,7 @@ Deno.serve(async (req) => {
 
     webpush.setVapidDetails('mailto:afrauzino@gmail.com', VAPID_PUBLIC, VAPID_PRIVATE)
 
-    const { user_ids, notify_admins, title, body, url: link, tag } = await req.json().catch(() => ({}))
+    const { user_ids, notify_admins, alerta, title, body, url: link, tag } = await req.json().catch(() => ({}))
     const admin = createClient(url, serviceKey)
 
     const alvos = new Set<string>(Array.isArray(user_ids) ? user_ids.filter(Boolean) : [])
@@ -41,7 +41,31 @@ Deno.serve(async (req) => {
       const { data: adm } = await admin.from('profiles').select('user_id').or('is_admin.eq.true,user_role.in.(admin,pastor)')
       for (const a of adm ?? []) if (a.user_id) alvos.add(a.user_id)
     }
-    if (alvos.size === 0) return json({ error: 'Sem destinatários' }, 400)
+    // Alerta: resolve o público-alvo pelo evento (todos / encontreiros / encontristas / equipe)
+    if (alerta?.event_id && alerta?.target_type) {
+      const tt = alerta.target_type as string
+      const addPeople = (rows: any[] | null) => { for (const p of rows ?? []) if (p?.user_id) alvos.add(p.user_id) }
+      if (tt === 'all') {
+        const { data } = await admin.from('people').select('user_id').eq('event_id', alerta.event_id).not('user_id', 'is', null)
+        addPeople(data)
+      } else if (tt === 'worker' || tt === 'encounterer') {
+        const { data } = await admin.from('people').select('user_id').eq('event_id', alerta.event_id).eq('role_type', tt).not('user_id', 'is', null)
+        addPeople(data)
+      } else if (tt === 'team' || tt === 'multiple') {
+        const teamIds = Array.isArray(alerta.target_team_ids) ? alerta.target_team_ids.filter(Boolean) : []
+        if (teamIds.length) {
+          const { data: pt } = await admin.from('people_teams').select('person_id').in('team_id', teamIds)
+          const personIds = [...new Set((pt ?? []).map((x: any) => x.person_id).filter(Boolean))]
+          if (personIds.length) {
+            const { data: pe } = await admin.from('people').select('user_id').in('id', personIds).not('user_id', 'is', null)
+            addPeople(pe)
+          }
+        }
+      }
+    }
+    // Não notificar quem disparou (o próprio autor do alerta)
+    if (user?.id) alvos.delete(user.id)
+    if (alvos.size === 0) return json({ ok: true, enviados: 0, falhas: 0, semAlvos: true })
     const { data: subs } = await admin.from('push_subscriptions').select('*').in('user_id', [...alvos])
 
     const payload = JSON.stringify({ title: title || 'AXIS Eventos', body: body || '', url: link || '/', tag: tag || undefined })
