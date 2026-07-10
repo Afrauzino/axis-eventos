@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase'
 import { useVoltarFecha } from '../hooks/useVoltarFecha'
 import ConfigCor from './ConfigCor'
 import { limparCachePermissoes } from '../hooks/usePermissao'
-import { fmtDataHora, isAdmin, formatName } from '../utils'
+import { fmtDataHora, isAdmin, formatName, normalizarNome } from '../utils'
 import { invalidarEventoAtivo } from '../hooks/useEvento'
 import { registrarLog } from '../lib/audit'
 import { useNavigate, useLocation } from 'react-router-dom'
@@ -85,16 +85,6 @@ const TIPOS_PADRÃO = [
 const CORES_TIPO = ['#00A99D','#6B46C1','#E8821A','#2F855A','#D53F8C','#2B6CB0','#C53030','#D69E2E','#718096','#1A202C']
 
 type AbaAdmin = 'usuarios'|'equipes_perm'|'eventos'|'tipos'|'backup'|'logs'|'aparencia'|'msg'
-
-// Busca "esperta": ignora acento e títulos (Pr./Pra./Pastor/Pastora).
-// Ex.: buscar "claudia" acha "Pra. Cláudia".
-function normalizarNome(s: string): string {
-  return (s || '')
-    .toLowerCase()
-    .normalize('NFD').replace(/\p{Diacritic}/gu, '')    // tira acentos
-    .replace(/\b(pr|pra|pastor|pastora)\b\.?/g, ' ')    // tira títulos (e o ponto do "Pra.")
-    .replace(/\s+/g, ' ').trim()
-}
 
 // Situação da pessoa (pro filtro): usa role_status + se tem conta (user_id).
 const SITUACOES: { value:string; label:string; emoji:string }[] = [

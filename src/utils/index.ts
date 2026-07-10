@@ -1,3 +1,14 @@
+// ── Busca "esperta" ────────────────────────────────
+// Ignora acento e títulos (Pr./Pra./Pastor/Pastora).
+// Ex.: buscar "claudia" acha "Pra. Cláudia".
+export function normalizarNome(s: string): string {
+  return (s || '')
+    .toLowerCase()
+    .normalize('NFD').replace(/\p{Diacritic}/gu, '')
+    .replace(/\b(pr|pra|pastor|pastora)\b\.?/g, ' ')
+    .replace(/\s+/g, ' ').trim()
+}
+
 // ── Nome formatado (norma do português) ────────────
 // "MARIA DA SILVA" e "maria da silva" viram "Maria da Silva".
 // Preposições ficam minúsculas — menos quando abrem o nome.
