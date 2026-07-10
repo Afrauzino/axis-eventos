@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import MenuSaude from '../components/MenuSaude'
 import DataHora from '../components/DataHora'
+import Seletor from '../components/Seletor'
 import { toast } from '../components/Toast'
 import { gerarDoses, type JanelaMed } from '../lib/doses'
 import { isAdmin } from '../utils'
@@ -14,18 +15,25 @@ export default function SaudeConfig({ profile }: { profile?: Profile }) {
   const [fim, setFim]       = useState('')
   const [loading, setLoading] = useState(true)
   const [salvando, setSalvando] = useState(false)
-  const canEdit = isAdmin(profile?.user_role)
+  const [equipes, setEquipes] = useState<{id:string;name:string}[]>([])
+  const [medEquipe, setMedEquipe] = useState<string>('')
+  const canEdit = isAdmin(profile?.user_role) || !!profile?.is_admin
 
   useEffect(() => { if (evLoading) return; if (!evento) { setLoading(false); return }; carregar() }, [evento, evLoading])
 
   async function carregar() {
     if (!evento) return
     setLoading(true)
-    const { data } = await supabase.from('events').select('med_inicio,med_fim,start_date,end_date').eq('id', evento.id).maybeSingle()
+    const [{ data }, { data: eqs }] = await Promise.all([
+      supabase.from('events').select('med_inicio,med_fim,med_equipe_id,start_date,end_date').eq('id', evento.id).maybeSingle(),
+      supabase.from('teams').select('id,name').eq('event_id', evento.id).order('name'),
+    ])
     const d: any = data ?? {}
     // Usa o que já foi salvo; se vazio, sugere a partir das datas do evento
     setInicio(d.med_inicio ?? (d.start_date ? `${d.start_date}T08:00` : ''))
     setFim(d.med_fim ?? (d.end_date ? `${d.end_date}T14:00` : ''))
+    setEquipes(eqs ?? [])
+    setMedEquipe(d.med_equipe_id ?? '')
     setLoading(false)
   }
 
@@ -60,6 +68,14 @@ export default function SaudeConfig({ profile }: { profile?: Profile }) {
     toast.sucesso(`Salvo! ${total} dose(s) recalculada(s) no período.`)
   }
 
+  async function salvarEquipe(id: string) {
+    if (!evento) return
+    setMedEquipe(id)
+    const { error } = await supabase.from('events').update({ med_equipe_id: id || null }).eq('id', evento.id)
+    if (error) toast.falha('Não foi possível salvar a equipe.', error)
+    else toast.sucesso(id ? 'Equipe do remédio salva!' : 'Aviso de remédio desligado.')
+  }
+
   if (evLoading || loading) return <div className="page"><div className="skeleton" style={{height:160,borderRadius:14}}/></div>
 
   return (
@@ -82,6 +98,17 @@ export default function SaudeConfig({ profile }: { profile?: Profile }) {
           </button>
         )}
       </div>
+
+      {/* Equipe que recebe o aviso de remédio no celular (10 min antes) */}
+      {canEdit && (
+        <div style={{background:'white',borderRadius:12,padding:'16px',boxShadow:'var(--shadow-sm)',marginBottom:16}}>
+          <div className="section-label mb-2">🔔 Aviso de remédio no celular (10 min antes)</div>
+          <label className="form-label">Equipe responsável pela entrega</label>
+          <Seletor titulo="Equipe do remédio" value={medEquipe} onChange={salvarEquipe}
+            opcoes={[{value:'',label:'— Ninguém (desligado) —'}, ...equipes.map(e=>({value:e.id,label:e.name}))]}/>
+          <p className="form-hint" style={{marginTop:8}}>Os membros dessa equipe recebem uma notificação <strong>10 minutos antes</strong> de cada dose — aparece mesmo com o celular bloqueado. Deixe em "Ninguém" para desligar.</p>
+        </div>
+      )}
 
       <div className="alert-box alert-info" style={{fontSize:13,lineHeight:1.6}}>
         <strong>Como funciona:</strong> defina a <strong>data e hora inicial</strong> e a <strong>final</strong> do
