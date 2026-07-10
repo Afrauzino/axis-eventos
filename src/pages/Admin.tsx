@@ -713,27 +713,25 @@ export default function Admin({ profile }: { profile?: Profile }) {
   }
 
   async function excluirEvento(id:string) {
-    if (!confirm('ATENÇÃO: Excluir evento apagará TODOS os dados relacionados. Confirma?')) return
-    // Delete in order to respect FK constraints
-    await supabase.from('escalas').delete().eq('event_id',id)
-    await supabase.from('financeiro').delete().eq('event_id',id)
-    await supabase.from('doacoes').delete().eq('event_id',id)
-    await supabase.from('people_teams').delete().in('team_id',
-      (await supabase.from('teams').select('id').eq('event_id',id)).data?.map((t:any)=>t.id)??[]
-    )
-    await supabase.from('teams').delete().eq('event_id',id)
-    await supabase.from('people').delete().eq('event_id',id)
-    await supabase.from('cronograma_eventos').delete().eq('event_id',id)
-    await supabase.from('ministrações').delete().eq('event_id',id)
-    await supabase.from('theaters').delete().eq('event_id',id)
-    await supabase.from('locais').delete().eq('event_id',id)
-    try { await supabase.from('alertas').delete().eq('event_id',id) } catch {}
-    await supabase.from('occurrences').delete().eq('event_id',id)
-    const nome = eventos.find(e=>e.id===id)?.name ?? ''
-    await supabase.from('events').delete().eq('id',id)
+    const nome = eventos.find(e=>e.id===id)?.name ?? 'este evento'
+    // 1) Lembrete forte de backup ANTES de apagar
+    if (!confirm(`FEZ BACKUP?\n\nAntes de excluir "${nome}", faça o backup na aba Backup (dá pra salvar no PC e importar depois).\n\nJá tenho o backup e quero continuar?`)) return
+    // 2) Apagar também as contas (logins) das pessoas que ficarem sem evento?
+    const apagarContas = confirm(`Apagar também as CONTAS (login) das pessoas deste evento?\n\nOK = apaga o login de quem não estiver em outro evento (libera o email).\nCancelar = mantém os logins, apaga só os dados do evento.`)
+    // 3) Confirmação final
+    if (!confirm(`EXCLUIR "${nome}" DE VERDADE?\n\nApaga o evento e TUDO dele (equipes, escalas, saúde, teatro, ranking…)${apagarContas?' + os logins':''}. Permanente.`)) return
+
+    const { data, error } = await supabase.rpc('excluir_evento_completo', { p_event: id, p_apagar_contas: apagarContas })
+    if (error) {
+      const naoExiste = error.code === 'PGRST202' || /Could not find the function/i.test(error.message)
+      toast.falha(naoExiste ? 'O admin precisa rodar o sql/53_excluir_evento.sql no Supabase.' : error.message, error)
+      return
+    }
+    const contas = (data as any)?.contas_removidas ?? 0
     registrarLog({ action:'delete', entity:'events', entityId:id, description:`Excluiu o evento ${nome} e todos os seus dados` })
     invalidarEventoAtivo()
     carregar()
+    toast.sucesso(`Evento "${nome}" excluído.${contas>0?` ${contas} conta(s) liberadas.`:''}`)
   }
 
   async function duplicarEvento() {
