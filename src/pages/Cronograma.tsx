@@ -366,8 +366,7 @@ export default function Cronograma({ profile }: { profile?: Profile }) {
     valores: { status: filtro },
     onFiltro: (_,v)=>setFiltro(v),
     impressoes: itens.length>0 ? [
-      { label:'Imprimir resumido (pôster)', icon:'grid_view', onClick:()=>setImprimir('resumido') },
-      { label:'Imprimir resumido SLIM (A4)', icon:'view_agenda', onClick:()=>setImprimir('resumido-slim') },
+      { label:'Imprimir resumido (A4)', icon:'view_agenda', onClick:()=>setImprimir('resumido-slim') },
       { label:'Imprimir inteiro', onClick:()=>setImprimir('inteiro') },
       { label:'Imprimir com detalhes', onClick:()=>setImprimir('detalhado') },
     ] : undefined,
@@ -615,13 +614,13 @@ export default function Cronograma({ profile }: { profile?: Profile }) {
       )}
 
       {/* ===== IMPRESSÃO — reflete exatamente o que está na tela (mesmos grupos/filtro) ===== */}
-      {(imprimir==='resumido' || imprimir==='resumido-slim') && (
-        <PrintOverlay titulo={imprimir==='resumido-slim' ? 'Cronograma (slim)' : 'Cronograma (resumo)'} onClose={()=>setImprimir(null)}>
-          <CronogramaPoster titulo={`CRONOGRAMA ${evento?.name ? evento.name.toUpperCase() : 'ENCONTRO'}`} dias={diasPoster} slim={imprimir==='resumido-slim'} />
+      {imprimir==='resumido-slim' && (
+        <PrintOverlay titulo="Cronograma (resumido)" onClose={()=>setImprimir(null)}>
+          <CronogramaPoster titulo={`CRONOGRAMA ${evento?.name ? evento.name.toUpperCase() : 'ENCONTRO'}`} dias={diasPoster} slim />
         </PrintOverlay>
       )}
 
-      {imprimir && imprimir!=='resumido' && imprimir!=='resumido-slim' && (
+      {imprimir && imprimir!=='resumido-slim' && (
         <PrintOverlay titulo={imprimir==='inteiro'?'Cronograma':'Cronograma com detalhes'} onClose={()=>setImprimir(null)}>
           {Object.keys(grupos).length===0
             ? <p style={{fontSize:13,color:'#6b7280'}}>Nada para o filtro atual.</p>
