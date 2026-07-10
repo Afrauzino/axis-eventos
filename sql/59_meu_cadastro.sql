@@ -39,7 +39,6 @@ BEGIN
     endereco        = NULLIF(p->>'endereco',''),
     bairro          = NULLIF(p->>'bairro',''),
     cep             = NULLIF(p->>'cep',''),
-    team_pref       = NULLIF(p->>'team_pref',''),
     notes           = NULLIF(p->>'notes',''),
     photo_url       = COALESCE(p->>'photo_url', photo_url)
   WHERE user_id = uid;
