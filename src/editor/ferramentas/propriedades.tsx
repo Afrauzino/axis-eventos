@@ -50,6 +50,54 @@ registrarFerramenta({
             onChange={e => set({ rot: Number(e.target.value) })} style={{ width: '100%' }} />
         </label>
 
+        {/* Borda genérica (qualquer elemento) */}
+        {(() => {
+          const b = el.props || {}
+          const bLarg = Number(b.bordaLargura) || 0
+          const bRaio = Number(b.bordaRaio) || 0
+          const bEstilo = b.bordaEstilo === 'tracejada' ? 'tracejada' : 'continua'
+          const bCor = b.bordaCor || '#111827'
+          const bOpac = b.bordaOpacidade ?? 1
+          const btnEstilo = (ativo: boolean) => ({
+            flex: 1, border: ativo ? '2px solid var(--primary)' : '1px solid var(--border)',
+            background: ativo ? 'var(--primary-light)' : 'white', color: ativo ? 'var(--primary)' : 'var(--text2)',
+            borderRadius: 8, padding: '6px 8px', cursor: 'pointer', fontFamily: 'inherit', fontSize: 12, fontWeight: 600,
+          })
+          return (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, borderTop: '1px solid var(--border)', paddingTop: 12 }}>
+              <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text2)' }}>Borda</span>
+              <label style={{ fontSize: 13, color: 'var(--text2)' }}>
+                Espessura ({bLarg}mm)
+                <input type="range" min={0} max={3} step={0.1} value={bLarg}
+                  onChange={e => setProps({ bordaLargura: Number(e.target.value) })} style={{ width: '100%' }} />
+              </label>
+              <label style={{ fontSize: 13, color: 'var(--text2)' }}>
+                Cantos / arredondamento ({bRaio}mm)
+                <input type="range" min={0} max={15} step={0.5} value={bRaio}
+                  onChange={e => setProps({ bordaRaio: Number(e.target.value) })} style={{ width: '100%' }} />
+              </label>
+              {bLarg > 0 && (
+                <>
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    <button type="button" style={btnEstilo(bEstilo === 'continua')} onClick={() => setProps({ bordaEstilo: 'continua' })}>Contínua</button>
+                    <button type="button" style={btnEstilo(bEstilo === 'tracejada')} onClick={() => setProps({ bordaEstilo: 'tracejada' })}>Tracejada</button>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <span style={{ fontSize: 13, color: 'var(--text2)' }}>Cor da borda</span>
+                    <input type="color" value={bCor} onChange={e => setProps({ bordaCor: e.target.value })}
+                      style={{ width: 32, height: 28, borderRadius: 6, border: '1px solid var(--border)', cursor: 'pointer', padding: 1 }} />
+                  </div>
+                  <label style={{ fontSize: 13, color: 'var(--text2)' }}>
+                    Opacidade da borda ({Math.round(bOpac * 100)}%)
+                    <input type="range" min={0} max={100} value={Math.round(bOpac * 100)}
+                      onChange={e => setProps({ bordaOpacidade: Number(e.target.value) / 100 })} style={{ width: '100%' }} />
+                  </label>
+                </>
+              )}
+            </div>
+          )
+        })()}
+
         <div className="ed-tira" style={{ display: 'flex', gap: 6, overflowX: 'auto', scrollbarWidth: 'none', paddingBottom: 2 }}>
           {btnIcone('flip_to_front', 'Frente', () => dispatch({ t: 'ordem', ids: selecao, para: 'frente' }))}
           {btnIcone('flip_to_back', 'Trás', () => dispatch({ t: 'ordem', ids: selecao, para: 'tras' }))}

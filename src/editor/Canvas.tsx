@@ -10,6 +10,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { Documento, Elemento, Id } from './tipos'
 import { PX_POR_MM } from './tipos'
 import { obterElemento } from './elementos'
+import { estiloBorda, estiloRecorte } from './borda'
 
 type Props = {
   doc: Documento
@@ -152,8 +153,9 @@ export default function Canvas({ doc, paginaAtual, selecao, selecionar, moverSel
                   opacity: el.opacidade,
                   cursor: el.bloqueado ? 'default' : 'move',
                   outline: sel ? `${1.5 / escala}px solid var(--primary)` : undefined,
+                  ...estiloBorda(el),
                 }}>
-                {def.Render({ el, dados, modo: 'tela' })}
+                <div style={estiloRecorte(el)}>{def.Render({ el, dados, modo: 'tela' })}</div>
 
                 {sel && !el.bloqueado && (
                   <>

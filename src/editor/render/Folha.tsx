@@ -2,6 +2,7 @@
 // Usado na prévia e na impressão — a mesma folha, em mm reais.
 import type { Documento, Pagina } from '../tipos'
 import { obterElemento } from '../elementos'
+import { estiloBorda, estiloRecorte } from '../borda'
 
 export default function Folha({ doc, pagina, dados, modo = 'papel' }: {
   doc: Documento
@@ -23,8 +24,9 @@ export default function Folha({ doc, pagina, dados, modo = 'papel' }: {
             width: `${el.w}mm`, height: `${el.h}mm`,
             transform: `rotate(${el.rot}deg)`, transformOrigin: 'center',
             opacity: el.opacidade,
+            ...estiloBorda(el),
           }}>
-            {def.Render({ el, dados, modo })}
+            <div style={estiloRecorte(el)}>{def.Render({ el, dados, modo })}</div>
           </div>
         )
       })}
