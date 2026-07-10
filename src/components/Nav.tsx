@@ -31,7 +31,7 @@ function buildMenu(): Item[] {
       sub:[ { label:'Teatros', rota:'/teatro' }, { label:'Atores', rota:'/teatro/atores' }, { label:'Personagens', rota:'/teatro/personagens' }, { label:'Objetos', rota:'/teatro/objetos' } ] },
     { id:'evento',  label:'Evento',               icon:'event',           emoji:'📍', perm:'menu_evento',
       sub:[ { label:'Locais', rota:'/locais' }, { label:'Ocorrências', rota:'/ocorrencias' } ] },
-    { id:'saude',   label:'Saúde',                icon:'medical_services', emoji:'⛑️', perm:'menu_saude',
+    { id:'saude',   label:'Saúde',                icon:'medical_services', emoji:'⚕️', perm:'menu_saude',
       sub:[ { label:'Medicamentos', rota:'/saude/medicamentos' }, { label:'Atendimentos', rota:'/saude' }, { label:'Fichas Médicas', rota:'/saude/ficha' } ] },
     { id:'fin',     label:'Financeiro',           icon:'account_balance_wallet', emoji:'💰', perm:'menu_financeiro',
       sub:[ { label:'Pagamentos', rota:'/financeiro' }, { label:'Doações', rota:'/doacoes' } ] },
