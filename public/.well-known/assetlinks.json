@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "app.axiseventos.twa",
+      "sha256_cert_fingerprints": [
+        "3D:D8:37:21:B3:5A:CA:14:54:2C:86:99:6A:0E:B2:A8:23:A0:43:ED:11:22:A2:74:9B:24:B1:A3:CB:4D:9D:80"
+      ]
+    }
+  }
+]
