@@ -101,6 +101,10 @@ export default function TeatroDetalhe({ profile }: { profile?: Profile }) {
   useVoltarFecha(modalElenco, () => setModalElenco(false))
   const [elencoForm, setElencoForm] = useState<{ personagem_id:string; person_ids:string[] }>({ personagem_id:'', person_ids:[] })
   const [salvandoElenco, setSalvandoElenco] = useState(false)
+  // Picker de personagem em lista (igual "Adicionar membro"), no lugar do seletor de pílulas
+  const [pickerPg, setPickerPg] = useState<null | { para:'cena'|'elenco'; idx:number; lista:Personagem[] }>(null)
+  const [pickerBusca, setPickerBusca] = useState('')
+  useVoltarFecha(!!pickerPg, () => setPickerPg(null))
 
   const { pode } = usePermissao(profile ?? null)
   const canEdit = (!!profile && isAdmin(profile.user_role)) || pode('teatro','editar')
@@ -342,6 +346,21 @@ export default function TeatroDetalhe({ profile }: { profile?: Profile }) {
 
   function getPessoa(pid:string|null) { return pid ? pessoas.find(p=>p.id===pid) : null }
   function getPersonagem(pgid:string|null) { return pgid ? personagens.find(p=>p.id===pgid) : null }
+  // Ícone do personagem: foto (URL), emoji, ou o padrão do teatro.
+  function iconePersonagem(pg:any, tam=34) {
+    const ic = pg?.icone
+    const base:React.CSSProperties = { width:tam, height:tam, borderRadius:9, flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', overflow:'hidden', background:cor+'22' }
+    if (ic && /^https?:\/\//.test(ic)) return <div style={base}><img src={ic} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}}/></div>
+    if (ic) return <div style={base}><span style={{fontSize:tam*0.55}}>{ic}</span></div>
+    return <div style={base}><span className="icon" style={{color:cor,fontSize:tam*0.55}}>theater_comedy</span></div>
+  }
+  // Escolhe o personagem no picker de lista (cena ou modal de elenco).
+  function escolherPg(pgId:string) {
+    if (!pickerPg) return
+    if (pickerPg.para==='cena') setPersonagemId(pickerPg.idx, pgId)
+    else setElencoForm({ personagem_id:pgId, person_ids:[] })
+    setPickerPg(null)
+  }
   function getObjeto(oid:string|null) { return oid ? objetos.find(o=>o.id===oid) : null }
 
   useRegistrarChrome({ impressoes:[{ label:'Imprimir este teatro', onClick:()=>setImprimir(true) }] }, [])
@@ -572,9 +591,14 @@ export default function TeatroDetalhe({ profile }: { profile?: Profile }) {
 
             <div className="form-group">
               <label className="form-label">Personagem <span className="req">*</span></label>
-              <Seletor titulo="Personagem" placeholder="Selecionar personagem" value={elencoForm.personagem_id}
-                onChange={v=>setElencoForm({ personagem_id:v, person_ids:[] })}
-                opcoes={[{value:'',label:'Selecionar personagem'}, ...personagens.map(p=>({value:p.id,label:`${p.nome}${p.multiplo?' (múltiplo)':''}`}))]}/>
+              {(() => { const pg = getPersonagem(elencoForm.personagem_id); return (
+                <button type="button" onClick={()=>setPickerPg({para:'elenco',idx:-1,lista:personagens})}
+                  style={{width:'100%',display:'flex',alignItems:'center',gap:10,padding:'8px 12px',borderRadius:10,border:'1.5px solid var(--border)',background:'white',cursor:'pointer',fontFamily:'inherit',textAlign:'left'}}>
+                  {pg ? iconePersonagem(pg,30) : <span className="icon" style={{color:'var(--muted-light)'}}>theater_comedy</span>}
+                  <span style={{flex:1,fontSize:14,fontWeight:pg?600:400,color:pg?'var(--text)':'var(--muted-light)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{pg ? `${pg.nome}${pg.multiplo?' (múltiplo)':''}` : 'Selecionar personagem'}</span>
+                  <span className="icon icon-sm" style={{color:'var(--muted-light)'}}>expand_more</span>
+                </button>
+              )})()}
             </div>
 
             {elencoForm.personagem_id && (
@@ -608,6 +632,42 @@ export default function TeatroDetalhe({ profile }: { profile?: Profile }) {
             </button>
           </div>
         </div>
+        )
+      })()}
+
+      {/* PICKER DE PERSONAGEM — lista (igual "Adicionar membro") */}
+      {pickerPg && (() => {
+        const t = pickerBusca.trim().toLowerCase()
+        const lista = pickerPg.lista.filter(p => !t || (p.nome||'').toLowerCase().includes(t))
+        return (
+          <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.5)',zIndex:400,display:'flex',flexDirection:'column',justifyContent:'flex-end'}}
+            onClick={e=>{ if(e.target===e.currentTarget){ setPickerPg(null); setPickerBusca('') } }}>
+            <div style={{background:'white',borderRadius:'20px 20px 0 0',padding:'8px 16px 20px',maxWidth:480,width:'100%',margin:'0 auto',maxHeight:'82vh',display:'flex',flexDirection:'column'}}>
+              <div style={{width:36,height:4,background:'var(--border)',borderRadius:2,margin:'12px auto 12px',flexShrink:0}}/>
+              <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:12,flexShrink:0}}>
+                <span style={{fontSize:16,fontWeight:800}}>Escolher personagem</span>
+                <button onClick={()=>{ setPickerPg(null); setPickerBusca('') }} style={{background:'var(--bg)',border:'1px solid var(--border)',borderRadius:'50%',width:32,height:32,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',fontFamily:'inherit'}}><span className="icon icon-sm">close</span></button>
+              </div>
+              <div className="search-bar" style={{marginBottom:10,flexShrink:0}}>
+                <span className="icon icon-sm" style={{color:'var(--muted-light)'}}>search</span>
+                <input placeholder="Buscar personagem..." value={pickerBusca} onChange={e=>setPickerBusca(e.target.value)} autoFocus/>
+              </div>
+              <div style={{overflowY:'auto',flex:1}}>
+                {lista.length===0 ? (
+                  <p style={{fontSize:13,color:'var(--muted)',textAlign:'center',padding:'24px 12px'}}>
+                    {pickerPg.para==='cena' ? 'Nenhum personagem no elenco ainda. Escale na aba Elenco.' : 'Nenhum personagem. Crie em Teatro → Personagens.'}
+                  </p>
+                ) : lista.map(pg => (
+                  <button key={pg.id} onClick={()=>{ escolherPg(pg.id); setPickerBusca('') }}
+                    style={{width:'100%',display:'flex',alignItems:'center',gap:12,padding:'10px 6px',background:'none',border:'none',borderBottom:'1px solid var(--border)',cursor:'pointer',fontFamily:'inherit',textAlign:'left'}}>
+                    {iconePersonagem(pg,38)}
+                    <span style={{flex:1,fontSize:15,fontWeight:600}}>{pg.nome}</span>
+                    {(pg as any).multiplo && <span style={{fontSize:11,color:'var(--muted)',fontWeight:700}}>múltiplo</span>}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
         )
       })()}
 
@@ -731,10 +791,14 @@ export default function TeatroDetalhe({ profile }: { profile?: Profile }) {
                 return (
                   <div key={idx} style={{background:'var(--bg)',borderRadius:12,padding:'12px 14px',marginBottom:10,border:'1px solid var(--border)'}}>
                     <div style={{display:'flex',alignItems:'center',gap:8}}>
-                      <div style={{flex:1}}>
+                      <div style={{flex:1,minWidth:0}}>
                         <label className="form-label" style={{marginBottom:4}}>Personagem</label>
-                        <Seletor titulo="Personagem" placeholder="Selecionar personagem" value={cp.personagem_id} onChange={v=>setPersonagemId(idx,v)}
-                          opcoes={[{value:'',label:'Selecionar personagem'}, ...opcoesPG.map(p=>({value:p.id,label:`${p.nome}${p.multiplo?' (múltiplo)':''}`}))]}/>
+                        <button type="button" onClick={()=>setPickerPg({para:'cena',idx,lista:opcoesPG})}
+                          style={{width:'100%',display:'flex',alignItems:'center',gap:10,padding:'8px 12px',borderRadius:10,border:'1.5px solid var(--border)',background:'white',cursor:'pointer',fontFamily:'inherit',textAlign:'left'}}>
+                          {pg ? iconePersonagem(pg,30) : <span className="icon" style={{color:'var(--muted-light)'}}>theater_comedy</span>}
+                          <span style={{flex:1,fontSize:14,fontWeight:pg?600:400,color:pg?'var(--text)':'var(--muted-light)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{pg ? `${pg.nome}${pg.multiplo?' (múltiplo)':''}` : 'Selecionar personagem'}</span>
+                          <span className="icon icon-sm" style={{color:'var(--muted-light)'}}>expand_more</span>
+                        </button>
                       </div>
                       <button type="button" onClick={()=>removePersonagem(idx)} style={{background:'var(--danger-bg)',color:'var(--danger)',border:'none',borderRadius:8,padding:'6px',cursor:'pointer',fontFamily:'inherit',marginTop:20,flexShrink:0}}>
                         <span className="icon icon-sm">delete</span>
