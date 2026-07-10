@@ -8,9 +8,8 @@
 // ─────────────────────────────────────────────────────────────
 import { useEffect, useRef, useState } from 'react'
 import type { Documento, Elemento, Id } from './tipos'
+import { PX_POR_MM } from './tipos'
 import { obterElemento } from './elementos'
-
-const PX_POR_MM = 96 / 25.4  // 1mm em CSS ≈ 3.7795px
 
 type Props = {
   doc: Documento

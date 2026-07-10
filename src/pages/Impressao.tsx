@@ -13,11 +13,11 @@ import type { Profile } from '../App'
 
 import Editor from '../editor/Editor'
 import ImprimirView, { encaixe, type Orientacao } from '../editor/render/Imprimir'
+import GaleriaModelos, { type Modelo } from '../editor/GaleriaModelos'
 import { criarElemento } from '../editor/elementos'
 import { novoId, type Documento } from '../editor/tipos'
 
 type Pessoa = { id:string; name:string; photo_url:string|null; role_type?:string|null; church?:string|null }
-type Modelo = { id:string; nome:string; doc:Documento }
 
 const CHAVE = 'impressao_modelos_v2'
 
@@ -64,7 +64,7 @@ export default function Impressao({ profile }: { profile?: Profile }) {
   const [docAtual, setDocAtual] = useState<Documento>(doc)
   const [orientacao, setOrientacao] = useState<Orientacao>('auto')
   const [imprimindo, setImprimindo] = useState<Documento|null>(null)
-  const [abrirModelos, setAbrirModelos] = useState(false)
+  const [galeria, setGaleria] = useState(false)
   const [salvando, setSalvando] = useState<Documento|null>(null)   // modal "Salvar modelo"
   const [nomeModelo, setNomeModelo] = useState('')
 
@@ -72,11 +72,7 @@ export default function Impressao({ profile }: { profile?: Profile }) {
   useEffect(() => {
     carregarConfig(CHAVE).then(v => {
       if (!v) return
-      try {
-        const arr: Modelo[] = JSON.parse(v)
-        setModelos(arr)
-        if (arr.length) setAbrirModelos(true)   // tem modelo salvo? já mostra pra puxar
-      } catch {}
+      try { setModelos(JSON.parse(v)) } catch {}
     })
   }, [])
 
@@ -154,14 +150,31 @@ export default function Impressao({ profile }: { profile?: Profile }) {
 
   /** Puxa um modelo salvo pro editor. */
   function abrirModelo(m: Modelo) {
-    setDoc(m.doc); setDocAtual(m.doc); setAbrirModelos(false)
+    setDoc(m.doc); setDocAtual(m.doc); setGaleria(false)
     toast.info(`Modelo "${m.nome}" aberto.`)
   }
 
-  async function excluirModelo(id:string) {
-    if (!confirm('Excluir este modelo?')) return
-    await guardar(modelos.filter(m => m.id !== id))
+  /** Joga o documento aberto agora por cima de um modelo salvo. */
+  async function substituirModelo(m: Modelo) {
+    const doc2 = { ...docAtual, id: m.id, nome: m.nome }
+    setDoc(doc2); setDocAtual(doc2)
+    await guardar(modelos.map(x => x.id===m.id ? { ...x, doc: doc2 } : x))
+    toast.sucesso(`"${m.nome}" substituído!`)
   }
+
+  async function renomearModelo(m: Modelo, nome: string) {
+    if (docAtual.id === m.id) setDocAtual({ ...docAtual, nome })
+    await guardar(modelos.map(x => x.id===m.id ? { ...x, nome, doc: { ...x.doc, nome } } : x))
+    toast.sucesso('Nome alterado!')
+  }
+
+  async function excluirModelo(m: Modelo) {
+    await guardar(modelos.filter(x => x.id !== m.id))
+    toast.info(`"${m.nome}" excluído.`)
+  }
+
+  function comecarDoZero() { const d = docVazio(); setDoc(d); setDocAtual(d); setGaleria(false) }
+  function modeloPronto()  { const d = docPadrao(); setDoc(d); setDocAtual(d); setGaleria(false) }
 
   if (evLoading || loading) return <div className="page">{[1,2].map(i=><div key={i} className="skeleton" style={{height:110,marginBottom:12,borderRadius:14}}/>)}</div>
   if (!evento) return <div className="page"><div className="empty"><p className="empty-title">Nenhum evento ativo</p></div></div>
@@ -173,7 +186,7 @@ export default function Impressao({ profile }: { profile?: Profile }) {
 
       {/* Barra: modelos, quem entra, orientação */}
       <div style={{ background:'white', borderBottom:'1px solid var(--border)', padding:'8px 12px', display:'flex', gap:8, alignItems:'center', flexWrap:'wrap', flexShrink:0 }}>
-        <button className="btn btn-ghost btn-sm" onClick={()=>setAbrirModelos(v=>!v)}>
+        <button className="btn btn-ghost btn-sm" onClick={()=>setGaleria(true)}>
           <span className="icon icon-sm">bookmarks</span> Meus modelos ({modelos.length})
         </button>
         <select className="form-input" style={{ width:'auto', padding:'6px 10px', fontSize:13 }}
@@ -206,24 +219,19 @@ export default function Impressao({ profile }: { profile?: Profile }) {
         <span style={{ fontSize:12, color:'var(--muted)', marginLeft:'auto' }}>{lista.length} pessoa(s)</span>
       </div>
 
-      {/* Modelos salvos */}
-      {abrirModelos && (
-        <div className="ed-tira" style={{ background:'var(--bg)', padding:'10px 12px', borderBottom:'1px solid var(--border)', display:'flex', gap:8, overflowX:'auto', scrollbarWidth:'none', flexShrink:0 }}>
-          <button className="btn btn-primary btn-sm" style={{ flexShrink:0 }} onClick={()=>{ const d=docVazio(); setDoc(d); setDocAtual(d); setAbrirModelos(false) }}>
-            <span className="icon icon-sm">note_add</span> Começar do zero
-          </button>
-          <button className="btn btn-ghost btn-sm" style={{ flexShrink:0 }} onClick={()=>{ const d=docPadrao(); setDoc(d); setDocAtual(d); setAbrirModelos(false) }}>Modelo pronto</button>
-          {modelos.map(m => {
-            const aberto = docAtual.id === m.id
-            return (
-              <div key={m.id} style={{ flexShrink:0, display:'flex', alignItems:'center', gap:4, background: aberto?'var(--primary)':'white', color: aberto?'white':'var(--text)', border:'1px solid var(--border)', borderRadius:99, padding:'4px 6px 4px 12px' }}>
-                <button onClick={()=>abrirModelo(m)} style={{ background:'none', border:'none', cursor:'pointer', color:'inherit', fontFamily:'inherit', fontWeight:700, fontSize:13 }}>{m.nome}</button>
-                {canEdit && <button onClick={()=>excluirModelo(m.id)} title="Excluir modelo" style={{ background:'none', border:'none', cursor:'pointer', color:'inherit', opacity:0.7, display:'flex' }}><span className="icon icon-sm">close</span></button>}
-              </div>
-            )
-          })}
-          {modelos.length===0 && <span style={{ fontSize:12, color:'var(--muted)', alignSelf:'center' }}>Nenhum modelo salvo ainda — monte e toque em <b>Salvar</b>.</span>}
-        </div>
+      {/* Galeria de modelos — tela cheia com miniaturas */}
+      {galeria && (
+        <GaleriaModelos
+          modelos={modelos} docAtual={docAtual} dados={dadosPrevia} podeEditar={canEdit}
+          onAbrir={abrirModelo}
+          onSalvarNovo={()=>{ setGaleria(false); setNomeModelo(''); setSalvando(docAtual) }}
+          onSubstituir={substituirModelo}
+          onRenomear={renomearModelo}
+          onExcluir={excluirModelo}
+          onZero={comecarDoZero}
+          onPronto={modeloPronto}
+          onFechar={()=>setGaleria(false)}
+        />
       )}
 
       {/* EDITOR */}

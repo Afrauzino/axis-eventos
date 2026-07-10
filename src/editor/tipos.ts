@@ -130,6 +130,9 @@ export type DefFerramenta = {
 }
 
 // ── Utilitários ────────────────────────────────────────────────
+/** 1mm em pixels de CSS (≈3.7795). A folha é desenhada em mm reais e escalada pra tela. */
+export const PX_POR_MM = 96 / 25.4
+
 export const novoId = (): Id => Math.random().toString(36).slice(2, 10)
 
 export const ELEMENTO_PADRAO: Omit<Elemento, 'id' | 'tipo' | 'props'> = {
