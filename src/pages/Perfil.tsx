@@ -3,6 +3,8 @@ import { supabase } from '../lib/supabase'
 import { formatName, getInitials, ROLE_LABELS } from '../utils'
 import { useEvento } from '../hooks/useEvento'
 import RecortarFoto from '../components/RecortarFoto'
+import CadastroPessoa, { FORM_VAZIO, type PessoaForm } from '../components/CadastroPessoa'
+import { toast } from '../components/Toast'
 import { pathOriginal, urlOriginal, imagemCarrega, baixarImagem } from '../lib/foto'
 import { biometriaSuportada, biometriaAtiva, ativarBiometria, desativarBiometria } from '../lib/biometria'
 import { testarPush } from '../lib/push'
@@ -47,6 +49,49 @@ export default function Perfil({ profile, onUpdate }: { profile: Profile; onUpda
   const [ok, setOk]               = useState('')
   const [recorte, setRecorte]     = useState<{ src: string; remoto: boolean } | null>(null)
   const [baixandoFoto, setBaixandoFoto] = useState(false)
+  // Editar TODO o meu cadastro (dados pessoais) — salva via função no banco
+  const [cadAberto, setCadAberto] = useState(false)
+  const [cadForm, setCadForm] = useState<PessoaForm>(FORM_VAZIO)
+  const [salvandoCad, setSalvandoCad] = useState(false)
+
+  async function abrirMeuCadastro() {
+    if (!meuP) return
+    const { data } = await supabase.from('people').select('*').eq('id', meuP.id).maybeSingle()
+    const d: any = data ?? {}
+    setCadForm({ ...FORM_VAZIO,
+      name: d.name ?? '', phone: d.phone ?? '', contact_phone: d.contact_phone ?? '',
+      church: d.church ?? '', ano_encontro: d.ano_encontro ? String(d.ano_encontro) : '',
+      sexo: d.sexo ?? '', birth_date: d.birth_date ?? '', cpf: d.cpf ?? '', rg: d.rg ?? '',
+      cidade: d.cidade ?? '', estado: d.estado ?? '', endereco: d.endereco ?? '', bairro: d.bairro ?? '', cep: d.cep ?? '',
+      role_type: d.role_type ?? 'encounterer', status: d.status ?? 'inscrito',
+      team_pref: d.team_pref ?? '', referencia_id: d.referencia_id ?? '', notes: d.notes ?? '',
+      responsavel_nome: d.responsavel_nome ?? '', responsavel_tel: d.responsavel_tel ?? '',
+      photo_url: d.photo_url ?? null,
+    })
+    setCadAberto(true)
+  }
+
+  async function salvarMeuCadastro() {
+    if (!cadForm.name.trim()) { toast.aviso('O nome é obrigatório.'); return }
+    setSalvandoCad(true)
+    const payload = {
+      name: formatName(cadForm.name),
+      phone: (cadForm.phone || '').replace(/\D/g, '') || cadForm.phone || '',
+      contact_phone: cadForm.contact_phone || '',
+      church: (cadForm.church || '').trim(),
+      ano_encontro: cadForm.ano_encontro || '',
+      sexo: cadForm.sexo || '', birth_date: cadForm.birth_date || '',
+      cpf: cadForm.cpf || '', rg: cadForm.rg || '',
+      cidade: cadForm.cidade || '', estado: cadForm.estado || '', endereco: cadForm.endereco || '', bairro: cadForm.bairro || '', cep: cadForm.cep || '',
+      team_pref: cadForm.team_pref || '', responsavel_nome: cadForm.responsavel_nome || '', responsavel_tel: cadForm.responsavel_tel || '',
+      notes: cadForm.notes || '', photo_url: cadForm.photo_url || null,
+    }
+    const { error } = await supabase.rpc('atualizar_meu_cadastro', { p: payload })
+    setSalvandoCad(false)
+    if (error) { toast.falha('Não foi possível salvar. Rode o sql/59_meu_cadastro.sql.', error); return }
+    toast.sucesso('Seus dados foram atualizados!')
+    setCadAberto(false); onUpdate()
+  }
   const [testandoPush, setTestandoPush] = useState(false)
 
   async function testarNotificacao() {
@@ -255,9 +300,14 @@ export default function Perfil({ profile, onUpdate }: { profile: Profile; onUpda
         ) : carregandoP ? (
           <p style={{fontSize:13,color:'var(--muted)'}}>Carregando...</p>
         ) : meuP ? (
-          <div style={{display:'flex',alignItems:'center',gap:8}}>
-            <span className="badge badge-success">✓ Cadastrado como {meuP.role_type==='worker'?'Encontreiro':'Encontrista'}</span>
-            <span style={{fontSize:12,color:'var(--muted)'}}>Já aparece em Cadastros, pode entrar em equipe e ter crachá.</span>
+          <div style={{display:'flex',flexDirection:'column',gap:10}}>
+            <div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
+              <span className="badge badge-success">✓ Cadastrado como {meuP.role_type==='worker'?'Encontreiro':'Encontrista'}</span>
+              <span style={{fontSize:12,color:'var(--muted)'}}>Já aparece em Cadastros, pode entrar em equipe e ter crachá.</span>
+            </div>
+            <button className="btn btn-primary btn-sm" style={{alignSelf:'flex-start'}} onClick={abrirMeuCadastro}>
+              <span className="icon icon-sm">edit</span> Editar todos os meus dados
+            </button>
           </div>
         ) : (
           <>
@@ -335,6 +385,33 @@ export default function Perfil({ profile, onUpdate }: { profile: Profile; onUpda
         <div className="info-row"><span className="info-label">Nível de acesso</span><span className="info-value">{ROLE_LABELS[profile.user_role] ?? profile.user_role}</span></div>
         <div className="info-row"><span className="info-label">Status</span><span className="badge badge-success">Aprovado</span></div>
       </div>
+
+      {/* Editar TODO o meu cadastro (dados pessoais) — tela cheia */}
+      {cadAberto && (
+        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.5)',zIndex:400,display:'flex',flexDirection:'column'}} onClick={e=>e.target===e.currentTarget&&setCadAberto(false)}>
+          <div style={{background:'white',height:'100dvh',maxHeight:'100dvh',overflowY:'auto',width:'100%',padding:'0 20px 32px'}}>
+            <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'16px 0 14px',borderBottom:'1px solid var(--border)',marginBottom:20,position:'sticky',top:0,background:'white',zIndex:1}}>
+              <button onClick={()=>setCadAberto(false)} style={{background:'var(--bg)',border:'1px solid var(--border)',borderRadius:10,padding:'8px 12px',cursor:'pointer',display:'flex',alignItems:'center',gap:6,fontFamily:'inherit',fontWeight:700,fontSize:13}}><span className="icon icon-sm">arrow_back</span> Voltar</button>
+              <span style={{fontSize:16,fontWeight:800}}>Meus dados</span>
+              <span style={{width:74}}/>
+            </div>
+            <CadastroPessoa
+              form={cadForm}
+              onChange={setCadForm}
+              eventoId={evento?.id}
+              showRole={false}
+              showStatus={false}
+              showTeam={false}
+              showReferencia={false}
+              fotoObrigatoria={false}
+            />
+            <div style={{display:'flex',gap:8,marginTop:18}}>
+              <button className="btn btn-primary" style={{flex:1}} onClick={salvarMeuCadastro} disabled={salvandoCad}>{salvandoCad?'Salvando...':'Salvar meus dados'}</button>
+              <button className="btn btn-ghost" onClick={()=>setCadAberto(false)}>Cancelar</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
