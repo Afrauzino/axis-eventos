@@ -43,7 +43,8 @@ export default function BotaoConfig() {
                     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                       {g.itens.map((it, ii) => (
                         <button key={ii} onClick={() => { setAberto(false); it.onClick() }}
-                          style={{ padding: '8px 14px', borderRadius: 9, cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, fontWeight: 700, border: it.ativo ? '2px solid var(--primary)' : '1px solid var(--border)', background: it.ativo ? 'var(--primary-light)' : 'white', color: it.ativo ? 'var(--primary-dark)' : 'var(--text2)' }}>
+                          style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 9, cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, fontWeight: 700, border: it.ativo ? '2px solid var(--primary)' : '1px solid var(--border)', background: it.ativo ? 'var(--primary-light)' : 'white', color: it.ativo ? 'var(--primary-dark)' : 'var(--text2)' }}>
+                          {it.icone && <span className="icon icon-sm" style={{ color: it.ativo ? 'var(--primary)' : 'var(--muted)' }}>{it.icone}</span>}
                           {it.label}
                         </button>
                       ))}

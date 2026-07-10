@@ -10,7 +10,7 @@ const TITULOS_NAV: Record<string, string> = { admin:'Administração', equipes:'
 export type FiltroGrupo = { chave: string; label: string; opcoes: { value: string; label: string }[] }
 export type ItemImpressao = { label: string; onClick: () => void; icon?: string; disabled?: boolean }
 export type ItemConfig = { label: string; onClick: () => void; icon?: string }
-export type NavItem = { label: string; ativo?: boolean; onClick: () => void }
+export type NavItem = { label: string; ativo?: boolean; onClick: () => void; icone?: string }
 export type NavGrupo = { titulo: string; itens: NavItem[] }
 
 export type Chrome = {
@@ -58,7 +58,7 @@ export function useRegistrarChromeAdmin(extra: Chrome = {}, deps: any[] = []) {
   }
   const grupos: NavGrupo[] = ADMIN_GRUPOS.map(g => ({
     titulo: g.titulo,
-    itens: g.itens.map(it => ({ label: it.label, ativo: estaAtivo(it.rota), onClick: () => nav(it.rota) })),
+    itens: g.itens.map(it => ({ label: it.label, icone: it.icone, ativo: estaAtivo(it.rota), onClick: () => nav(it.rota) })),
   }))
   useRegistrarChrome(
     { ...extra, navegacao: [...grupos, ...(extra.navegacao ?? [])] },
