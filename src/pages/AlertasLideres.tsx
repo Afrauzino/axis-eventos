@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { toast } from '../components/Toast'
 import { getInitials, formatName, isAdmin } from '../utils'
+import { enviarPush } from '../lib/push'
 import { useEvento } from '../hooks/useEvento'
 import type { Profile } from '../App'
 
@@ -26,6 +27,7 @@ export default function AlertasLideres({ profile }: { profile?: Profile }) {
   const [selec, setSelec] = useState<string[]>([])        // pessoas
   const [equipeSel, setEquipeSel] = useState<string[]>([]) // equipes (para equipes)
   const [equipeEnc, setEquipeEnc] = useState<string>('')   // 1 equipe escolhida (encontreiros) p/ listar membros
+  const [todosEnc, setTodosEnc] = useState(false)          // mandar para TODOS os encontreiros do evento
   const [texto, setTexto] = useState('')
   const [foto, setFoto] = useState<File|null>(null)
   const [enviando, setEnviando] = useState(false)
@@ -119,9 +121,17 @@ export default function AlertasLideres({ profile }: { profile?: Profile }) {
       const { data: membros } = await supabase.from('people_teams').select('person_id').in('team_id', equipeSel)
       destinatarios = Array.from(new Set((membros ?? []).map(m=>m.person_id)))
       if (destinatarios.length===0) { toast.aviso('As equipes não têm membros.'); return }
-    } else { // encontreiros: pessoas específicas dentro da equipe
-      destinatarios = selec
-      if (destinatarios.length===0) { toast.aviso('Selecione ao menos uma pessoa.'); return }
+    } else { // encontreiros
+      if (todosEnc) {
+        // TODOS os encontreiros do evento (role_type = worker)
+        const { data: workers } = await supabase.from('people').select('id')
+          .eq('event_id', evento?.id ?? '').eq('role_type','worker').not('user_id','is',null)
+        destinatarios = (workers ?? []).map(w=>w.id).filter(id => id !== minhaPessoa?.id)
+        if (destinatarios.length===0) { toast.aviso('Não há encontreiros no evento.'); return }
+      } else { // pessoas específicas dentro da equipe
+        destinatarios = selec
+        if (destinatarios.length===0) { toast.aviso('Selecione ao menos uma pessoa.'); return }
+      }
     }
     if (!texto.trim() && !foto) { toast.aviso('Escreva um texto ou anexe uma foto.'); return }
     // crítico só para líder
@@ -140,7 +150,15 @@ export default function AlertasLideres({ profile }: { profile?: Profile }) {
       texto: texto.trim() || null, foto_url: fotoUrl, nivel: nivelFinal, destino,
     }).select().single()
     if (al) await supabase.from('alertas_lideres_dest').insert(destinatarios.map(d => ({ alerta_id: al.id, destinatario_id: d })))
-    setEnviando(false); setTexto(''); setFoto(null); setSelec([]); setEquipeSel([]); setEquipeEnc('')
+    // Avisa no celular (app fechado) quem recebeu
+    enviarPush({
+      person_ids: destinatarios,
+      title: nivelFinal==='critico' ? '🚨 Alerta crítico da liderança' : '📨 Aviso da liderança',
+      body: (texto.trim().slice(0,140)) || '📷 Foto',
+      url: '/alertas-lideres',
+      tag: nivelFinal==='critico' ? undefined : 'aviso-lider',
+    })
+    setEnviando(false); setTexto(''); setFoto(null); setSelec([]); setEquipeSel([]); setEquipeEnc(''); setTodosEnc(false)
     toast.sucesso('Alerta enviado!'); setAba('enviados'); carregar()
   }
 
@@ -219,7 +237,7 @@ export default function AlertasLideres({ profile }: { profile?: Profile }) {
           <div className="tabs mb-3" style={{flexWrap:'wrap'}}>
             {ehLider && <button className={`tab ${destino==='lideres'?'active':''}`} onClick={()=>{setDestino('lideres');setSelec([])}}>Entre líderes</button>}
             {ehLider && <button className={`tab ${destino==='equipe'?'active':''}`} onClick={()=>{setDestino('equipe');setSelec([])}}>Para equipes</button>}
-            {minhasEquipesMembro.length>0 && <button className={`tab ${destino==='encontreiros'?'active':''}`} onClick={()=>{setDestino('encontreiros');setSelec([])}}>Encontreiros</button>}
+            {(ehLider || minhasEquipesMembro.length>0) && <button className={`tab ${destino==='encontreiros'?'active':''}`} onClick={()=>{setDestino('encontreiros');setSelec([]);setTodosEnc(ehLider)}}>Encontreiros</button>}
           </div>
 
           {/* Nível — crítico só p/ líder */}
@@ -281,9 +299,19 @@ export default function AlertasLideres({ profile }: { profile?: Profile }) {
             </>
           )}
 
-          {/* ENCONTREIROS: escolhe equipe -> pessoas dentro */}
+          {/* ENCONTREIROS: TODOS, ou escolhe equipe -> pessoas dentro */}
           {destino==='encontreiros' && (
             <>
+              {ehLider && (
+                <div style={{display:'flex',gap:8,marginBottom:12}}>
+                  <button onClick={()=>{setTodosEnc(true);setEquipeEnc('');setSelec([])}} style={{flex:1,padding:'10px',borderRadius:10,border:todosEnc?'2px solid var(--primary)':'1px solid var(--border)',background:todosEnc?'var(--primary-light)':'white',cursor:'pointer',fontFamily:'inherit',fontSize:12,fontWeight:700,color:todosEnc?'var(--primary)':'var(--muted)'}}>🛡️ Todos os encontreiros</button>
+                  <button onClick={()=>setTodosEnc(false)} style={{flex:1,padding:'10px',borderRadius:10,border:!todosEnc?'2px solid var(--primary)':'1px solid var(--border)',background:!todosEnc?'var(--primary-light)':'white',cursor:'pointer',fontFamily:'inherit',fontSize:12,fontWeight:700,color:!todosEnc?'var(--primary)':'var(--muted)'}}>Escolher equipe/pessoas</button>
+                </div>
+              )}
+              {todosEnc ? (
+                <div style={{background:'var(--primary-light)',borderRadius:12,padding:'14px 16px',marginBottom:12,fontSize:13,color:'var(--primary-dark)',fontWeight:600}}>🛡️ Este alerta vai para <b>todos os encontreiros do evento</b>.</div>
+              ) : (
+              <>
               <p style={{fontSize:12,fontWeight:700,color:'var(--muted)',marginBottom:8}}>1. Escolha a equipe</p>
               <div style={{display:'flex',gap:6,flexWrap:'wrap',marginBottom:12}}>
                 {minhasEquipesMembro.map(eq => (
@@ -310,6 +338,8 @@ export default function AlertasLideres({ profile }: { profile?: Profile }) {
                     })}
                   </div>
                 </>
+              )}
+              </>
               )}
             </>
           )}
