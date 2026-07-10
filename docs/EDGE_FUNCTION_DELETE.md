@@ -1,8 +1,20 @@
+> ⚠️ **Obsoleto — o app não usa mais esta função.**
+>
+> A exclusão de contas passou para `excluir_conta_completa`, uma função do próprio
+> banco (`sql/51_excluir_conta.sql`). Ela não depende de deploy e faz tudo numa
+> transação só: se algo falhar, nada é apagado.
+>
+> A Edge Function abaixo **está publicada**, mas responde `403 "Apenas administradores
+> podem excluir contas"` mesmo quando quem chama é admin de verdade
+> (`user_role='admin'`, `is_admin=true`). Ou seja: a leitura do perfil com a chave de
+> serviço não devolve nada — provavelmente `SUPABASE_SERVICE_ROLE_KEY` ausente no
+> ambiente, ou a versão publicada é mais antiga que este código. Se um dia for
+> reaproveitada, é aí que está o defeito.
+
 # Publicar a Edge Function `admin-delete-user` (excluir contas de verdade)
 
 Essa função apaga a conta inteira (perfil + login `auth.users`) com a chave de admin do servidor.
-Ela **só deixa admin chamar** e **nunca apaga outro admin**. O app já chama ela no botão "Excluir"
-(Admin → Usuários). Enquanto ela não estiver publicada, o excluir só tira do sistema e avisa.
+Ela **só deixa admin chamar** e **nunca apaga outro admin**.
 
 ## Passo a passo (no seu terminal, na pasta do projeto)
 

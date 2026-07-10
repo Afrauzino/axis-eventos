@@ -602,7 +602,9 @@ export default function Admin({ profile }: { profile?: Profile }) {
     toast.sucesso('Cadastro salvo!')
   }
 
-  // Excluir COMPLETAMENTE — remove de todas as tabelas, como se nunca tivesse existido
+  // Excluir COMPLETAMENTE — pessoa, perfil e login, como se nunca tivesse existido.
+  // Tudo numa transação só, no banco (sql/51). Antes eram ~10 `delete` do navegador:
+  // um delete barrado pela RLS não dá erro, só apaga 0 linhas — sobrava sujeira calada.
   async function excluirCadastro(p: typeof pessoas[0]) {
     if (p.user_role === 'admin') { toast.aviso('Administradores não podem ser excluídos. Rebaixe o cargo antes, se precisar.'); return }
     const msg = p.user_id
@@ -611,36 +613,23 @@ export default function Admin({ profile }: { profile?: Profile }) {
     if (!confirm(msg)) return
 
     const pid = p.id
-    await Promise.all([
-      supabase.from('saude_fichas').delete().eq('person_id', pid),
-      supabase.from('escalas').delete().eq('person_id', pid),
-      supabase.from('people_teams').delete().eq('person_id', pid),
-      supabase.from('teatro_elenco').delete().eq('person_id', pid),
-      supabase.from('teatro_cenas').delete().eq('person_id', pid),
-      supabase.from('teatro_objetos_uso').delete().eq('person_id', pid),
-      supabase.from('ranking_votos').delete().eq('votado_id', pid),
-      supabase.from('doacoes').delete().eq('person_id', pid),
-    ])
-    try { await supabase.from('med_agenda').delete().eq('person_id', pid) } catch {}
-    try { await supabase.from('med_controlados').delete().eq('person_id', pid) } catch {}
-    try { await supabase.from('medicamento_entregas').delete().eq('person_id', pid) } catch {}
-    try { await supabase.from('people').update({ referencia_id: null }).eq('referencia_id', pid) } catch {}
+    const { data, error } = await supabase.rpc('excluir_conta_completa', {
+      p_person_id: pid, p_user_id: p.user_id ?? null,
+    })
 
-    await supabase.from('people').delete().eq('id', pid)
-
-    // Excluir a CONTA de verdade (perfil + login auth) via Edge Function
-    if (p.user_id) {
-      const { error: fnErr } = await supabase.functions.invoke('admin-delete-user', { body: { target_user_id: p.user_id } })
-      if (fnErr) {
-        // Fallback: função ainda não publicada — bloqueia a conta e avisa
-        await supabase.from('profiles').update({ role_status: 'rejected', user_role: 'visitante' }).eq('user_id', p.user_id)
-        toast.aviso('Cadastro removido, mas o login ainda não foi apagado (recurso de servidor pendente). Detalhes em docs/EDGE_FUNCTION_DELETE.md.')
-      }
+    if (error) {
+      const naoExiste = error.code === 'PGRST202' || /Could not find the function/i.test(error.message)
+      toast.falha(naoExiste
+        ? 'O admin precisa rodar o sql/51_excluir_conta.sql no Supabase.'
+        : error.message, error)
+      return
     }
+
     registrarLog({ action:'delete', entity:'people', entityId:pid, description:`Excluiu completamente o cadastro de ${p.name}`, eventId:eventoAtivoId() })
     setPessoaDetalhe(null)
     setPessoas(prev => prev.filter(x => x.id !== pid))
-    toast.sucesso('Cadastro excluído.')
+    const email = (data as any)?.email_liberado
+    toast.sucesso(email ? `Conta excluída. O email ${email} está livre para nova inscrição.` : 'Cadastro excluído.')
   }
 
   // Cria a estrutura obrigatória de um evento novo (o que o sistema precisa pra funcionar).

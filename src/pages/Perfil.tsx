@@ -105,8 +105,7 @@ export default function Perfil({ profile, onUpdate }: { profile: Profile; onUpda
     if (!novo || !novo.includes('@')) { setErro('Digite um e-mail válido.'); return }
     const { error } = await supabase.auth.updateUser({ email: novo })
     if (error) { setErro('Erro ao alterar e-mail: ' + error.message); return }
-    // Atualiza também na tabela profiles para manter consistência
-    await supabase.from('profiles').update({ email: novo }).eq('user_id', profile.user_id)
+    // O e-mail mora só no login (auth.users) — `profiles` não tem essa coluna.
     setOk('E-mail atualizado! Verifique sua caixa de entrada para confirmar a alteração.')
     setEmailForm({ novo: '' })
   }
