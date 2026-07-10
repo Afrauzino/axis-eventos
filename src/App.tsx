@@ -18,6 +18,7 @@ import Pending from './pages/Pending'
 import Dashboard from './pages/Dashboard'
 import CriticoWatcher from './components/CriticoWatcher'
 import ParabensAniversario from './components/ParabensAniversario'
+import AtivarNotificacoes from './components/AtivarNotificacoes'
 import AberturaGate from './components/AberturaGate'
 import BloqueioBiometrico from './components/BloqueioBiometrico'
 import { biometriaAtiva } from './lib/biometria'
@@ -405,6 +406,7 @@ export default function App() {
         <main style={{flex:1,overflowY:'auto',position:'relative',WebkitOverflowScrolling:'touch'}}>
           <CriticoWatcher profile={profile} />
           <ParabensAniversario profile={profile} />
+          <div style={{paddingTop:12}}><AtivarNotificacoes profile={profile} /></div>
           <AppRoutes profile={profile} onProfileUpdate={()=>loadProfile(profile.user_id)} versaoFotos={versaoFotos} />
           {/* #2 — Botão de instalar SEMPRE no final de tudo (aparece sozinho quando dá pra instalar) */}
           <div style={{padding:'0 16px 24px'}}><InstallPWA autoShow /></div>
