@@ -53,11 +53,12 @@ export default function Perfil({ profile, onUpdate }: { profile: Profile; onUpda
     setErro(''); setOk(''); setTestandoPush(true)
     const r = await testarPush(profile.user_id)
     setTestandoPush(false)
-    if (r.etapa === 'suporte') setErro('Este aparelho/navegador não suporta notificações.')
-    else if (r.etapa === 'assinar') setErro('Não consegui ativar. Confirme que você PERMITIU notificações pro app (Configurações do Android → AXIS → Notificações).')
-    else if (r.ok) setOk('Enviei um teste! Deve aparecer na tela em alguns segundos. 🔔')
-    else if (r.detalhe?.semAlvos) setErro('Este aparelho ativou, mas o servidor não achou a assinatura. Falta REPUBLICAR a Edge Function enviar-push (código final).')
-    else setErro('O servidor recebeu mas não entregou. Confira a função enviar-push e as chaves VAPID. (' + JSON.stringify(r.detalhe ?? {}) + ')')
+    if (r.etapa === 'suporte') { setErro('Este aparelho/navegador não suporta notificações.'); return }
+    if (r.etapa === 'assinar') { setErro('❌ Não consegui ativar. Vá em Configurações do Android → Apps → AXIS → Notificações e PERMITA. Depois teste de novo.'); return }
+    if (r.ok) setOk(r.localOk ? '✅ Tudo certo! As duas notificações (local + servidor) foram enviadas — devem aparecer na bandeja.' : '✅ O push do servidor foi enviado. Deve aparecer na bandeja.')
+    else if (!r.localOk) setErro('❌ Nem a notificação LOCAL apareceu. É permissão do app: Config. do Android → Apps → AXIS → Notificações → Permitir.')
+    else if (r.detalhe?.semAlvos) setErro('⚠️ A notificação LOCAL funcionou (o aparelho exibe!), mas o SERVIDOR não achou a assinatura. Falta REPUBLICAR a Edge Function enviar-push (código final).')
+    else setErro('⚠️ A LOCAL funcionou, mas o servidor não entregou. Confira a função enviar-push e as chaves VAPID. (' + JSON.stringify(r.detalhe ?? {}) + ')')
   }
   // Entrar com digital (desbloqueio biométrico deste aparelho)
   const [bioSuporta, setBioSuporta] = useState(false)

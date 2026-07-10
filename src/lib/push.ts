@@ -55,14 +55,22 @@ export async function enviarPush(opts: { user_ids?: string[]; person_ids?: strin
   try { const { data } = await supabase.functions.invoke('enviar-push', { body: { url: '/', ...opts } }); return data } catch (e) { return { error: String(e) } }
 }
 
-// Teste de 1 toque: assina este aparelho e manda uma notificação PRA VOCÊ MESMO.
-// Retorna em que etapa parou, pra diagnosticar.
-export async function testarPush(userId: string): Promise<{ ok: boolean; etapa: 'suporte' | 'assinar' | 'enviar'; detalhe?: any }> {
-  if (!pushSuportado()) return { ok: false, etapa: 'suporte' }
+// Teste de 1 toque: assina o aparelho, mostra uma notificação LOCAL (prova de exibição)
+// e manda um push do SERVIDOR pra você mesmo. Retorna onde parou, pra diagnosticar.
+export async function testarPush(userId: string): Promise<{ ok: boolean; etapa: 'suporte' | 'assinar' | 'enviar'; localOk: boolean; detalhe?: any }> {
+  if (!pushSuportado()) return { ok: false, etapa: 'suporte', localOk: false }
   const assinou = await ativarPush(userId)
-  if (!assinou) return { ok: false, etapa: 'assinar' }
-  const r = await enviarPush({ user_ids: [userId], incluir_autor: true, title: '🔔 Teste do AXIS', body: 'Se você está vendo isso, as notificações funcionam!', url: '/' })
-  return { ok: !!(r && r.enviados > 0), etapa: 'enviar', detalhe: r }
+  if (!assinou) return { ok: false, etapa: 'assinar', localOk: false }
+  // 1) Prova LOCAL: o próprio aparelho mostra uma notificação agora (sem servidor).
+  let localOk = false
+  try {
+    const reg = await navigator.serviceWorker.ready
+    await reg.showNotification('🔔 Teste do AXIS (local)', { body: 'Se você vê isso, o aparelho exibe notificações.', icon: '/axis-192.png', badge: '/axis-192.png', tag: 'teste-local' })
+    localOk = true
+  } catch {}
+  // 2) Prova SERVIDOR: push de verdade (Edge Function) pra você mesmo.
+  const r = await enviarPush({ user_ids: [userId], incluir_autor: true, title: '🔔 Teste do AXIS (servidor)', body: 'O push do servidor chegou!', url: '/' })
+  return { ok: !!(r && r.enviados > 0), etapa: 'enviar', localOk, detalhe: r }
 }
 
 // Desativa (remove a assinatura deste aparelho)
