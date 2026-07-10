@@ -52,6 +52,7 @@ const Escalas          = lazy(() => import('./pages/Escalas'))
 const Relatorios       = lazy(() => import('./pages/Relatorios'))
 const Doacoes          = lazy(() => import('./pages/Doacoes'))
 const MenusAdmin       = lazy(() => import('./pages/MenusAdmin'))
+const ConfigNotificacoes = lazy(() => import('./pages/ConfigNotificacoes'))
 const Ranking          = lazy(() => import('./pages/Ranking'))
 const Admin            = lazy(() => import('./pages/Admin'))
 const Perfil           = lazy(() => import('./pages/Perfil'))
@@ -167,6 +168,7 @@ function AppRoutes({ profile, onProfileUpdate, versaoFotos }: { profile: Profile
       <Route path="/relatorios"            element={<Relatorios profile={profile} />} />
       <Route path="/doacoes"               element={<Doacoes profile={profile} />} />
       <Route path="/admin/menus"           element={<MenusAdmin profile={profile} />} />
+      <Route path="/admin/notificacoes"    element={<ConfigNotificacoes profile={profile} />} />
       <Route path="/ranking"               element={<Ranking profile={profile} />} />
       <Route path="/admin"                 element={<Admin profile={profile} />} />
       <Route path="/perfil"                element={<Perfil profile={profile} onUpdate={onProfileUpdate} />} />
@@ -204,6 +206,7 @@ const TITULOS_ROTA: Record<string,string> = {
   '/locais': 'Locais',
   '/admin': 'Administração',
   '/admin/menus': 'Administração',
+  '/admin/notificacoes': 'Notificações',
   '/correio': 'Correio',
   '/logistica': 'Logística',
   '/midia': 'Mídia',

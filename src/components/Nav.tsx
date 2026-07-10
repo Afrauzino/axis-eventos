@@ -36,7 +36,7 @@ function buildMenu(): Item[] {
     { id:'fin',     label:'Financeiro',           icon:'account_balance_wallet', emoji:'💰', perm:'menu_financeiro',
       sub:[ { label:'Pagamentos', rota:'/financeiro' }, { label:'Doações', rota:'/doacoes' } ] },
     { id:'admin',   label:'Administração',        icon:'admin_panel_settings', emoji:'⚙️', perm:'menu_admin',
-      sub:[ { label:'Usuários', rota:'/admin' }, { label:'Menus', rota:'/admin/menus' }, { label:'Saúde do Sistema', rota:'/admin/saude-sistema' }, { label:'Relatórios', rota:'/relatorios' } ] },
+      sub:[ { label:'Usuários', rota:'/admin' }, { label:'Menus', rota:'/admin/menus' }, { label:'Notificações', rota:'/admin/notificacoes' }, { label:'Saúde do Sistema', rota:'/admin/saude-sistema' }, { label:'Relatórios', rota:'/relatorios' } ] },
   ]
 }
 
