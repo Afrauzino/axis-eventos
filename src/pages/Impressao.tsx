@@ -65,6 +65,7 @@ export default function Impressao({ profile }: { profile?: Profile }) {
   const [orientacao, setOrientacao] = useState<Orientacao>('auto')
   const [imprimindo, setImprimindo] = useState<Documento|null>(null)
   const [galeria, setGaleria] = useState(false)
+  const [painel, setPainel] = useState(false)   // janela flutuante com os ajustes
   const [salvando, setSalvando] = useState<Documento|null>(null)   // modal "Salvar modelo"
   const [nomeModelo, setNomeModelo] = useState('')
 
@@ -174,7 +175,13 @@ export default function Impressao({ profile }: { profile?: Profile }) {
   }
 
   function comecarDoZero() { const d = docVazio(); setDoc(d); setDocAtual(d); setGaleria(false) }
-  function modeloPronto()  { const d = docPadrao(); setDoc(d); setDocAtual(d); setGaleria(false) }
+
+  // O que a aba mostra quando a janela está fechada — o essencial, num respiro só.
+  const enc = encaixe(docAtual.papel, orientacao)
+  const rotuloTipo = filtroTipo==='worker' ? 'Encontreiros' : filtroTipo==='todos' ? 'Todos' : 'Encontristas'
+  const resumo = docAtual.fonteDados === 'pessoas'
+    ? `${rotuloTipo} · ${lista.length} · ${enc.cabe ? `A4 ${enc.orientacao==='retrato'?'em pé':'deitada'} · ${enc.total}/folha` : 'não cabe no A4'}`
+    : 'Ajustes'
 
   if (evLoading || loading) return <div className="page">{[1,2].map(i=><div key={i} className="skeleton" style={{height:110,marginBottom:12,borderRadius:14}}/>)}</div>
   if (!evento) return <div className="page"><div className="empty"><p className="empty-title">Nenhum evento ativo</p></div></div>
@@ -184,39 +191,15 @@ export default function Impressao({ profile }: { profile?: Profile }) {
   return (
     <div style={{ display:'flex', flexDirection:'column', height:'calc(100dvh - 56px)', minHeight:0 }}>
 
-      {/* Barra: modelos, quem entra, orientação */}
-      <div style={{ background:'white', borderBottom:'1px solid var(--border)', padding:'8px 12px', display:'flex', gap:8, alignItems:'center', flexWrap:'wrap', flexShrink:0 }}>
-        <button className="btn btn-ghost btn-sm" onClick={()=>setGaleria(true)}>
-          <span className="icon icon-sm">bookmarks</span> Meus modelos ({modelos.length})
+      {/* Aba: só ela fica na tela. Tocar desce/sobe a janela com os ajustes. */}
+      <div style={{ background:'white', borderBottom:'1px solid var(--border)', padding:'6px 12px', display:'flex', justifyContent:'center', flexShrink:0 }}>
+        <button type="button" onClick={()=>setPainel(v=>!v)}
+          style={{ display:'flex', alignItems:'center', gap:8, background:'var(--bg)', border:'1px solid var(--border)',
+            borderRadius:99, padding:'6px 14px', cursor:'pointer', fontFamily:'inherit', maxWidth:'100%' }}>
+          <span className="icon icon-sm" style={{ color:'var(--primary)' }}>tune</span>
+          <span style={{ fontSize:12, fontWeight:700, color:'var(--text2)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{resumo}</span>
+          <span className="icon icon-sm" style={{ color:'var(--muted)', transform: painel?'rotate(180deg)':'none', transition:'transform .18s' }}>expand_more</span>
         </button>
-        <select className="form-input" style={{ width:'auto', padding:'6px 10px', fontSize:13 }}
-          value={filtroTipo} onChange={e=>setFiltroTipo(e.target.value as any)}>
-          <option value="encounterer">Encontristas</option>
-          <option value="worker">Encontreiros</option>
-          <option value="todos">Todos</option>
-        </select>
-        <select className="form-input" style={{ width:'auto', padding:'6px 10px', fontSize:13 }}
-          value={filtroEquipe} onChange={e=>setFiltroEquipe(e.target.value)}>
-          <option value="">Todas as equipes</option>
-          {equipes.map(t=><option key={t.id} value={t.id}>{t.name}</option>)}
-        </select>
-        {docAtual.fonteDados === 'pessoas' && (() => {
-          const e = encaixe(docAtual.papel, orientacao)
-          const prox: Orientacao = orientacao==='auto' ? 'retrato' : orientacao==='retrato' ? 'paisagem' : 'auto'
-          return (
-            <button type="button" onClick={()=>setOrientacao(prox)}
-              title="Folha onde os modelos serão impressos. Toque para forçar em pé/deitada."
-              style={{ display:'flex', alignItems:'center', gap:6, padding:'5px 10px', borderRadius:8,
-                border:'1px solid var(--border)', background: e.cabe?'white':'var(--danger-bg)', cursor:'pointer', fontFamily:'inherit' }}>
-              <span className="icon icon-sm" style={{ color: e.cabe?'var(--primary)':'var(--danger)' }}>print</span>
-              <span style={{ fontSize:11.5, fontWeight:700, color: e.cabe?'var(--text2)':'var(--danger)' }}>
-                {e.cabe ? `A4 ${e.orientacao==='retrato'?'em pé':'deitada'} · ${e.total}/folha` : 'Não cabe no A4'}
-              </span>
-              <span style={{ fontSize:10, color:'var(--muted)' }}>{orientacao==='auto'?'auto':'fixo'}</span>
-            </button>
-          )
-        })()}
-        <span style={{ fontSize:12, color:'var(--muted)', marginLeft:'auto' }}>{lista.length} pessoa(s)</span>
       </div>
 
       {/* Galeria de modelos — tela cheia com miniaturas */}
@@ -224,18 +207,16 @@ export default function Impressao({ profile }: { profile?: Profile }) {
         <GaleriaModelos
           modelos={modelos} docAtual={docAtual} dados={dadosPrevia} podeEditar={canEdit}
           onAbrir={abrirModelo}
-          onSalvarNovo={()=>{ setGaleria(false); setNomeModelo(''); setSalvando(docAtual) }}
           onSubstituir={substituirModelo}
           onRenomear={renomearModelo}
           onExcluir={excluirModelo}
           onZero={comecarDoZero}
-          onPronto={modeloPronto}
           onFechar={()=>setGaleria(false)}
         />
       )}
 
-      {/* EDITOR */}
-      <div style={{ flex:1, minHeight:0 }}>
+      {/* EDITOR (a janela flutuante desce POR CIMA dele, sem empurrar nada) */}
+      <div style={{ flex:1, minHeight:0, position:'relative' }}>
         <Editor
           key={doc.id}
           inicial={doc}
@@ -245,6 +226,48 @@ export default function Impressao({ profile }: { profile?: Profile }) {
           onSalvar={canEdit ? (d)=>{ setNomeModelo(d.nome && d.nome!=='Sem título' ? d.nome : ''); setSalvando(d) } : undefined}
           onImprimir={(d)=>{ if (lista.length===0) { toast.info('Ninguém neste filtro.'); return } setImprimindo(d) }}
         />
+
+        <div style={{
+          position:'absolute', top:0, left:0, right:0, zIndex:30,
+          background:'white', borderBottom:'1px solid var(--border)', borderRadius:'0 0 14px 14px',
+          boxShadow:'0 8px 20px rgba(0,0,0,0.12)', padding:'12px 14px',
+          display:'flex', gap:8, alignItems:'center', flexWrap:'wrap',
+          transform: painel ? 'translateY(0)' : 'translateY(-14px)',
+          opacity: painel ? 1 : 0,
+          pointerEvents: painel ? 'auto' : 'none',
+          transition:'transform .18s ease, opacity .18s ease',
+        }}>
+          <button className="btn btn-ghost btn-sm" onClick={()=>{ setPainel(false); setGaleria(true) }}>
+            <span className="icon icon-sm">bookmarks</span> Meus modelos ({modelos.length})
+          </button>
+          <select className="form-input" style={{ width:'auto', padding:'6px 10px', fontSize:13 }}
+            value={filtroTipo} onChange={e=>setFiltroTipo(e.target.value as any)}>
+            <option value="encounterer">Encontristas</option>
+            <option value="worker">Encontreiros</option>
+            <option value="todos">Todos</option>
+          </select>
+          <select className="form-input" style={{ width:'auto', padding:'6px 10px', fontSize:13 }}
+            value={filtroEquipe} onChange={e=>setFiltroEquipe(e.target.value)}>
+            <option value="">Todas as equipes</option>
+            {equipes.map(t=><option key={t.id} value={t.id}>{t.name}</option>)}
+          </select>
+          {docAtual.fonteDados === 'pessoas' && (() => {
+            const prox: Orientacao = orientacao==='auto' ? 'retrato' : orientacao==='retrato' ? 'paisagem' : 'auto'
+            return (
+              <button type="button" onClick={()=>setOrientacao(prox)}
+                title="Folha onde os modelos serão impressos. Toque para forçar em pé/deitada."
+                style={{ display:'flex', alignItems:'center', gap:6, padding:'5px 10px', borderRadius:8,
+                  border:'1px solid var(--border)', background: enc.cabe?'white':'var(--danger-bg)', cursor:'pointer', fontFamily:'inherit' }}>
+                <span className="icon icon-sm" style={{ color: enc.cabe?'var(--primary)':'var(--danger)' }}>print</span>
+                <span style={{ fontSize:11.5, fontWeight:700, color: enc.cabe?'var(--text2)':'var(--danger)' }}>
+                  {enc.cabe ? `A4 ${enc.orientacao==='retrato'?'em pé':'deitada'} · ${enc.total}/folha` : 'Não cabe no A4'}
+                </span>
+                <span style={{ fontSize:10, color:'var(--muted)' }}>{orientacao==='auto'?'auto':'fixo'}</span>
+              </button>
+            )
+          })()}
+          <span style={{ fontSize:12, color:'var(--muted)', marginLeft:'auto' }}>{lista.length} pessoa(s)</span>
+        </div>
       </div>
 
       {/* Salvar modelo — modal de verdade (o prompt do navegador não abre no celular) */}

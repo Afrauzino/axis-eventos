@@ -6,7 +6,8 @@
 //   • Substituir por este que estou editando
 //   • Renomear
 //   • Excluir
-// E fora dos cards: "Começar do zero", "Modelo pronto" e "Salvar como novo".
+// Salvar um modelo NOVO é o botão "Salvar" do editor (nome novo = modelo novo),
+// por isso aqui não há "Salvar como novo" nem "Modelo pronto" — seria repetido.
 import { useState } from 'react'
 import type { Documento } from './tipos'
 import Miniatura from './render/Miniatura'
@@ -23,18 +24,16 @@ type Props = {
   dados?: Record<string, any>
   podeEditar: boolean
   onAbrir: (m: Modelo) => void
-  onSalvarNovo: () => void
   onSubstituir: (m: Modelo) => void
   onRenomear: (m: Modelo, nome: string) => void
   onExcluir: (m: Modelo) => void
   onZero: () => void
-  onPronto: () => void
   onFechar: () => void
 }
 
 export default function GaleriaModelos({
   modelos, docAtual, dados, podeEditar,
-  onAbrir, onSalvarNovo, onSubstituir, onRenomear, onExcluir, onZero, onPronto, onFechar,
+  onAbrir, onSubstituir, onRenomear, onExcluir, onZero, onFechar,
 }: Props) {
   const [aberto, setAberto] = useState<Modelo | null>(null)
   const [renomeando, setRenomeando] = useState(false)
@@ -86,8 +85,6 @@ export default function GaleriaModelos({
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 14 }}>
 
           {cardVazio('note_add', 'Começar do zero', onZero, true)}
-          {cardVazio('auto_awesome', 'Modelo pronto', onPronto)}
-          {podeEditar && cardVazio('bookmark_add', 'Salvar como novo', onSalvarNovo)}
 
           {modelos.map(m => {
             const emUso = docAtual.id === m.id
@@ -109,7 +106,7 @@ export default function GaleriaModelos({
 
         {modelos.length === 0 && (
           <p style={{ fontSize: 13, color: 'var(--muted)', textAlign: 'center', marginTop: 22 }}>
-            Nenhum modelo salvo ainda. Monte um e toque em <b>Salvar como novo</b>.
+            Nenhum modelo salvo ainda. Monte um e toque em <b>Salvar</b>, lá no editor.
           </p>
         )}
       </div>
