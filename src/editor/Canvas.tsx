@@ -17,6 +17,7 @@ type Props = {
   selecao: Id[]
   selecionar: (ids: Id[]) => void
   moverSelecao: (patch: Partial<Elemento>) => void
+  onFimGesto?: () => void
   onExcluir?: (ids: Id[]) => void
   dados?: Record<string, any>
   onZoom?: (z: number) => void
@@ -28,7 +29,7 @@ type Arraste =
   | { modo: 'girar'; id: Id; cx: number; cy: number; ang0: number; rot0: number }
   | null
 
-export default function Canvas({ doc, paginaAtual, selecao, selecionar, moverSelecao, onExcluir, dados }: Props) {
+export default function Canvas({ doc, paginaAtual, selecao, selecionar, moverSelecao, onFimGesto, onExcluir, dados }: Props) {
   const wrapRef = useRef<HTMLDivElement>(null)
   const folhaRef = useRef<HTMLDivElement>(null)
   const [escala, setEscala] = useState(1)
@@ -92,7 +93,8 @@ export default function Canvas({ doc, paginaAtual, selecao, selecionar, moverSel
       const gh = Math.abs(cyEl - cyFolha) < perto
       if (gv) nx = cxFolha - el.w / 2
       if (gh) ny = cyFolha - el.h / 2
-      setGuia({ v: gv, h: gh })
+      // só re-renderiza as guias quando elas realmente mudam de estado
+      setGuia(g => (g.v === gv && g.h === gh ? g : { v: gv, h: gh }))
       moverSelecao({ x: round(nx), y: round(ny) })
     } else if (a.modo === 'redim') {
       const dx = paraMm(e.clientX - a.x0), dy = paraMm(e.clientY - a.y0)
@@ -111,7 +113,11 @@ export default function Canvas({ doc, paginaAtual, selecao, selecionar, moverSel
     }
   }
 
-  function pointerUp() { arraste.current = null; setGuia({ v: false, h: false }) }
+  function pointerUp() {
+    if (arraste.current) onFimGesto?.()   // fecha o passo de desfazer do gesto
+    arraste.current = null
+    setGuia(g => (g.v || g.h ? { v: false, h: false } : g))
+  }
 
   const larguraPx = doc.papel.largura * PX_POR_MM * escala
   const alturaPx = doc.papel.altura * PX_POR_MM * escala

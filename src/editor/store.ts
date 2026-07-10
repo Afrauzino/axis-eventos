@@ -14,8 +14,29 @@ function clonar<T>(v: T): T { return JSON.parse(JSON.stringify(v)) }
 
 function acharPagina(doc: Documento, paginaId: Id) { return doc.paginas.find(p => p.id === paginaId) }
 
+/** Troca só os elementos, reaproveitando o resto do documento.
+ *  Usado no caminho quente (arrastar/redimensionar/girar): clonar o
+ *  documento inteiro a cada movimento do dedo travava a tela. */
+function trocarElementos(doc: Documento, fn: (e: Elemento) => Elemento): Documento {
+  return { ...doc, paginas: doc.paginas.map(p => ({ ...p, elementos: p.elementos.map(fn) })) }
+}
+
 /** Aplica um comando e devolve o NOVO documento (imutável). */
 export function aplicar(doc: Documento, a: Acao): Documento {
+  // ── caminho quente: sem clone profundo ──
+  if (a.t === 'patch') {
+    return trocarElementos(doc, e => {
+      if (!a.ids.includes(e.id)) return e
+      // 'bloquear' passa mesmo em elemento bloqueado (senão não dá pra desbloquear)
+      if (e.bloqueado && !('bloqueado' in a.patch)) return e
+      return { ...e, ...a.patch }
+    })
+  }
+  if (a.t === 'patchProps') {
+    return trocarElementos(doc, e =>
+      a.ids.includes(e.id) && !e.bloqueado ? { ...e, props: { ...e.props, ...a.props } } : e)
+  }
+
   const d = clonar(doc)
 
   const todosElementos = () => d.paginas.flatMap(p => p.elementos)
@@ -29,16 +50,6 @@ export function aplicar(doc: Documento, a: Acao): Documento {
     }
     case 'excluir': {
       d.paginas.forEach(p => { p.elementos = p.elementos.filter(e => !a.ids.includes(e.id)) })
-      return d
-    }
-    case 'patch': {
-      todosElementos().forEach(e => { if (a.ids.includes(e.id) && !e.bloqueado) Object.assign(e, a.patch) })
-      // 'bloquear' precisa passar mesmo em elemento bloqueado (pra desbloquear)
-      if ('bloqueado' in a.patch) todosElementos().forEach(e => { if (a.ids.includes(e.id)) e.bloqueado = a.patch.bloqueado! })
-      return d
-    }
-    case 'patchProps': {
-      todosElementos().forEach(e => { if (a.ids.includes(e.id) && !e.bloqueado) e.props = { ...e.props, ...a.props } })
       return d
     }
     case 'ordem': {
@@ -100,21 +111,32 @@ export function useEditor(inicial: Documento) {
 
   const passado = useRef<Documento[]>([])
   const futuro  = useRef<Documento[]>([])
+  const emInteracao = useRef(false)   // arraste/redimensão/rotação em curso
   const [, forcar] = useState(0)
 
-  const dispatch = useCallback((a: Acao) => {
+  /** `continuo` = parte de um gesto (arrastar). Guarda UM ponto de desfazer
+   *  no começo do gesto, não um a cada pixel. Chame encerrarInteracao() no soltar. */
+  const dispatch = useCallback((a: Acao, continuo = false) => {
     setDoc(atual => {
       const novo = aplicar(atual, a)
       if (novo === atual) return atual
-      passado.current.push(atual)
-      if (passado.current.length > LIMITE_HISTORICO) passado.current.shift()
-      futuro.current = []
-      forcar(n => n + 1)
+
+      const gravar = !continuo || !emInteracao.current
+      if (gravar) {
+        passado.current.push(atual)
+        if (passado.current.length > LIMITE_HISTORICO) passado.current.shift()
+        futuro.current = []
+        forcar(n => n + 1)   // só aqui: durante o gesto não precisa re-render extra
+      }
+      emInteracao.current = continuo
       return novo
     })
   }, [])
 
+  const encerrarInteracao = useCallback(() => { emInteracao.current = false }, [])
+
   const desfazer = useCallback(() => {
+    emInteracao.current = false
     setDoc(atual => {
       const ant = passado.current.pop()
       if (!ant) return atual
@@ -125,6 +147,7 @@ export function useEditor(inicial: Documento) {
   }, [])
 
   const refazer = useCallback(() => {
+    emInteracao.current = false
     setDoc(atual => {
       const prox = futuro.current.pop()
       if (!prox) return atual
@@ -146,7 +169,7 @@ export function useEditor(inicial: Documento) {
     doc, setDoc,
     selecao, selecionados, selecionar,
     paginaAtual, setPaginaAtual,
-    dispatch, desfazer, refazer,
+    dispatch, encerrarInteracao, desfazer, refazer,
     podeDesfazer: passado.current.length > 0,
     podeRefazer: futuro.current.length > 0,
   }

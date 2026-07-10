@@ -2,7 +2,7 @@
 // Você desenha um modelo (foto, nome, formas, imagens…) e ele é
 // repetido por pessoa, encaixado na folha A4.
 // O Crachá continua com a tela dele, intacto.
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useEvento } from '../hooks/useEvento'
 import { usePermissao } from '../hooks/usePermissao'
@@ -60,8 +60,22 @@ export default function Impressao({ profile }: { profile?: Profile }) {
   const [modelos, setModelos] = useState<Modelo[]>([])
   const [doc, setDoc] = useState<Documento>(() => docPadrao())
   /** O documento como está AGORA dentro do editor (o `doc` acima é só o inicial).
-   *  É ele que manda no indicador da folha e no destaque do modelo aberto. */
+   *  `docRef` acompanha CADA mudança; o state só muda no que a tela mostra
+   *  (papel, nome, id). Sem isso, arrastar um elemento re-renderizava a página
+   *  inteira a cada pixel e o editor engasgava. */
+  const docRef = useRef<Documento>(doc)
   const [docAtual, setDocAtual] = useState<Documento>(doc)
+
+  const aoMudarDoc = useCallback((d: Documento) => {
+    docRef.current = d
+    setDocAtual(ant =>
+      ant.id === d.id && ant.nome === d.nome && ant.fonteDados === d.fonteDados &&
+      ant.papel.largura === d.papel.largura && ant.papel.altura === d.papel.altura
+        ? ant : d)
+  }, [])
+
+  /** Troca o documento aberto (carregar modelo, começar do zero, salvar). */
+  const aplicarDoc = useCallback((d: Documento) => { docRef.current = d; setDoc(d); setDocAtual(d) }, [])
   const [orientacao, setOrientacao] = useState<Orientacao>('auto')
   const [imprimindo, setImprimindo] = useState<Documento|null>(null)
   const [galeria, setGaleria] = useState(false)
@@ -93,11 +107,11 @@ export default function Impressao({ profile }: { profile?: Profile }) {
     setLoading(false)
   }
 
-  const lista = pessoas.filter(p => {
+  const lista = useMemo(() => pessoas.filter(p => {
     if (filtroTipo!=='todos' && p.role_type!==filtroTipo) return false
     if (filtroEquipe && !(equipeIds[p.id]??[]).includes(filtroEquipe)) return false
     return true
-  })
+  }), [pessoas, filtroTipo, filtroEquipe, equipeIds])
 
   const nomeEquipes = (pid:string) =>
     (equipeIds[pid]??[]).map(tid => equipes.find(t=>t.id===tid)?.name).filter(Boolean).join(', ')
@@ -111,8 +125,11 @@ export default function Impressao({ profile }: { profile?: Profile }) {
     funcao: p.role_type === 'worker' ? 'Encontreiro' : 'Encontrista',
   })), [lista, equipeIds, equipes])
 
-  /** Prévia dentro do editor: a primeira pessoa do filtro. */
-  const dadosPrevia = dados[0] ?? { nome: 'Nome da Pessoa', foto: '', equipe: 'Equipe', igreja: '', funcao: '' }
+  /** Prévia dentro do editor: a primeira pessoa do filtro.
+   *  Memorizado pra não trocar de identidade e redesenhar o editor à toa. */
+  const dadosPrevia = useMemo(
+    () => dados[0] ?? { nome: 'Nome da Pessoa', foto: '', equipe: 'Equipe', igreja: '', funcao: '' },
+    [dados])
 
   /** Sobe a imagem escolhida no celular e devolve a URL pública. */
   async function subirImagem(f: File): Promise<string|null> {
@@ -136,14 +153,14 @@ export default function Impressao({ profile }: { profile?: Profile }) {
 
     if (mesmoNome) {
       const doc2 = { ...d, id: mesmoNome.id, nome }
-      setDoc(doc2); setDocAtual(doc2); setSalvando(null)
+      aplicarDoc(doc2); setSalvando(null)
       await guardar(modelos.map(m => m.id===mesmoNome.id ? { ...m, nome, doc: doc2 } : m))
       toast.sucesso(`"${nome}" atualizado!`)
     } else {
       // reaproveita o id do documento quando ele ainda não pertence a outro modelo
       const id = modelos.some(m => m.id === d.id) ? novoId() : d.id
       const doc2 = { ...d, id, nome }
-      setDoc(doc2); setDocAtual(doc2); setSalvando(null)
+      aplicarDoc(doc2); setSalvando(null)
       await guardar([...modelos, { id, nome, doc: doc2 }])
       toast.sucesso(`"${nome}" salvo! Agora ele aparece em Modelos.`)
     }
@@ -151,20 +168,21 @@ export default function Impressao({ profile }: { profile?: Profile }) {
 
   /** Puxa um modelo salvo pro editor. */
   function abrirModelo(m: Modelo) {
-    setDoc(m.doc); setDocAtual(m.doc); setGaleria(false)
+    aplicarDoc(m.doc); setGaleria(false)
     toast.info(`Modelo "${m.nome}" aberto.`)
   }
 
-  /** Joga o documento aberto agora por cima de um modelo salvo. */
+  /** Joga o documento aberto agora por cima de um modelo salvo.
+   *  Usa docRef (o vivo), não docAtual — este só acompanha papel/nome/id. */
   async function substituirModelo(m: Modelo) {
-    const doc2 = { ...docAtual, id: m.id, nome: m.nome }
-    setDoc(doc2); setDocAtual(doc2)
+    const doc2 = { ...docRef.current, id: m.id, nome: m.nome }
+    aplicarDoc(doc2)
     await guardar(modelos.map(x => x.id===m.id ? { ...x, doc: doc2 } : x))
     toast.sucesso(`"${m.nome}" substituído!`)
   }
 
   async function renomearModelo(m: Modelo, nome: string) {
-    if (docAtual.id === m.id) setDocAtual({ ...docAtual, nome })
+    if (docRef.current.id === m.id) aplicarDoc({ ...docRef.current, nome })
     await guardar(modelos.map(x => x.id===m.id ? { ...x, nome, doc: { ...x.doc, nome } } : x))
     toast.sucesso('Nome alterado!')
   }
@@ -174,7 +192,7 @@ export default function Impressao({ profile }: { profile?: Profile }) {
     toast.info(`"${m.nome}" excluído.`)
   }
 
-  function comecarDoZero() { const d = docVazio(); setDoc(d); setDocAtual(d); setGaleria(false) }
+  function comecarDoZero() { aplicarDoc(docVazio()); setGaleria(false) }
 
   // O que a aba mostra quando a janela está fechada — o essencial, num respiro só.
   const enc = encaixe(docAtual.papel, orientacao)
@@ -222,7 +240,7 @@ export default function Impressao({ profile }: { profile?: Profile }) {
           inicial={doc}
           dados={dadosPrevia}
           subirImagem={subirImagem}
-          onChange={setDocAtual}
+          onChange={aoMudarDoc}
           onSalvar={canEdit ? (d)=>{ setNomeModelo(d.nome && d.nome!=='Sem título' ? d.nome : ''); setSalvando(d) } : undefined}
           onImprimir={(d)=>{ if (lista.length===0) { toast.info('Ninguém neste filtro.'); return } setImprimindo(d) }}
         />

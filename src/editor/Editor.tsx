@@ -29,8 +29,9 @@ export default function Editor({ inicial, dados, onSalvar, onImprimir, onChange,
   const ativa = ferramentas.find(f => f.id === ferramenta)
   const temSelecao = ed.selecao.length > 0
 
-  /** Aplica um patch em toda a seleção (usado pelo canvas ao arrastar/redimensionar). */
-  const moverSelecao = (patch: Partial<Elemento>) => ed.dispatch({ t: 'patch', ids: ed.selecao, patch })
+  /** Patch em toda a seleção (canvas: arrastar/redimensionar/girar).
+   *  `true` = gesto contínuo: um único passo de desfazer pro gesto inteiro. */
+  const moverSelecao = (patch: Partial<Elemento>) => ed.dispatch({ t: 'patch', ids: ed.selecao, patch }, true)
 
   const ctx = {
     doc: ed.doc, paginaAtual: ed.paginaAtual, selecao: ed.selecao,
@@ -74,6 +75,7 @@ export default function Editor({ inicial, dados, onSalvar, onImprimir, onChange,
         doc={ed.doc} paginaAtual={ed.paginaAtual}
         selecao={ed.selecao} selecionar={ed.selecionar}
         moverSelecao={moverSelecao} dados={dados}
+        onFimGesto={ed.encerrarInteracao}
         onExcluir={ids => ed.dispatch({ t: 'excluir', ids })}
       />
 
