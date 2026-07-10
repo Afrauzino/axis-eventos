@@ -53,7 +53,9 @@ export default function Equipes({ profile }: { profile?: Profile }) {
     if (!evento) return
     const [eq, pe, vi] = await Promise.all([
       supabase.from('teams').select('*').eq('event_id', evento.id).order('name'),
-      supabase.from('people').select('id,name,role_type,photo_url,user_id').eq('event_id', evento.id).eq('role_type','worker').not('user_id','is',null).order('name'),
+      // Mostra também quem só tem código (user_id null) — dá pra montar a equipe
+      // antes da pessoa entrar. Ao fazer o primeiro acesso, ela já cai na equipe.
+      supabase.from('people').select('id,name,role_type,photo_url,user_id').eq('event_id', evento.id).eq('role_type','worker').order('name'),
       supabase.from('people_teams').select('person_id,team_id'),
     ])
     setEquipes(eq.data ?? [])
@@ -338,6 +340,7 @@ export default function Equipes({ profile }: { profile?: Profile }) {
                     </div>
                     <div style={{flex:1,minWidth:0}}>
                       <p style={{fontSize:13,fontWeight:equipesDela.length===0&&!jaMembro?700:600,color:equipesDela.length===0&&!jaMembro?'var(--danger)':'var(--text)'}}>{p.name}</p>
+                      {!p.user_id && <p style={{fontSize:11,color:'var(--warning)',fontWeight:700}}>⏳ Só com código — ainda não entrou</p>}
                       {equipesDela.length===0&&!jaMembro && <p style={{fontSize:11,color:'var(--danger)',fontWeight:700}}>Sem equipe</p>}
                       {equipesDela.length>0 && <p style={{fontSize:11,color:'var(--muted)'}}>{equipesDela.map(e=>e.name).join(', ')}</p>}
                       {jaMembro && <p style={{fontSize:11,color:'var(--primary)',fontWeight:600}}>Já é membro</p>}
@@ -441,7 +444,7 @@ export default function Equipes({ profile }: { profile?: Profile }) {
                             <div key={m.id} style={{display:'flex',alignItems:'center',gap:10,breakInside:'avoid'}}>
                               {av(m,38)}
                               <div style={{minWidth:0}}>
-                                <p style={{fontSize:13,fontWeight:600}}>{formatName(m.name)}</p>
+                                <p style={{fontSize:13,fontWeight:600}}>{formatName(m.name)}{!m.user_id && <span style={{fontSize:10,color:'var(--warning)',fontWeight:700,marginLeft:6}}>⏳ não entrou</span>}</p>
                                 {outras.length>0 && <p style={{fontSize:11,color:'#6b7280'}}>Também em: {outras.map(e=>e.name).join(', ')}</p>}
                               </div>
                             </div>
