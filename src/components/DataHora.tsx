@@ -148,9 +148,13 @@ export default function DataHora({ value, onChange, modo = 'date', disabled, pla
               <div style={{ background: 'white', border: '1px solid var(--border)', borderRadius: 14, padding: 14, marginBottom: usaHora ? 14 : 4 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
                   <button type="button" onClick={() => mudarMes(-1)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--primary)', fontFamily: 'inherit', padding: 4, display: 'flex' }}><span className="icon">chevron_left</span></button>
-                  <button type="button" onClick={() => setAnoAberto(a => !a)} style={{ fontSize: 14, fontWeight: 800, background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 3 }}>
-                    {MESES[view.m]} {view.y} <span className="icon icon-sm" style={{ color: 'var(--primary)' }}>{anoAberto ? 'expand_less' : 'expand_more'}</span>
-                  </button>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <button type="button" onClick={() => setAnoAberto(false)} style={{ fontSize: 14, fontWeight: 800, background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', padding: '4px 4px' }}>{MESES[view.m]}</button>
+                    {/* Ano vira um botão DESTACADO — óbvio que dá pra tocar e escolher (útil no aniversário) */}
+                    <button type="button" onClick={() => setAnoAberto(a => !a)} style={{ fontSize: 14, fontWeight: 800, background: 'var(--primary-light)', color: 'var(--primary-dark)', border: 'none', borderRadius: 8, padding: '4px 10px', cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 3 }}>
+                      {view.y} <span className="icon icon-sm" style={{ color: 'var(--primary)' }}>{anoAberto ? 'expand_less' : 'expand_more'}</span>
+                    </button>
+                  </div>
                   <button type="button" onClick={() => mudarMes(1)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--primary)', fontFamily: 'inherit', padding: 4, display: 'flex' }}><span className="icon">chevron_right</span></button>
                 </div>
                 {anoAberto ? (
