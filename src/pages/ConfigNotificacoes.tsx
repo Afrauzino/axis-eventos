@@ -76,7 +76,7 @@ export default function ConfigNotificacoes({ profile }: { profile?: Profile }) {
       </div>
 
       <p className="form-hint" style={{ marginTop: 12 }}>
-        No dia do aniversário, a pessoa vê essa tela ao abrir o app (com confete e som), 1x no dia. "Ver / testar" mostra como fica agora, sem afetar ninguém.
+        No dia do aniversário, a pessoa vê essa tela ao abrir o app (com confete e som) — <b>uma vez só</b>, mesmo que ela abra em vários aparelhos. "Ver / testar" mostra como fica agora, sem afetar ninguém.
       </p>
 
       {preview && profile && <ParabensAniversario profile={profile} preview={preview} onFecharPreview={() => setPreview(null)} />}

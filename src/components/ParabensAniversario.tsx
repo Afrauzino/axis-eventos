@@ -41,8 +41,26 @@ export default function ParabensAniversario({ profile, preview, onFecharPreview 
       const bd = String(data.birth_date)
       if (!(bd.slice(5, 7) === mm && bd.slice(8, 10) === dd)) return
 
-      // marca visto hoje ANTES de mostrar (evita repetir e re-avisar)
+      // UMA VEZ por aniversário, em qualquer aparelho: tranca no servidor por
+      // pessoa+ano (sql/58). Quem "ganha" o insert é o primeiro aparelho a abrir;
+      // os outros veem conflito e NÃO mostram de novo nem re-avisam os líderes.
+      // Se a tabela ainda não existe (SQL não rodou), cai na trava só-do-aparelho.
+      let primeiro = true
+      try {
+        const { data: ins, error } = await supabase.from('aniversario_comemorado')
+          .upsert({ user_id: profile.user_id, ano: d.getFullYear() }, { onConflict: 'user_id,ano', ignoreDuplicates: true })
+          .select('user_id')
+        if (error) {
+          if (error.code === '42P01') primeiro = true          // tabela ainda não criada → comportamento antigo
+          else primeiro = true                                  // erro transitório → não estraga a festa
+        } else {
+          primeiro = Array.isArray(ins) ? ins.length > 0 : !!ins // vazio = outro aparelho já comemorou
+        }
+      } catch {}
+
+      // trava local do dia (atalho: evita reconsultar o servidor a cada abertura)
       try { localStorage.setItem(chave, hojeStr()) } catch {}
+      if (!ativo || !primeiro) return
 
       const [titulo, mensagem] = await Promise.all([carregarConfig('aniversario_titulo'), carregarConfig('aniversario_mensagem')])
       if (!ativo) return
