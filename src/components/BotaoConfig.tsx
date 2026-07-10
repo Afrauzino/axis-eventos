@@ -46,9 +46,9 @@ export default function BotaoConfig() {
               const grupos = chrome.railGrupos!
               const g = grupos[Math.min(grupoRail, grupos.length - 1)]
               return (
-                <div style={{ display: 'flex', border: '1px solid var(--border)', borderRadius: 14, overflow: 'hidden', marginBottom: 16, minHeight: 264 }}>
-                  {/* Rail: grupos com emoji */}
-                  <div style={{ width: 88, background: 'var(--primary-light)', flexShrink: 0, padding: '8px 0' }}>
+                <div style={{ display: 'flex', border: '1px solid var(--border)', borderRadius: 14, overflow: 'hidden', marginBottom: 16, height: '64vh' }}>
+                  {/* Rail: grupos com emoji (coluna cheia, como no app de referência) */}
+                  <div style={{ width: 92, background: 'var(--primary-light)', flexShrink: 0, padding: '8px 0', overflowY: 'auto' }}>
                     {grupos.map((gr, gi) => {
                       const on = gi === grupoRail
                       return (
