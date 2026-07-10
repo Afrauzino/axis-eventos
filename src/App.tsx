@@ -17,6 +17,7 @@ import Login from './pages/Login'
 import Pending from './pages/Pending'
 import Dashboard from './pages/Dashboard'
 import CriticoWatcher from './components/CriticoWatcher'
+import ParabensAniversario from './components/ParabensAniversario'
 import AberturaGate from './components/AberturaGate'
 import BloqueioBiometrico from './components/BloqueioBiometrico'
 import { biometriaAtiva } from './lib/biometria'
@@ -330,10 +331,13 @@ export default function App() {
     return () => { ativo = false; clearInterval(t) }
   }, [profile, eventoAtivo?.id, notifOpen])
 
-  // Web Push — se a pessoa já permitiu notificação, garante a assinatura deste aparelho salva
+  // Web Push — ao entrar: se já permitiu, assina; se ainda não decidiu, PEDE a permissão
+  // (no APK isso dispara o pedido do Android já na 1ª abertura).
   useEffect(() => {
-    if (profile?.user_id && typeof Notification !== 'undefined' && Notification.permission === 'granted') {
-      ativarPush(profile.user_id)
+    if (!profile?.user_id || typeof Notification === 'undefined') return
+    if (Notification.permission === 'granted') { ativarPush(profile.user_id); return }
+    if (Notification.permission === 'default') {
+      try { Notification.requestPermission().then(p => { if (p === 'granted' && profile?.user_id) ativarPush(profile.user_id) }) } catch {}
     }
   }, [profile?.user_id])
 
@@ -397,6 +401,7 @@ export default function App() {
         {/* Main content — scroller principal (sem transform: senao FAB/modais position:fixed grudam no main em vez da tela) */}
         <main style={{flex:1,overflowY:'auto',position:'relative',WebkitOverflowScrolling:'touch'}}>
           <CriticoWatcher profile={profile} />
+          <ParabensAniversario profile={profile} />
           <AppRoutes profile={profile} onProfileUpdate={()=>loadProfile(profile.user_id)} versaoFotos={versaoFotos} />
           {/* #2 — Botão de instalar SEMPRE no final de tudo (aparece sozinho quando dá pra instalar) */}
           <div style={{padding:'0 16px 24px'}}><InstallPWA autoShow /></div>
