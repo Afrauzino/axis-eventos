@@ -5,7 +5,11 @@ import type { Profile } from '../App'
 // Banner que garante o pedido de permissão de notificação num TOQUE do usuário
 // (pedir automático no load costuma ser ignorado no APK/Chrome). Reassina o
 // aparelho também — importante depois de reinstalar o app.
+// Fechar vale só PARA ESTA SESSÃO (sessionStorage): a cada nova abertura do app,
+// enquanto a pessoa não ativar, o banner reaparece — força todos a verem a opção.
 const KEY = 'axis_notif_banner_dismiss'
+function pegouFechou(): boolean { try { return sessionStorage.getItem(KEY) === '1' } catch { return false } }
+function marcaFechou(): void { try { sessionStorage.setItem(KEY, '1') } catch {} }
 
 export default function AtivarNotificacoes({ profile }: { profile: Profile }) {
   const [perm, setPerm] = useState<'default' | 'granted' | 'denied' | 'no'>('no')
@@ -16,7 +20,7 @@ export default function AtivarNotificacoes({ profile }: { profile: Profile }) {
     if (!pushSuportado()) { setPerm('no'); return }
     setPerm(Notification.permission as any)
     if (Notification.permission === 'granted') ativarPush(profile.user_id)  // reassina este aparelho
-    try { setFechado(localStorage.getItem(KEY) === '1') } catch {}
+    setFechado(pegouFechou())
   }, [profile.user_id])
 
   async function ativar() {
@@ -26,7 +30,7 @@ export default function AtivarNotificacoes({ profile }: { profile: Profile }) {
     setPerm(typeof Notification !== 'undefined' ? (Notification.permission as any) : 'no')
     if (ok) fechar()
   }
-  function fechar() { try { localStorage.setItem(KEY, '1') } catch {} ; setFechado(true) }
+  function fechar() { marcaFechou(); setFechado(true) }
 
   if (perm === 'no' || perm === 'granted' || fechado) return null
 
