@@ -8,7 +8,7 @@
 }
 
 :root {
-  --primary: #00A99D;
+  --primary: #334155; /* placeholder NEUTRO de carregamento — a cor real (personalizável) é aplicada por tema.ts/inline antes do paint. Nunca piscar a cor de marca errada. */
   --primary-dark: #007A70;
   --primary-light: #E8F8F7;
   --primary-mid: rgba(0,169,157,0.15);
