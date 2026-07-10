@@ -24,8 +24,8 @@ type Pessoa = {
 }
 
 const ROLES = [
-  { value:'encounterer', label:'Encontrista', cor:'#6B46C1', bg:'#F3F0FF' },
-  { value:'worker',      label:'Encontreiro', cor:'#00A99D', bg:'#E6F8F7' },
+  { value:'encounterer', label:'Encontrista', desc:'Irá passar pelo encontro', cor:'#6B46C1', bg:'#F3F0FF' },
+  { value:'worker',      label:'Encontreiro', desc:'Irá trabalhar / servir',   cor:'#00A99D', bg:'#E6F8F7' },
 ]
 
 export default function Cadastros({ profile }: { profile: Profile }) {
@@ -249,11 +249,12 @@ export default function Cadastros({ profile }: { profile: Profile }) {
                 <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,marginTop:4}}>
                   {ROLES.map(r=>(
                     <button key={r.value} type="button" onClick={()=>setForm(f=>({...f,role_type:r.value}))}
-                      style={{padding:'10px',borderRadius:10,cursor:'pointer',fontWeight:700,fontSize:13,fontFamily:'inherit',
+                      style={{padding:'10px 8px',borderRadius:10,cursor:'pointer',fontFamily:'inherit',display:'flex',flexDirection:'column',alignItems:'center',gap:2,
                         border:`2px solid ${form.role_type===r.value?r.cor:'var(--border)'}`,
                         background:form.role_type===r.value?r.bg:'white',
                         color:form.role_type===r.value?r.cor:'var(--text2)'}}>
-                      {r.label}
+                      <span style={{fontWeight:700,fontSize:13}}>{r.label}</span>
+                      <span style={{fontSize:11,fontWeight:600,opacity:0.85}}>{r.desc}</span>
                     </button>
                   ))}
                 </div>
