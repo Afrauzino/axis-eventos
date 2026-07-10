@@ -39,7 +39,7 @@ export async function montarNotificacoes(profile: Profile, eventoId: string | nu
     try {
       const { data: pend } = await supabase.from('profiles').select('user_id').eq('role_status', 'pending')
       const ids = (pend ?? []).map((p: any) => p.user_id).filter(Boolean).sort()
-      if (ids.length > 0) out.push({ id: 'aprov-' + ids.join('_'), emoji: '🙋', titulo: `${ids.length} pessoa(s) aguardando aprovação`, sub: 'Toque para revisar', rota: '/admin' })
+      if (ids.length > 0) out.push({ id: 'aprov-' + ids.join('_'), emoji: '🙋', titulo: `${ids.length} pessoa(s) aguardando aprovação`, sub: 'Toque para revisar', rota: '/minhas-atividades' })
     } catch {}
   }
 

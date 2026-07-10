@@ -250,12 +250,12 @@ export default function MinhasAtividades({ profile }: { profile: Profile }) {
           <div className="section-label" style={{marginBottom:8}}>🙋 Aprovações pendentes ({aprovacoes.length})</div>
           {aprovacoes.map(a => (
             <div key={a.user_id} style={{background:'white',borderRadius:14,boxShadow:'var(--shadow-sm)',marginBottom:8,display:'flex',alignItems:'center',gap:12,padding:'12px 14px',borderLeft:'3px solid var(--warning)'}}>
-              <div onClick={()=>navigate('/admin')} style={{width:42,height:42,borderRadius:'50%',background:'var(--primary-light)',overflow:'hidden',flexShrink:0,display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer'}}>
+              <div onClick={()=>navigate('/admin?aprovar='+a.user_id)} style={{width:42,height:42,borderRadius:'50%',background:'var(--primary-light)',overflow:'hidden',flexShrink:0,display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer'}}>
                 {a.photo_url ? <img src={a.photo_url} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}}/> : <span style={{fontWeight:700,fontSize:14,color:'var(--primary)'}}>{getInitials(a.name)}</span>}
               </div>
-              <div onClick={()=>navigate('/admin')} style={{flex:1,minWidth:0,cursor:'pointer'}}>
+              <div onClick={()=>navigate('/admin?aprovar='+a.user_id)} style={{flex:1,minWidth:0,cursor:'pointer'}}>
                 <p style={{fontWeight:700,fontSize:14,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{a.name}</p>
-                <p style={{fontSize:12,color:'var(--muted)'}}>{a.church || 'Aguardando aprovação'}</p>
+                <p style={{fontSize:12,color:'var(--muted)'}}>{a.church || 'Toque para revisar e aprovar'}</p>
               </div>
               <button onClick={()=>aprovar(a)} style={{background:'var(--success)',color:'white',border:'none',borderRadius:10,padding:'8px 14px',cursor:'pointer',fontSize:13,fontWeight:700,fontFamily:'inherit',flexShrink:0,display:'flex',alignItems:'center',gap:4}}>
                 <span className="icon icon-sm">check</span> Aprovar

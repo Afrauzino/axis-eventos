@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { useVoltarFecha } from '../hooks/useVoltarFecha'
 import ConfigCor from './ConfigCor'
@@ -6,7 +6,7 @@ import { limparCachePermissoes } from '../hooks/usePermissao'
 import { fmtDataHora, isAdmin, formatName } from '../utils'
 import { invalidarEventoAtivo } from '../hooks/useEvento'
 import { registrarLog } from '../lib/audit'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { NAV_GROUPS } from '../lib/navGroups'
 import { toast } from '../components/Toast'
 import Seletor from '../components/Seletor'
@@ -154,12 +154,24 @@ export default function Admin({ profile }: { profile?: Profile }) {
   const [buscaUser, setBuscaUser]       = useState('')
   const [filtroUserTipo, setFiltroUserTipo] = useState('todos')  // todos | encounterer | worker
   const navigate = useNavigate()
+  const location = useLocation()
+  const aprovarParamFeito = useRef<string|null>(null)
   // #1 — admin edita 100% do cadastro de qualquer pessoa (reusa CadastroPessoa)
   const [editPessoaId, setEditPessoaId] = useState<string|null>(null)
   useVoltarFecha(!!editPessoaId, () => setEditPessoaId(null))
   const [editEventoId, setEditEventoId] = useState<string|undefined>(undefined)
   const [editForm, setEditForm]         = useState<PessoaForm>(FORM_VAZIO)
   const [salvandoEdit, setSalvandoEdit] = useState(false)
+  // Abrir o cadastro em TELA CHEIA quando chega ?aprovar=<user_id> (vindo do sininho / Minhas Atividades)
+  useEffect(() => {
+    const uid = new URLSearchParams(location.search).get('aprovar')
+    if (!uid || aprovarParamFeito.current === uid) return
+    const pessoa = pessoas.find(x => x.user_id === uid)
+    if (!pessoa) return
+    aprovarParamFeito.current = uid
+    abrirEdicaoCompleta(pessoa)
+    navigate('/admin', { replace: true })
+  }, [location.search, pessoas])
   // #18 — mensagem editável que acompanha o código de acesso
   const [msgCodigo, setMsgCodigo] = useState('')
   const [msgSalva, setMsgSalva]   = useState('')
@@ -1323,14 +1335,18 @@ export default function Admin({ profile }: { profile?: Profile }) {
       )}
 
       {/* ===== #1 — EDITAR CADASTRO COMPLETO (admin edita tudo) ===== */}
-      {editPessoaId && (
-        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.5)',zIndex:400,display:'flex',flexDirection:'column',justifyContent:'flex-end'}} onClick={e=>e.target===e.currentTarget&&setEditPessoaId(null)}>
-          <div style={{background:'white',borderRadius:'20px 20px 0 0',padding:'8px 20px 32px',maxHeight:'92vh',overflowY:'auto'}}>
-            <div style={{width:36,height:4,background:'var(--border)',borderRadius:2,margin:'12px auto 0'}}/>
-            <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'16px 0 14px',borderBottom:'1px solid var(--border)',marginBottom:20}}>
-              <span style={{fontSize:17,fontWeight:700}}>Editar cadastro</span>
-              <button onClick={()=>setEditPessoaId(null)} style={{background:'var(--bg)',border:'1px solid var(--border)',borderRadius:'50%',width:32,height:32,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',fontFamily:'inherit'}}><span className="icon icon-sm">close</span></button>
+      {editPessoaId && (() => {
+        const peEdit = pessoas.find(x=>x.id===editPessoaId)
+        const pendente = peEdit?.role_status === 'pending'
+        return (
+        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.5)',zIndex:400,display:'flex',flexDirection:'column',justifyContent:'flex-start'}} onClick={e=>e.target===e.currentTarget&&setEditPessoaId(null)}>
+          <div style={{background:'white',borderRadius:0,padding:'0 20px 32px',height:'100dvh',maxHeight:'100dvh',overflowY:'auto',width:'100%'}}>
+            <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'16px 0 14px',borderBottom:'1px solid var(--border)',marginBottom:20,position:'sticky',top:0,background:'white',zIndex:1}}>
+              <button onClick={()=>setEditPessoaId(null)} style={{background:'var(--bg)',border:'1px solid var(--border)',borderRadius:10,padding:'8px 12px',cursor:'pointer',display:'flex',alignItems:'center',gap:6,fontFamily:'inherit',fontWeight:700,fontSize:13}}><span className="icon icon-sm">arrow_back</span> Voltar</button>
+              <span style={{fontSize:16,fontWeight:800}}>{pendente ? 'Avaliar inscrição' : 'Editar cadastro'}</span>
+              <span style={{width:74}}/>
             </div>
+            {pendente && <div style={{background:'var(--warning-bg,#FEF0D9)',border:'1px solid var(--warning,#C9721A)',borderRadius:10,padding:'10px 12px',marginBottom:16,fontSize:12.5,color:'var(--warning,#B4761A)',fontWeight:600}}>⏳ Aguardando aprovação. Revise/edite os dados e toque em <b>Aprovar</b>, ou aprove rápido pela lista.</div>}
             <CadastroPessoa
               form={editForm}
               onChange={setEditForm}
@@ -1341,13 +1357,22 @@ export default function Admin({ profile }: { profile?: Profile }) {
               showReferencia={false}
               fotoObrigatoria={true}
             />
-            <div style={{display:'flex',gap:8,marginTop:18}}>
-              <button className="btn btn-primary" style={{flex:1}} onClick={salvarEdicaoCompleta} disabled={salvandoEdit}>{salvandoEdit?'Salvando...':'Salvar alterações'}</button>
-              <button className="btn btn-ghost" onClick={()=>setEditPessoaId(null)}>Cancelar</button>
+            <div style={{display:'flex',flexDirection:'column',gap:8,marginTop:18}}>
+              {pendente && peEdit && (
+                <button className="btn btn-full" style={{background:'var(--success)',color:'white',border:'none',fontWeight:800,padding:'12px'}}
+                  onClick={async()=>{ await salvarEdicaoCompleta(); await aprovarPessoa(peEdit); setEditPessoaId(null) }}>
+                  <span className="icon icon-sm" style={{color:'white'}}>check_circle</span> Salvar e Aprovar
+                </button>
+              )}
+              <div style={{display:'flex',gap:8}}>
+                <button className="btn btn-primary" style={{flex:1}} onClick={salvarEdicaoCompleta} disabled={salvandoEdit}>{salvandoEdit?'Salvando...':(pendente?'Só salvar (sem aprovar)':'Salvar alterações')}</button>
+                <button className="btn btn-ghost" onClick={()=>setEditPessoaId(null)}>Cancelar</button>
+              </div>
             </div>
           </div>
         </div>
-      )}
+        )
+      })()}
 
 
       {/* ===== EQUIPES (PERMISSÕES) ===== */}
