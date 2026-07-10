@@ -5,47 +5,7 @@
 //
 // `slim`: modelo mais compacto (espaçamento fino, fonte menor, FOTO MAIOR,
 // ministração em destaque com o NOME embaixo) — pensado pra caber em uma A4.
-import { useEffect, useRef, useState } from 'react'
 import { getInitials } from '../utils'
-
-// Encolhe o conteúdo pra caber em UMA página A4 (útil = 190mm x 275mm, já com margem).
-// Tudo em mm/proporção → o que aparece na tela é o mesmo do PDF/impressão.
-function FitA4({ children }: { children: React.ReactNode }) {
-  const wrapRef = useRef<HTMLDivElement>(null)
-  const innerRef = useRef<HTMLDivElement>(null)
-  const [scale, setScale] = useState(1)
-  const [alturaMm, setAlturaMm] = useState<number | undefined>(undefined)
-
-  useEffect(() => {
-    const wrap = wrapRef.current, inner = innerRef.current
-    if (!wrap || !inner) return
-    function medir() {
-      // px por mm (medido no próprio aparelho)
-      const probe = document.createElement('div')
-      probe.style.cssText = 'width:100mm;position:absolute;visibility:hidden;height:0'
-      wrap!.appendChild(probe)
-      const pxPerMm = probe.offsetWidth / 100
-      wrap!.removeChild(probe)
-      if (!pxPerMm) return
-      const alturaConteudoMm = inner!.scrollHeight / pxPerMm
-      const k = Math.min(1, 275 / alturaConteudoMm)
-      setScale(k)
-      setAlturaMm(Math.min(alturaConteudoMm, 275))
-    }
-    medir()
-    const ro = new ResizeObserver(medir)
-    ro.observe(inner)
-    return () => ro.disconnect()
-  }, [])
-
-  return (
-    <div ref={wrapRef} style={{ width: '190mm', maxWidth: '100%', margin: '0 auto', height: alturaMm ? `${alturaMm}mm` : undefined, overflow: 'hidden' }}>
-      <div ref={innerRef} style={{ width: '190mm', transform: `scale(${scale})`, transformOrigin: '50% 0' }}>
-        {children}
-      </div>
-    </div>
-  )
-}
 
 export type LinhaPoster = {
   kind: 'min' | 'simples'
@@ -165,5 +125,5 @@ export default function CronogramaPoster({ titulo, dias, slim = false }: { titul
       ))}
     </div>
   )
-  return slim ? <FitA4>{corpo}</FitA4> : corpo
+  return corpo
 }
