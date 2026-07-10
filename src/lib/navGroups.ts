@@ -15,25 +15,25 @@ export const NAV_GROUPS: Record<string, NavSub[]> = {
 // A "rota" pode ser uma página de verdade (/admin/menus) OU uma aba dentro da
 // tela Usuários (/admin?aba=xxx). Assim páginas e abas convivem no mesmo menu.
 export type AdminItem = { label: string; rota: string; icone?: string }
-export type AdminGrupo = { titulo: string; itens: AdminItem[] }
+export type AdminGrupo = { titulo: string; curto?: string; emoji?: string; itens: AdminItem[] }
 
 export const ADMIN_GRUPOS: AdminGrupo[] = [
-  { titulo: 'Pessoas e acessos', itens: [
+  { titulo: 'Pessoas e acessos', curto: 'Pessoas', emoji: '👥', itens: [
     { label: 'Usuários',         rota: '/admin?aba=usuarios',     icone: 'group' },
     { label: 'Tipos de cargo',   rota: '/admin?aba=tipos',        icone: 'badge' },
     { label: 'Liberações',       rota: '/admin?aba=equipes_perm', icone: 'lock_open' },
     { label: 'Convite / código', rota: '/admin?aba=msg',          icone: 'key' },
   ] },
-  { titulo: 'App e conteúdo', itens: [
+  { titulo: 'App e conteúdo', curto: 'App', emoji: '📱', itens: [
     { label: 'Menus do app',     rota: '/admin/menus',            icone: 'apps' },
     { label: 'Aparência',        rota: '/admin?aba=aparencia',    icone: 'palette' },
     { label: 'Notificações',     rota: '/admin/notificacoes',     icone: 'notifications' },
   ] },
-  { titulo: 'Evento', itens: [
+  { titulo: 'Evento', curto: 'Evento', emoji: '📅', itens: [
     { label: 'Eventos',          rota: '/admin?aba=eventos',      icone: 'event' },
     { label: 'Comparativo',      rota: '/relatorios',             icone: 'bar_chart' },
   ] },
-  { titulo: 'Sistema', itens: [
+  { titulo: 'Sistema', curto: 'Sistema', emoji: '🛠️', itens: [
     { label: 'Backup',           rota: '/admin?aba=backup',       icone: 'backup' },
     { label: 'Logs',             rota: '/admin?aba=logs',         icone: 'history' },
     { label: 'Saúde do sistema', rota: '/admin/saude-sistema',    icone: 'monitor_heart' },

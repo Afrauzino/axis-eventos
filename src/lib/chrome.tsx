@@ -12,9 +12,12 @@ export type ItemImpressao = { label: string; onClick: () => void; icon?: string;
 export type ItemConfig = { label: string; onClick: () => void; icon?: string }
 export type NavItem = { label: string; ativo?: boolean; onClick: () => void; icone?: string }
 export type NavGrupo = { titulo: string; itens: NavItem[] }
+// Navegação em RAIL lateral (coluna de grupos com emoji + painel de itens ao lado).
+export type RailGrupo = { titulo: string; curto: string; emoji: string; itens: NavItem[] }
 
 export type Chrome = {
   navegacao?: NavGrupo[]        // sub-abas da tela, organizadas em grupos
+  railGrupos?: RailGrupo[]      // navegação em rail lateral (Administração)
   busca?: { value: string; onChange: (v: string) => void; placeholder?: string }
   grupos?: FiltroGrupo[]
   valores?: Record<string, string>
@@ -56,12 +59,14 @@ export function useRegistrarChromeAdmin(extra: Chrome = {}, deps: any[] = []) {
     if (query) return loc.pathname === caminho && `aba=${abaAtual}` === query
     return loc.pathname === caminho
   }
-  const grupos: NavGrupo[] = ADMIN_GRUPOS.map(g => ({
+  const railGrupos: RailGrupo[] = ADMIN_GRUPOS.map(g => ({
     titulo: g.titulo,
+    curto: g.curto ?? g.titulo,
+    emoji: g.emoji ?? '•',
     itens: g.itens.map(it => ({ label: it.label, icone: it.icone, ativo: estaAtivo(it.rota), onClick: () => nav(it.rota) })),
   }))
   useRegistrarChrome(
-    { ...extra, navegacao: [...grupos, ...(extra.navegacao ?? [])] },
+    { ...extra, railGrupos, navegacao: extra.navegacao },
     [loc.pathname, loc.search, ...deps], // eslint-disable-line react-hooks/exhaustive-deps
   )
 }

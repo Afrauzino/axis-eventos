@@ -7,10 +7,17 @@ import { useChrome } from '../lib/chrome'
 export default function BotaoConfig() {
   const { chrome } = useChrome()
   const [aberto, setAberto] = useState(false)
+  const [grupoRail, setGrupoRail] = useState(0)
   const loc = useLocation()
   useEffect(() => { setAberto(false) }, [loc.pathname]) // fecha o menu ao trocar de página
+  // Ao abrir o rail, começa no grupo que tem o item ativo (a tela atual)
+  useEffect(() => {
+    if (!aberto || !chrome?.railGrupos) return
+    const i = chrome.railGrupos.findIndex(g => g.itens.some(it => it.ativo))
+    if (i >= 0) setGrupoRail(i)
+  }, [aberto]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const temAlgo = !!chrome && ((chrome.navegacao?.length ?? 0) > 0 || !!chrome.busca || (chrome.grupos?.length ?? 0) > 0 || (chrome.impressoes?.length ?? 0) > 0 || (chrome.configs?.length ?? 0) > 0)
+  const temAlgo = !!chrome && ((chrome.railGrupos?.length ?? 0) > 0 || (chrome.navegacao?.length ?? 0) > 0 || !!chrome.busca || (chrome.grupos?.length ?? 0) > 0 || (chrome.impressoes?.length ?? 0) > 0 || (chrome.configs?.length ?? 0) > 0)
   if (!temAlgo || !chrome) return null
 
   const padrao = chrome.padraoFiltro ?? 'todos'
@@ -33,6 +40,44 @@ export default function BotaoConfig() {
           onClick={e => e.target === e.currentTarget && setAberto(false)}>
           <div style={{ background: 'white', borderRadius: '20px 20px 0 0', padding: '8px 16px 24px', maxWidth: 480, width: '100%', margin: '0 auto', maxHeight: '82vh', overflowY: 'auto' }}>
             <div style={{ width: 36, height: 4, background: 'var(--border)', borderRadius: 2, margin: '12px auto 14px' }} />
+
+            {/* Navegação em RAIL lateral (Administração) — emoji + cor do sistema */}
+            {(chrome.railGrupos?.length ?? 0) > 0 && (() => {
+              const grupos = chrome.railGrupos!
+              const g = grupos[Math.min(grupoRail, grupos.length - 1)]
+              return (
+                <div style={{ display: 'flex', border: '1px solid var(--border)', borderRadius: 14, overflow: 'hidden', marginBottom: 16, minHeight: 264 }}>
+                  {/* Rail: grupos com emoji */}
+                  <div style={{ width: 88, background: 'var(--primary-light)', flexShrink: 0, padding: '8px 0' }}>
+                    {grupos.map((gr, gi) => {
+                      const on = gi === grupoRail
+                      return (
+                        <button key={gi} onClick={() => setGrupoRail(gi)}
+                          style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, padding: '11px 4px', cursor: 'pointer', fontFamily: 'inherit',
+                            background: on ? 'white' : 'transparent', border: 'none', borderRight: on ? '3px solid var(--primary)' : '3px solid transparent' }}>
+                          <span style={{ fontSize: 22, lineHeight: 1 }}>{gr.emoji}</span>
+                          <span style={{ fontSize: 10, fontWeight: on ? 800 : 600, color: on ? 'var(--primary-dark)' : 'var(--text2)' }}>{gr.curto}</span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                  {/* Painel: itens do grupo escolhido */}
+                  <div style={{ flex: 1, background: 'white', padding: '12px 12px', overflowY: 'auto' }}>
+                    <p style={{ fontSize: 12, color: 'var(--muted)', fontWeight: 700, margin: '2px 4px 8px' }}>{g.titulo}</p>
+                    {g.itens.map((it, ii) => (
+                      <button key={ii} onClick={() => { setAberto(false); it.onClick() }}
+                        style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: '12px 10px', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
+                          background: it.ativo ? 'var(--primary-light)' : 'transparent', border: 'none', borderRadius: 10,
+                          borderLeft: it.ativo ? '3px solid var(--primary)' : '3px solid transparent', marginBottom: 2 }}>
+                        {it.icone && <span className="icon" style={{ color: it.ativo ? 'var(--primary)' : 'var(--muted)', fontSize: 20 }}>{it.icone}</span>}
+                        <span style={{ flex: 1, fontSize: 14, fontWeight: it.ativo ? 800 : 500, color: it.ativo ? 'var(--primary-dark)' : 'var(--text)' }}>{it.label}</span>
+                        <span className="icon icon-sm" style={{ color: 'var(--muted-light)' }}>chevron_right</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )
+            })()}
 
             {/* Navegação (sub-abas da tela) */}
             {(chrome.navegacao?.length ?? 0) > 0 && (
