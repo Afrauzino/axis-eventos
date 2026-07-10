@@ -41,8 +41,10 @@ export default function Alertas({ profile }: { profile?: Profile }) {
   const [erro, setErro]       = useState('')
   const [form, setForm]       = useState({ title:'', message:'', priority:'info', target_type:'all', requires_read:false })
 
-  const canCreate = profile && (isAdmin(profile.user_role) || isLider(profile.user_role))
-  const adminFull = profile && isAdmin(profile.user_role)
+  // Admin de verdade = papel admin/pastor OU o campo is_admin do perfil (papéis acumulam).
+  // Sem o is_admin, um admin que também é encontreiro/líder perdia as opções de destino.
+  const adminFull = !!profile && (isAdmin(profile.user_role) || !!profile.is_admin)
+  const canCreate = adminFull || (!!profile && isLider(profile.user_role))
   const [myTeamIds, setMyTeamIds] = useState<string[]>([])
 
   useEffect(() => { if (evLoading) return; if (!evento) { setLoading(false); return }; if (profile) carregar() }, [evento, evLoading, profile])
@@ -59,7 +61,7 @@ export default function Alertas({ profile }: { profile?: Profile }) {
       .eq('event_id', evento.id).eq('user_id', profile.user_id).maybeSingle()
 
     let teamIds: string[] = []
-    if (!isAdmin(profile.user_role) && isLider(profile.user_role) && myPerson) {
+    if (!adminFull && isLider(profile.user_role) && myPerson) {
       const { data: myTeams } = await supabase.from('teams').select('id')
         .or(`leader_id.eq.${myPerson.id},co_leader_id.eq.${myPerson.id}`)
       teamIds = myTeams?.map(t=>t.id) ?? []
@@ -167,7 +169,7 @@ export default function Alertas({ profile }: { profile?: Profile }) {
                 <p style={{fontSize:11,color:'var(--muted)'}}>{fmtDataHora(a.created_at)}</p>
                 <div style={{display:'flex',gap:8}}>
                   {!lido && <button className="btn btn-sm btn-ghost" onClick={()=>marcarLido(a.id)}>Marcar como lido</button>}
-                  {profile && isAdmin(profile.user_role) && <button className="btn btn-sm" style={{background:'var(--danger-bg)',color:'var(--danger)'}} onClick={()=>excluir(a.id)}>Excluir</button>}
+                  {adminFull && <button className="btn btn-sm" style={{background:'var(--danger-bg)',color:'var(--danger)'}} onClick={()=>excluir(a.id)}>Excluir</button>}
                 </div>
               </div>
             </div>
@@ -201,18 +203,18 @@ export default function Alertas({ profile }: { profile?: Profile }) {
                       {value:'info',label:'Informativo'},
                       {value:'important',label:'Importante'},
                       {value:'urgent',label:'Urgente'},
-                      ...(profile && isAdmin(profile.user_role) ? [{value:'critico',label:'Crítico (trava tela)'}] : []),
+                      ...(adminFull ? [{value:'critico',label:'Crítico (trava tela)'}] : []),
                     ]}/>
                 </div>
                 <div className="form-group"><label className="form-label">Destino</label>
                   <Seletor titulo="Quem vai receber" value={form.target_type} onChange={v=>setForm(f=>({...f,target_type:v}))}
                     opcoes={[
-                      ...(profile && isAdmin(profile.user_role) ? [
+                      ...(adminFull ? [
                         {value:'all',         label:'Todos'},
                         {value:'worker',      label:'Só encontreiros'},
                         {value:'encounterer', label:'Só encontristas'},
                       ] : []),
-                      {value:'team',label:'Minha equipe'},
+                      ...(isLider(profile?.user_role ?? '') ? [{value:'team',label:'Minha equipe'}] : []),
                     ]}/>
                 </div>
               </div>
