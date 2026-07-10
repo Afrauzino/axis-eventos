@@ -16,39 +16,41 @@ export type LinhaPoster = {
   ministrante?: string
   fotoUrl?: string | null
   teatro?: string | null
+  elenco?: { nome: string; foto: string | null }[]
 }
 export type DiaPoster = { dia: string; linhas: LinhaPoster[] }
 
 const HDR = { background: '#111827', color: 'white' }
 
-export default function CronogramaPoster({ titulo, dias, slim = false }: { titulo: string; dias: DiaPoster[]; slim?: boolean }) {
-  // Tokens de tamanho — sem `slim` fica IDÊNTICO ao modelo original.
+export default function CronogramaPoster({ titulo, dias, slim = false, escala = 1, separarDias = false, mostrarElenco = false }: { titulo: string; dias: DiaPoster[]; slim?: boolean; escala?: number; separarDias?: boolean; mostrarElenco?: boolean }) {
+  const s = (n: number) => Math.max(1, Math.round(n * escala * 10) / 10)  // aplica a escala de fonte
+  // Tokens de tamanho — sem `slim` fica IDÊNTICO ao modelo original. `escala` multiplica os tamanhos.
   const t = {
     borda:     slim ? '1.5px solid #111827' : '2px solid #111827',
     bordaHdr:  slim ? '1.5px solid #374151' : '2px solid #374151',
-    h1:        slim ? 23 : 30,
-    h1mb:      slim ? 10 : 18,
-    band:      slim ? 38 : 46,
-    bandFonte: slim ? 17 : 22,
-    hdrFonte:  slim ? 11 : 14,
+    h1:        s(slim ? 23 : 30),
+    h1mb:      s(slim ? 10 : 18),
+    band:      s(slim ? 38 : 46),
+    bandFonte: s(slim ? 17 : 22),
+    hdrFonte:  s(slim ? 11 : 14),
     hdrPad:    slim ? '5px 0' : '8px 0',
-    horaW:     slim ? 74 : 96,
-    durW:      slim ? 84 : 110,
-    hdColFonte: slim ? 12 : 15,
-    foto:      slim ? 72 : 54,   // FOTO MAIOR no slim
-    gap:       slim ? 6 : 8,
+    horaW:     s(slim ? 74 : 96),
+    durW:      s(slim ? 84 : 110),
+    hdColFonte: s(slim ? 12 : 15),
+    foto:      s(slim ? 72 : 54),   // FOTO MAIOR no slim
+    gap:       s(slim ? 6 : 8),
     rowPad:    slim ? '4px 6px 4px 7px' : '8px 8px 8px 10px',
     pillPad:   slim ? '4px 10px' : '6px 12px',
     pillRad:   slim ? 10 : 12,
-    nome:      slim ? 10 : 11,
-    tituloFonte: slim ? 15 : 16,
-    teatroLabel: slim ? 9 : 11,
-    teatroNome:  slim ? 13 : 16,
+    nome:      s(slim ? 10 : 11),
+    tituloFonte: s(slim ? 15 : 16),
+    teatroLabel: s(slim ? 9 : 11),
+    teatroNome:  s(slim ? 13 : 16),
     teatroPad:   slim ? '4px 8px' : '6px 10px',
-    dash:        slim ? 16 : 20,
+    dash:        s(slim ? 16 : 20),
     simplesPad:  slim ? '6px 8px' : '12px 10px',
-    simplesFonte: slim ? 14 : 18,
-    diaMb:       slim ? 12 : 22,
+    simplesFonte: s(slim ? 14 : 18),
+    diaMb:       s(slim ? 12 : 22),
     diaRad:      slim ? 10 : 14,
   }
   const cel: React.CSSProperties = { display: 'flex', alignItems: 'stretch', borderTop: t.borda }
@@ -60,7 +62,7 @@ export default function CronogramaPoster({ titulo, dias, slim = false }: { titul
       <h1 style={{ fontSize: t.h1, fontWeight: 900, letterSpacing: '-0.02em', margin: `0 0 ${t.h1mb}px` }}>{titulo}</h1>
 
       {dias.map((d, di) => (
-        <div key={di} className={slim ? undefined : 'print-break'} style={{ display: 'flex', border: t.borda, borderRadius: t.diaRad, overflow: 'hidden', marginBottom: t.diaMb, breakInside: 'avoid' }}>
+        <div key={di} className={separarDias ? 'print-break' : undefined} style={{ display: 'flex', border: t.borda, borderRadius: t.diaRad, overflow: 'hidden', marginBottom: t.diaMb, breakInside: 'avoid' }}>
           {/* Faixa vertical do dia */}
           <div style={{ ...HDR, width: t.band, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <span style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)', fontWeight: 900, fontSize: t.bandFonte, letterSpacing: '0.08em' }}>{d.dia}</span>
@@ -101,12 +103,28 @@ export default function CronogramaPoster({ titulo, dias, slim = false }: { titul
                         )}
                       </div>
                     </div>
-                    {/* Teatro (bloco escuro) */}
+                    {/* Teatro (bloco escuro) — por nome OU com fotos do elenco */}
                     <div style={{ flex: 1, ...HDR, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: t.teatroPad, minWidth: 0 }}>
-                      {l.teatro ? <>
-                        <p style={{ fontSize: t.teatroLabel, fontWeight: 800, letterSpacing: '0.08em', opacity: 0.85, margin: 0 }}>TEATRO</p>
-                        <p style={{ fontSize: t.teatroNome, fontWeight: 900, textAlign: 'center', lineHeight: 1.05, margin: '2px 0 0' }}>{l.teatro}</p>
-                      </> : <p style={{ fontSize: t.dash, fontWeight: 900, opacity: 0.6, margin: 0 }}>—</p>}
+                      {mostrarElenco && l.elenco && l.elenco.length ? (
+                        <>
+                          {l.teatro && <p style={{ fontSize: t.teatroLabel, fontWeight: 800, letterSpacing: '0.08em', opacity: 0.85, margin: `0 0 ${s(4)}px`, textAlign: 'center' }}>{l.teatro}</p>}
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: s(6), justifyContent: 'center' }}>
+                            {l.elenco.map((a, ai) => (
+                              <div key={ai} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: s(48) }}>
+                                <div style={{ width: s(38), height: s(38), borderRadius: '50%', overflow: 'hidden', background: '#374151', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1.5px solid white', flexShrink: 0 }}>
+                                  {a.foto ? <img src={a.foto} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontSize: s(11), fontWeight: 800, color: 'white' }}>{getInitials(a.nome || '?')}</span>}
+                                </div>
+                                <span style={{ fontSize: s(8), marginTop: 2, lineHeight: 1.05, textAlign: 'center', color: 'white', maxWidth: s(48), overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{(a.nome || '').split(' ')[0]}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </>
+                      ) : l.teatro ? (
+                        <>
+                          <p style={{ fontSize: t.teatroLabel, fontWeight: 800, letterSpacing: '0.08em', opacity: 0.85, margin: 0 }}>TEATRO</p>
+                          <p style={{ fontSize: t.teatroNome, fontWeight: 900, textAlign: 'center', lineHeight: 1.05, margin: '2px 0 0' }}>{l.teatro}</p>
+                        </>
+                      ) : <p style={{ fontSize: t.dash, fontWeight: 900, opacity: 0.6, margin: 0 }}>—</p>}
                     </div>
                   </div>
                 ) : (

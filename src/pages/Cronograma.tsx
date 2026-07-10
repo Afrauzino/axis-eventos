@@ -8,7 +8,8 @@ import { useRegistrarChrome } from '../lib/chrome'
 import DataHora from '../components/DataHora'
 import BarraData from '../components/BarraData'
 import PrintOverlay from '../components/PrintOverlay'
-import CronogramaPoster, { type DiaPoster } from '../components/CronogramaPoster'
+import CronogramaImpressao from '../components/CronogramaImpressao'
+import { type DiaPoster } from '../components/CronogramaPoster'
 import Seletor from '../components/Seletor'
 import { useVoltarFecha } from '../hooks/useVoltarFecha'
 import CronometroPopup from '../components/CronometroPopup'
@@ -346,16 +347,18 @@ export default function Cronograma({ profile }: { profile?: Profile }) {
         const cor = tiposDB.find(t=>t.nome.toLowerCase()===it.tipo.toLowerCase())?.cor ?? TIPO_COR_FALLBACK[it.tipo] ?? '#E8821A'
         const mfoto = min?.ministrante_id ? pessoaFoto[min.ministrante_id] : null
         if (min || ministrante) {
+          const atores = tea ? (elencoPorTeatro[tea.id] ?? []) : []
+          const elenco = atores.map(a => { const pf = pessoaFoto[a.person_id]; return { nome: pf?.name ?? '', foto: pf?.photo_url ?? null } })
           return { kind:'min' as const, horario:horaP(it.hora_inicio), duracao:durP(it), cor,
             ministrante:(mfoto?.name ?? ministrante?.name ?? '').toUpperCase(),
             titulo:(min?.titulo ?? it.titulo).toUpperCase(), fotoUrl:mfoto?.photo_url ?? null,
-            teatro: tea?.nome ? tea.nome.toUpperCase() : null }
+            teatro: tea?.nome ? tea.nome.toUpperCase() : null, elenco }
         }
         return { kind:'simples' as const, horario:horaP(it.hora_inicio), duracao:durP(it), cor, titulo:it.titulo.toUpperCase() }
       })
       return { dia, linhas }
     })
-  }, [itens, ministrações, teatros, ministrantes, tiposDB, pessoaFoto])
+  }, [itens, ministrações, teatros, ministrantes, tiposDB, pessoaFoto, elencoPorTeatro])
 
   // Ministrações/teatros já usados em OUTROS itens do cronograma (não reutilizáveis)
   const minUsadas = new Set(itens.filter(i => i.id !== editando?.id && i.ministracao_id).map(i => i.ministracao_id))
@@ -616,7 +619,7 @@ export default function Cronograma({ profile }: { profile?: Profile }) {
       {/* ===== IMPRESSÃO — reflete exatamente o que está na tela (mesmos grupos/filtro) ===== */}
       {imprimir==='resumido-slim' && (
         <PrintOverlay titulo="Cronograma (resumido)" onClose={()=>setImprimir(null)}>
-          <CronogramaPoster titulo={`CRONOGRAMA ${evento?.name ? evento.name.toUpperCase() : 'ENCONTRO'}`} dias={diasPoster} slim />
+          <CronogramaImpressao titulo={`CRONOGRAMA ${evento?.name ? evento.name.toUpperCase() : 'ENCONTRO'}`} dias={diasPoster} />
         </PrintOverlay>
       )}
 
