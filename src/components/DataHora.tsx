@@ -96,7 +96,14 @@ export default function DataHora({ value, onChange, modo = 'date', disabled, pla
   }
 
   function confirmar() {
-    onChange(formatarValor(work, modo))
+    // Usa SEMPRE o mês/ano que está aparecendo (view) + o dia tocado. Assim,
+    // trocar o ano/mês depois de escolher o dia realmente entra no valor.
+    let out = work
+    if (usaData && !isNaN(work.d)) {
+      const diasNoMes = new Date(view.y, view.m + 1, 0).getDate()
+      out = { ...work, y: view.y, m: view.m, d: Math.min(work.d, diasNoMes) }
+    }
+    onChange(formatarValor(out, modo))
     setAberto(false)
   }
   function limpar() {
@@ -160,7 +167,7 @@ export default function DataHora({ value, onChange, modo = 'date', disabled, pla
                 {anoAberto ? (
                   <div style={{ maxHeight: 214, overflowY: 'auto', display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 6, padding: '2px' }}>
                     {Array.from({ length: (new Date().getFullYear() + 1) - 1920 + 1 }, (_, i) => (new Date().getFullYear() + 1) - i).map(ano => (
-                      <button key={ano} type="button" onClick={() => { setView(v => ({ ...v, y: ano })); setAnoAberto(false) }}
+                      <button key={ano} type="button" onClick={() => { setView(v => ({ ...v, y: ano })); setWork(w => ({ ...w, y: ano })); setAnoAberto(false) }}
                         style={{ padding: '9px 0', borderRadius: 8, border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, fontWeight: ano === view.y ? 800 : 500, background: ano === view.y ? 'var(--primary)' : 'var(--bg)', color: ano === view.y ? 'white' : 'var(--text)' }}>
                         {ano}
                       </button>
