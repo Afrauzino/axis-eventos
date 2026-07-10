@@ -17,7 +17,7 @@ import CronometroDisplay from '../components/CronometroDisplay'
 import type { Profile } from '../App'
 
 type TipoAtividade = { id:string; nome:string; cor:string; chave?:string|null; protegido?:boolean }
-type Ministracao = { id:string; titulo:string; ministrante_id:string|null; local:string|null; descricao:string|null; tema:string|null }
+type Ministracao = { id:string; titulo:string; ministrante_id:string|null; local:string|null; descricao:string|null; tema:string|null; foto_poster:string|null }
 type Teatro      = { id:string; nome:string; local:string|null; descricao:string|null; ministracao_id?:string|null }
 type Local       = { id:string; nome:string; tipo:string }
 type Ministrante = { id:string; name:string }
@@ -150,7 +150,7 @@ export default function Cronograma({ profile }: { profile?: Profile }) {
     if (!evento) return
     const [it, mi, te, lo, pe, ti, cd, peAll, pgAll] = await Promise.all([
       supabase.from('cronograma_eventos').select('*').eq('event_id', evento.id).order('hora_inicio'),
-      supabase.from('ministrações').select('id,titulo,ministrante_id,local,descricao,tema').eq('event_id', evento.id).order('titulo'),
+      supabase.from('ministrações').select('id,titulo,ministrante_id,local,descricao,tema,foto_poster').eq('event_id', evento.id).order('titulo'),
       supabase.from('theaters').select('id,nome,local,descricao,ministracao_id').eq('event_id', evento.id).order('nome'),
       supabase.from('locais').select('id,nome,tipo').eq('event_id', evento.id).order('nome'),
       supabase.from('people').select('id,name').eq('event_id', evento.id).eq('role_type','worker').order('name'),
@@ -366,6 +366,7 @@ export default function Cronograma({ profile }: { profile?: Profile }) {
           return { kind:'min' as const, horario:horaP(it.hora_inicio), duracao:durP(it), cor,
             ministrante:(mfoto?.name ?? ministrante?.name ?? '').toUpperCase(),
             titulo:(min?.titulo ?? it.titulo).toUpperCase(), fotoUrl:mfoto?.photo_url ?? null,
+            fotoPng: min?.foto_poster ?? null,
             teatro: tea?.nome ? tea.nome.toUpperCase() : null, elenco }
         }
         return { kind:'simples' as const, horario:horaP(it.hora_inicio), duracao:durP(it), cor, titulo:it.titulo.toUpperCase() }

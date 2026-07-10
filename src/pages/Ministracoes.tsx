@@ -30,7 +30,7 @@ type Ministracao = {
 type Pessoa = { id:string; name:string; photo_url:string|null; user_id?:string|null }
 
 const STATUS_BADGE: Record<string,string> = { planejado:'badge-neutral', em_andamento:'badge-warning', concluido:'badge-success', cancelado:'badge-danger' }
-const FORM_VAZIO = { titulo:'', ministrante_id:'', hora_inicio:'', hora_fim:'', local:'', conteudo_sermao:'', continuacao_sermao:'', anotacoes_pessoais:'', teatro_id:'', emoji:'', cor:'#6B46C1' }
+const FORM_VAZIO = { titulo:'', ministrante_id:'', hora_inicio:'', hora_fim:'', local:'', conteudo_sermao:'', continuacao_sermao:'', anotacoes_pessoais:'', teatro_id:'', emoji:'', cor:'#6B46C1', foto_poster:'' }
 
 // Bloco "Arquivo" (PDF/Word): conteudo guarda JSON {url, nome}
 function arqInfo(conteudo:string){ try{ const o=JSON.parse(conteudo); return { url:o.url as string, nome:(o.nome as string)||'arquivo' } }catch{ return { url:conteudo, nome:'arquivo' } } }
@@ -63,6 +63,20 @@ export default function Ministracoes({ profile }: { profile?: Profile }) {
   const [visor, setVisor]       = useState<{url:string;pdf:boolean}|null>(null)
   const blocoImgRef = useRef<HTMLInputElement>(null)
   const blocoArqRef = useRef<HTMLInputElement>(null)
+  const posterRef = useRef<HTMLInputElement>(null)
+  const [posterEnviando, setPosterEnviando] = useState(false)
+
+  // Envia o PNG (fundo transparente) do ministrante, sem cortar — só pro pôster.
+  async function enviarPoster(file: File) {
+    setPosterEnviando(true)
+    const ext = (file.name.split('.').pop() || 'png').toLowerCase()
+    const path = `poster-${Date.now()}.${ext}`
+    const { error } = await supabase.storage.from('pessoas').upload(path, file, { upsert: true, contentType: file.type || 'image/png' })
+    if (error) { toast.falha('Não foi possível enviar a imagem.', error); setPosterEnviando(false); return }
+    const { data } = supabase.storage.from('pessoas').getPublicUrl(path)
+    setForm(f => ({ ...f, foto_poster: data.publicUrl }))
+    setPosterEnviando(false)
+  }
 
   const { pode } = usePermissao(profile ?? null)
   // Admin OU liberação (individual/equipe) de Ministrações. Líder NÃO tem acesso automático:
@@ -159,7 +173,7 @@ export default function Ministracoes({ profile }: { profile?: Profile }) {
   function abrirEdicao(m:Ministracao) {
     setEditando(m)
     const teatroVinc = teatros.find(t=>t.ministracao_id===m.id)
-    setForm({ titulo:m.titulo, ministrante_id:m.ministrante_id??'', hora_inicio:toLocalInput(m.hora_inicio), hora_fim:toLocalInput(m.hora_fim), local:m.local??'', conteudo_sermao:m.conteudo_sermao??'', continuacao_sermao:m.continuacao_sermao??'', anotacoes_pessoais:m.anotacoes_pessoais??'', teatro_id:teatroVinc?.id??'', emoji:(m as any).emoji??'', cor:(m as any).cor??'#6B46C1' })
+    setForm({ titulo:m.titulo, ministrante_id:m.ministrante_id??'', hora_inicio:toLocalInput(m.hora_inicio), hora_fim:toLocalInput(m.hora_fim), local:m.local??'', conteudo_sermao:m.conteudo_sermao??'', continuacao_sermao:m.continuacao_sermao??'', anotacoes_pessoais:m.anotacoes_pessoais??'', teatro_id:teatroVinc?.id??'', emoji:(m as any).emoji??'', cor:(m as any).cor??'#6B46C1', foto_poster:(m as any).foto_poster??'' })
     setErro(''); setAbaForm('basico')
     // Rebuild blocos from saved JSON or legacy fields
     let bl: {tipo:string;conteudo:string}[] = []
@@ -185,6 +199,7 @@ export default function Ministracoes({ profile }: { profile?: Profile }) {
       hora_inicio: iso(form.hora_inicio),
       hora_fim: iso(form.hora_fim || form.hora_inicio, 60*60*1000),
       local:form.local||null, status:'planejado', emoji:form.emoji||null, cor:form.cor||'#6B46C1',
+      foto_poster: form.foto_poster || null,
       conteudo_sermao: blocos.length > 0 ? JSON.stringify(blocos) : null,
       conteudo_teatro: blocos.find(b=>b.tipo==='Teatro')?.conteudo||null,
       continuacao_sermao: blocos.find(b=>b.tipo==='Continuação')?.conteudo||null,
@@ -494,6 +509,24 @@ export default function Ministracoes({ profile }: { profile?: Profile }) {
                       {/* #9 — só Encontreiros podem ser ministrantes */}
                       <PersonSelect label="Ministrante" pessoas={pessoas.filter((p:any)=>p.role_type==='worker')} value={form.ministrante_id} onChange={id=>setForm(f=>({...f,ministrante_id:id}))} placeholder="Buscar ministrante (encontreiro)..."/>
                     </div>
+                    {form.ministrante_id && (
+                      <div className="form-group">
+                        <label className="form-label">Foto PNG do ministrante (pôster) — fundo transparente</label>
+                        <div style={{display:'flex',alignItems:'center',gap:12}}>
+                          <div style={{width:64,height:64,borderRadius:10,background:'repeating-conic-gradient(#e5e7eb 0% 25%, white 0% 50%) 50% / 16px 16px',display:'flex',alignItems:'center',justifyContent:'center',overflow:'hidden',flexShrink:0,border:'1px solid var(--border)'}}>
+                            {form.foto_poster ? <img src={form.foto_poster} alt="" style={{width:'100%',height:'100%',objectFit:'contain'}}/> : <span className="icon" style={{color:'var(--muted-light)'}}>image</span>}
+                          </div>
+                          <div style={{display:'flex',flexDirection:'column',gap:6}}>
+                            <button type="button" className="btn btn-ghost btn-sm" onClick={()=>posterRef.current?.click()} disabled={posterEnviando}>
+                              <span className="icon icon-sm">upload</span> {posterEnviando ? 'Enviando...' : (form.foto_poster ? 'Trocar PNG' : 'Enviar PNG')}
+                            </button>
+                            {form.foto_poster && <button type="button" className="btn btn-ghost btn-sm" onClick={()=>setForm(f=>({...f,foto_poster:''}))}>Remover</button>}
+                          </div>
+                        </div>
+                        <p className="form-hint" style={{marginTop:6}}>Se enviar, o pôster do cronograma usa essa imagem (recortada) no lugar da foto de perfil.</p>
+                        <input ref={posterRef} type="file" accept="image/png,image/*" style={{display:'none'}} onChange={e=>{ if(e.target.files?.[0]) enviarPoster(e.target.files[0]); e.target.value='' }}/>
+                      </div>
+                    )}
                     {/* #10 — Ministração não tem mais data/horário/duração. A agenda fica só no Cronograma. */}
                     <div className="alert-box mb-3" style={{fontSize:12,background:'var(--bg)',border:'1px solid var(--border)',borderRadius:10,padding:'10px 12px',color:'var(--muted)'}}>
                       🗓️ O horário desta ministração é definido no <b>Cronograma</b> (aqui é só o conteúdo).

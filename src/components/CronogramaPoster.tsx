@@ -15,6 +15,7 @@ export type LinhaPoster = {
   titulo: string
   ministrante?: string
   fotoUrl?: string | null
+  fotoPng?: string | null   // PNG recortado (fundo transparente) só do pôster
   teatro?: string | null
   elenco?: { nome: string; foto: string | null }[]
 }
@@ -85,9 +86,14 @@ export default function CronogramaPoster({ titulo, dias, slim = false, escala = 
                   <div style={{ flex: 1, display: 'flex', minWidth: 0 }}>
                     {/* Ministrante (foto + pill colorido) */}
                     <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: t.gap, padding: t.rowPad, minWidth: 0 }}>
-                      <div style={{ width: t.foto, height: t.foto, borderRadius: '50%', overflow: 'hidden', flexShrink: 0, background: '#e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'center', border: t.borda }}>
-                        {l.fotoUrl ? <img src={l.fotoUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontWeight: 800, color: '#6b7280', fontSize: 16 }}>{getInitials(l.ministrante ?? '?')}</span>}
-                      </div>
+                      {l.fotoPng ? (
+                        // PNG recortado (fundo transparente) — maior e alinhado embaixo, como no modelo
+                        <img src={l.fotoPng} alt="" style={{ width: Math.round(t.foto * 1.3), height: Math.round(t.foto * 1.15), objectFit: 'contain', objectPosition: 'bottom', flexShrink: 0, alignSelf: 'flex-end' }} />
+                      ) : (
+                        <div style={{ width: t.foto, height: t.foto, borderRadius: '50%', overflow: 'hidden', flexShrink: 0, background: '#e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'center', border: t.borda }}>
+                          {l.fotoUrl ? <img src={l.fotoUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontWeight: 800, color: '#6b7280', fontSize: 16 }}>{getInitials(l.ministrante ?? '?')}</span>}
+                        </div>
+                      )}
                       <div style={{ flex: 1, background: l.cor, color: 'white', borderRadius: t.pillRad, padding: t.pillPad, minWidth: 0 }}>
                         {slim ? (
                           <>
