@@ -32,7 +32,7 @@ Deno.serve(async (req) => {
 
     webpush.setVapidDetails('mailto:afrauzino@gmail.com', VAPID_PUBLIC, VAPID_PRIVATE)
 
-    const { user_ids, person_ids, notify_admins, alerta, title, body, url: link, tag } = await req.json().catch(() => ({}))
+    const { user_ids, person_ids, notify_admins, alerta, incluir_autor, title, body, url: link, tag } = await req.json().catch(() => ({}))
     const admin = createClient(url, serviceKey)
 
     const alvos = new Set<string>(Array.isArray(user_ids) ? user_ids.filter(Boolean) : [])
@@ -68,8 +68,8 @@ Deno.serve(async (req) => {
         }
       }
     }
-    // Não notificar quem disparou (o próprio autor do alerta)
-    if (user?.id) alvos.delete(user.id)
+    // Não notificar quem disparou (o próprio autor) — salvo em teste (incluir_autor)
+    if (user?.id && !incluir_autor) alvos.delete(user.id)
     if (alvos.size === 0) return json({ ok: true, enviados: 0, falhas: 0, semAlvos: true })
     const { data: subs } = await admin.from('push_subscriptions').select('*').in('user_id', [...alvos])
 

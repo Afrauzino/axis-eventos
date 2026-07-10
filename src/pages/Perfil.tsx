@@ -5,6 +5,7 @@ import { useEvento } from '../hooks/useEvento'
 import RecortarFoto from '../components/RecortarFoto'
 import { pathOriginal, urlOriginal, imagemCarrega, baixarImagem } from '../lib/foto'
 import { biometriaSuportada, biometriaAtiva, ativarBiometria, desativarBiometria } from '../lib/biometria'
+import { testarPush } from '../lib/push'
 import type { Profile } from '../App'
 
 export default function Perfil({ profile, onUpdate }: { profile: Profile; onUpdate: () => void }) {
@@ -46,6 +47,18 @@ export default function Perfil({ profile, onUpdate }: { profile: Profile; onUpda
   const [ok, setOk]               = useState('')
   const [recorte, setRecorte]     = useState<{ src: string; remoto: boolean } | null>(null)
   const [baixandoFoto, setBaixandoFoto] = useState(false)
+  const [testandoPush, setTestandoPush] = useState(false)
+
+  async function testarNotificacao() {
+    setErro(''); setOk(''); setTestandoPush(true)
+    const r = await testarPush(profile.user_id)
+    setTestandoPush(false)
+    if (r.etapa === 'suporte') setErro('Este aparelho/navegador não suporta notificações.')
+    else if (r.etapa === 'assinar') setErro('Não consegui ativar. Confirme que você PERMITIU notificações pro app (Configurações do Android → AXIS → Notificações).')
+    else if (r.ok) setOk('Enviei um teste! Deve aparecer na tela em alguns segundos. 🔔')
+    else if (r.detalhe?.semAlvos) setErro('Este aparelho ativou, mas o servidor não achou a assinatura. Falta REPUBLICAR a Edge Function enviar-push (código final).')
+    else setErro('O servidor recebeu mas não entregou. Confira a função enviar-push e as chaves VAPID. (' + JSON.stringify(r.detalhe ?? {}) + ')')
+  }
   // Entrar com digital (desbloqueio biométrico deste aparelho)
   const [bioSuporta, setBioSuporta] = useState(false)
   const [bioOn, setBioOn] = useState<boolean>(() => biometriaAtiva(profile.user_id))
@@ -305,6 +318,15 @@ export default function Perfil({ profile, onUpdate }: { profile: Profile; onUpda
           </div>
         </div>
       )}
+
+      {/* Notificações */}
+      <div style={{background:'white',borderRadius:14,boxShadow:'var(--shadow-sm)',padding:'16px 20px',marginBottom:12}}>
+        <p style={{fontSize:13,fontWeight:700,color:'var(--muted)',textTransform:'uppercase',letterSpacing:'0.06em',marginBottom:8}}>Notificações</p>
+        <p style={{fontSize:12,color:'var(--muted)',marginBottom:12}}>Toque para ativar e enviar um teste para este aparelho.</p>
+        <button type="button" className="btn btn-primary btn-full" onClick={testarNotificacao} disabled={testandoPush}>
+          <span className="icon icon-sm" style={{color:'white'}}>notifications_active</span> {testandoPush ? 'Testando...' : 'Testar notificação neste celular'}
+        </button>
+      </div>
 
       {/* Info da conta */}
       <div style={{background:'white',borderRadius:14,boxShadow:'var(--shadow-sm)',padding:'16px 20px'}}>

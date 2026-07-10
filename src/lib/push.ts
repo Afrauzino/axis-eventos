@@ -51,8 +51,18 @@ export async function ativarPush(userId: string): Promise<boolean> {
 
 // Dispara uma notificação Web Push (chama a Edge Function 'enviar-push').
 // Ex.: enviarPush({ notify_admins:true, title:'Nova inscrição', body:'...', url:'/admin' })
-export async function enviarPush(opts: { user_ids?: string[]; person_ids?: string[]; notify_admins?: boolean; alerta?: { event_id: string; target_type: string; target_team_ids?: string[] }; title: string; body: string; url?: string; tag?: string }): Promise<void> {
-  try { await supabase.functions.invoke('enviar-push', { body: { url: '/', ...opts } }) } catch {}
+export async function enviarPush(opts: { user_ids?: string[]; person_ids?: string[]; notify_admins?: boolean; incluir_autor?: boolean; alerta?: { event_id: string; target_type: string; target_team_ids?: string[] }; title: string; body: string; url?: string; tag?: string }): Promise<any> {
+  try { const { data } = await supabase.functions.invoke('enviar-push', { body: { url: '/', ...opts } }); return data } catch (e) { return { error: String(e) } }
+}
+
+// Teste de 1 toque: assina este aparelho e manda uma notificação PRA VOCÊ MESMO.
+// Retorna em que etapa parou, pra diagnosticar.
+export async function testarPush(userId: string): Promise<{ ok: boolean; etapa: 'suporte' | 'assinar' | 'enviar'; detalhe?: any }> {
+  if (!pushSuportado()) return { ok: false, etapa: 'suporte' }
+  const assinou = await ativarPush(userId)
+  if (!assinou) return { ok: false, etapa: 'assinar' }
+  const r = await enviarPush({ user_ids: [userId], incluir_autor: true, title: '🔔 Teste do AXIS', body: 'Se você está vendo isso, as notificações funcionam!', url: '/' })
+  return { ok: !!(r && r.enviados > 0), etapa: 'enviar', detalhe: r }
 }
 
 // Desativa (remove a assinatura deste aparelho)
