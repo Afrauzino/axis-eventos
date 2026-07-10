@@ -84,15 +84,8 @@ export async function montarNotificacoes(profile: Profile, eventoId: string | nu
     }
   } catch {}
 
-  // Equipes que participo
-  try {
-    const { data: pt } = await supabase.from('people_teams').select('team_id').eq('person_id', personId)
-    const ids = (pt ?? []).map((t: any) => t.team_id)
-    if (ids.length) {
-      const { data: teams } = await supabase.from('teams').select('id,name').in('id', ids)
-      for (const t of teams ?? []) out.push({ id: 'equipe-' + t.id, emoji: '👥', titulo: `Você faz parte da equipe ${t.name}`, sub: 'Equipe', rota: '/equipes' })
-    }
-  } catch {}
+  // (Removido) "Você faz parte da equipe X" — era estado permanente, não um evento,
+  // então virava lembrete repetido todo login. Faz parte da equipe já aparece em /equipes.
 
   // Cronograma: ministrante / elenco
   try {

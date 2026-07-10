@@ -7,6 +7,12 @@ import type { Profile } from '../App'
 
 type MenuItem = { id:string; key:string; label:string; icon:string; emoji?:string|null; rota:string|null; parent_id:string|null; ordem:number; visivel:boolean; roles:string[] }
 
+// Menus que DEVEM existir em menu_config pra serem editáveis (nome/emoji/ordem).
+// Se algum foi adicionado depois e ficou sem linha, o app cria sozinho ao abrir.
+const MENUS_ESPERADOS: { key:string; label:string; icon:string; emoji:string; rota:string }[] = [
+  { key:'menu_impressao', label:'Impressão', icon:'print', emoji:'🖨️', rota:'/impressao' },
+]
+
 function MatIcon({ name, size=20, color='var(--text2)' }: {name:string;size?:number;color?:string}) {
   return <span style={{fontFamily:"'Material Symbols Outlined'",fontWeight:'normal',fontStyle:'normal',fontSize:size,lineHeight:1,letterSpacing:'normal',textTransform:'none',display:'inline-block',whiteSpace:'nowrap',direction:'ltr',WebkitFontSmoothing:'antialiased',fontVariationSettings:"'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24",color,userSelect:'none'}}>{name}</span>
 }
@@ -24,8 +30,17 @@ export default function MenusAdmin({ profile }: { profile?: Profile }) {
 
   async function carregar() {
     setLoading(true)
-    const { data } = await supabase.from('menu_config').select('*').order('ordem')
-    setMenus(data ?? [])
+    let data = (await supabase.from('menu_config').select('*').order('ordem')).data ?? []
+    // Auto-conserto: garante que menus novos (ex.: Impressão) tenham linha aqui,
+    // pra poderem ser renomeados / trocar emoji / reordenar como os outros.
+    const faltantes = MENUS_ESPERADOS.filter(e => !data.some((m:any) => m.key === e.key))
+    if (faltantes.length) {
+      let ordem = data.reduce((mx:number, m:any) => Math.max(mx, m.ordem ?? 0), 0)
+      const novos = faltantes.map(e => ({ ...e, parent_id:null, ordem:++ordem, visivel:true, roles:[] as string[] }))
+      const { data: inseridos } = await supabase.from('menu_config').insert(novos).select()
+      if (inseridos?.length) data = [...data, ...inseridos]
+    }
+    setMenus(data)
     setLoading(false)
   }
 
