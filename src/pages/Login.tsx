@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { carregarConfig } from '../lib/tema'
 import { enviarPush } from '../lib/push'
+import { biometriaSuportada, ativarBiometria } from '../lib/biometria'
 import CadastroPessoa, { FORM_VAZIO, MED_VAZIO, type PessoaForm, type MedCtrl } from '../components/CadastroPessoa'
 import InstallPWA from '../components/InstallPWA'
 import { toast } from '../components/Toast'
@@ -20,6 +21,9 @@ export default function Login() {
   const [ok, setOk]       = useState('')
   const [loading, setLoading] = useState(false)
   const [logoUrl, setLogoUrl] = useState<string|null>(null)
+  const [bioSuporta, setBioSuporta] = useState(false)
+  const [querBio, setQuerBio] = useState(true)   // ativar digital ao entrar (marcado por padrão)
+  useEffect(() => { biometriaSuportada().then(setBioSuporta) }, [])
   const [eventoAtivo, setEventoAtivo] = useState<{id:string;name:string}|null>(null)
   const [abertas, setAbertas] = useState(true)   // inscrições abertas/fechadas (admin controla)
   const [evLoad, setEvLoad] = useState(true)
@@ -76,8 +80,13 @@ export default function Login() {
   // LOGIN
   async function fazerLogin(e: React.FormEvent) {
     e.preventDefault(); setErro(''); setLoading(true)
-    const { error } = await supabase.auth.signInWithPassword({ email, password: senha })
-    if (error) setErro('Email ou senha incorretos.')
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password: senha })
+    if (error) { setErro('Email ou senha incorretos.'); setLoading(false); return }
+    // Ativa a digital deste aparelho (se a pessoa deixou marcado e o celular suporta)
+    if (bioSuporta && querBio && data.user) {
+      const okBio = await ativarBiometria(data.user.id, (data.user.user_metadata as any)?.name)
+      if (okBio) { try { sessionStorage.setItem('axis_bio_unlocked', '1') } catch {} }
+    }
     setLoading(false)
   }
 
@@ -422,6 +431,16 @@ export default function Login() {
               <label className="form-label">Senha <span className="req">*</span></label>
               <input className="form-input" type="password" placeholder="Mínimo 6 caracteres" value={senha} onChange={e=>setSenha(e.target.value)} required/>
             </div>
+            {bioSuporta && (
+              <button type="button" onClick={()=>setQuerBio(v=>!v)}
+                style={{display:'flex',alignItems:'center',gap:10,width:'100%',padding:'10px 12px',marginTop:4,borderRadius:10,cursor:'pointer',fontFamily:'inherit',textAlign:'left',border:`2px solid ${querBio?'var(--primary)':'var(--border)'}`,background:querBio?'var(--primary-light)':'white'}}>
+                <span style={{fontFamily:"'Material Symbols Outlined'",fontSize:22,color:querBio?'var(--primary)':'var(--muted)',lineHeight:1,fontVariationSettings:"'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24"}}>fingerprint</span>
+                <span style={{flex:1,fontSize:13,fontWeight:600,color:querBio?'var(--primary-dark)':'var(--text2)'}}>Entrar com digital nas próximas vezes</span>
+                <div style={{width:20,height:20,borderRadius:5,border:`2px solid ${querBio?'var(--primary)':'var(--border)'}`,background:querBio?'var(--primary)':'white',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+                  {querBio && <span style={{fontFamily:"'Material Symbols Outlined'",fontSize:14,color:'white',lineHeight:1}}>check</span>}
+                </div>
+              </button>
+            )}
             <button type="submit" className="btn btn-primary btn-full btn-lg" disabled={loading} style={{marginTop:8}}>
               {loading?'Entrando...':'Entrar'}
             </button>

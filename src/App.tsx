@@ -18,6 +18,8 @@ import Pending from './pages/Pending'
 import Dashboard from './pages/Dashboard'
 import CriticoWatcher from './components/CriticoWatcher'
 import AberturaGate from './components/AberturaGate'
+import BloqueioBiometrico from './components/BloqueioBiometrico'
+import { biometriaAtiva } from './lib/biometria'
 // #perf — telas carregadas SOB DEMANDA (lazy): a inicial abre bem mais rápido, sem perder nada
 const MinhasAtividades = lazy(() => import('./pages/MinhasAtividades'))
 const Cronograma       = lazy(() => import('./pages/Cronograma'))
@@ -236,6 +238,7 @@ export default function App() {
   const [alertCount, setAlertCount] = useState(0)
   // #6 — central de notificações
   const [notifOpen, setNotifOpen] = useState(false)
+  const [bioUnlocked, setBioUnlocked] = useState<boolean>(() => { try { return sessionStorage.getItem('axis_bio_unlocked') === '1' } catch { return false } })  // digital: destrava por sessão (re-trava a cada abertura do app)
   const [notifUnread, setNotifUnread] = useState(0)
   const [versaoFotos, setVersaoFotos] = useState(0)
   const { evento: eventoAtivo } = useEvento()
@@ -359,6 +362,9 @@ export default function App() {
   if (!profile) return <Login />
   // Show pending screen for anyone awaiting admin approval
   if (profile.role_status === 'pending' || profile.role_status === 'rejected' || profile.role_status === 'blocked' || profile.role_status === 'suspended' || profile.user_role === 'visitante') return <Pending profile={profile}/>
+  // Desbloqueio por digital: se ativo neste aparelho, trava até passar a digital
+  const bioDestravado = bioUnlocked || (() => { try { return sessionStorage.getItem('axis_bio_unlocked') === '1' } catch { return false } })()
+  if (biometriaAtiva(profile.user_id) && !bioDestravado) return <BloqueioBiometrico profile={profile} onUnlock={()=>{ try { sessionStorage.setItem('axis_bio_unlocked','1') } catch {} ; setBioUnlocked(true) }} />
 
   return (
     <BrowserRouter>

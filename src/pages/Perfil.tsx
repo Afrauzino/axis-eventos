@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase'
 import { formatName, getInitials, ROLE_LABELS } from '../utils'
 import { useEvento } from '../hooks/useEvento'
 import RecortarFoto from '../components/RecortarFoto'
+import { biometriaSuportada, biometriaAtiva, ativarBiometria, desativarBiometria } from '../lib/biometria'
 import type { Profile } from '../App'
 
 export default function Perfil({ profile, onUpdate }: { profile: Profile; onUpdate: () => void }) {
@@ -43,6 +44,24 @@ export default function Perfil({ profile, onUpdate }: { profile: Profile; onUpda
   const [erro, setErro]           = useState('')
   const [ok, setOk]               = useState('')
   const [recorte, setRecorte]     = useState<{ src: string; remoto: boolean } | null>(null)
+  // Entrar com digital (desbloqueio biométrico deste aparelho)
+  const [bioSuporta, setBioSuporta] = useState(false)
+  const [bioOn, setBioOn] = useState<boolean>(() => biometriaAtiva(profile.user_id))
+  const [bioBusy, setBioBusy] = useState(false)
+  useEffect(() => { biometriaSuportada().then(setBioSuporta) }, [])
+
+  async function toggleBio() {
+    setErro(''); setOk(''); setBioBusy(true)
+    if (bioOn) {
+      desativarBiometria(profile.user_id); setBioOn(false); setOk('Entrada por digital desativada.')
+    } else {
+      const okBio = await ativarBiometria(profile.user_id, profile.full_name ?? undefined)
+      setBioOn(okBio)
+      if (okBio) { try { sessionStorage.setItem('axis_bio_unlocked', '1') } catch {} ; setOk('Pronto! Agora você entra com a digital.') }
+      else setErro('Não foi possível ativar a digital neste aparelho.')
+    }
+    setBioBusy(false)
+  }
 
   // Escolheu um arquivo → abre o ENQUADRAMENTO (não envia direto)
   function aoEscolherFoto(file: File) { setErro(''); setOk(''); setRecorte({ src: URL.createObjectURL(file), remoto: false }) }
@@ -240,6 +259,24 @@ export default function Perfil({ profile, onUpdate }: { profile: Profile; onUpda
           <button type="submit" className="btn btn-ghost btn-full">Alterar senha</button>
         </div>
       </form>
+
+      {/* Segurança — entrar com digital */}
+      {bioSuporta && (
+        <div style={{background:'white',borderRadius:14,boxShadow:'var(--shadow-sm)',padding:'16px 20px',marginBottom:12}}>
+          <p style={{fontSize:13,fontWeight:700,color:'var(--muted)',textTransform:'uppercase',letterSpacing:'0.06em',marginBottom:14}}>Segurança</p>
+          <div style={{display:'flex',alignItems:'center',gap:12}}>
+            <span style={{fontSize:26,lineHeight:1}}>🔐</span>
+            <div style={{flex:1,minWidth:0}}>
+              <p style={{fontSize:14,fontWeight:700}}>Entrar com digital</p>
+              <p style={{fontSize:12,color:'var(--muted)'}}>Abra o app com a digital do celular, sem digitar senha.</p>
+            </div>
+            <button type="button" onClick={toggleBio} disabled={bioBusy} aria-label="Ativar entrada por digital"
+              style={{flexShrink:0,width:52,height:30,borderRadius:99,border:'none',cursor:'pointer',position:'relative',background:bioOn?'var(--success)':'var(--border)',transition:'background 0.2s',fontFamily:'inherit'}}>
+              <span style={{position:'absolute',top:3,left:bioOn?25:3,width:24,height:24,borderRadius:'50%',background:'white',boxShadow:'0 1px 3px rgba(0,0,0,0.3)',transition:'left 0.2s'}}/>
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Info da conta */}
       <div style={{background:'white',borderRadius:14,boxShadow:'var(--shadow-sm)',padding:'16px 20px'}}>
