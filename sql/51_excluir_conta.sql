@@ -31,20 +31,23 @@
 -- Assim, apagar a pessoa limpa escalas, equipes, saúde, teatro, ranking… sem o
 -- app precisar saber a lista de tabelas (as futuras entram sozinhas).
 --
--- ATENÇÃO — dado órfão: o banco já tem linhas apontando para gente que não
--- existe mais (ex.: teams.leader_id de 9 equipes). O Postgres se recusa a criar
--- a amarra enquanto houver órfão. Então, antes de criar:
---   • coluna opcional   -> zera o ponteiro quebrado (SET NULL). Não some nada:
---                          na tela essas equipes JÁ apareciam sem líder.
---   • coluna obrigatória -> a linha inteira seria lixo, mas NÃO apagamos nada
---                          por conta própria: a amarra entra como NÃO VALIDADA
---                          (vale dali pra frente) e o script avisa no fim.
+-- ATENÇÃO — dado órfão: o banco tem restos de eventos apagados (11 equipes
+-- fantasmas, cujos líderes e cujo próprio evento não existem mais). Duas coisas
+-- aprendidas na marra:
+--   • o Postgres recusa criar uma amarra validada enquanto houver órfão;
+--   • tentar "consertar" com UPDATE também falha, porque encostar na linha
+--     dispara a checagem das OUTRAS amarras dela (teams.event_id).
+--
+-- Então este script NÃO altera nenhum dado. Ele cria a amarra como NÃO VALIDADA
+-- (que já vale para tudo daqui pra frente, inclusive o ON DELETE) e só depois
+-- TENTA validar o passado. Se houver lixo antigo, a amarra fica não validada e
+-- o relatório do fim mostra onde. Limpar o lixo é decisão sua, à parte.
 
 do $$
 declare
   r record;
-  n int;
   destino text;
+  acao text;
 begin
   for r in
     select
@@ -68,35 +71,20 @@ begin
       and con.confdeltype not in ('c','n')    -- ainda NÃO é cascade/set null
   loop
     destino := format('%I.%I(id)', r.ref_schema, r.ref_tab);
+    -- obrigatória some junto; opcional só esquece de quem era
+    acao := case when r.notnull then 'cascade' else 'set null' end;
 
-    if r.notnull then
-      -- Obrigatória: não mexemos nos dados. Cria sem validar o passado.
-      execute format('alter table %s drop constraint %I', r.tbl, r.conname);
-      execute format('alter table %s add constraint %I foreign key (%I) references %s on delete cascade not valid',
-                     r.tbl, r.conname, r.col, destino);
-      -- Tenta validar; se houver órfão, deixa como está e segue.
-      begin
-        execute format('alter table %s validate constraint %I', r.tbl, r.conname);
-      exception when others then
-        raise notice 'ATENCAO: %.% tem linhas orfas — amarra % ficou NAO VALIDADA (vale so daqui pra frente).', r.tbl, r.col, r.conname;
-      end;
+    execute format('alter table %s drop constraint %I', r.tbl, r.conname);
+    execute format('alter table %s add constraint %I foreign key (%I) references %s on delete %s not valid',
+                   r.tbl, r.conname, r.col, destino, acao);
 
-    else
-      -- Opcional: zera os ponteiros quebrados e cria a amarra validada.
-      execute format(
-        'update %s t set %I = null where t.%I is not null and not exists (select 1 from %I.%I x where x.id = t.%I)',
-        r.tbl, r.col, r.col, r.ref_schema, r.ref_tab, r.col);
-      get diagnostics n = row_count;
-      if n > 0 then
-        raise notice 'limpou % ponteiro(s) quebrado(s) em %.%', n, r.tbl, r.col;
-      end if;
-
-      execute format('alter table %s drop constraint %I', r.tbl, r.conname);
-      execute format('alter table %s add constraint %I foreign key (%I) references %s on delete set null',
-                     r.tbl, r.conname, r.col, destino);
-    end if;
-
-    raise notice 'ajustado: % em %(%) -> %', r.conname, r.tbl, r.col, destino;
+    -- Tenta validar o que já existe. Se houver órfão antigo, segue em frente.
+    begin
+      execute format('alter table %s validate constraint %I', r.tbl, r.conname);
+      raise notice 'ok: % em %(%) -> % on delete %', r.conname, r.tbl, r.col, destino, acao;
+    exception when others then
+      raise notice 'ATENCAO: % tem linha orfa antiga — % vale so daqui pra frente.', r.tbl, r.conname;
+    end;
   end loop;
 end $$;
 
