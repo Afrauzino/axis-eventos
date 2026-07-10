@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useNavigationType } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { fmtHora, isAdmin, nowLocalInput, toLocalInput, getInitials } from '../utils'
@@ -8,6 +8,7 @@ import { useRegistrarChrome } from '../lib/chrome'
 import DataHora from '../components/DataHora'
 import BarraData from '../components/BarraData'
 import PrintOverlay from '../components/PrintOverlay'
+import CronogramaPoster, { type DiaPoster } from '../components/CronogramaPoster'
 import Seletor from '../components/Seletor'
 import { useVoltarFecha } from '../hooks/useVoltarFecha'
 import CronometroPopup from '../components/CronometroPopup'
@@ -62,7 +63,7 @@ export default function Cronograma({ profile }: { profile?: Profile }) {
   const [podeCronometro, setPodeCronometro] = useState(false)
   const [cronometro, setCronometro]   = useState<Item|null>(null)
   const [modal, setModal]             = useState(false)
-  const [imprimir, setImprimir]       = useState<null|'inteiro'|'detalhado'>(null)
+  const [imprimir, setImprimir]       = useState<null|'inteiro'|'detalhado'|'resumido'>(null)
   const [editando, setEditando]       = useState<Item|null>(null)
   const [salvando, setSalvando]       = useState(false)
   const [erro, setErro]               = useState('')
@@ -321,6 +322,41 @@ export default function Cronograma({ profile }: { profile?: Profile }) {
     return { min, tea, ministrante }
   }
 
+  // --- Pôster (impressão resumida): agrupa TODOS os itens por DIA ---
+  const diasPoster: DiaPoster[] = useMemo(() => {
+    const DIAS = ['DOMINGO','SEGUNDA','TERÇA','QUARTA','QUINTA','SEXTA','SÁBADO']
+    const horaP = (iso:string) => { const d=new Date(iso); return `${String(d.getHours()).padStart(2,'0')}H${String(d.getMinutes()).padStart(2,'0')}` }
+    const durP = (it:Item) => {
+      const m = it.duracao_minutos ?? Math.round((new Date(it.hora_fim).getTime()-new Date(it.hora_inicio).getTime())/60000)
+      if (!m || m<=0) return '—'
+      if (m % 60 === 0) return `${String(m/60).padStart(2,'0')}H00`
+      if (m < 60) return `${m} MIN.`
+      return `${String(Math.floor(m/60)).padStart(2,'0')}H${String(m%60).padStart(2,'0')}`
+    }
+    const byDay: Record<string, Item[]> = {}
+    ;[...itens].sort((a,b)=> a.hora_inicio.localeCompare(b.hora_inicio)).forEach(it=>{
+      const d = new Date(it.hora_inicio); const k = `${d.getFullYear()}-${String(d.getMonth()).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
+      ;(byDay[k]=byDay[k]||[]).push(it)
+    })
+    return Object.keys(byDay).sort().map(k => {
+      const items = byDay[k]
+      const dia = DIAS[new Date(items[0].hora_inicio).getDay()]
+      const linhas = items.map(it => {
+        const { min, tea, ministrante } = getInfo(it)
+        const cor = tiposDB.find(t=>t.nome.toLowerCase()===it.tipo.toLowerCase())?.cor ?? TIPO_COR_FALLBACK[it.tipo] ?? '#E8821A'
+        const mfoto = min?.ministrante_id ? pessoaFoto[min.ministrante_id] : null
+        if (min || ministrante) {
+          return { kind:'min' as const, horario:horaP(it.hora_inicio), duracao:durP(it), cor,
+            ministrante:(mfoto?.name ?? ministrante?.name ?? '').toUpperCase(),
+            titulo:(min?.titulo ?? it.titulo).toUpperCase(), fotoUrl:mfoto?.photo_url ?? null,
+            teatro: tea?.nome ? tea.nome.toUpperCase() : null }
+        }
+        return { kind:'simples' as const, horario:horaP(it.hora_inicio), duracao:durP(it), cor, titulo:it.titulo.toUpperCase() }
+      })
+      return { dia, linhas }
+    })
+  }, [itens, ministrações, teatros, ministrantes, tiposDB, pessoaFoto])
+
   // Ministrações/teatros já usados em OUTROS itens do cronograma (não reutilizáveis)
   const minUsadas = new Set(itens.filter(i => i.id !== editando?.id && i.ministracao_id).map(i => i.ministracao_id))
   const teaUsados = new Set(itens.filter(i => i.id !== editando?.id && i.theater_id).map(i => i.theater_id))
@@ -330,6 +366,7 @@ export default function Cronograma({ profile }: { profile?: Profile }) {
     valores: { status: filtro },
     onFiltro: (_,v)=>setFiltro(v),
     impressoes: itens.length>0 ? [
+      { label:'Imprimir resumido (pôster)', icon:'grid_view', onClick:()=>setImprimir('resumido') },
       { label:'Imprimir inteiro', onClick:()=>setImprimir('inteiro') },
       { label:'Imprimir com detalhes', onClick:()=>setImprimir('detalhado') },
     ] : undefined,
@@ -577,7 +614,13 @@ export default function Cronograma({ profile }: { profile?: Profile }) {
       )}
 
       {/* ===== IMPRESSÃO — reflete exatamente o que está na tela (mesmos grupos/filtro) ===== */}
-      {imprimir && (
+      {imprimir==='resumido' && (
+        <PrintOverlay titulo="Cronograma (resumo)" onClose={()=>setImprimir(null)}>
+          <CronogramaPoster titulo={`CRONOGRAMA ${evento?.name ? evento.name.toUpperCase() : 'ENCONTRO'}`} dias={diasPoster} />
+        </PrintOverlay>
+      )}
+
+      {imprimir && imprimir!=='resumido' && (
         <PrintOverlay titulo={imprimir==='inteiro'?'Cronograma':'Cronograma com detalhes'} onClose={()=>setImprimir(null)}>
           {Object.keys(grupos).length===0
             ? <p style={{fontSize:13,color:'#6b7280'}}>Nada para o filtro atual.</p>
