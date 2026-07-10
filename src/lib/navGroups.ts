@@ -20,7 +20,7 @@ export type AdminGrupo = { titulo: string; curto?: string; emoji?: string; itens
 export const ADMIN_GRUPOS: AdminGrupo[] = [
   { titulo: 'Pessoas e acessos', curto: 'Pessoas', emoji: '👥', itens: [
     { label: 'Usuários',         rota: '/admin?aba=usuarios',     emoji: '👥' },
-    { label: 'Tipos de cargo',   rota: '/admin?aba=tipos',        emoji: '🪪' },
+    { label: 'Tipos de atividade', rota: '/admin?aba=tipos',       emoji: '🪪' },
     { label: 'Liberações',       rota: '/admin?aba=equipes_perm', emoji: '🔓' },
     { label: 'Convite / código', rota: '/admin?aba=msg',          emoji: '🔑' },
   ] },
