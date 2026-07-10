@@ -19,6 +19,7 @@ export default function SaudeSistema({ profile }: { profile?: Profile }) {
   const [loading, setLoading] = useState(true)
   const [salvando, setSalvando] = useState(false)
   const [ok, setOk] = useState('')
+  const [erro, setErro] = useState('')
 
   const admin = isAdmin(profile?.user_role) || profile?.is_admin
 
@@ -48,15 +49,19 @@ export default function SaudeSistema({ profile }: { profile?: Profile }) {
   }
 
   async function salvarLimites() {
-    setSalvando(true); setOk('')
-    await supabase.from('saude_sistema_limites').update({
+    setSalvando(true); setOk(''); setErro('')
+    // upsert (não update): grava mesmo que a linha id=1 ainda não exista.
+    const { error } = await supabase.from('saude_sistema_limites').upsert({
+      id: 1,
       limite_arquivos_gb: limites.limite_arquivos_gb,
       limite_uso_mensal: limites.limite_uso_mensal,
       limite_usuarios: limites.limite_usuarios,
       uso_mensal_atual: limites.uso_mensal_atual,
       updated_at: new Date().toISOString(),
-    }).eq('id',1)
-    setSalvando(false); setOk('Limites salvos!')
+    }, { onConflict: 'id' })
+    setSalvando(false)
+    if (error) { setErro('Não foi possível salvar: ' + error.message); return }
+    setOk('Limites salvos!')
     setTimeout(()=>setOk(''), 2500)
   }
 
@@ -98,6 +103,7 @@ export default function SaudeSistema({ profile }: { profile?: Profile }) {
 
         <button className="btn btn-primary btn-full" onClick={salvarLimites} disabled={salvando} style={{marginTop:8}}>{salvando?'Salvando...':'Salvar limites'}</button>
         {ok && <p style={{fontSize:12,color:'var(--success)',fontWeight:700,textAlign:'center',marginTop:8}}>{ok}</p>}
+        {erro && <p style={{fontSize:12,color:'var(--danger)',fontWeight:700,textAlign:'center',marginTop:8}}>{erro}</p>}
       </div>
     </div>
   )
