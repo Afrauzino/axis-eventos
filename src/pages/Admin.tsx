@@ -96,6 +96,21 @@ function normalizarNome(s: string): string {
     .replace(/\s+/g, ' ').trim()
 }
 
+// Situação da pessoa (pro filtro): usa role_status + se tem conta (user_id).
+const SITUACOES: { value:string; label:string; emoji:string }[] = [
+  { value:'todos',     label:'Todas',                 emoji:'📋' },
+  { value:'aprovado',  label:'Aprovados',             emoji:'✅' },
+  { value:'pending',   label:'Aguardando liberação',  emoji:'⏳' },
+  { value:'codigo',    label:'Só com código',         emoji:'🔑' },
+  { value:'bloqueado', label:'Bloqueados',            emoji:'🚫' },
+]
+function situacaoDe(p: { user_id:string|null; role_status:string|null }): string {
+  if (!p.user_id) return 'codigo'                 // pré-cadastro (só código)
+  if (p.role_status === 'blocked') return 'bloqueado'
+  if (p.role_status === 'pending') return 'pending'
+  return 'aprovado'
+}
+
 // #18 — mensagem padrão que acompanha o código de acesso (editável no Admin → MSG)
 const MSG_CODIGO_PADRAO =
 `Olá {nome}! 🙌
@@ -164,6 +179,10 @@ export default function Admin({ profile }: { profile?: Profile }) {
   const [fotoAmpliada, setFotoAmpliada] = useState<string|null>(null)
   const [buscaUser, setBuscaUser]       = useState('')
   const [filtroUserTipo, setFiltroUserTipo] = useState('todos')  // todos | encounterer | worker
+  const [filtroSituacao, setFiltroSituacao] = useState('todos')  // todos | aprovado | pending | codigo | bloqueado
+  const [modalFiltros, setModalFiltros] = useState(false)
+  useVoltarFecha(modalFiltros, () => setModalFiltros(false))
+  const nFiltros = (filtroUserTipo!=='todos'?1:0) + (filtroSituacao!=='todos'?1:0)
   const navigate = useNavigate()
   const location = useLocation()
   // A aba ativa vive na URL (?aba=xxx) — assim o menu ⚙️ (que é o mesmo em todas
@@ -992,15 +1011,8 @@ export default function Admin({ profile }: { profile?: Profile }) {
 
   // ⚙️ do topo — menu ÚNICO da Administração (4 grupos por assunto, vindo de
   // ADMIN_GRUPOS). Só a aba Usuários acrescenta busca + filtro.
-  useRegistrarChromeAdmin(
-    // A busca virou barra fixa no topo da lista; aqui fica só o filtro de Tipo.
-    aba==='usuarios' ? {
-      grupos: [{ chave:'tipo', label:'Tipo', opcoes:[{value:'todos',label:'Todos'},{value:'encounterer',label:'Encontristas'},{value:'worker',label:'Encontreiros'}] }],
-      valores: { tipo: filtroUserTipo },
-      onFiltro: (_:string,v:string)=>setFiltroUserTipo(v),
-    } : {},
-    [aba, filtroUserTipo],
-  )
+  // Busca e filtros agora ficam na própria tela de Usuários (barra + botão ao lado).
+  useRegistrarChromeAdmin({}, [aba])
 
   return (
     <div className="page">
@@ -1009,12 +1021,74 @@ export default function Admin({ profile }: { profile?: Profile }) {
       {/* USUÁRIOS */}
       {aba==='usuarios' && (
         <>
-          {/* Busca no topo — ignora acento e Pr./Pra. (os controles de inscrição foram pra aba Convite / código) */}
-          <div className="search-bar" style={{marginBottom:14}}>
-            <span className="icon icon-sm" style={{color:'var(--muted-light)'}}>search</span>
-            <input placeholder="Buscar pessoa..." value={buscaUser} onChange={e=>setBuscaUser(e.target.value)}/>
-            {buscaUser && <button onClick={()=>setBuscaUser('')} style={{background:'none',border:'none',cursor:'pointer',color:'var(--muted-light)',padding:0,fontFamily:'inherit'}}><span className="icon icon-sm">close</span></button>}
+          {/* Busca + botão de filtros (ignora acento e Pr./Pra.) */}
+          <div style={{display:'flex',gap:8,marginBottom:14}}>
+            <div className="search-bar" style={{flex:1,marginBottom:0}}>
+              <span className="icon icon-sm" style={{color:'var(--muted-light)'}}>search</span>
+              <input placeholder="Buscar pessoa..." value={buscaUser} onChange={e=>setBuscaUser(e.target.value)}/>
+              {buscaUser && <button onClick={()=>setBuscaUser('')} style={{background:'none',border:'none',cursor:'pointer',color:'var(--muted-light)',padding:0,fontFamily:'inherit'}}><span className="icon icon-sm">close</span></button>}
+            </div>
+            <button onClick={()=>setModalFiltros(true)} aria-label="Filtros"
+              style={{position:'relative',flexShrink:0,width:44,height:44,borderRadius:12,border:`1px solid ${nFiltros>0?'var(--primary)':'var(--border)'}`,background:nFiltros>0?'var(--primary-light)':'white',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',fontFamily:'inherit'}}>
+              <span className="icon" style={{color:nFiltros>0?'var(--primary)':'var(--text2)'}}>tune</span>
+              {nFiltros>0 && <span style={{position:'absolute',top:-5,right:-5,minWidth:18,height:18,background:'var(--primary)',borderRadius:99,fontSize:10,fontWeight:800,color:'white',display:'flex',alignItems:'center',justifyContent:'center',padding:'0 4px'}}>{nFiltros}</span>}
+            </button>
           </div>
+
+          {/* Chips dos filtros ativos */}
+          {nFiltros>0 && (
+            <div style={{display:'flex',gap:6,flexWrap:'wrap',marginBottom:12}}>
+              {filtroUserTipo!=='todos' && (
+                <span style={{display:'inline-flex',alignItems:'center',gap:4,background:'var(--primary-light)',color:'var(--primary-dark)',borderRadius:99,padding:'4px 6px 4px 12px',fontSize:12,fontWeight:700}}>
+                  {filtroUserTipo==='worker'?'Encontreiros':'Encontristas'}
+                  <button onClick={()=>setFiltroUserTipo('todos')} style={{background:'none',border:'none',cursor:'pointer',color:'inherit',display:'flex',padding:0}}><span className="icon" style={{fontSize:15}}>close</span></button>
+                </span>
+              )}
+              {filtroSituacao!=='todos' && (
+                <span style={{display:'inline-flex',alignItems:'center',gap:4,background:'var(--primary-light)',color:'var(--primary-dark)',borderRadius:99,padding:'4px 6px 4px 12px',fontSize:12,fontWeight:700}}>
+                  {SITUACOES.find(s=>s.value===filtroSituacao)?.label}
+                  <button onClick={()=>setFiltroSituacao('todos')} style={{background:'none',border:'none',cursor:'pointer',color:'inherit',display:'flex',padding:0}}><span className="icon" style={{fontSize:15}}>close</span></button>
+                </span>
+              )}
+            </div>
+          )}
+
+          {/* Modal de filtros */}
+          {modalFiltros && (
+            <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.5)',zIndex:400,display:'flex',flexDirection:'column',justifyContent:'flex-end'}} onClick={e=>e.target===e.currentTarget&&setModalFiltros(false)}>
+              <div style={{background:'white',borderRadius:'20px 20px 0 0',padding:'8px 20px 28px',maxWidth:480,width:'100%',margin:'0 auto',maxHeight:'85vh',overflowY:'auto'}}>
+                <div style={{width:36,height:4,background:'var(--border)',borderRadius:2,margin:'12px auto 14px'}}/>
+                <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:18}}>
+                  <span style={{fontSize:17,fontWeight:800}}>Filtros</span>
+                  {nFiltros>0 && <button onClick={()=>{setFiltroUserTipo('todos');setFiltroSituacao('todos')}} style={{background:'none',border:'none',color:'var(--primary)',fontSize:13,fontWeight:700,cursor:'pointer',fontFamily:'inherit'}}>Limpar tudo</button>}
+                </div>
+
+                <p style={{fontSize:12,color:'var(--muted)',fontWeight:700,marginBottom:8}}>Tipo</p>
+                <div style={{display:'flex',gap:8,flexWrap:'wrap',marginBottom:20}}>
+                  {[{value:'todos',label:'Todos'},{value:'encounterer',label:'Encontristas'},{value:'worker',label:'Encontreiros'}].map(o=>{
+                    const sel = filtroUserTipo===o.value
+                    return <button key={o.value} onClick={()=>setFiltroUserTipo(o.value)}
+                      style={{padding:'9px 16px',borderRadius:10,cursor:'pointer',fontFamily:'inherit',fontSize:14,fontWeight:700,border:sel?'2px solid var(--primary)':'1px solid var(--border)',background:sel?'var(--primary-light)':'white',color:sel?'var(--primary-dark)':'var(--text2)'}}>{o.label}</button>
+                  })}
+                </div>
+
+                <p style={{fontSize:12,color:'var(--muted)',fontWeight:700,marginBottom:8}}>Situação</p>
+                <div style={{display:'flex',flexDirection:'column',gap:8,marginBottom:20}}>
+                  {SITUACOES.map(o=>{
+                    const sel = filtroSituacao===o.value
+                    return <button key={o.value} onClick={()=>setFiltroSituacao(o.value)}
+                      style={{display:'flex',alignItems:'center',gap:10,padding:'12px 14px',borderRadius:10,cursor:'pointer',fontFamily:'inherit',textAlign:'left',border:sel?'2px solid var(--primary)':'1px solid var(--border)',background:sel?'var(--primary-light)':'white'}}>
+                      <span style={{fontSize:20}}>{o.emoji}</span>
+                      <span style={{flex:1,fontSize:14,fontWeight:sel?800:600,color:sel?'var(--primary-dark)':'var(--text)'}}>{o.label}</span>
+                      {sel && <span className="icon icon-sm" style={{color:'var(--primary)'}}>check</span>}
+                    </button>
+                  })}
+                </div>
+
+                <button className="btn btn-primary btn-full" onClick={()=>setModalFiltros(false)}>Ver resultados</button>
+              </div>
+            </div>
+          )}
 
           {/* Lista única — mesmo padrão visual do Cadastros */}
           {loading ? [1,2,3,4].map(i=><div key={i} className="skeleton" style={{height:72,marginBottom:8,borderRadius:14}}/>) :
@@ -1031,6 +1105,7 @@ export default function Admin({ profile }: { profile?: Profile }) {
           )}
           {pessoas
             .filter(p => filtroUserTipo==='todos' || p.role_type===filtroUserTipo)
+            .filter(p => filtroSituacao==='todos' || situacaoDe(p)===filtroSituacao)
             .filter(p => !buscaUser || normalizarNome(p.name).includes(normalizarNome(buscaUser)))
             .map(p => {
             const corPessoa = p.role_type==='worker' ? 'var(--primary)' : '#6B46C1'
