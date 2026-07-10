@@ -22,7 +22,6 @@ function buildMenu(): Item[] {
     { id:'correio', label:'Correio',              icon:'mail',            emoji:'📬', rota:'/correio',           perm:'menu_correio' },
     { id:'logistica',label:'Logística',           icon:'inventory',       emoji:'📦', rota:'/logistica',         perm:'menu_logistica' },
     { id:'midia',   label:'Mídia',                icon:'perm_media',      emoji:'🎬', rota:'/midia',             perm:'menu_midia' },
-    { id:'cracha',  label:'Crachá',               icon:'badge',           emoji:'🪪', rota:'/cracha',            perm:'menu_cracha' },
     { id:'impressao',label:'Impressão',           icon:'print',           emoji:'🖨️', rota:'/impressao',         perm:'menu_impressao' },
     { id:'alertlid',label:'Alertas',                icon:'campaign',       emoji:'📢', rota:'/alertas-lideres',   perm:'menu_alertas_lideres' },
     { id:'cozinha', label:'Cozinha',              icon:'restaurant',     emoji:'🍴', rota:'/cozinha',           perm:'menu_cozinha' },

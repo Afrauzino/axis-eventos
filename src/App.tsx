@@ -30,7 +30,6 @@ const Cozinha          = lazy(() => import('./pages/Cozinha'))
 const Ministracoes     = lazy(() => import('./pages/Ministracoes'))
 const Logistica        = lazy(() => import('./pages/Logistica'))
 const Midia            = lazy(() => import('./pages/Midia'))
-const Cracha           = lazy(() => import('./pages/Cracha'))
 const Impressao        = lazy(() => import('./pages/Impressao'))
 const TeatroLista      = lazy(() => import('./pages/TeatroLista'))
 const TeatroDetalhe    = lazy(() => import('./pages/TeatroDetalhe'))
@@ -76,7 +75,6 @@ const ROTA_PERM = ([
   ['/correio','menu_correio'],
   ['/logistica','menu_logistica'],
   ['/midia','menu_midia'],
-  ['/cracha','menu_cracha'],
   ['/impressao','menu_impressao'],
   ['/alertas-lideres','menu_alertas_lideres'],
   ['/alertas','menu_alertas_lideres'],
@@ -141,7 +139,6 @@ function AppRoutes({ profile, onProfileUpdate, versaoFotos }: { profile: Profile
       <Route path="/correio"               element={<Correio profile={profile} />} />
       <Route path="/logistica"             element={<Logistica profile={profile} />} />
       <Route path="/midia"                 element={<Midia profile={profile} />} />
-      <Route path="/cracha"                element={<Cracha profile={profile} />} />
       <Route path="/impressao"             element={<Impressao profile={profile} />} />
       <Route path="/admin/saude-sistema"   element={<SaudeSistema profile={profile} />} />
       <Route path="/alertas-lideres"       element={<AlertasLideres profile={profile} />} />
@@ -206,7 +203,6 @@ const TITULOS_ROTA: Record<string,string> = {
   '/correio': 'Correio',
   '/logistica': 'Logística',
   '/midia': 'Mídia',
-  '/cracha': 'Crachá',
   '/impressao': 'Impressão',
   '/admin/saude-sistema': 'Saúde do Sistema',
   '/alertas-lideres': 'Alertas',
