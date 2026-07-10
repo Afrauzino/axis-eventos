@@ -1,6 +1,6 @@
 // Service Worker do AXIS — network-first (nunca serve versão velha quando online).
 // Não intercepta o Supabase (outra origem) nem chamadas não-GET.
-const CACHE = 'axis-runtime-v8'
+const CACHE = 'axis-runtime-v9'
 
 self.addEventListener('install', () => self.skipWaiting())
 

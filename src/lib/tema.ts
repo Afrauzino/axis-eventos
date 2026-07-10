@@ -130,7 +130,8 @@ export function aplicarIconesApp(logoUrl: string | null) {
         : [{ src: logoUrl, sizes: '192x192', type: tipo, purpose: 'any' },
            { src: logoUrl, sizes: '512x512', type: tipo, purpose: 'any' },
            { src: logoUrl, sizes: '512x512', type: tipo, purpose: 'maskable' }])
-    : [{ src: origin + '/favicon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' }]
+    : [{ src: origin + '/axis-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+       { src: origin + '/axis-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' }]
 
   const manifest = {
     name: 'AXIS Eventos', short_name: 'AXIS', description: 'Gestão de eventos religiosos',
