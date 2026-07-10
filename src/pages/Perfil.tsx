@@ -88,7 +88,11 @@ export default function Perfil({ profile, onUpdate }: { profile: Profile; onUpda
     }
     const { error } = await supabase.rpc('atualizar_meu_cadastro', { p: payload })
     setSalvandoCad(false)
-    if (error) { toast.falha('Não foi possível salvar. Rode o sql/59_meu_cadastro.sql.', error); return }
+    if (error) {
+      const semFuncao = /atualizar_meu_cadastro|function|does not exist|schema cache/i.test(error.message || '')
+      toast.falha(semFuncao ? 'Falta rodar o sql/59_meu_cadastro.sql no Supabase.' : ('Não foi possível salvar: ' + (error.message || 'erro')), error)
+      return
+    }
     toast.sucesso('Seus dados foram atualizados!')
     setCadAberto(false); onUpdate()
   }

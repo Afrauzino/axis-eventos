@@ -40,8 +40,6 @@ BEGIN
     bairro          = NULLIF(p->>'bairro',''),
     cep             = NULLIF(p->>'cep',''),
     team_pref       = NULLIF(p->>'team_pref',''),
-    responsavel_nome= NULLIF(p->>'responsavel_nome',''),
-    responsavel_tel = NULLIF(p->>'responsavel_tel',''),
     notes           = NULLIF(p->>'notes',''),
     photo_url       = COALESCE(p->>'photo_url', photo_url)
   WHERE user_id = uid;
