@@ -86,6 +86,16 @@ const CORES_TIPO = ['#00A99D','#6B46C1','#E8821A','#2F855A','#D53F8C','#2B6CB0',
 
 type AbaAdmin = 'usuarios'|'equipes_perm'|'eventos'|'tipos'|'backup'|'logs'|'aparencia'|'msg'
 
+// Busca "esperta": ignora acento e títulos (Pr./Pra./Pastor/Pastora).
+// Ex.: buscar "claudia" acha "Pra. Cláudia".
+function normalizarNome(s: string): string {
+  return (s || '')
+    .toLowerCase()
+    .normalize('NFD').replace(/\p{Diacritic}/gu, '')    // tira acentos
+    .replace(/\b(pr|pra|pastor|pastora)\b\.?/g, ' ')    // tira títulos (e o ponto do "Pra.")
+    .replace(/\s+/g, ' ').trim()
+}
+
 // #18 — mensagem padrão que acompanha o código de acesso (editável no Admin → MSG)
 const MSG_CODIGO_PADRAO =
 `Olá {nome}! 🙌
@@ -983,13 +993,13 @@ export default function Admin({ profile }: { profile?: Profile }) {
   // ⚙️ do topo — menu ÚNICO da Administração (4 grupos por assunto, vindo de
   // ADMIN_GRUPOS). Só a aba Usuários acrescenta busca + filtro.
   useRegistrarChromeAdmin(
+    // A busca virou barra fixa no topo da lista; aqui fica só o filtro de Tipo.
     aba==='usuarios' ? {
-      busca: { value: buscaUser, onChange: setBuscaUser, placeholder: 'Buscar usuário...' },
       grupos: [{ chave:'tipo', label:'Tipo', opcoes:[{value:'todos',label:'Todos'},{value:'encounterer',label:'Encontristas'},{value:'worker',label:'Encontreiros'}] }],
       valores: { tipo: filtroUserTipo },
       onFiltro: (_:string,v:string)=>setFiltroUserTipo(v),
     } : {},
-    [aba, buscaUser, filtroUserTipo],
+    [aba, filtroUserTipo],
   )
 
   return (
@@ -999,39 +1009,12 @@ export default function Admin({ profile }: { profile?: Profile }) {
       {/* USUÁRIOS */}
       {aba==='usuarios' && (
         <>
-          {/* Cabeçalho com stats e ação */}
-          <div className="stats-grid mb-3" style={{gridTemplateColumns:'1fr 1fr 1fr'}}>
-            <div className="stat-card"><div className="stat-label">Encontristas</div><div className="stat-value" style={{color:'#6B46C1'}}>{pessoas.filter(p=>p.role_type==='encounterer').length}</div></div>
-            <div className="stat-card"><div className="stat-label">Encontreiros</div><div className="stat-value" style={{color:'var(--primary)'}}>{pessoas.filter(p=>p.role_type==='worker').length}</div></div>
-            <div className="stat-card"><div className="stat-label">Com conta</div><div className="stat-value" style={{color:'var(--success)'}}>{pessoas.filter(p=>p.user_id).length}</div></div>
+          {/* Busca no topo — ignora acento e Pr./Pra. (os controles de inscrição foram pra aba Convite / código) */}
+          <div className="search-bar" style={{marginBottom:14}}>
+            <span className="icon icon-sm" style={{color:'var(--muted-light)'}}>search</span>
+            <input placeholder="Buscar pessoa..." value={buscaUser} onChange={e=>setBuscaUser(e.target.value)}/>
+            {buscaUser && <button onClick={()=>setBuscaUser('')} style={{background:'none',border:'none',cursor:'pointer',color:'var(--muted-light)',padding:0,fontFamily:'inherit'}}><span className="icon icon-sm">close</span></button>}
           </div>
-
-          <div style={{display:'flex',gap:8,marginBottom:12,flexWrap:'wrap'}}>
-            <button onClick={gerarCodigos} disabled={gerandoCodigos}
-              style={{background:'var(--primary-light)',color:'var(--primary)',border:'none',borderRadius:8,padding:'7px 14px',cursor:'pointer',fontSize:12,fontWeight:700,fontFamily:'inherit',display:'flex',alignItems:'center',gap:4}}>
-              <span className="icon icon-sm">key</span> {gerandoCodigos?'Gerando...':'Gerar códigos'}
-            </button>
-            <button onClick={()=>{ const link = window.location.origin + '/?inscrever=1'; try { navigator.clipboard.writeText(link); toast.sucesso('Link de inscrição copiado!') } catch { toast.aviso(link) } }}
-              style={{background:'var(--primary)',color:'white',border:'none',borderRadius:8,padding:'7px 14px',cursor:'pointer',fontSize:12,fontWeight:700,fontFamily:'inherit',display:'flex',alignItems:'center',gap:4}}>
-              <span className="icon icon-sm">link</span> Copiar link de inscrição
-            </button>
-          </div>
-
-          {/* Liga/desliga das inscrições pelo link público */}
-          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:8,background:inscricoesAbertas?'var(--success-bg)':'var(--bg)',border:'1px solid var(--border)',borderRadius:10,padding:'10px 14px',marginBottom:12}}>
-            <div>
-              <p style={{fontSize:13,fontWeight:700}}>{inscricoesAbertas ? '🟢 Inscrições abertas' : '🔴 Inscrições fechadas'}</p>
-              <p style={{fontSize:11,color:'var(--muted)'}}>Controla o link público de inscrição.</p>
-            </div>
-            <button onClick={alternarInscricoes} aria-label="Abrir/fechar inscrições"
-              style={{width:50,height:28,borderRadius:99,border:'none',cursor:'pointer',background:inscricoesAbertas?'var(--success)':'var(--border)',position:'relative',flexShrink:0,transition:'background 0.15s'}}>
-              <span style={{position:'absolute',top:3,left:inscricoesAbertas?25:3,width:22,height:22,borderRadius:'50%',background:'white',transition:'left 0.15s',boxShadow:'0 1px 3px rgba(0,0,0,0.3)'}}/>
-            </button>
-          </div>
-          <p style={{fontSize:11,color:'var(--muted)',marginBottom:14,lineHeight:1.6}}>
-            <strong>Link de inscrição</strong>: qualquer pessoa se cadastra sozinha e cai aqui para você aprovar.<br/>
-            <strong>Código</strong> (pré-cadastro): compartilhe o código → pessoa abre o app → <strong>Primeiro acesso</strong> → cria email e senha.
-          </p>
 
           {/* Lista única — mesmo padrão visual do Cadastros */}
           {loading ? [1,2,3,4].map(i=><div key={i} className="skeleton" style={{height:72,marginBottom:8,borderRadius:14}}/>) :
@@ -1048,7 +1031,7 @@ export default function Admin({ profile }: { profile?: Profile }) {
           )}
           {pessoas
             .filter(p => filtroUserTipo==='todos' || p.role_type===filtroUserTipo)
-            .filter(p => !buscaUser || p.name.toLowerCase().includes(buscaUser.toLowerCase()))
+            .filter(p => !buscaUser || normalizarNome(p.name).includes(normalizarNome(buscaUser)))
             .map(p => {
             const corPessoa = p.role_type==='worker' ? 'var(--primary)' : '#6B46C1'
             const sub = [p.role_type==='worker'?'Encontreiro':'Encontrista', p.church||'Igreja não informada', (p.user_role && p.user_role!=='visitante') ? (cargos.find(cg=>cg.role===p.user_role)?.label ?? p.user_role) : ''].filter(Boolean).join(' · ')
@@ -1672,6 +1655,33 @@ export default function Admin({ profile }: { profile?: Profile }) {
       {/* #18 — MSG: mensagem que acompanha o código de acesso */}
       {aba==='msg' && (
         <div>
+          {/* Controles de inscrição (vieram da tela de Usuários) */}
+          <div style={{display:'flex',gap:8,marginBottom:12,flexWrap:'wrap'}}>
+            <button onClick={gerarCodigos} disabled={gerandoCodigos}
+              style={{background:'var(--primary-light)',color:'var(--primary)',border:'none',borderRadius:8,padding:'7px 14px',cursor:'pointer',fontSize:12,fontWeight:700,fontFamily:'inherit',display:'flex',alignItems:'center',gap:4}}>
+              <span className="icon icon-sm">key</span> {gerandoCodigos?'Gerando...':'Gerar códigos'}
+            </button>
+            <button onClick={()=>{ const link = window.location.origin + '/?inscrever=1'; try { navigator.clipboard.writeText(link); toast.sucesso('Link de inscrição copiado!') } catch { toast.aviso(link) } }}
+              style={{background:'var(--primary)',color:'white',border:'none',borderRadius:8,padding:'7px 14px',cursor:'pointer',fontSize:12,fontWeight:700,fontFamily:'inherit',display:'flex',alignItems:'center',gap:4}}>
+              <span className="icon icon-sm">link</span> Copiar link de inscrição
+            </button>
+          </div>
+          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:8,background:inscricoesAbertas?'var(--success-bg)':'var(--bg)',border:'1px solid var(--border)',borderRadius:10,padding:'10px 14px',marginBottom:12}}>
+            <div>
+              <p style={{fontSize:13,fontWeight:700}}>{inscricoesAbertas ? '🟢 Inscrições abertas' : '🔴 Inscrições fechadas'}</p>
+              <p style={{fontSize:11,color:'var(--muted)'}}>Controla o link público de inscrição.</p>
+            </div>
+            <button onClick={alternarInscricoes} aria-label="Abrir/fechar inscrições"
+              style={{width:50,height:28,borderRadius:99,border:'none',cursor:'pointer',background:inscricoesAbertas?'var(--success)':'var(--border)',position:'relative',flexShrink:0,transition:'background 0.15s'}}>
+              <span style={{position:'absolute',top:3,left:inscricoesAbertas?25:3,width:22,height:22,borderRadius:'50%',background:'white',transition:'left 0.15s',boxShadow:'0 1px 3px rgba(0,0,0,0.3)'}}/>
+            </button>
+          </div>
+          <p style={{fontSize:11,color:'var(--muted)',marginBottom:16,lineHeight:1.6}}>
+            <strong>Link de inscrição</strong>: qualquer pessoa se cadastra sozinha e cai em Usuários para você aprovar.<br/>
+            <strong>Código</strong> (pré-cadastro): compartilhe o código → pessoa abre o app → <strong>Primeiro acesso</strong> → cria email e senha.
+          </p>
+          <div style={{height:1,background:'var(--border)',margin:'0 0 16px'}}/>
+
           <p style={{fontSize:13,color:'var(--muted)',marginBottom:12,lineHeight:1.6}}>
             Esta é a mensagem copiada quando você toca em <b>“Copiar msg”</b> no código de acesso de uma pessoa
             (Usuários → pessoa sem conta). Cole no WhatsApp/onde quiser. Pode ter textos, instruções e links.
