@@ -6,7 +6,7 @@ import PessoaSaudeResumo from '../components/PessoaSaudeResumo'
 import { toast } from '../components/Toast'
 import CardItem from '../components/CardItem'
 import FotoAmpliada from '../components/FotoAmpliada'
-import { getInitials, fmtHora, fmtDataHora } from '../utils'
+import { getInitials, fmtHora, fmtDataHora, isAdmin } from '../utils'
 import { useEvento } from '../hooks/useEvento'
 import { gerarICS, baixarICS, type EventoICS } from '../lib/ics'
 import type { Profile } from '../App'
@@ -61,6 +61,19 @@ export default function Medicamentos({ profile }: { profile?: Profile }) {
     })
     baixarICS('alarmes-medicamentos', gerarICS(eventos))
     toast.sucesso(`${eventos.length} alarme(s) gerado(s). Confirme "adicionar ao calendário" na tela que abriu — tocam ~8 min antes.`)
+  }
+
+  const admin = !!profile && (isAdmin(profile.user_role) || !!profile.is_admin)
+
+  // Admin: exclui o remédio inteiro (o medicamento contínuo + TODAS as doses dele).
+  // Útil pra remover testes. As doses já entregues (histórico) também saem.
+  async function excluirRemedio(d: Dose) {
+    if (!admin) return
+    if (!confirm(`Excluir o remédio "${d.nome}"${d.dosagem?` (${d.dosagem})`:''} de ${getPessoa(d.person_id)?.name ?? ''} e todas as suas doses?`)) return
+    await supabase.from('med_agenda').delete().eq('med_ctrl_id', d.med_ctrl_id)
+    await supabase.from('med_controlados').delete().eq('id', d.med_ctrl_id)
+    setPessoaDoses(null)
+    carregar()
   }
 
   async function entregar(d: Dose) {
@@ -212,6 +225,11 @@ export default function Medicamentos({ profile }: { profile?: Profile }) {
                     <button onClick={()=>entregar(d)} disabled={entregando===d.id} style={{background:'var(--primary)',color:'white',border:'none',borderRadius:8,padding:'8px 12px',cursor:'pointer',fontSize:12,fontWeight:700,fontFamily:'inherit',flexShrink:0,display:'flex',alignItems:'center',gap:4}}>
                       <span className="icon icon-sm" style={{color:'white'}}>check_circle</span>{entregando===d.id?'...':'Entregar'}
                     </button>
+                    {admin && (
+                      <button onClick={()=>excluirRemedio(d)} title="Excluir remédio (todas as doses)" style={{background:'var(--danger-bg)',color:'var(--danger)',border:'none',borderRadius:8,width:34,height:34,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',fontFamily:'inherit',flexShrink:0}}>
+                        <span className="icon icon-sm" style={{color:'var(--danger)'}}>delete</span>
+                      </button>
+                    )}
                   </div>
                 )
               })}
