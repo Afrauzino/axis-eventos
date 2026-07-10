@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase'
 import { formatName, getInitials, ROLE_LABELS } from '../utils'
 import { useEvento } from '../hooks/useEvento'
 import RecortarFoto from '../components/RecortarFoto'
+import { pathOriginal, urlOriginal, imagemCarrega, baixarImagem } from '../lib/foto'
 import { biometriaSuportada, biometriaAtiva, ativarBiometria, desativarBiometria } from '../lib/biometria'
 import type { Profile } from '../App'
 
@@ -44,6 +45,7 @@ export default function Perfil({ profile, onUpdate }: { profile: Profile; onUpda
   const [erro, setErro]           = useState('')
   const [ok, setOk]               = useState('')
   const [recorte, setRecorte]     = useState<{ src: string; remoto: boolean } | null>(null)
+  const [baixandoFoto, setBaixandoFoto] = useState(false)
   // Entrar com digital (desbloqueio biométrico deste aparelho)
   const [bioSuporta, setBioSuporta] = useState(false)
   const [bioOn, setBioOn] = useState<boolean>(() => biometriaAtiva(profile.user_id))
@@ -67,12 +69,31 @@ export default function Perfil({ profile, onUpdate }: { profile: Profile; onUpda
   function aoEscolherFoto(file: File) { setErro(''); setOk(''); setRecorte({ src: URL.createObjectURL(file), remoto: false }) }
   function fecharRecorte() { if (recorte && !recorte.remoto) { try { URL.revokeObjectURL(recorte.src) } catch {} } setRecorte(null) }
 
-  // Recebe o Blob já enquadrado (do RecortarFoto) e envia
-  async function enviarFoto(blob: Blob) {
+  // Reenquadrar: abre a ORIGINAL (não o recorte). Fotos antigas caem na de exibição.
+  async function reenquadrarFoto() {
+    setErro(''); setOk('')
+    const disp = String(profile.avatar_url).split('?')[0]
+    const orig = urlOriginal(disp)
+    const temOrig = orig !== disp && await imagemCarrega(orig + '?t=' + Date.now())
+    setRecorte({ src: (temOrig ? orig : disp) + '?t=' + Date.now(), remoto: true })
+  }
+
+  async function baixarFotoOriginal() {
+    if (!profile.avatar_url) return
+    setBaixandoFoto(true)
+    const disp = String(profile.avatar_url).split('?')[0]
+    const orig = urlOriginal(disp)
+    const temOrig = orig !== disp && await imagemCarrega(orig + '?t=' + Date.now())
+    await baixarImagem((temOrig ? orig : disp) + '?t=' + Date.now(), 'minha-foto-original.jpg')
+    setBaixandoFoto(false)
+  }
+
+  // Recebe o recorte (exibição) + a original inteira e envia (guarda as duas).
+  async function enviarFoto(blob: Blob, original: Blob | null) {
     setUploading(true); setErro(''); setOk('')
     // Usa timestamp para garantir URL única e quebrar cache do browser
     const path = `avatars/${profile.user_id}_${Date.now()}.jpg`
-    // Remove fotos antigas deste usuário antes de enviar nova
+    // Remove fotos antigas deste usuário antes de enviar nova (recorte + original)
     const { data: listData } = await supabase.storage.from('avatars').list('', { search: profile.user_id })
     if (listData && listData.length > 0) {
       const toDelete = listData.map(f => f.name)
@@ -80,6 +101,8 @@ export default function Perfil({ profile, onUpdate }: { profile: Profile; onUpda
     }
     const { error: upErr } = await supabase.storage.from('avatars').upload(path, blob, { upsert: false, contentType: 'image/jpeg' })
     if (upErr) { setErro('Erro ao enviar foto: ' + upErr.message); setUploading(false); return }
+    // Guarda a ORIGINAL inteira ao lado (pra reenquadrar/baixar depois)
+    if (original) { await supabase.storage.from('avatars').upload(pathOriginal(path), original, { upsert: true, contentType: 'image/jpeg' }) }
     const { data } = supabase.storage.from('avatars').getPublicUrl(path)
     // Adiciona timestamp na URL para forçar refresh do browser
     const urlComCache = data.publicUrl + '?t=' + Date.now()
@@ -162,8 +185,13 @@ export default function Perfil({ profile, onUpdate }: { profile: Profile; onUpda
             {uploading ? 'Enviando...' : 'Alterar foto'}
           </button>
           {profile.avatar_url && !uploading && (
-            <button className="btn btn-ghost btn-sm" onClick={()=>setRecorte({ src: String(profile.avatar_url).split('?')[0], remoto: true })}>
-              <span className="icon icon-sm">crop</span> Reposicionar
+            <button className="btn btn-ghost btn-sm" onClick={reenquadrarFoto}>
+              <span className="icon icon-sm">crop</span> Reenquadrar
+            </button>
+          )}
+          {profile.avatar_url && !uploading && (
+            <button className="btn btn-ghost btn-sm" onClick={baixarFotoOriginal} disabled={baixandoFoto}>
+              <span className="icon icon-sm">download</span> {baixandoFoto ? 'Baixando...' : 'Baixar original'}
             </button>
           )}
         </div>
@@ -178,7 +206,7 @@ export default function Perfil({ profile, onUpdate }: { profile: Profile; onUpda
             src={recorte.src}
             crossOrigin={recorte.remoto}
             onCancel={fecharRecorte}
-            onConfirm={(blob)=>{ fecharRecorte(); enviarFoto(blob) }}
+            onConfirm={(blob, original)=>{ fecharRecorte(); enviarFoto(blob, original) }}
           />
         )}
       </div>

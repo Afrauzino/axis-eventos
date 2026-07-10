@@ -9,7 +9,8 @@ type Props = {
   src: string
   crossOrigin?: boolean
   onCancel: () => void
-  onConfirm: (blob: Blob) => void
+  // (recorte exibido, foto original inteira). A original pode vir null p/ quem não a usa.
+  onConfirm: (blob: Blob, original: Blob | null) => void
   saida?: number              // LARGURA de saída em px (altura = saida/aspecto)
   aspecto?: number            // largura/altura do recorte (padrão 1 = quadrado)
   titulo?: string
@@ -71,7 +72,18 @@ export default function RecortarFoto({ src, crossOrigin, onCancel, onConfirm, sa
       const ctx = c.getContext('2d'); if (!ctx) return
       const sw = Vw / es, sh = Vh / es, sx = -off.x / es, sy = -off.y / es
       ctx.drawImage(img, sx, sy, sw, sh, 0, 0, cw, ch)
-      c.toBlob(b => { if (b) onConfirm(b); else setErro('Não foi possível recortar a imagem.') }, 'image/jpeg', 0.9)
+      // Gera também a ORIGINAL inteira (sem corte), reduzida a no máx 2000px de lado.
+      const maxLado = 2000
+      const fo = Math.min(1, maxLado / Math.max(nat.w, nat.h))
+      const ow = Math.max(1, Math.round(nat.w * fo)), oh = Math.max(1, Math.round(nat.h * fo))
+      const co = document.createElement('canvas'); co.width = ow; co.height = oh
+      const octx = co.getContext('2d')
+      if (octx) octx.drawImage(img, 0, 0, ow, oh)
+      c.toBlob(b => {
+        if (!b) { setErro('Não foi possível recortar a imagem.'); return }
+        if (octx) co.toBlob(orig => onConfirm(b, orig), 'image/jpeg', 0.92)
+        else onConfirm(b, null)
+      }, 'image/jpeg', 0.9)
     } catch {
       setErro('Esta imagem não pôde ser ajustada aqui. Envie outra.')
     }

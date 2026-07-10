@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import RecortarFoto from './RecortarFoto'
+import { pathOriginal, imagemCarrega, baixarImagem } from '../lib/foto'
 
 type Props = {
   bucket: string
@@ -16,17 +17,21 @@ export default function UploadFoto({ bucket, path, currentUrl, onUpload, label =
   const fileRef  = useRef<HTMLInputElement>(null)
   const [loading, setLoading] = useState(false)
   const [erro, setErro]       = useState('')
-  const [recorte, setRecorte] = useState<{ src: string; remoto: boolean } | null>(null)
+  const [recorte, setRecorte] = useState<{ src: string; remoto: boolean; novo: boolean } | null>(null)
   const radius = shape === 'circle' ? '50%' : '12px'
 
-  // Recebe o Blob já recortado (do RecortarFoto) e envia
-  async function enviar(blob: Blob) {
+  // Recebe o recorte (exibição) + a original inteira e envia.
+  // novaOriginal=true (arquivo novo) grava a original; ao só reposicionar, mantém a original.
+  async function enviar(blob: Blob, original: Blob | null, novaOriginal: boolean) {
     setLoading(true); setErro('')
     const fullPath = `${path}.jpg`
     const { error } = await supabase.storage.from(bucket).upload(fullPath, blob, { upsert: true, contentType: 'image/jpeg' })
     if (error) {
       setErro('Erro ao enviar. Verifique se o bucket "' + bucket + '" existe no Supabase Storage.')
       setLoading(false); return
+    }
+    if (novaOriginal && original) {
+      await supabase.storage.from(bucket).upload(pathOriginal(fullPath), original, { upsert: true, contentType: 'image/jpeg' })
     }
     const { data } = supabase.storage.from(bucket).getPublicUrl(fullPath)
     // cache-bust: mesmo caminho reaproveitado → força a nova imagem a aparecer
@@ -37,7 +42,20 @@ export default function UploadFoto({ bucket, path, currentUrl, onUpload, label =
   // Escolheu um arquivo → abre o ajuste (não envia direto)
   function aoEscolher(file: File) {
     setErro('')
-    setRecorte({ src: URL.createObjectURL(file), remoto: false })
+    setRecorte({ src: URL.createObjectURL(file), remoto: false, novo: true })
+  }
+
+  // Reenquadrar: abre a ORIGINAL (não o recorte). Se não houver original (foto antiga), usa a atual.
+  async function reenquadrar() {
+    const origUrl = supabase.storage.from(bucket).getPublicUrl(pathOriginal(`${path}.jpg`)).data.publicUrl + `?t=${Date.now()}`
+    const temOrig = await imagemCarrega(origUrl)
+    setRecorte({ src: temOrig ? origUrl : (currentUrl as string), remoto: true, novo: !temOrig })
+  }
+
+  async function baixarOriginal() {
+    const origUrl = supabase.storage.from(bucket).getPublicUrl(pathOriginal(`${path}.jpg`)).data.publicUrl
+    const temOrig = await imagemCarrega(origUrl)
+    await baixarImagem(temOrig ? origUrl : (currentUrl as string), 'foto-original.jpg')
   }
 
   function fecharRecorte() {
@@ -68,8 +86,13 @@ export default function UploadFoto({ bucket, path, currentUrl, onUpload, label =
           {loading ? 'Enviando...' : label}
         </button>
         {currentUrl && !loading && (
-          <button type="button" className="btn btn-ghost btn-sm" onClick={() => setRecorte({ src: currentUrl, remoto: true })}>
-            <span className="icon icon-sm">crop</span> Reposicionar
+          <button type="button" className="btn btn-ghost btn-sm" onClick={reenquadrar}>
+            <span className="icon icon-sm">crop</span> Reenquadrar
+          </button>
+        )}
+        {currentUrl && !loading && (
+          <button type="button" className="btn btn-ghost btn-sm" onClick={baixarOriginal}>
+            <span className="icon icon-sm">download</span> Baixar original
           </button>
         )}
       </div>
@@ -82,7 +105,7 @@ export default function UploadFoto({ bucket, path, currentUrl, onUpload, label =
           src={recorte.src}
           crossOrigin={recorte.remoto}
           onCancel={fecharRecorte}
-          onConfirm={(blob) => { fecharRecorte(); enviar(blob) }}
+          onConfirm={(blob, original) => { const novo = recorte?.novo ?? false; fecharRecorte(); enviar(blob, original, novo) }}
         />
       )}
     </div>
