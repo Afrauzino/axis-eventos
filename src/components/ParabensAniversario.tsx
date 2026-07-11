@@ -105,12 +105,12 @@ export default function ParabensAniversario({ profile, preview, onFecharPreview 
         <p style={{ color: 'rgba(255,255,255,0.92)', fontSize: 15, lineHeight: 1.5, maxWidth: 340, marginBottom: 32, whiteSpace: 'pre-wrap' }}>{dados.mensagem}</p>
 
         <button onClick={comemorar}
-          style={{ background: 'white', color: '#B83280', border: 'none', borderRadius: 99, padding: '14px 28px', fontSize: 16, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit', marginBottom: 14, boxShadow: '0 6px 20px rgba(0,0,0,0.2)' }}>
+          style={{ background: 'white', color: '#B83280', border: 'none', borderRadius: 99, padding: '14px 28px', fontSize: 16, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit', marginBottom: 12, boxShadow: '0 6px 20px rgba(0,0,0,0.2)' }}>
           🎉 Comemorar!
         </button>
         <button onClick={fechar}
-          style={{ background: 'rgba(255,255,255,0.2)', color: 'white', border: '1px solid rgba(255,255,255,0.5)', borderRadius: 99, padding: '10px 24px', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
-          {preview ? 'Fechar pré-visualização' : 'Fechar'}
+          style={{ background: '#B83280', color: 'white', border: '2px solid white', borderRadius: 99, padding: '12px 32px', fontSize: 15, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 8, boxShadow: '0 4px 14px rgba(0,0,0,0.25)' }}>
+          <span className="icon icon-sm" style={{ color: 'white' }}>close</span> {preview ? 'Fechar pré-visualização' : 'Sair'}
         </button>
       </div>
     </>
