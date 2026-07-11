@@ -56,6 +56,7 @@ const MenusAdmin       = lazy(() => import('./pages/MenusAdmin'))
 const ConfigNotificacoes = lazy(() => import('./pages/ConfigNotificacoes'))
 const Ranking          = lazy(() => import('./pages/Ranking'))
 const Admin            = lazy(() => import('./pages/Admin'))
+const PainelAnalises   = lazy(() => import('./pages/PainelAnalises'))
 const Perfil           = lazy(() => import('./pages/Perfil'))
 
 export type Profile = {
@@ -170,6 +171,7 @@ function AppRoutes({ profile, onProfileUpdate, versaoFotos }: { profile: Profile
       <Route path="/doacoes"               element={<Doacoes profile={profile} />} />
       <Route path="/admin/menus"           element={<MenusAdmin profile={profile} />} />
       <Route path="/admin/notificacoes"    element={<ConfigNotificacoes profile={profile} />} />
+      <Route path="/admin/painel"          element={<PainelAnalises profile={profile} />} />
       <Route path="/ranking"               element={<Ranking profile={profile} />} />
       <Route path="/admin"                 element={<Admin profile={profile} />} />
       <Route path="/perfil"                element={<Perfil profile={profile} onUpdate={onProfileUpdate} />} />
@@ -208,6 +210,7 @@ const TITULOS_ROTA: Record<string,string> = {
   '/admin': 'Administração',
   '/admin/menus': 'Administração',
   '/admin/notificacoes': 'Notificações',
+  '/admin/painel': 'Painel',
   '/correio': 'Correio',
   '/logistica': 'Logística',
   '/midia': 'Mídia',
@@ -271,6 +274,15 @@ export default function App() {
       .subscribe()
     return () => { supabase.removeChannel(canal) }
   }, [session])
+
+  // Marca "último acesso" (Painel: online agora / acessaram hoje). Só o próprio (sql/63).
+  useEffect(() => {
+    if (!session?.user?.id) return
+    const ping = () => { supabase.from('profiles').update({ last_seen: new Date().toISOString() }).eq('user_id', session.user.id).then(()=>{}, ()=>{}) }
+    ping()
+    const t = setInterval(ping, 120000)   // a cada 2 min enquanto o app está aberto
+    return () => clearInterval(t)
+  }, [session?.user?.id])
 
   useEffect(() => {
     carregarCorSalva()

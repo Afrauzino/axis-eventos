@@ -34,6 +34,7 @@ export const ADMIN_GRUPOS: AdminGrupo[] = [
     { label: 'Comparativo',      rota: '/relatorios',             emoji: '📊' },
   ] },
   { titulo: 'Sistema', curto: 'Sistema', emoji: '🛠️', itens: [
+    { label: 'Painel',           rota: '/admin/painel',           emoji: '📊' },
     { label: 'Backup',           rota: '/admin?aba=backup',       emoji: '💾' },
     { label: 'Logs',             rota: '/admin?aba=logs',         emoji: '📜' },
     { label: 'Saúde do sistema', rota: '/admin/saude-sistema',    emoji: '🩺' },
