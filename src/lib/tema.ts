@@ -123,15 +123,15 @@ export function aplicarIconesApp(logoUrl: string | null) {
   const tipo = isSvg ? 'image/svg+xml' : 'image/png'
   const cor = getComputedStyle(document.documentElement).getPropertyValue('--primary').trim() || COR_PADRAO
 
+  // Só 'any': o ícone tem cantos arredondados transparentes (segue a linha prata).
+  // Com 'maskable', o Android preencheria os cantos de branco (o bug do quadrado branco).
   const icons = logoUrl
     ? (isSvg
-        ? [{ src: logoUrl, sizes: 'any', type: tipo, purpose: 'any' },
-           { src: logoUrl, sizes: 'any', type: tipo, purpose: 'maskable' }]
+        ? [{ src: logoUrl, sizes: 'any', type: tipo, purpose: 'any' }]
         : [{ src: logoUrl, sizes: '192x192', type: tipo, purpose: 'any' },
-           { src: logoUrl, sizes: '512x512', type: tipo, purpose: 'any' },
-           { src: logoUrl, sizes: '512x512', type: tipo, purpose: 'maskable' }])
+           { src: logoUrl, sizes: '512x512', type: tipo, purpose: 'any' }])
     : [{ src: origin + '/axis-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
-       { src: origin + '/axis-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' }]
+       { src: origin + '/axis-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' }]
 
   const manifest = {
     name: 'AXIS Eventos', short_name: 'AXIS', description: 'Gestão de eventos religiosos',
