@@ -41,6 +41,12 @@ export default function AlertasLideres({ profile }: { profile?: Profile }) {
 
   useEffect(() => { if (!evLoading) carregar() }, [evento, evLoading])
 
+  // Quem NÃO é líder de equipe não pode ficar em "Entre líderes"/"Para equipes" — cai em "Encontreiros"
+  useEffect(() => {
+    const souLiderReal = admin || equipes.some(e => e.leader_id === minhaPessoa?.id || e.co_leader_id === minhaPessoa?.id)
+    if (!souLiderReal && (destino === 'lideres' || destino === 'equipe')) setDestino('encontreiros')
+  }, [equipes, minhaPessoa, admin, destino])
+
   async function carregar() {
     setLoading(true)
     let minha: Pessoa|null = null
@@ -112,6 +118,8 @@ export default function AlertasLideres({ profile }: { profile?: Profile }) {
   function toggleSelec(id:string) { setSelec(prev => prev.includes(id) ? prev.filter(x=>x!==id) : [...prev, id]) }
 
   async function enviar() {
+    // Só LÍDER DE EQUIPE (ou admin) manda "entre líderes" e "para equipes"
+    if ((destino==='lideres' || destino==='equipe') && !ehLider) { toast.aviso('Só líder de equipe pode enviar por aqui.'); return }
     let destinatarios: string[] = []
     if (destino==='lideres') {
       destinatarios = selec

@@ -467,6 +467,8 @@ export default function Admin({ profile }: { profile?: Profile }) {
     await supabase.from('profiles').update({ user_role: cfg.user_role, role_status: cfg.status }).eq('user_id', userId)
     // Converte o TIPO da pessoa (encontrista/encontreiro) quando o cargo define isso
     if (cfg.role_type) await supabase.from('people').update({ role_type: cfg.role_type }).eq('user_id', userId)
+    // Virou encontrista → tira de equipes/liderança (encontrista não fica em equipe)
+    if (cfg.role_type === 'encounterer') await aplicarRegrasTipo(userId, 'encounterer')
     setPessoas(prev => prev.map(p => p.user_id === userId ? { ...p, user_role: cfg.user_role, role_status: cfg.status, ...(cfg.role_type ? { role_type: cfg.role_type } : {}) } : p))
     // Avisa a pessoa que o nível de acesso dela mudou (silencioso na aprovação, que já avisa)
     if (!silencioso) notificarRegra('acesso_mudou', { user_ids: [userId], title: '🔑 Seu acesso mudou', body: `Agora você é ${cfg.label}.`, url: '/' })
@@ -585,14 +587,36 @@ export default function Admin({ profile }: { profile?: Profile }) {
       : 'Conta reativada! A pessoa já pode entrar com o login que tinha.')
   }
 
+  // REGRA: encontrista NÃO pode estar em equipe nem ser líder. Ao virar encontrista,
+  // some com os vínculos (equipe + liderança) e rebaixa o cargo. Ao virar encontreiro,
+  // sobe o cargo base. Assim "desfazer" é REAL — nada fica pendurado.
+  async function aplicarRegrasTipo(userId: string | null, roleType: string, personIdHint?: string) {
+    if (roleType === 'encounterer') {
+      let pids: string[] = personIdHint ? [personIdHint] : []
+      if (userId) { const { data } = await supabase.from('people').select('id').eq('user_id', userId); pids = [...new Set([...pids, ...(data ?? []).map((x: any) => x.id)])] }
+      if (pids.length) {
+        await supabase.from('people_teams').delete().in('person_id', pids)         // sai de todas as equipes
+        await supabase.from('teams').update({ leader_id: null }).in('leader_id', pids)      // deixa de liderar
+        await supabase.from('teams').update({ co_leader_id: null }).in('co_leader_id', pids)
+      }
+      if (userId) await supabase.from('profiles').update({ user_role: 'aprovado' }).eq('user_id', userId).in('user_role', ['lider', 'encontreiro'])
+    } else if (roleType === 'worker' && userId) {
+      await supabase.from('profiles').update({ user_role: 'encontreiro' }).eq('user_id', userId).eq('user_role', 'aprovado')
+    }
+    limparCachePermissoes()
+  }
+
   // Trocar tipo: encontrista <-> encontreiro
   async function trocarTipoPessoa(p: typeof pessoas[0]) {
     const novo = p.role_type === 'encounterer' ? 'worker' : 'encounterer'
     const label = novo === 'worker' ? 'Encontreiro' : 'Encontrista'
-    if (!confirm(`Transformar "${p.name}" em ${label}?`)) return
+    const aviso = novo === 'encounterer' ? '\n\nEle sairá de todas as equipes e deixará de ser líder (encontrista não fica em equipe).' : ''
+    if (!confirm(`Transformar "${p.name}" em ${label}?${aviso}`)) return
     await supabase.from('people').update({ role_type: novo }).eq('id', p.id)
+    await aplicarRegrasTipo(p.user_id ?? null, novo, p.id)
     setPessoas(prev => prev.map(x => x.id === p.id ? { ...x, role_type: novo } : x))
     setPessoaDetalhe(prev => prev && prev.id === p.id ? { ...prev, role_type: novo } : prev)
+    carregar()
   }
 
   // #1 — abrir edição COMPLETA do cadastro (foto + todos os dados)

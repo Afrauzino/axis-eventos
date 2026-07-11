@@ -128,16 +128,36 @@ export default function Equipes({ profile }: { profile?: Profile }) {
     carregar()
   }
 
+  // Rebaixa quem era líder/co-líder e NÃO lidera mais nenhuma equipe (desfazer real).
+  async function reverterLideres(ids: (string|null|undefined)[]) {
+    if (!evento) return
+    for (const oldId of ids.filter(Boolean) as string[]) {
+      const p = pessoas.find(x => x.id === oldId)
+      if (!p?.user_id) continue
+      const { data: outras } = await supabase.from('teams').select('id')
+        .eq('event_id', evento.id).or(`leader_id.eq.${oldId},co_leader_id.eq.${oldId}`)
+      if ((outras ?? []).length === 0) {
+        const base = p.role_type === 'worker' ? 'encontreiro' : 'aprovado'
+        await supabase.from('profiles').update({ user_role: base }).eq('user_id', p.user_id).eq('user_role', 'lider')
+      }
+    }
+  }
+
   async function excluir(id: string) {
     if (!confirm('Remover esta equipe? Os membros nao serao excluidos.')) return
-    await supabase.from('teams').delete().eq('id',id)
+    const eq = equipes.find(e => e.id === id)
+    await supabase.from('people_teams').delete().eq('team_id', id)
+    await supabase.from('teams').delete().eq('id', id)
+    await reverterLideres([eq?.leader_id, eq?.co_leader_id])
     setExpandida(null); carregar()
   }
 
   async function excluirEquipe(id: string) {
     if (!confirm('Excluir esta equipe? Os membros não serão excluídos, apenas desvinculados.')) return
+    const eq = equipes.find(e => e.id === id)
     await supabase.from('people_teams').delete().eq('team_id', id)
     await supabase.from('teams').delete().eq('id', id)
+    await reverterLideres([eq?.leader_id, eq?.co_leader_id])
     setExpandida(null); carregar()
   }
 
