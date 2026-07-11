@@ -225,7 +225,9 @@ export default function Ministracoes({ profile }: { profile?: Profile }) {
         await supabase.from('theaters').update({ ministracao_id: minId }).eq('id', form.teatro_id)
       }
     }
-    setModal(false); setSalvando(false); setEditando(null); carregar()
+    // Fecha edição (e o detalhe, se estava aberto por trás) — cada modal consome
+    // seu próprio estado de histórico, então "voltar" fica na tela de Ministrações.
+    setModal(false); setDetalhe(null); setSalvando(false); setEditando(null); carregar()
   }
 
   async function excluir(id:string) {
@@ -404,7 +406,7 @@ export default function Ministracoes({ profile }: { profile?: Profile }) {
                     )}
                     {(canEdit || isEuMinistrant) && (
                       <div style={{display:'flex',gap:8}}>
-                        <button className="btn btn-ghost" style={{flex:1}} onClick={()=>{setDetalhe(null);abrirEdicao(detalhe)}}>{canEdit ? 'Editar' : 'Editar minha ministração'}</button>
+                        <button className="btn btn-ghost" style={{flex:1}} onClick={()=>abrirEdicao(detalhe)}>{canEdit ? 'Editar' : 'Editar minha ministração'}</button>
                         {canEdit && <button className="btn" style={{flex:1,background:'var(--danger-bg)',color:'var(--danger)',border:'none'}} onClick={()=>excluir(detalhe.id)}>Excluir</button>}
                       </div>
                     )}
