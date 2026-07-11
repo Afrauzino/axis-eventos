@@ -83,7 +83,22 @@ export async function ativarPush(userId: string): Promise<boolean> {
 // Dispara uma notificação Web Push (chama a Edge Function 'enviar-push').
 // Ex.: enviarPush({ notify_admins:true, title:'Nova inscrição', body:'...', url:'/admin' })
 export async function enviarPush(opts: { user_ids?: string[]; person_ids?: string[]; notify_admins?: boolean; incluir_autor?: boolean; alerta?: { event_id: string; target_type: string; target_team_ids?: string[] }; title: string; body: string; url?: string; tag?: string }): Promise<any> {
-  try { const { data } = await supabase.functions.invoke('enviar-push', { body: { url: '/', ...opts } }); return data } catch (e) { return { error: String(e) } }
+  try {
+    const { data, error } = await supabase.functions.invoke('enviar-push', { body: { url: '/', ...opts } })
+    if (error) {
+      // A função devolveu erro (500/401/etc). Extrai a mensagem REAL do corpo pra
+      // diagnosticar (o supabase-js esconde isso em error.context = Response).
+      let detalhe = (error as any)?.message || 'falha ao chamar o servidor'
+      const ctx = (error as any)?.context
+      try {
+        if (ctx && typeof ctx.json === 'function') { const b = await ctx.json(); if (b) detalhe = b.error || JSON.stringify(b) }
+        else if (ctx && typeof ctx.text === 'function') { const t = await ctx.text(); if (t) detalhe = t }
+        if (ctx?.status) detalhe = `HTTP ${ctx.status} — ${detalhe}`
+      } catch {}
+      return { error: detalhe, enviados: 0, falhas: 0 }
+    }
+    return data
+  } catch (e) { return { error: String(e) } }
 }
 
 // Teste de 1 toque: assina o aparelho, mostra uma notificação LOCAL (prova de exibição)
@@ -197,7 +212,10 @@ export async function diagnosticoPush(userId: string): Promise<ResultadoDiag> {
   if (regraFail) return { passos, veredito: '⚠️ O culpado é as REGRAS: estão TODAS desligadas, então nenhum evento vira push (o teste passa porque ignora as regras). Vá em Administração → Notificações → Regras e ligue o que quer receber.', vereditoStatus: 'fail' }
   if (enviados > 0 && localOk) return { passos, veredito: '✅ Tudo certo neste aparelho! O push do servidor chegou e o aparelho exibe. Se com o app FECHADO ainda não vê na bandeja, confira Config. do Android → Apps → AXIS → Notificações (deixe ligado, sem "silenciar").', vereditoStatus: 'ok' }
   if (enviados > 0 && !localOk) return { passos, veredito: 'O servidor entregou, mas o aparelho não exibiu a local — é a permissão do Android. Config. → Apps → AXIS → Notificações → Permitir.', vereditoStatus: 'warn' }
-  if (enviados === 0 && sub) return { passos, veredito: '❌ Sua assinatura não está no servidor (ou é de outra conta neste celular). Toque em "Reativar neste aparelho" e rode de novo. Se persistir, falta REPUBLICAR a Edge Function enviar-push.', vereditoStatus: 'fail' }
+  // enviados === 0 daqui pra baixo
+  if (erroServ) return { passos, veredito: `❌ O SERVIDOR quebrou/recusou: "${erroServ}". Isso é na Edge Function enviar-push — quase sempre falta o secret VAPID_PRIVATE/VAPID_PUBLIC (Edge Functions → Secrets) ou a função precisa ser REPUBLICADA. Corrija lá e rode de novo.`, vereditoStatus: 'fail' }
+  if (servidorTem) return { passos, veredito: '❌ Sua assinatura está certinha no servidor, mas a função enviar-push devolveu 0 envios. Quase sempre é a Edge Function desatualizada ou faltando os secrets VAPID. REPUBLIQUE a função enviar-push no Supabase e confira os secrets VAPID_PUBLIC/VAPID_PRIVATE. Depois rode de novo.', vereditoStatus: 'fail' }
+  if (sub) return { passos, veredito: '❌ Sua assinatura não está amarrada a você no servidor. Toque em "Reativar neste aparelho" e rode de novo.', vereditoStatus: 'fail' }
   return { passos, veredito: '❌ Não consegui assinar este aparelho. Verifique a permissão de notificação do Android e tente "Reativar".', vereditoStatus: 'fail' }
 }
 
