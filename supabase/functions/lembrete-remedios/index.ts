@@ -22,6 +22,14 @@ function horaBR(iso: string): string {
   try { return new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' }) } catch { return '' }
 }
 
+// Chave de SERVIÇO (bypassa RLS): prefere a NOVA (sb_secret_...) e cai na legada.
+// A legada (SUPABASE_SERVICE_ROLE_KEY) foi deprecada e perdeu acesso na migração.
+function chaveServico(): string {
+  const raw = Deno.env.get('SUPABASE_SECRET_KEYS') || ''
+  if (raw) { const m = raw.match(/sb_secret_[A-Za-z0-9_\-]+/); if (m) return m[0]; try { const p = JSON.parse(raw); if (typeof p === 'string' && p) return p } catch { /* ignore */ } }
+  return Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || ''
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors })
   try {
@@ -30,7 +38,7 @@ Deno.serve(async (req) => {
     if (!secret || (auth !== `Bearer ${secret}` && auth !== secret)) return json({ error: 'não autorizado' }, 401)
 
     const url        = Deno.env.get('SUPABASE_URL')!
-    const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+    const serviceKey = chaveServico()
     const VAPID_PUBLIC  = Deno.env.get('VAPID_PUBLIC')!
     const VAPID_PRIVATE = Deno.env.get('VAPID_PRIVATE')!
     webpush.setVapidDetails('mailto:afrauzino@gmail.com', VAPID_PUBLIC, VAPID_PRIVATE)

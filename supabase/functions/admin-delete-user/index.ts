@@ -17,12 +17,19 @@ const json = (body: unknown, status = 200) =>
 // Mesma regra do app: admin OU pastor OU flag is_admin
 const ehAdmin = (p: any) => p?.is_admin === true || p?.user_role === 'admin' || p?.user_role === 'pastor'
 
+// Chave de SERVIÇO (bypassa RLS): prefere a NOVA (sb_secret_...) e cai na legada.
+function chaveServico(): string {
+  const raw = Deno.env.get('SUPABASE_SECRET_KEYS') || ''
+  if (raw) { const m = raw.match(/sb_secret_[A-Za-z0-9_\-]+/); if (m) return m[0]; try { const p = JSON.parse(raw); if (typeof p === 'string' && p) return p } catch { /* ignore */ } }
+  return Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || ''
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors })
   try {
     const url         = Deno.env.get('SUPABASE_URL')!
     const anonKey     = Deno.env.get('SUPABASE_ANON_KEY')!
-    const serviceKey  = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+    const serviceKey  = chaveServico()
     const authHeader  = req.headers.get('Authorization') ?? ''
 
     // 1) Quem está chamando? (usa o JWT do usuário logado)

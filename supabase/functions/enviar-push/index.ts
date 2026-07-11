@@ -3,7 +3,14 @@
 // Chamada pelo app quando algo acontece (nova inscrição, marcaram no mural, etc.).
 // Env vars necessárias no Supabase (Edge Functions -> Secrets):
 //   VAPID_PUBLIC, VAPID_PRIVATE  (as chaves geradas)
-//   (SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY já são injetados)
+//   (SUPABASE_URL e as chaves de serviço já são injetados)
+//
+// IMPORTANTE (2026-07-11): o Supabase migrou pro sistema NOVO de chaves e marcou
+// SUPABASE_SERVICE_ROLE_KEY / SUPABASE_ANON_KEY como DEPRECATED. A chave legada
+// perdeu acesso -> a leitura de push_subscriptions voltava VAZIA e a função
+// devolvia {enviados:0} com status 200 (o erro era engolido). Agora a função:
+//   (1) usa a chave NOVA (SUPABASE_SECRET_KEYS) e cai na legada só se precisar;
+//   (2) NÃO engole erro: se não conseguir ler as assinaturas, devolve o motivo.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import webpush from 'npm:web-push@3.6.7'
@@ -15,16 +22,29 @@ const cors = {
 }
 const json = (b: unknown, s = 200) => new Response(JSON.stringify(b), { status: s, headers: { ...cors, 'Content-Type': 'application/json' } })
 
+// Chave de SERVIÇO (bypassa RLS): prefere a NOVA (sb_secret_...) e cai na legada.
+function chaveServico(): { key: string; fonte: string } {
+  const raw = Deno.env.get('SUPABASE_SECRET_KEYS') || ''
+  if (raw) {
+    // Acha a secret nova em qualquer formato do JSON (dict/array/string).
+    const m = raw.match(/sb_secret_[A-Za-z0-9_\-]+/)
+    if (m) return { key: m[0], fonte: 'SECRET_KEYS' }
+    try { const p = JSON.parse(raw); if (typeof p === 'string' && p) return { key: p, fonte: 'SECRET_KEYS(str)' } } catch { /* ignore */ }
+  }
+  const legacy = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || ''
+  if (legacy) return { key: legacy, fonte: 'SERVICE_ROLE(legado)' }
+  return { key: '', fonte: 'NENHUMA' }
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors })
   try {
     const url        = Deno.env.get('SUPABASE_URL')!
-    const anonKey    = Deno.env.get('SUPABASE_ANON_KEY')!
-    const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+    const anonKey    = Deno.env.get('SUPABASE_ANON_KEY') || Deno.env.get('SUPABASE_PUBLISHABLE_KEYS') || ''
     const VAPID_PUBLIC  = Deno.env.get('VAPID_PUBLIC')!
     const VAPID_PRIVATE = Deno.env.get('VAPID_PRIVATE')!
 
-    // Só quem está logado pode disparar
+    // Só quem está logado pode disparar (valida o JWT do usuário, não a anon key)
     const authHeader = req.headers.get('Authorization') ?? ''
     const userClient = createClient(url, anonKey, { global: { headers: { Authorization: authHeader } } })
     const { data: { user } } = await userClient.auth.getUser()
@@ -33,6 +53,9 @@ Deno.serve(async (req) => {
     webpush.setVapidDetails('mailto:afrauzino@gmail.com', VAPID_PUBLIC, VAPID_PRIVATE)
 
     const { user_ids, person_ids, notify_admins, alerta, incluir_autor, title, body, url: link, tag } = await req.json().catch(() => ({}))
+
+    const { key: serviceKey, fonte } = chaveServico()
+    if (!serviceKey) return json({ error: 'Sem chave de serviço na função (configure SUPABASE_SECRET_KEYS ou SUPABASE_SERVICE_ROLE_KEY nos Secrets).', enviados: 0, falhas: 0 })
     const admin = createClient(url, serviceKey)
 
     const alvos = new Set<string>(Array.isArray(user_ids) ? user_ids.filter(Boolean) : [])
@@ -71,11 +94,15 @@ Deno.serve(async (req) => {
     // Não notificar quem disparou (o próprio autor) — salvo em teste (incluir_autor)
     if (user?.id && !incluir_autor) alvos.delete(user.id)
     if (alvos.size === 0) return json({ ok: true, enviados: 0, falhas: 0, semAlvos: true })
-    const { data: subs } = await admin.from('push_subscriptions').select('*').in('user_id', [...alvos])
+
+    // Lê as assinaturas — AGORA com erro visível (o bug era engolir isto).
+    const { data: subs, error: subErr } = await admin.from('push_subscriptions').select('*').in('user_id', [...alvos])
+    if (subErr) return json({ error: `Não consegui ler as assinaturas (chave ${fonte}): ${subErr.message}`, enviados: 0, falhas: 0, fonte })
+    if (!subs || subs.length === 0) return json({ ok: true, enviados: 0, falhas: 0, lidas: 0, alvos: alvos.size, fonte, error: `0 assinaturas lidas para ${alvos.size} alvo(s) usando a chave ${fonte}. Se o app diz que existem, a chave de serviço está sem acesso à tabela.` })
 
     const payload = JSON.stringify({ title: title || 'AXIS Eventos', body: body || '', url: link || '/', tag: tag || undefined })
     let enviados = 0, falhas = 0
-    for (const s of subs ?? []) {
+    for (const s of subs) {
       try {
         await webpush.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, payload)
         enviados++
@@ -83,11 +110,11 @@ Deno.serve(async (req) => {
         falhas++
         const code = e?.statusCode
         if (code === 404 || code === 410) { // assinatura morta -> limpa
-          try { await admin.from('push_subscriptions').delete().eq('endpoint', s.endpoint) } catch {}
+          try { await admin.from('push_subscriptions').delete().eq('endpoint', s.endpoint) } catch { /* ignore */ }
         }
       }
     }
-    return json({ ok: true, enviados, falhas })
+    return json({ ok: true, enviados, falhas, lidas: subs.length, fonte })
   } catch (e) {
     return json({ error: String((e as any)?.message ?? e) }, 500)
   }
