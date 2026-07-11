@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import CronogramaPoster, { type DiaPoster } from './CronogramaPoster'
+import CronogramaPosterModerno from './CronogramaPosterModerno'
 
 // Painel de impressão do cronograma resumido: controles simples (fonte, dias,
 // teatro) + prévia dentro de uma "folha" A4. Modular e com visual limpo.
@@ -30,6 +31,7 @@ export default function CronogramaImpressao({ titulo, dias }: { titulo: string; 
   const [escala, setEscala] = useState(1)
   const [separar, setSeparar] = useState(false)
   const [elenco, setElenco] = useState(false)
+  const [moderno, setModerno] = useState(false)
   const pct = Math.round(escala * 100)
 
   return (
@@ -47,6 +49,7 @@ export default function CronogramaImpressao({ titulo, dias }: { titulo: string; 
       `}</style>
 
       <div className="crono-toolbar no-print" style={{ display: 'flex', flexWrap: 'wrap', gap: 14, alignItems: 'center', padding: '4px 4px 16px' }}>
+        <Segmento label="Modelo" value={moderno} onChange={setModerno} opcoes={[{ v: false, l: 'Clássico' }, { v: true, l: 'Cartão' }]} />
         <Segmento label="Dias" value={separar} onChange={setSeparar} opcoes={[{ v: false, l: 'Juntos (o que couber)' }, { v: true, l: 'Um por página' }]} />
         <Segmento label="Teatro" value={elenco} onChange={setElenco} opcoes={[{ v: false, l: 'Nome' }, { v: true, l: 'Fotos do elenco' }]} />
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -59,7 +62,9 @@ export default function CronogramaImpressao({ titulo, dias }: { titulo: string; 
 
       <div className="crono-fundo">
         <div className="crono-folha">
-          <CronogramaPoster titulo={titulo} dias={dias} slim escala={escala} separarDias={separar} mostrarElenco={elenco} />
+          {moderno
+            ? <CronogramaPosterModerno titulo={titulo} dias={dias} escala={escala} separarDias={separar} mostrarElenco={elenco} />
+            : <CronogramaPoster titulo={titulo} dias={dias} slim escala={escala} separarDias={separar} mostrarElenco={elenco} />}
         </div>
       </div>
     </>

@@ -16,7 +16,7 @@ import CronometroPopup from '../components/CronometroPopup'
 import CronometroDisplay from '../components/CronometroDisplay'
 import type { Profile } from '../App'
 
-type TipoAtividade = { id:string; nome:string; cor:string; chave?:string|null; protegido?:boolean }
+type TipoAtividade = { id:string; nome:string; cor:string; icone?:string|null; chave?:string|null; protegido?:boolean }
 type Ministracao = { id:string; titulo:string; ministrante_id:string|null; local:string|null; descricao:string|null; tema:string|null; foto_poster:string|null }
 type Teatro      = { id:string; nome:string; local:string|null; descricao:string|null; ministracao_id?:string|null }
 type Local       = { id:string; nome:string; tipo:string }
@@ -154,7 +154,7 @@ export default function Cronograma({ profile }: { profile?: Profile }) {
       supabase.from('theaters').select('id,nome,local,descricao,ministracao_id').eq('event_id', evento.id).order('nome'),
       supabase.from('locais').select('id,nome,tipo').eq('event_id', evento.id).order('nome'),
       supabase.from('people').select('id,name').eq('event_id', evento.id).eq('role_type','worker').order('name'),
-      supabase.from('cronograma_tipos').select('id,nome,cor,chave,protegido').eq('ativo',true).order('ordem'),
+      supabase.from('cronograma_tipos').select('id,nome,cor,icone,chave,protegido').eq('ativo',true).order('ordem'),
       supabase.from('cozinha_cardapios').select('id,tipo_refeicao_nome,titulo').eq('event_id', evento.id),
       supabase.from('people').select('id,name,photo_url').eq('event_id', evento.id),
       supabase.from('personagens_globais').select('id,nome'),
@@ -353,25 +353,31 @@ export default function Cronograma({ profile }: { profile?: Profile }) {
       const d = new Date(it.hora_inicio); const k = `${d.getFullYear()}-${String(d.getMonth()).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
       ;(byDay[k]=byDay[k]||[]).push(it)
     })
+    const MES3 = ['JAN','FEV','MAR','ABR','MAI','JUN','JUL','AGO','SET','OUT','NOV','DEZ']
     return Object.keys(byDay).sort().map(k => {
       const items = byDay[k]
-      const dia = DIAS[new Date(items[0].hora_inicio).getDay()]
+      const dref = new Date(items[0].hora_inicio)
+      const dia = DIAS[dref.getDay()]
+      const dataLabel = `${String(dref.getDate()).padStart(2,'0')}. ${MES3[dref.getMonth()]}`
       const linhas = items.map(it => {
         const { min, tea, ministrante } = getInfo(it)
-        const cor = tiposDB.find(t=>t.nome.toLowerCase()===it.tipo.toLowerCase())?.cor ?? TIPO_COR_FALLBACK[it.tipo] ?? '#E8821A'
+        const tipo = tiposDB.find(t=>t.nome.toLowerCase()===it.tipo.toLowerCase())
+        const cor = tipo?.cor ?? TIPO_COR_FALLBACK[it.tipo] ?? '#E8821A'
+        const icone = tipo?.icone ?? null
+        const sub = it.descricao ?? null
         const mfoto = min?.ministrante_id ? pessoaFoto[min.ministrante_id] : null
         if (min || ministrante) {
           const atores = tea ? (elencoPorTeatro[tea.id] ?? []) : []
           const elenco = atores.map(a => { const pf = pessoaFoto[a.person_id]; return { nome: pf?.name ?? '', foto: pf?.photo_url ?? null } })
-          return { kind:'min' as const, horario:horaP(it.hora_inicio), duracao:durP(it), cor,
+          return { kind:'min' as const, horario:horaP(it.hora_inicio), duracao:durP(it), cor, icone, sub,
             ministrante:(mfoto?.name ?? ministrante?.name ?? '').toUpperCase(),
             titulo:(min?.titulo ?? it.titulo).toUpperCase(), fotoUrl:mfoto?.photo_url ?? null,
             fotoPng: min?.foto_poster ?? null,
             teatro: tea?.nome ? tea.nome.toUpperCase() : null, elenco }
         }
-        return { kind:'simples' as const, horario:horaP(it.hora_inicio), duracao:durP(it), cor, titulo:it.titulo.toUpperCase() }
+        return { kind:'simples' as const, horario:horaP(it.hora_inicio), duracao:durP(it), cor, icone, sub, titulo:it.titulo.toUpperCase() }
       })
-      return { dia, linhas }
+      return { dia, dataLabel, linhas }
     })
   }, [itens, ministrações, teatros, ministrantes, tiposDB, pessoaFoto, elencoPorTeatro])
 

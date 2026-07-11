@@ -18,8 +18,10 @@ export type LinhaPoster = {
   fotoPng?: string | null   // PNG recortado (fundo transparente) só do pôster
   teatro?: string | null
   elenco?: { nome: string; foto: string | null }[]
+  icone?: string | null     // ícone do tipo (Material Symbols) — modelo cartão
+  sub?: string | null       // descrição/subtítulo — modelo cartão
 }
-export type DiaPoster = { dia: string; linhas: LinhaPoster[] }
+export type DiaPoster = { dia: string; dataLabel?: string; linhas: LinhaPoster[] }
 
 const HDR = { background: '#111827', color: 'white' }
 const PEACH = '#F6D5A6'  // bege do pill do ministrante (igual ao modelo)
