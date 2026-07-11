@@ -12,6 +12,7 @@ import ContagemRegressiva from '../components/ContagemRegressiva'
 import ProximoItem from '../components/ProximoItem'
 import MuralGratidao from '../components/MuralGratidao'
 import Aniversariantes from '../components/Aniversariantes'
+import BannerRanking from '../components/BannerRanking'
 import FichaMedica from '../components/FichaMedica'
 import MetaEncontristas from '../components/MetaEncontristas'
 import VersiculoDia from '../components/VersiculoDia'
@@ -363,6 +364,7 @@ export default function Dashboard({ profile }: { profile: Profile }) {
 
   return (
     <div className="page slide-up">
+      <BannerRanking />
       {/* Encontrista: preenche a ficha médica aqui; após concluir, some da home
           (um responsável com liberação ainda edita pela Saúde). */}
       {roleType === 'encounterer' && evento && meuPersonId && !fichaConcluida && (

@@ -5,6 +5,8 @@ import { useVoltarFecha } from '../hooks/useVoltarFecha'
 import { getInitials } from '../utils'
 import { useEvento } from '../hooks/useEvento'
 import { useRegistrarChrome } from '../lib/chrome'
+import { carregarConfig, salvarConfig } from '../lib/tema'
+import { enviarPush } from '../lib/push'
 import type { Profile } from '../App'
 
 type Categoria = { id:string; nome:string; descricao:string|null; icone:string; cor:string; ordem:number }
@@ -39,6 +41,7 @@ export default function Ranking({ profile }: { profile?: Profile }) {
   const [pessoaAberta, setPessoaAberta] = useState<Pessoa|null>(null)
   useVoltarFecha(!!pessoaAberta, () => setPessoaAberta(null))
   const [myPersonId, setMyPersonId] = useState<string|null>(null)
+  const [aberto, setAberto] = useState(false)  // votação aberta? (admin inicia/termina)
   const [voltarPara, setVoltarPara] = useState<string|null>(null) // origem quando aberto via "Votar neste encontrista"
   const canAdmin = profile && ['admin','coordenador'].includes(profile.user_role)
   const location = useLocation()
@@ -95,7 +98,19 @@ export default function Ranking({ profile }: { profile?: Profile }) {
 
     // Qualquer usuário logado pode votar - usar user_id diretamente
     if (profile) setMyPersonId(profile.user_id)
+    const cfg = await carregarConfig('ranking_aberto')
+    setAberto(cfg === '1')
     setLoading(false)
+  }
+
+  // Admin abre/fecha a votação. Abrir avisa todos no celular (não mexe no painel de regras).
+  async function iniciarVotacao() {
+    await salvarConfig('ranking_aberto', '1'); setAberto(true)
+    if (evento) enviarPush({ alerta: { event_id: evento.id, target_type: 'all' }, title: '🏆 Votação do Ranking começou!', body: 'Vote nos destaques do encontro!', url: '/ranking' })
+  }
+  async function terminarVotacao() {
+    if (!confirm('Terminar a votação? Ninguém mais poderá votar.')) return
+    await salvarConfig('ranking_aberto', '0'); setAberto(false)
   }
 
   const CATEGORIAS_PADRAO = [
@@ -197,9 +212,22 @@ export default function Ranking({ profile }: { profile?: Profile }) {
 
   const lista = catSel ? rankingCompleto(catSel.id) : []
   const poderes = !!profile && (profile.role_status === 'approved' || profile.user_role === 'admin')
+  const podeVotar = poderes && aberto   // só vota com a votação ABERTA
 
   return (
     <div className="page">
+      {/* Status da votação + controle do admin */}
+      <div style={{background:'white',borderRadius:12,padding:'12px 14px',boxShadow:'var(--shadow-sm)',marginBottom:14,display:'flex',alignItems:'center',gap:10}}>
+        <span style={{fontSize:22}}>{aberto?'🟢':'🔴'}</span>
+        <div style={{flex:1,minWidth:0}}>
+          <p style={{fontSize:14,fontWeight:800}}>{aberto?'Votação aberta':'Votação encerrada'}</p>
+          <p style={{fontSize:12,color:'var(--muted)'}}>{aberto?'Todos podem votar agora.':'Ninguém pode votar — só ver o resultado.'}</p>
+        </div>
+        {canAdmin && (aberto
+          ? <button className="btn btn-sm" style={{background:'var(--danger-bg)',color:'var(--danger)'}} onClick={terminarVotacao}>Terminar</button>
+          : <button className="btn btn-sm btn-primary" onClick={iniciarVotacao}>Iniciar votação</button>)}
+      </div>
+
       {/* Categoria atual (escolhida na ⚙️) */}
       {catSel && (
         <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:14}}>
@@ -247,7 +275,7 @@ export default function Ranking({ profile }: { profile?: Profile }) {
 
           {/* Lista de pessoas — clique abre todas as categorias para votar */}
           <p className="section-label mb-2">
-            {poderes ? 'Toque numa pessoa para ver e votar em todas as categorias' : 'Classificação'} — {pessoas.length} encontristas
+            {podeVotar ? 'Toque numa pessoa para ver e votar em todas as categorias' : 'Classificação'} — {pessoas.length} encontristas
           </p>
           {pessoas.length === 0 ? (
             <div className="empty"><p className="empty-desc">Nenhum encontrista cadastrado.</p></div>
@@ -288,7 +316,7 @@ export default function Ranking({ profile }: { profile?: Profile }) {
               </div>
               <div style={{flex:1,minWidth:0}}>
                 <p style={{fontWeight:800,fontSize:18}}>{pessoaAberta.name}</p>
-                <p style={{fontSize:12,color:'var(--muted)'}}>{poderes?'Toque nas estrelas para votar em cada categoria':'Votos recebidos'}</p>
+                <p style={{fontSize:12,color:'var(--muted)'}}>{podeVotar?'Toque nas estrelas para votar em cada categoria':'Votos recebidos'}</p>
               </div>
             </div>
 
@@ -308,13 +336,13 @@ export default function Ranking({ profile }: { profile?: Profile }) {
                       </span>
                     </div>
                     <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
-                      <span style={{fontSize:11,color:'var(--muted)'}}>{poderes?'Meu voto':'Média'}</span>
+                      <span style={{fontSize:11,color:'var(--muted)'}}>{podeVotar?'Meu voto':'Média'}</span>
                       <div style={{display:'flex',alignItems:'center',gap:8}}>
-                        {poderes && meu>0 && (
+                        {podeVotar && meu>0 && (
                           <button type="button" onClick={()=>votarInline(cat.id, pessoaAberta!.id, 0)}
                             style={{background:'none',border:'none',cursor:'pointer',color:'var(--danger)',fontSize:11,fontWeight:700,fontFamily:'inherit',padding:'2px 4px'}}>Tirar voto</button>
                         )}
-                        {poderes
+                        {podeVotar
                           ? <Estrelas valor={meu} size={26} onChange={v=>votarInline(cat.id, pessoaAberta!.id, v)}/>
                           : <Estrelas valor={Math.round(media)} size={22}/>}
                       </div>
