@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase'
 import { useVoltarFecha } from '../hooks/useVoltarFecha'
 import ConfigCor from './ConfigCor'
 import { limparCachePermissoes } from '../hooks/usePermissao'
-import { fmtDataHora, isAdmin, formatName, normalizarNome } from '../utils'
+import { fmtDataHora, isAdmin, formatName, normalizarNome, getInitials } from '../utils'
 import { invalidarEventoAtivo } from '../hooks/useEvento'
 import { registrarLog } from '../lib/audit'
 import { useNavigate, useLocation } from 'react-router-dom'
@@ -166,6 +166,13 @@ export default function Admin({ profile }: { profile?: Profile }) {
   const [gerandoCodigos, setGerandoCodigos] = useState(false)
   const [pessoaDetalhe, setPessoaDetalhe] = useState<typeof pessoas[0]|null>(null)
   useVoltarFecha(!!pessoaDetalhe, () => setPessoaDetalhe(null))
+  // Unificar contas duplicadas
+  const [unifBase, setUnifBase] = useState<typeof pessoas[0]|null>(null)   // origem
+  const [unifAlvo, setUnifAlvo] = useState<typeof pessoas[0]|null>(null)   // duplicado escolhido
+  const [unifManterId, setUnifManterId] = useState<string>('')            // qual prevalece
+  const [unifBusca, setUnifBusca] = useState('')
+  const [unificando, setUnificando] = useState(false)
+  useVoltarFecha(!!unifBase, () => { setUnifBase(null); setUnifAlvo(null); setUnifBusca('') })
   const [fotoAmpliada, setFotoAmpliada] = useState<string|null>(null)
   const [buscaUser, setBuscaUser]       = useState('')
   const [filtroUserTipo, setFiltroUserTipo] = useState('todos')  // todos | encounterer | worker
@@ -648,6 +655,37 @@ export default function Admin({ profile }: { profile?: Profile }) {
   // Excluir COMPLETAMENTE — pessoa, perfil e login, como se nunca tivesse existido.
   // Tudo numa transação só, no banco (sql/51). Antes eram ~10 `delete` do navegador:
   // um delete barrado pela RLS não dá erro, só apaga 0 linhas — sobrava sujeira calada.
+  // Abre a unificação a partir de uma pessoa
+  function abrirUnificar(p: typeof pessoas[0]) {
+    setPessoaDetalhe(null); setUnifAlvo(null); setUnifManterId(''); setUnifBusca(''); setUnifBase(p)
+  }
+  // Escolheu o duplicado → pré-marca quem prevalece (o que tem conta/inscrição)
+  function escolherAlvoUnif(p: typeof pessoas[0]) {
+    setUnifAlvo(p)
+    const base = unifBase!
+    const manter = (p.user_id && !base.user_id) ? p.id : base.id  // padrão: quem tem conta
+    setUnifManterId(manter)
+  }
+  async function unificar() {
+    if (!unifBase || !unifAlvo || !unifManterId) return
+    const manter = unifManterId
+    const remover = manter === unifBase.id ? unifAlvo.id : unifBase.id
+    const nomeRemover = manter === unifBase.id ? unifAlvo.name : unifBase.name
+    if (!confirm(`Unificar?\n\n"${nomeRemover}" será APAGADO por completo (cadastro e login) e tudo dele migra pro outro. Não dá pra desfazer.`)) return
+    setUnificando(true)
+    const { data, error } = await supabase.rpc('unificar_pessoas', { p_manter: manter, p_remover: remover })
+    setUnificando(false)
+    if (error) {
+      const naoExiste = error.code === 'PGRST202' || /Could not find the function/i.test(error.message)
+      toast.falha(naoExiste ? 'O admin precisa rodar o sql/61_unificar_pessoas.sql no Supabase.' : error.message, error)
+      return
+    }
+    const email = (data as any)?.email_liberado
+    toast.sucesso('Contas unificadas!' + (email ? ` Email ${email} liberado.` : ''))
+    setUnifBase(null); setUnifAlvo(null); setUnifBusca('')
+    carregar()
+  }
+
   async function excluirCadastro(p: typeof pessoas[0]) {
     if (p.user_role === 'admin') { toast.aviso('Administradores não podem ser excluídos. Rebaixe o cargo antes, se precisar.'); return }
     const msg = p.user_id
@@ -1370,6 +1408,10 @@ export default function Admin({ profile }: { profile?: Profile }) {
             </button>
 
             <button className="btn btn-ghost btn-full" onClick={()=>setPessoaDetalhe(null)}>Fechar</button>
+            <button onClick={()=>abrirUnificar(pessoaDetalhe)}
+              style={{marginTop:8,width:'100%',padding:'10px',background:'var(--primary-light)',color:'var(--primary)',border:'1px solid var(--primary)',borderRadius:10,cursor:'pointer',fontSize:13,fontWeight:700,fontFamily:'inherit',display:'flex',alignItems:'center',justifyContent:'center',gap:6}}>
+              <span className="icon icon-sm">merge_type</span> Unificar com duplicado
+            </button>
             {pessoaDetalhe.user_role !== 'admin' && (
               <button
                 onClick={()=>excluirCadastro(pessoaDetalhe)}
@@ -1377,6 +1419,89 @@ export default function Admin({ profile }: { profile?: Profile }) {
                 <span className="icon icon-sm">person_remove</span>
                 {pessoaDetalhe.user_id ? 'Excluir conta e liberar email' : 'Excluir cadastro'}
               </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ===== UNIFICAR CONTAS DUPLICADAS ===== */}
+      {unifBase && (
+        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.5)',zIndex:350,display:'flex',flexDirection:'column',justifyContent:'flex-end'}}
+          onClick={e=>e.target===e.currentTarget && setUnifBase(null)}>
+          <div style={{background:'white',borderRadius:'20px 20px 0 0',padding:'8px 20px 28px',maxWidth:520,width:'100%',margin:'0 auto',maxHeight:'88vh',display:'flex',flexDirection:'column'}}>
+            <div style={{width:36,height:4,background:'var(--border)',borderRadius:2,margin:'12px auto 14px',flexShrink:0}}/>
+            <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:14,flexShrink:0}}>
+              <span style={{fontSize:17,fontWeight:800}}>Unificar contas</span>
+              <button onClick={()=>setUnifBase(null)} style={{background:'var(--bg)',border:'1px solid var(--border)',borderRadius:'50%',width:32,height:32,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',fontFamily:'inherit'}}><span className="icon icon-sm">close</span></button>
+            </div>
+
+            {!unifAlvo ? (
+              // Fase 1: escolher o duplicado
+              <>
+                <p style={{fontSize:13,color:'var(--muted)',marginBottom:10}}>Escolha o cadastro <b>duplicado</b> de <b>{formatName(unifBase.name)}</b>:</p>
+                <div className="search-bar" style={{marginBottom:10,flexShrink:0}}>
+                  <span className="icon icon-sm" style={{color:'var(--muted-light)'}}>search</span>
+                  <input placeholder="Buscar pessoa..." value={unifBusca} onChange={e=>setUnifBusca(e.target.value)} autoFocus/>
+                </div>
+                <div style={{overflowY:'auto',flex:1}}>
+                  {pessoas.filter(p=>p.id!==unifBase.id && (!unifBusca || normalizarNome(p.name).includes(normalizarNome(unifBusca)))).map(p=>(
+                    <button key={p.id} onClick={()=>escolherAlvoUnif(p)}
+                      style={{width:'100%',display:'flex',alignItems:'center',gap:10,padding:'9px 6px',background:'none',border:'none',borderBottom:'1px solid var(--border)',cursor:'pointer',fontFamily:'inherit',textAlign:'left'}}>
+                      <div style={{width:34,height:34,borderRadius:'50%',overflow:'hidden',flexShrink:0,background:'var(--primary-light)',display:'flex',alignItems:'center',justifyContent:'center'}}>
+                        {p.photo_url?<img src={p.photo_url} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}}/>:<span style={{fontSize:12,fontWeight:700,color:'var(--primary)'}}>{getInitials(p.name)}</span>}
+                      </div>
+                      <div style={{flex:1,minWidth:0}}>
+                        <p style={{fontSize:14,fontWeight:600,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{formatName(p.name)}</p>
+                        <p style={{fontSize:11,color:'var(--muted)'}}>{p.user_id?'Tem conta':(p.invite_code?'Só código':'Sem código')}</p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </>
+            ) : (
+              // Fase 2: escolher quem prevalece e confirmar
+              (() => {
+                const cartao = (p: typeof pessoas[0]) => {
+                  const manter = unifManterId===p.id
+                  return (
+                    <button onClick={()=>setUnifManterId(p.id)}
+                      style={{flex:1,textAlign:'left',borderRadius:12,padding:10,cursor:'pointer',fontFamily:'inherit',
+                        border: manter?'2px solid var(--primary)':'1px solid var(--border)', background: manter?'var(--primary-light)':'white'}}>
+                      <div style={{display:'flex',alignItems:'center',gap:5,marginBottom:6}}>
+                        <span className="icon icon-sm" style={{color: manter?'var(--primary)':'var(--danger)'}}>{manter?'check_circle':'delete'}</span>
+                        <span style={{fontSize:10,fontWeight:800,color: manter?'var(--primary)':'var(--danger)'}}>{manter?'PREVALECE':'SERÁ APAGADO'}</span>
+                      </div>
+                      <div style={{display:'flex',alignItems:'center',gap:8}}>
+                        <div style={{width:34,height:34,borderRadius:'50%',overflow:'hidden',flexShrink:0,background:'var(--primary-light)',display:'flex',alignItems:'center',justifyContent:'center'}}>
+                          {p.photo_url?<img src={p.photo_url} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}}/>:<span style={{fontSize:12,fontWeight:700,color:'var(--primary)'}}>{getInitials(p.name)}</span>}
+                        </div>
+                        <div style={{minWidth:0}}>
+                          <p style={{fontSize:13,fontWeight:700,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{formatName(p.name)}</p>
+                          <p style={{fontSize:11,color:'var(--muted)'}}>{p.user_id?'Tem conta':(p.invite_code?'Só código':'Sem código')}</p>
+                        </div>
+                      </div>
+                    </button>
+                  )
+                }
+                return (
+                  <div style={{overflowY:'auto'}}>
+                    <p style={{fontSize:13,color:'var(--muted)',marginBottom:8}}>Toque em quem <b>prevalece</b> (nome, foto, dados e login dele ficam):</p>
+                    <div style={{display:'flex',gap:8,marginBottom:14}}>{cartao(unifBase)}{cartao(unifAlvo)}</div>
+                    <div style={{background:'var(--bg)',border:'1px solid var(--border)',borderRadius:10,padding:'10px 12px',marginBottom:12,fontSize:12,color:'var(--text2)',lineHeight:1.6}}>
+                      Migra pro que prevalece: <b>equipes, escalas, teatro, ministração, liberações, saúde</b> e o resto.
+                    </div>
+                    <div className="alert-box alert-error mb-3" style={{fontSize:12}}>
+                      O outro cadastro será <b>apagado por completo</b> (cadastro e login). Não dá pra desfazer.
+                    </div>
+                    <div style={{display:'flex',gap:8}}>
+                      <button className="btn btn-ghost" style={{flex:1}} onClick={()=>{ setUnifAlvo(null); setUnifManterId('') }}>Voltar</button>
+                      <button className="btn btn-primary" style={{flex:1}} disabled={unificando || !unifManterId} onClick={unificar}>
+                        {unificando?'Unificando...':'Unificar'}
+                      </button>
+                    </div>
+                  </div>
+                )
+              })()
             )}
           </div>
         </div>
