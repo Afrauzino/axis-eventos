@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App'
 import ErrorBoundary from './components/ErrorBoundary'
+import PortaoApp from './components/PortaoApp'
 import { aplicarCorLocal } from './lib/tema'
 
 // Aplica a cor guardada no aparelho ANTES de renderizar (evita o "piscar" da cor)
@@ -31,6 +32,7 @@ createRoot(document.getElementById('root')!).render(
     <ErrorBoundary>
       <App />
     </ErrorBoundary>
+    <PortaoApp />
   </StrictMode>
 )
 
