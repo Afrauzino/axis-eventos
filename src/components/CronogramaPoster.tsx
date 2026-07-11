@@ -22,6 +22,7 @@ export type LinhaPoster = {
 export type DiaPoster = { dia: string; linhas: LinhaPoster[] }
 
 const HDR = { background: '#111827', color: 'white' }
+const PEACH = '#F6D5A6'  // bege do pill do ministrante (igual ao modelo)
 
 export default function CronogramaPoster({ titulo, dias, slim = false, escala = 1, separarDias = false, mostrarElenco = false }: { titulo: string; dias: DiaPoster[]; slim?: boolean; escala?: number; separarDias?: boolean; mostrarElenco?: boolean }) {
   const s = (n: number) => Math.max(1, Math.round(n * escala * 10) / 10)  // aplica a escala de fonte
@@ -84,29 +85,18 @@ export default function CronogramaPoster({ titulo, dias, slim = false, escala = 
                 {/* DESCRIÇÃO */}
                 {l.kind === 'min' ? (
                   <div style={{ flex: 1, display: 'flex', minWidth: 0 }}>
-                    {/* Ministrante (foto + pill colorido) */}
-                    <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: t.gap, padding: t.rowPad, minWidth: 0 }}>
+                    {/* Ministrante: foto recortada (vaza pra cima) + pill BEGE, NOME em cima / título embaixo */}
+                    <div style={{ flex: 1, position: 'relative', display: 'flex', alignItems: 'center', padding: t.rowPad, minWidth: 0 }}>
                       {l.fotoPng ? (
-                        // PNG recortado (fundo transparente) — maior e alinhado embaixo, como no modelo
-                        <img src={l.fotoPng} alt="" style={{ width: Math.round(t.foto * 1.3), height: Math.round(t.foto * 1.15), objectFit: 'contain', objectPosition: 'bottom', flexShrink: 0, alignSelf: 'flex-end' }} />
+                        <img src={l.fotoPng} alt="" style={{ position: 'absolute', left: s(2), bottom: 0, height: Math.round(t.foto * 1.55), width: 'auto', maxWidth: '46%', objectFit: 'contain', objectPosition: 'bottom center', zIndex: 2, pointerEvents: 'none' }} />
+                      ) : l.fotoUrl ? (
+                        <img src={l.fotoUrl} alt="" style={{ width: t.foto, height: t.foto, borderRadius: '50%', objectFit: 'cover', flexShrink: 0, border: t.borda, position: 'relative', zIndex: 2 }} />
                       ) : (
-                        <div style={{ width: t.foto, height: t.foto, borderRadius: '50%', overflow: 'hidden', flexShrink: 0, background: '#e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'center', border: t.borda }}>
-                          {l.fotoUrl ? <img src={l.fotoUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontWeight: 800, color: '#6b7280', fontSize: 16 }}>{getInitials(l.ministrante ?? '?')}</span>}
-                        </div>
+                        <div style={{ width: t.foto, height: t.foto, borderRadius: '50%', background: '#e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, border: t.borda, position: 'relative', zIndex: 2 }}><span style={{ fontWeight: 800, color: '#6b7280', fontSize: 16 }}>{getInitials(l.ministrante ?? '?')}</span></div>
                       )}
-                      <div style={{ flex: 1, background: l.cor, color: 'white', borderRadius: t.pillRad, padding: t.pillPad, minWidth: 0 }}>
-                        {slim ? (
-                          <>
-                            {/* Ministração em DESTAQUE, nome embaixo */}
-                            <p style={{ fontSize: t.tituloFonte, fontWeight: 900, lineHeight: 1.05, margin: 0 }}>{l.titulo}</p>
-                            <p style={{ fontSize: t.nome, fontWeight: 800, opacity: 0.95, lineHeight: 1.1, margin: '2px 0 0' }}>{l.ministrante}</p>
-                          </>
-                        ) : (
-                          <>
-                            <p style={{ fontSize: t.nome, fontWeight: 800, opacity: 0.95, lineHeight: 1.1, margin: 0 }}>{l.ministrante}</p>
-                            <p style={{ fontSize: t.tituloFonte, fontWeight: 900, lineHeight: 1.05, margin: '2px 0 0' }}>{l.titulo}</p>
-                          </>
-                        )}
+                      <div style={{ flex: 1, background: PEACH, color: '#1b1206', borderRadius: t.pillRad, padding: `${s(6)}px ${s(12)}px`, marginLeft: l.fotoPng ? Math.round(t.foto * 0.62) : s(8), minWidth: 0 }}>
+                        <p style={{ fontSize: t.nome, fontWeight: 800, lineHeight: 1.1, margin: 0 }}>{l.ministrante}</p>
+                        <p style={{ fontSize: t.tituloFonte, fontWeight: 900, lineHeight: 1.05, margin: '1px 0 0' }}>{l.titulo}</p>
                       </div>
                     </div>
                     {/* Teatro (bloco escuro) — por nome OU com fotos do elenco */}
