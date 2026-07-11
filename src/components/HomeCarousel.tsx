@@ -166,41 +166,54 @@ export default function HomeCarousel({ admin, grupo='principal', podeEditar, tit
         const totalCurt = curtidas.filter(c => c.midia_id===atual.id).length
         const comentsFoto = coments.filter(c => c.midia_id===atual.id)
         return (
-          <div style={{marginTop:6}}>
-            <div style={{display:'flex',alignItems:'center',gap:18,padding:'4px 2px 8px'}}>
-              <button onClick={()=>toggleCurtir(atual.id)} disabled={!profile} title="Curtir"
-                style={{background:'none',border:'none',cursor:profile?'pointer':'default',display:'flex',alignItems:'center',gap:6,fontFamily:'inherit',padding:0}}>
-                <span style={{fontSize:23,lineHeight:1}}>{euCurti?'❤️':'🤍'}</span>
-                {totalCurt>0 && <span style={{fontSize:13,fontWeight:800,color:'var(--text)'}}>{totalCurt}</span>}
+          <div style={{marginTop:4}}>
+            {/* Ações (estilo Instagram) */}
+            <div style={{display:'flex',alignItems:'center',gap:14,padding:'6px 4px 2px'}}>
+              <button onClick={()=>toggleCurtir(atual.id)} disabled={!profile} title="Curtir" aria-label="Curtir"
+                style={{background:'none',border:'none',cursor:profile?'pointer':'default',display:'flex',alignItems:'center',fontFamily:'inherit',padding:2}}>
+                <span className="icon" style={{fontSize:28,lineHeight:1,color:euCurti?'#ED4956':'var(--text)',transition:'transform .18s ease, color .18s ease',transform:euCurti?'scale(1.12)':'scale(1)'}}>{euCurti?'favorite':'favorite_border'}</span>
               </button>
-              <button onClick={()=>setVerComents(v=>!v)} title="Comentários"
-                style={{background:'none',border:'none',cursor:'pointer',display:'flex',alignItems:'center',gap:6,fontFamily:'inherit',padding:0,color:'var(--text)'}}>
-                <span style={{fontSize:20,lineHeight:1}}>💬</span>
-                {comentsFoto.length>0 && <span style={{fontSize:13,fontWeight:800}}>{comentsFoto.length}</span>}
+              <button onClick={()=>setVerComents(v=>!v)} title="Comentários" aria-label="Comentários"
+                style={{background:'none',border:'none',cursor:'pointer',display:'flex',alignItems:'center',fontFamily:'inherit',padding:2,color:'var(--text)'}}>
+                <span className="icon" style={{fontSize:25,lineHeight:1}}>chat_bubble_outline</span>
               </button>
             </div>
+
+            {/* Curtidas */}
+            {totalCurt>0 && <p style={{fontSize:13,fontWeight:700,padding:'0 6px 2px'}}>{totalCurt} curtida{totalCurt>1?'s':''}</p>}
+
+            {/* Teaser: quantos comentários (fecha) */}
+            {!verComents && comentsFoto.length>0 && (
+              <button onClick={()=>setVerComents(true)} style={{background:'none',border:'none',cursor:'pointer',color:'var(--muted)',fontSize:13,fontFamily:'inherit',padding:'0 6px 4px'}}>
+                Ver {comentsFoto.length===1?'o comentário':`os ${comentsFoto.length} comentários`}
+              </button>
+            )}
+
             {verComents && (
-              <div style={{background:'var(--bg)',borderRadius:12,padding:'10px 12px'}}>
+              <div style={{padding:'2px 6px 0'}}>
                 {comentsFoto.length===0
-                  ? <p style={{fontSize:12,color:'var(--muted)',fontStyle:'italic',marginBottom:profile?8:0}}>Sem comentários ainda. Seja o primeiro!</p>
+                  ? <p style={{fontSize:13,color:'var(--muted)',marginBottom:profile?10:0}}>Sem comentários ainda. Seja o primeiro!</p>
                   : comentsFoto.map(c => (
-                      <div key={c.id} style={{display:'flex',gap:8,alignItems:'flex-start',marginBottom:8}}>
+                      <div key={c.id} style={{display:'flex',gap:9,alignItems:'flex-start',marginBottom:10}}>
                         {c.autor_foto
-                          ? <img src={c.autor_foto} alt="" style={{width:26,height:26,borderRadius:'50%',objectFit:'cover',flexShrink:0}}/>
-                          : <div style={{width:26,height:26,borderRadius:'50%',background:'var(--primary-light)',color:'var(--primary)',display:'flex',alignItems:'center',justifyContent:'center',fontWeight:700,fontSize:12,flexShrink:0}}>{(c.autor_nome||'?').charAt(0)}</div>}
-                        <div style={{flex:1,minWidth:0}}>
-                          <span style={{fontSize:13,fontWeight:700}}>{(c.autor_nome||'Alguém').split(' ')[0]} </span>
+                          ? <img src={c.autor_foto} alt="" style={{width:30,height:30,borderRadius:'50%',objectFit:'cover',flexShrink:0}}/>
+                          : <div style={{width:30,height:30,borderRadius:'50%',background:'var(--primary-light)',color:'var(--primary)',display:'flex',alignItems:'center',justifyContent:'center',fontWeight:700,fontSize:13,flexShrink:0}}>{(c.autor_nome||'?').charAt(0)}</div>}
+                        <div style={{flex:1,minWidth:0,lineHeight:1.4}}>
+                          <span style={{fontSize:13,fontWeight:700}}>{(c.autor_nome||'Alguém').split(' ')[0]}</span>{' '}
                           <span style={{fontSize:13,color:'var(--text)'}}>{c.texto}</span>
                         </div>
                       </div>
                     ))}
                 {profile && (
-                  <div style={{display:'flex',gap:8,marginTop:4}}>
-                    <input value={novoComent} onChange={e=>setNovoComent(e.target.value.slice(0,300))} placeholder="Comentar..."
+                  <div style={{display:'flex',gap:8,alignItems:'center',marginTop:4,paddingTop:8,borderTop:'1px solid var(--border)'}}>
+                    {profile.avatar_url
+                      ? <img src={profile.avatar_url} alt="" style={{width:30,height:30,borderRadius:'50%',objectFit:'cover',flexShrink:0}}/>
+                      : <div style={{width:30,height:30,borderRadius:'50%',background:'var(--primary-light)',color:'var(--primary)',display:'flex',alignItems:'center',justifyContent:'center',fontWeight:700,fontSize:13,flexShrink:0}}>{(profile.full_name||'?').charAt(0)}</div>}
+                    <input value={novoComent} onChange={e=>setNovoComent(e.target.value.slice(0,300))} placeholder="Adicione um comentário..."
                       onKeyDown={e=>{ if(e.key==='Enter') enviarComentario(atual.id) }}
-                      style={{flex:1,border:'1px solid var(--border)',borderRadius:99,padding:'7px 12px',fontFamily:'inherit',fontSize:13,outline:'none'}}/>
+                      style={{flex:1,border:'none',background:'none',padding:'7px 4px',fontFamily:'inherit',fontSize:13.5,outline:'none'}}/>
                     <button onClick={()=>enviarComentario(atual.id)} disabled={!novoComent.trim()}
-                      style={{background:'var(--primary)',color:'white',border:'none',borderRadius:99,padding:'0 14px',cursor:'pointer',fontFamily:'inherit',fontWeight:700,fontSize:13}}>Enviar</button>
+                      style={{background:'none',border:'none',cursor:novoComent.trim()?'pointer':'default',color:novoComent.trim()?'var(--primary)':'var(--muted-light)',fontFamily:'inherit',fontWeight:700,fontSize:14,padding:'0 4px'}}>Publicar</button>
                   </div>
                 )}
               </div>

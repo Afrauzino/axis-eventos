@@ -62,7 +62,7 @@ export default function Cozinha({ profile }: { profile?: Profile }) {
   const [modalCard, setModalCard] = useState(false)
   useVoltarFecha(modalCard, () => setModalCard(false))
   const [editCard, setEditCard] = useState<Cardapio|null>(null)
-  const [formCard, setFormCard] = useState({ refeicao_tipo_id:'', titulo:'', itens:'' })
+  const [formCard, setFormCard] = useState({ refeicao_tipo_id:'', titulo:'', itens:'', data_servir:'' })
 
   useEffect(()=>{ if(!evLoading) carregar() }, [evento, evLoading])
 
@@ -149,11 +149,27 @@ export default function Cozinha({ profile }: { profile?: Profile }) {
     setTipos(prev=>prev.filter(t=>t.id!==id))
   }
 
+  // Dias do evento, com o nome do dia da semana (ex.: "Sexta · 24/07")
+  const DIAS_SEM = ['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado']
+  const diasEvento = (() => {
+    const s = (evento as any)?.start_date, f = (evento as any)?.end_date
+    if (!s || !f) return [] as {value:string;label:string}[]
+    const out: {value:string;label:string}[] = []
+    const d = new Date(s+'T00:00'), fim = new Date(f+'T00:00')
+    let guard = 0
+    while (d <= fim && guard++ < 60) {
+      const iso = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
+      out.push({ value: iso, label: `${DIAS_SEM[d.getDay()]} · ${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}` })
+      d.setDate(d.getDate()+1)
+    }
+    return out
+  })()
+
   function abrirNovoCardapio() {
-    setEditCard(null); setFormCard({ refeicao_tipo_id: tipos[0]?.id ?? '', titulo:'', itens:'' }); setModalCard(true)
+    setEditCard(null); setFormCard({ refeicao_tipo_id: tipos[0]?.id ?? '', titulo:'', itens:'', data_servir: diasEvento[0]?.value ?? '' }); setModalCard(true)
   }
   function abrirEditarCardapio(c:Cardapio) {
-    setEditCard(c); setFormCard({ refeicao_tipo_id:c.refeicao_tipo_id??'', titulo:c.titulo??'', itens:c.itens??'' }); setModalCard(true)
+    setEditCard(c); setFormCard({ refeicao_tipo_id:c.refeicao_tipo_id??'', titulo:c.titulo??'', itens:c.itens??'', data_servir:(c as any).data_servir??'' }); setModalCard(true)
   }
   async function salvarCardapio() {
     if (!evento) return
@@ -161,6 +177,7 @@ export default function Cozinha({ profile }: { profile?: Profile }) {
     const payload = {
       event_id:evento.id, refeicao_tipo_id:formCard.refeicao_tipo_id||null,
       tipo_refeicao_nome:tipo?.nome ?? null, titulo:formCard.titulo||null, itens:formCard.itens||null,
+      data_servir: formCard.data_servir || null,
     }
     if (editCard) {
       await supabase.from('cozinha_cardapios').update(payload).eq('id',editCard.id)
@@ -358,6 +375,13 @@ export default function Cozinha({ profile }: { profile?: Profile }) {
               <Seletor titulo="Tipo de refeição" placeholder="Selecione..." value={formCard.refeicao_tipo_id} onChange={v=>setFormCard(f=>({...f,refeicao_tipo_id:v}))}
                 opcoes={tipos.map(t=>({value:t.id,label:t.nome}))}/>
             </div>
+            {diasEvento.length>0 && (<>
+              <label className="form-label">Dia</label>
+              <div style={{marginBottom:12}}>
+                <Seletor titulo="Dia" placeholder="Selecione o dia" value={formCard.data_servir} onChange={v=>setFormCard(f=>({...f,data_servir:v}))}
+                  opcoes={[{value:'',label:'Sem dia'}, ...diasEvento]}/>
+              </div>
+            </>)}
             <label className="form-label">Título (opcional)</label>
             <input className="form-input" placeholder="Ex: Almoço de domingo" value={formCard.titulo} onChange={e=>setFormCard(f=>({...f,titulo:e.target.value}))} style={{marginBottom:12}}/>
             <label className="form-label">Itens do cardápio</label>
