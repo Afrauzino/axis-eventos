@@ -1,6 +1,17 @@
 // Service Worker do AXIS — network-first (nunca serve versão velha quando online).
 // Não intercepta o Supabase (outra origem) nem chamadas não-GET.
-const CACHE = 'axis-runtime-v10'
+const CACHE = 'axis-runtime-v11'
+
+// Chave pública VAPID (mesma do app) — pra reassinar sozinho se o navegador trocar.
+const VAPID_PUBLIC = 'BBGfLWywD_AmYo_c2gkEdN9tlZbThxbnJW4ya6zKy5kOkRnZXKOZNDVLVRdzhgdM7uHa5LneNpRW2_YjDHxDlMY'
+function b64ToBytes(base64String) {
+  const padding = '='.repeat((4 - (base64String.length % 4)) % 4)
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/')
+  const raw = atob(base64)
+  const arr = new Uint8Array(raw.length)
+  for (let i = 0; i < raw.length; i++) arr[i] = raw.charCodeAt(i)
+  return arr
+}
 
 self.addEventListener('install', () => self.skipWaiting())
 
@@ -51,6 +62,22 @@ self.addEventListener('push', (event) => {
     data: { url: d.url || '/' },
   }
   event.waitUntil(self.registration.showNotification(title, options))
+})
+
+// O navegador pode TROCAR a assinatura sozinho (rotação). Sem isto, o push morre
+// calado até a pessoa reabrir o app. Aqui reassinamos na hora e avisamos qualquer
+// aba aberta pra regravar no servidor (a aba tem o login pra passar na RLS).
+self.addEventListener('pushsubscriptionchange', (event) => {
+  event.waitUntil((async () => {
+    try {
+      const sub = await self.registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: b64ToBytes(VAPID_PUBLIC),
+      })
+      const all = await self.clients.matchAll({ type: 'window', includeUncontrolled: true })
+      for (const c of all) { try { c.postMessage({ type: 'push-resubscribe', sub: sub.toJSON() }) } catch {} }
+    } catch (e) {}
+  })())
 })
 
 self.addEventListener('notificationclick', (event) => {

@@ -7,7 +7,7 @@ import CadastroPessoa, { FORM_VAZIO, type PessoaForm } from '../components/Cadas
 import { toast } from '../components/Toast'
 import { pathOriginal, urlOriginal, imagemCarrega, baixarImagem } from '../lib/foto'
 import { biometriaSuportada, biometriaAtiva, ativarBiometria, desativarBiometria } from '../lib/biometria'
-import { testarPush } from '../lib/push'
+import DiagnosticoPush from '../components/DiagnosticoPush'
 import { validarCadastroFaltando } from '../lib/cadastroCfg'
 import type { Profile } from '../App'
 
@@ -98,19 +98,6 @@ export default function Perfil({ profile, onUpdate }: { profile: Profile; onUpda
     }
     toast.sucesso('Seus dados foram atualizados!')
     setCadAberto(false); onUpdate()
-  }
-  const [testandoPush, setTestandoPush] = useState(false)
-
-  async function testarNotificacao() {
-    setErro(''); setOk(''); setTestandoPush(true)
-    const r = await testarPush(profile.user_id)
-    setTestandoPush(false)
-    if (r.etapa === 'suporte') { setErro('Este aparelho/navegador não suporta notificações.'); return }
-    if (r.etapa === 'assinar') { setErro('❌ Não consegui ativar. Vá em Configurações do Android → Apps → AXIS → Notificações e PERMITA. Depois teste de novo.'); return }
-    if (r.ok) setOk(r.localOk ? '✅ Tudo certo! As duas notificações (local + servidor) foram enviadas — devem aparecer na bandeja.' : '✅ O push do servidor foi enviado. Deve aparecer na bandeja.')
-    else if (!r.localOk) setErro('❌ Nem a notificação LOCAL apareceu. É permissão do app: Config. do Android → Apps → AXIS → Notificações → Permitir.')
-    else if (r.detalhe?.semAlvos) setErro('⚠️ A notificação LOCAL funcionou (o aparelho exibe!), mas o SERVIDOR não achou a assinatura. Falta REPUBLICAR a Edge Function enviar-push (código final).')
-    else setErro('⚠️ A LOCAL funcionou, mas o servidor não entregou. Confira a função enviar-push e as chaves VAPID. (' + JSON.stringify(r.detalhe ?? {}) + ')')
   }
   // Entrar com digital (desbloqueio biométrico deste aparelho)
   const [bioSuporta, setBioSuporta] = useState(false)
@@ -377,14 +364,8 @@ export default function Perfil({ profile, onUpdate }: { profile: Profile; onUpda
         </div>
       )}
 
-      {/* Notificações */}
-      <div style={{background:'white',borderRadius:14,boxShadow:'var(--shadow-sm)',padding:'16px 20px',marginBottom:12}}>
-        <p style={{fontSize:13,fontWeight:700,color:'var(--muted)',textTransform:'uppercase',letterSpacing:'0.06em',marginBottom:8}}>Notificações</p>
-        <p style={{fontSize:12,color:'var(--muted)',marginBottom:12}}>Toque para ativar e enviar um teste para este aparelho.</p>
-        <button type="button" className="btn btn-primary btn-full" onClick={testarNotificacao} disabled={testandoPush}>
-          <span className="icon icon-sm" style={{color:'white'}}>notifications_active</span> {testandoPush ? 'Testando...' : 'Testar notificação neste celular'}
-        </button>
-      </div>
+      {/* Notificações — diagnóstico completo no aparelho */}
+      <DiagnosticoPush profile={profile} />
 
       {/* Info da conta */}
       <div style={{background:'white',borderRadius:14,boxShadow:'var(--shadow-sm)',padding:'16px 20px'}}>
