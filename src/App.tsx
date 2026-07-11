@@ -54,6 +54,8 @@ const Relatorios       = lazy(() => import('./pages/Relatorios'))
 const Doacoes          = lazy(() => import('./pages/Doacoes'))
 const MenusAdmin       = lazy(() => import('./pages/MenusAdmin'))
 const ConfigNotificacoes = lazy(() => import('./pages/ConfigNotificacoes'))
+const Avaliacao        = lazy(() => import('./pages/Avaliacao'))
+const AvaliacaoAdmin   = lazy(() => import('./pages/AvaliacaoAdmin'))
 const Ranking          = lazy(() => import('./pages/Ranking'))
 const Admin            = lazy(() => import('./pages/Admin'))
 const PainelAnalises   = lazy(() => import('./pages/PainelAnalises'))
@@ -172,6 +174,8 @@ function AppRoutes({ profile, onProfileUpdate, versaoFotos }: { profile: Profile
       <Route path="/doacoes"               element={<Doacoes profile={profile} />} />
       <Route path="/admin/menus"           element={<MenusAdmin profile={profile} />} />
       <Route path="/admin/notificacoes"    element={<ConfigNotificacoes profile={profile} />} />
+      <Route path="/avaliacao"             element={<Avaliacao profile={profile} />} />
+      <Route path="/admin/avaliacao"       element={<AvaliacaoAdmin profile={profile} />} />
       <Route path="/admin/painel"          element={<PainelAnalises profile={profile} />} />
       <Route path="/ranking"               element={<Ranking profile={profile} />} />
       <Route path="/admin"                 element={<Admin profile={profile} />} />
@@ -211,6 +215,8 @@ const TITULOS_ROTA: Record<string,string> = {
   '/admin': 'Administração',
   '/admin/menus': 'Administração',
   '/admin/notificacoes': 'Notificações',
+  '/avaliacao': 'Avaliação do Encontro',
+  '/admin/avaliacao': 'Avaliação pós-evento',
   '/admin/painel': 'Painel',
   '/correio': 'Correio',
   '/logistica': 'Logística',

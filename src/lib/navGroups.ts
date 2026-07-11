@@ -8,7 +8,7 @@ export const NAV_GROUPS: Record<string, NavSub[]> = {
   evento:     [{ label:'Locais', rota:'/locais' }, { label:'Ocorrências', rota:'/ocorrencias' }],
   saude:      [{ label:'Atendimentos', rota:'/saude' }, { label:'Fichas Médicas', rota:'/saude/ficha' }, { label:'Medicamentos', rota:'/saude/medicamentos' }, { label:'Configuração', rota:'/saude/config' }],
   financeiro: [{ label:'Pagamentos', rota:'/financeiro' }, { label:'Doações', rota:'/doacoes' }],
-  admin:      [{ label:'Usuários', rota:'/admin' }, { label:'Menus', rota:'/admin/menus' }, { label:'Notificações', rota:'/admin/notificacoes' }, { label:'Saúde do Sistema', rota:'/admin/saude-sistema' }, { label:'Comparativo', rota:'/relatorios' }],
+  admin:      [{ label:'Usuários', rota:'/admin' }, { label:'Menus', rota:'/admin/menus' }, { label:'Notificações', rota:'/admin/notificacoes' }, { label:'Avaliação pós-evento', rota:'/admin/avaliacao' }, { label:'Saúde do Sistema', rota:'/admin/saude-sistema' }, { label:'Comparativo', rota:'/relatorios' }],
 }
 
 // Administração organizada por ASSUNTO (o ⚙️ do topo monta o meno a partir daqui).
@@ -31,6 +31,7 @@ export const ADMIN_GRUPOS: AdminGrupo[] = [
   ] },
   { titulo: 'Evento', curto: 'Evento', emoji: '📅', itens: [
     { label: 'Eventos',          rota: '/admin?aba=eventos',      emoji: '📅' },
+    { label: 'Avaliação pós-evento', rota: '/admin/avaliacao',    emoji: '🙏' },
     { label: 'Comparativo',      rota: '/relatorios',             emoji: '📊' },
   ] },
   { titulo: 'Sistema', curto: 'Sistema', emoji: '🛠️', itens: [
