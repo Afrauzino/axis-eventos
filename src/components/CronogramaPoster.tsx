@@ -90,13 +90,14 @@ export default function CronogramaPoster({ titulo, dias, slim = false, escala = 
                     {/* Ministrante: foto recortada (vaza pra cima) + pill BEGE, NOME em cima / título embaixo */}
                     <div style={{ flex: 1, position: 'relative', display: 'flex', alignItems: 'center', padding: t.rowPad, minWidth: 0 }}>
                       {l.fotoPng ? (
-                        <img src={l.fotoPng} alt="" style={{ position: 'absolute', left: s(2), bottom: 0, height: Math.round(t.foto * 1.55), width: 'auto', maxWidth: '46%', objectFit: 'contain', objectPosition: 'bottom center', zIndex: 2, pointerEvents: 'none' }} />
+                        // largura travada; o texto do pill tem paddingLeft MAIOR que essa largura → nunca cobre a escrita
+                        <img src={l.fotoPng} alt="" style={{ position: 'absolute', left: s(2), bottom: 0, height: Math.round(t.foto * 1.55), width: 'auto', maxWidth: Math.round(t.foto * 1.2), objectFit: 'contain', objectPosition: 'bottom left', zIndex: 2, pointerEvents: 'none' }} />
                       ) : l.fotoUrl ? (
                         <img src={l.fotoUrl} alt="" style={{ width: t.foto, height: t.foto, borderRadius: '50%', objectFit: 'cover', flexShrink: 0, border: t.borda, position: 'relative', zIndex: 2 }} />
                       ) : (
                         <div style={{ width: t.foto, height: t.foto, borderRadius: '50%', background: '#e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, border: t.borda, position: 'relative', zIndex: 2 }}><span style={{ fontWeight: 800, color: '#6b7280', fontSize: 16 }}>{getInitials(l.ministrante ?? '?')}</span></div>
                       )}
-                      <div style={{ flex: 1, background: PEACH, color: '#1b1206', borderRadius: t.pillRad, padding: `${s(6)}px ${s(12)}px`, marginLeft: l.fotoPng ? Math.round(t.foto * 0.62) : s(8), minWidth: 0 }}>
+                      <div style={{ flex: 1, background: PEACH, color: '#1b1206', borderRadius: t.pillRad, padding: l.fotoPng ? `${s(6)}px ${s(12)}px ${s(6)}px ${Math.round(t.foto * 1.35)}px` : `${s(6)}px ${s(12)}px`, marginLeft: l.fotoPng ? 0 : s(8), minWidth: 0 }}>
                         <p style={{ fontSize: t.nome, fontWeight: 800, lineHeight: 1.1, margin: 0 }}>{l.ministrante}</p>
                         <p style={{ fontSize: t.tituloFonte, fontWeight: 900, lineHeight: 1.05, margin: '1px 0 0' }}>{l.titulo}</p>
                       </div>
