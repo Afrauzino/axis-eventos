@@ -1027,7 +1027,8 @@ body {
 
 /* ── RESPONSIVE ─────────────────────────────────── */
 @media (min-width: 768px) {
-  .page { max-width: 900px; padding: 20px 28px 80px; }
+  /* conteúdo acompanha a janela (sem coluna estreita) */
+  .page { max-width: none; padding: 20px 32px 80px; }
   .stats-grid { grid-template-columns: repeat(4, 1fr); }
 }
 
@@ -1060,11 +1061,11 @@ body {
 /* No PC/telas grandes: acompanha a janela (sem pular pra uma coluna estreita). O app usa
    a largura, e o conteúdo (.page) fica centralizado com margens que crescem conforme estica. */
 @media (min-width: 768px) {
-  body { background: #e4e7ec; }
+  /* No PC: o app OCUPA A JANELA INTEIRA (sem largura travada / margens laterais). */
   .app-root, .auth-wrap {
-    max-width: 1180px;
-    margin: 0 auto;
-    box-shadow: 0 0 60px rgba(0,0,0,0.12);
+    max-width: none;
+    width: 100%;
+    margin: 0;
   }
 }
 
