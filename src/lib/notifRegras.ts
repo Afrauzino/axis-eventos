@@ -33,8 +33,6 @@ export const AREAS: { id: string; nome: string; emoji: string }[] = [
   { id: 'aniversario', nome: 'Aniversário',        emoji: '🎂' },
   { id: 'correio',   nome: 'Correio',              emoji: '📬' },
   { id: 'ranking',   nome: 'Ranking',              emoji: '🏆' },
-  { id: 'logistica', nome: 'Logística',            emoji: '📦' },
-  { id: 'sistema',   nome: 'Sistema (admins)',     emoji: '🛠️' },
 ]
 
 export const REGRAS: Regra[] = [
@@ -42,7 +40,7 @@ export const REGRAS: Regra[] = [
   { key:'insc_nova',       area:'conta', label:'Nova inscrição aguardando aprovação', desc:'Avisa os admins quando alguém se inscreve.', padrao:true },
   { key:'insc_aprovada',   area:'conta', label:'Inscrição aprovada', desc:'Avisa a pessoa que foi aprovada.', padrao:true },
   { key:'insc_recusada',   area:'conta', label:'Inscrição recusada/bloqueada', desc:'Avisa a pessoa que foi recusada ou bloqueada.', padrao:false },
-  { key:'acesso_mudou',    area:'conta', label:'Nível de acesso mudou', desc:'Avisa a pessoa quando ganha ou perde permissões.', padrao:true, pendente:true },
+  { key:'acesso_mudou',    area:'conta', label:'Nível de acesso mudou', desc:'Avisa a pessoa quando ganha ou perde permissões.', padrao:true },
   // B. Equipes
   { key:'equipe_entrou',   area:'equipe', label:'Entrou numa equipe', desc:'Avisa quem foi adicionado a uma equipe.', padrao:true },
   { key:'equipe_lider',    area:'equipe', label:'Virou líder/vice', desc:'Avisa quem foi definido como líder ou vice.', padrao:true },
@@ -74,11 +72,11 @@ export const REGRAS: Regra[] = [
   // G. Mural
   { key:'mural_marcado',   area:'mural', label:'Marcaram você no mural', desc:'Avisa quem foi mencionado no mural.', padrao:true },
   { key:'mural_novo',      area:'mural', label:'Novo recado no mural', desc:'Avisa todos quando tem post novo.', padrao:false },
-  { key:'mural_reacao',    area:'mural', label:'Curtiram/comentaram seu recado', desc:'Avisa o autor do post.', padrao:false, pendente:true },
+  { key:'mural_reacao',    area:'mural', label:'Curtiram/comentaram seu recado', desc:'Avisa o autor do post.', padrao:false },
   // H. Carrossel de fotos
   { key:'foto_nova',       area:'foto', label:'Nova foto no carrossel', desc:'Avisa todos quando sobe foto nova.', padrao:false },
-  { key:'foto_curtida',    area:'foto', label:'Curtiram sua foto', desc:'Avisa quem postou a foto.', padrao:false, pendente:true },
-  { key:'foto_comentario', area:'foto', label:'Comentaram sua foto', desc:'Avisa quem postou a foto.', padrao:false, pendente:true },
+  { key:'foto_curtida',    area:'foto', label:'Curtiram sua foto', desc:'Avisa quem postou a foto.', padrao:false },
+  { key:'foto_comentario', area:'foto', label:'Comentaram sua foto', desc:'Avisa quem postou a foto.', padrao:false },
   // I. Avisos e alertas
   { key:'aviso_geral',     area:'aviso', label:'Aviso geral publicado', desc:'Manda o aviso pro público escolhido.', padrao:true },
   { key:'alerta_critico',  area:'aviso', label:'Alerta CRÍTICO', desc:'Alerta que trava a tela do público escolhido.', padrao:true },
@@ -103,16 +101,10 @@ export const REGRAS: Regra[] = [
   { key:'aniv_hoje',       area:'aniversario', label:'Aniversário de alguém hoje', desc:'Avisa líderes e admins.', padrao:true },
   { key:'aniv_feliz',      area:'aniversario', label:'Feliz aniversário (tela de parabéns)', desc:'A pessoa vê a tela de parabéns no dia.', padrao:true },
   // O. Correio
-  { key:'correio_checklist', area:'correio', label:'Checklist do afilhado avançou', desc:'Avisa o padrinho quando o checklist muda.', padrao:false, pendente:true },
-  { key:'correio_recebido',  area:'correio', label:'Recebeu algo do correio', desc:'Avisa o afilhado quando recebe algo.', padrao:false, pendente:true },
+  { key:'correio_checklist', area:'correio', label:'Checklist do afilhado avançou', desc:'Avisa o padrinho quando o checklist muda.', padrao:false },
   // P. Ranking
   { key:'ranking_abriu',   area:'ranking', label:'Votação abriu', desc:'Avisa todos que a votação começou.', padrao:true },
   { key:'ranking_resultado', area:'ranking', label:'Resultado do ranking', desc:'Avisa todos quando a votação encerra.', padrao:true },
-  // Q. Logística
-  { key:'logistica_item',  area:'logistica', label:'Novo item de logística', desc:'Avisa a equipe de um item/checklist novo.', padrao:false, pendente:true },
-  // R. Sistema
-  { key:'sys_backup',      area:'sistema', label:'Backup feito', desc:'Avisa os admins quando um backup é gerado.', padrao:false, pendente:true },
-  { key:'sys_limpeza',     area:'sistema', label:'Dados mortos encontrados', desc:'Avisa os admins quando a limpeza acha sobras.', padrao:false, pendente:true },
 ]
 
 // ----- estado (cache) -----

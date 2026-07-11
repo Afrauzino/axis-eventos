@@ -8,6 +8,7 @@ import FotoAmpliada from '../components/FotoAmpliada'
 import { useRegistrarChrome } from '../lib/chrome'
 import { getInitials, isAdmin, formatName } from '../utils'
 import { useEvento } from '../hooks/useEvento'
+import { notificarRegra } from '../lib/notifRegras'
 import type { Profile } from '../App'
 
 type Pessoa   = { id:string; name:string; photo_url:string|null; role_type:string; user_id:string|null; referencia_id:string|null }
@@ -162,6 +163,7 @@ export default function Correio({ profile }: { profile?: Profile }) {
   // ===== AÇÕES =====
   async function toggleItem(afiliadoId: string, itemId: string, atual: boolean) {
     const existe = statusChk.find(s => s.afiliado_id === afiliadoId && s.item_id === itemId)
+    const virouConcluido = existe ? !atual : true
     if (existe) {
       await supabase.from('correio_checklist_status').update({
         concluido: !atual, concluido_em: !atual ? new Date().toISOString() : null,
@@ -174,6 +176,14 @@ export default function Correio({ profile }: { profile?: Profile }) {
         concluido: true, concluido_em: new Date().toISOString(), concluido_por: minhaPessoa?.id ?? null,
       }).select().single()
       if (data) setStatusChk(prev => [...prev, data])
+    }
+    // Avisa o(s) padrinho(s) desse afilhado quando um item é concluído (quem marcou não recebe)
+    if (virouConcluido) {
+      const pads = padrinhos.filter(p => p.afiliado_id === afiliadoId).map(p => p.padrinho_id).filter(Boolean)
+      if (pads.length) {
+        const nome = todasPessoas.find(p => p.id === afiliadoId)?.name
+        notificarRegra('correio_checklist', { person_ids: pads, title: '📬 Checklist do afilhado avançou', body: nome ? `${formatName(nome)} — um item foi concluído.` : 'Um item do checklist foi concluído.', url: '/correio' })
+      }
     }
   }
 

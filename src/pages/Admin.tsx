@@ -461,13 +461,15 @@ export default function Admin({ profile }: { profile?: Profile }) {
     setLoading(false)
   }
 
-  async function alterarRole(userId:string, key:string) {
+  async function alterarRole(userId:string, key:string, silencioso = false) {
     const cfg = CARGOS_APROVACAO.find(c => c.key === key)
     if (!cfg) return
     await supabase.from('profiles').update({ user_role: cfg.user_role, role_status: cfg.status }).eq('user_id', userId)
     // Converte o TIPO da pessoa (encontrista/encontreiro) quando o cargo define isso
     if (cfg.role_type) await supabase.from('people').update({ role_type: cfg.role_type }).eq('user_id', userId)
     setPessoas(prev => prev.map(p => p.user_id === userId ? { ...p, user_role: cfg.user_role, role_status: cfg.status, ...(cfg.role_type ? { role_type: cfg.role_type } : {}) } : p))
+    // Avisa a pessoa que o nível de acesso dela mudou (silencioso na aprovação, que já avisa)
+    if (!silencioso) notificarRegra('acesso_mudou', { user_ids: [userId], title: '🔑 Seu acesso mudou', body: `Agora você é ${cfg.label}.`, url: '/' })
     carregar()
   }
 
@@ -537,7 +539,7 @@ export default function Admin({ profile }: { profile?: Profile }) {
     // Aprova mantendo o TIPO com que a pessoa se cadastrou (encontrista/encontreiro)
     const key = p.role_type === 'worker' ? 'encontreiro' : 'encontrista'
     const cfg = CARGOS_APROVACAO.find(c => c.key === key)!
-    await alterarRole(p.user_id, key)
+    await alterarRole(p.user_id, key, true)
     notificarRegra('insc_aprovada', { user_ids: [p.user_id], title: '✅ Inscrição aprovada!', body: `Bem-vindo(a)! Seu acesso foi liberado como ${cfg.label}.`, url: '/' })
     setPessoaDetalhe(prev => prev && prev.user_id === p.user_id ? { ...prev, user_role: cfg.user_role, role_status: 'approved', role_type: cfg.role_type ?? prev.role_type } : prev)
     registrarLog({ action:'approve', entity:'profiles', entityId:p.id, description:`Aprovou o usuário ${p.name} como ${cfg.label}`, eventId:eventoAtivoId() })

@@ -124,7 +124,41 @@ Deno.serve(async (req) => {
       if (marcarEsc.length) await admin.from('escalas').update({ push_em: new Date().toISOString() }).in('id', marcarEsc)
     }
 
-    return json({ ok: true, cron: marcarCron.length, escalas: marcarEsc.length, enviados })
+    // ================= VALOR A PAGAR (10 dias antes do evento, 1x) =================
+    let finCobrados = 0
+    if (on('fin_a_pagar', false)) {
+      const DIA = 86400000
+      const { data: evs } = await admin.from('events')
+        .select('id,name,start_date,valor_encontrista,valor_encontreiro')
+        .not('start_date', 'is', null)
+      for (const ev of evs ?? []) {
+        const falta = new Date(ev.start_date).getTime() - agora
+        if (!(falta > 0 && falta <= 10 * DIA)) continue                 // só dentro dos 10 dias antes
+        const flagKey = 'fin_cobranca_' + ev.id
+        const { data: fl } = await admin.from('configuracoes').select('valor').eq('chave', flagKey).maybeSingle()
+        if ((fl as any)?.valor === '1') continue                         // já cobrou esse evento
+        const valEnc = Number(ev.valor_encontrista) || 0
+        const valTrab = Number(ev.valor_encontreiro) || 0
+        if (valEnc <= 0 && valTrab <= 0) continue                        // sem valores definidos
+        const [{ data: ppl }, { data: pags }] = await Promise.all([
+          admin.from('people').select('id,user_id,role_type').eq('event_id', ev.id).not('user_id', 'is', null),
+          admin.from('financeiro').select('person_id,valor,status').eq('event_id', ev.id),
+        ])
+        const pagoPor: Record<string, number> = {}
+        for (const p of pags ?? []) if (p.status === 'pago' && p.person_id) pagoPor[p.person_id] = (pagoPor[p.person_id] || 0) + (Number(p.valor) || 0)
+        for (const p of ppl ?? []) {
+          const esperado = p.role_type === 'encounterer' ? valEnc : valTrab
+          if (esperado <= 0 || !p.user_id) continue
+          const dev = esperado - (pagoPor[p.id] || 0)
+          if (dev <= 0.009) continue
+          await enviar([p.user_id], { title: '💰 Falta acertar sua inscrição', body: `O encontro está chegando. Ainda falta pagar R$ ${dev.toFixed(2).replace('.', ',')}.`, url: '/', tag: 'fin-' + ev.id })
+          finCobrados++
+        }
+        await admin.from('configuracoes').upsert({ chave: flagKey, valor: '1' }, { onConflict: 'chave' })
+      }
+    }
+
+    return json({ ok: true, cron: marcarCron.length, escalas: marcarEsc.length, fin: finCobrados, enviados })
   } catch (e) {
     return json({ error: String((e as any)?.message ?? e) }, 500)
   }

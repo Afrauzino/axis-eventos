@@ -119,6 +119,7 @@ export default function MuralGratidao({ eventoId, profile, fundo, onEditar }: { 
       setCurtidas(prev => [...prev, { post_id: postId, user_id: profile.user_id }])  // otimista
       const { error } = await supabase.from('mural_curtidas').insert({ post_id: postId, event_id: eventoId, user_id: profile.user_id })
       if (error) toast.falha('Não foi possível curtir. Rode o SQL 40_mural_interacoes.sql.', error)
+      else { const autor = posts.find(p => p.id === postId)?.user_id; if (autor) notificarRegra('mural_reacao', { user_ids: [autor], title: `❤️ ${profile.full_name ?? 'Alguém'} curtiu seu recado`, body: '', url: '/?ir=mural' }) }
     }
   }
 
@@ -130,6 +131,7 @@ export default function MuralGratidao({ eventoId, profile, fundo, onEditar }: { 
       autor_nome: profile.full_name, autor_foto: profile.avatar_url, texto: t.slice(0, LIM_COMENT),
     })
     if (error) { toast.falha('Não foi possível comentar. Rode o SQL 40_mural_interacoes.sql.', error); return }
+    { const autor = posts.find(p => p.id === postId)?.user_id; if (autor) notificarRegra('mural_reacao', { user_ids: [autor], title: `💬 ${profile.full_name ?? 'Alguém'} comentou no seu recado`, body: t.slice(0, 80), url: '/?ir=mural' }) }
     setNovoComent(prev => ({ ...prev, [postId]: '' }))
     carregar(eventoId)
   }
