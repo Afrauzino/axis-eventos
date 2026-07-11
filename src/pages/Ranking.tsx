@@ -6,7 +6,7 @@ import { getInitials } from '../utils'
 import { useEvento } from '../hooks/useEvento'
 import { useRegistrarChrome } from '../lib/chrome'
 import { carregarConfig, salvarConfig } from '../lib/tema'
-import { enviarPush } from '../lib/push'
+import { notificarRegra } from '../lib/notifRegras'
 import type { Profile } from '../App'
 
 type Categoria = { id:string; nome:string; descricao:string|null; icone:string; cor:string; ordem:number }
@@ -106,11 +106,12 @@ export default function Ranking({ profile }: { profile?: Profile }) {
   // Admin abre/fecha a votação. Abrir avisa todos no celular (não mexe no painel de regras).
   async function iniciarVotacao() {
     await salvarConfig('ranking_aberto', '1'); setAberto(true)
-    if (evento) enviarPush({ alerta: { event_id: evento.id, target_type: 'all' }, title: '🏆 Votação do Ranking começou!', body: 'Vote nos destaques do encontro!', url: '/ranking' })
+    if (evento) notificarRegra('ranking_abriu', { alerta: { event_id: evento.id, target_type: 'all' }, title: '🏆 Votação do Ranking começou!', body: 'Vote nos destaques do encontro!', url: '/ranking' })
   }
   async function terminarVotacao() {
     if (!confirm('Terminar a votação? Ninguém mais poderá votar.')) return
     await salvarConfig('ranking_aberto', '0'); setAberto(false)
+    if (evento) notificarRegra('ranking_resultado', { alerta: { event_id: evento.id, target_type: 'all' }, title: '🏆 Resultado do Ranking!', body: 'A votação encerrou. Veja quem foram os destaques!', url: '/ranking' })
   }
 
   const CATEGORIAS_PADRAO = [

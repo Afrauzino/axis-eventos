@@ -106,8 +106,8 @@ export const REGRAS: Regra[] = [
   { key:'correio_checklist', area:'correio', label:'Checklist do afilhado avançou', desc:'Avisa o padrinho quando o checklist muda.', padrao:false, pendente:true },
   { key:'correio_recebido',  area:'correio', label:'Recebeu algo do correio', desc:'Avisa o afilhado quando recebe algo.', padrao:false, pendente:true },
   // P. Ranking
-  { key:'ranking_abriu',   area:'ranking', label:'Votação abriu', desc:'Avisa todos que a votação começou.', padrao:false, pendente:true },
-  { key:'ranking_resultado', area:'ranking', label:'Resultado do ranking', desc:'Avisa todos quando sai o resultado.', padrao:false, pendente:true },
+  { key:'ranking_abriu',   area:'ranking', label:'Votação abriu', desc:'Avisa todos que a votação começou.', padrao:true },
+  { key:'ranking_resultado', area:'ranking', label:'Resultado do ranking', desc:'Avisa todos quando a votação encerra.', padrao:true },
   // Q. Logística
   { key:'logistica_item',  area:'logistica', label:'Novo item de logística', desc:'Avisa a equipe de um item/checklist novo.', padrao:false, pendente:true },
   // R. Sistema

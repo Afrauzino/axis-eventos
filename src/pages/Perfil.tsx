@@ -8,6 +8,7 @@ import { toast } from '../components/Toast'
 import { pathOriginal, urlOriginal, imagemCarrega, baixarImagem } from '../lib/foto'
 import { biometriaSuportada, biometriaAtiva, ativarBiometria, desativarBiometria } from '../lib/biometria'
 import { testarPush } from '../lib/push'
+import { cargoObrigatorioFaltando } from '../lib/cadastroCfg'
 import type { Profile } from '../App'
 
 export default function Perfil({ profile, onUpdate }: { profile: Profile; onUpdate: () => void }) {
@@ -64,7 +65,7 @@ export default function Perfil({ profile, onUpdate }: { profile: Profile; onUpda
       sexo: d.sexo ?? '', birth_date: d.birth_date ?? '', cpf: d.cpf ?? '', rg: d.rg ?? '',
       cidade: d.cidade ?? '', estado: d.estado ?? '', endereco: d.endereco ?? '', bairro: d.bairro ?? '', cep: d.cep ?? '',
       role_type: d.role_type ?? 'encounterer', status: d.status ?? 'inscrito',
-      team_pref: d.team_pref ?? '', referencia_id: d.referencia_id ?? '', notes: d.notes ?? '',
+      team_pref: d.team_pref ?? '', referencia_id: d.referencia_id ?? '', cargo: d.cargo ?? '', notes: d.notes ?? '',
       responsavel_nome: d.responsavel_nome ?? '', responsavel_tel: d.responsavel_tel ?? '',
       photo_url: d.photo_url ?? null,
     })
@@ -73,6 +74,7 @@ export default function Perfil({ profile, onUpdate }: { profile: Profile; onUpda
 
   async function salvarMeuCadastro() {
     if (!cadForm.name.trim()) { toast.aviso('O nome é obrigatório.'); return }
+    if (await cargoObrigatorioFaltando(cadForm.cargo)) { toast.aviso('Escolha um cargo.'); return }
     setSalvandoCad(true)
     const payload = {
       name: formatName(cadForm.name),
@@ -83,6 +85,7 @@ export default function Perfil({ profile, onUpdate }: { profile: Profile; onUpda
       sexo: cadForm.sexo || '', birth_date: cadForm.birth_date || '',
       cpf: cadForm.cpf || '', rg: cadForm.rg || '',
       cidade: cadForm.cidade || '', estado: cadForm.estado || '', endereco: cadForm.endereco || '', bairro: cadForm.bairro || '', cep: cadForm.cep || '',
+      cargo: cadForm.cargo || '',
       team_pref: cadForm.team_pref || '', responsavel_nome: cadForm.responsavel_nome || '', responsavel_tel: cadForm.responsavel_tel || '',
       notes: cadForm.notes || '', photo_url: cadForm.photo_url || null,
     }

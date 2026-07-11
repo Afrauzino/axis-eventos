@@ -59,6 +59,7 @@ const AvaliacaoAdmin   = lazy(() => import('./pages/AvaliacaoAdmin'))
 const Ranking          = lazy(() => import('./pages/Ranking'))
 const Admin            = lazy(() => import('./pages/Admin'))
 const PainelAnalises   = lazy(() => import('./pages/PainelAnalises'))
+const CadastroConfig   = lazy(() => import('./pages/CadastroConfig'))
 const Perfil           = lazy(() => import('./pages/Perfil'))
 
 export type Profile = {
@@ -135,6 +136,9 @@ function AppRoutes({ profile, onProfileUpdate, versaoFotos }: { profile: Profile
   if (perm && !admin) {
     if (!carregado) return <div className="page">{[1,2,3].map(i=><div key={i} className="skeleton" style={{height:80,marginBottom:10,borderRadius:14}}/>)}</div>
     if (!pode(perm)) return <SemAcesso />
+    // Telas de GESTÃO da Administração exigem EDITAR (só 'ver' vê o cadeado).
+    // Exceção: o Painel (/admin/painel) é de visualização e tem liberação própria.
+    if (loc.pathname.startsWith('/admin') && !loc.pathname.startsWith('/admin/painel') && !pode('menu_admin', 'editar')) return <SemAcesso />
   }
   return (
     <Suspense fallback={<div className="page">{[1,2,3].map(i=><div key={i} className="skeleton" style={{height:80,marginBottom:10,borderRadius:14}}/>)}</div>}>
@@ -177,6 +181,7 @@ function AppRoutes({ profile, onProfileUpdate, versaoFotos }: { profile: Profile
       <Route path="/avaliacao"             element={<Avaliacao profile={profile} />} />
       <Route path="/admin/avaliacao"       element={<AvaliacaoAdmin profile={profile} />} />
       <Route path="/admin/painel"          element={<PainelAnalises profile={profile} />} />
+      <Route path="/admin/cadastro-config" element={<CadastroConfig profile={profile} />} />
       <Route path="/ranking"               element={<Ranking profile={profile} />} />
       <Route path="/admin"                 element={<Admin profile={profile} />} />
       <Route path="/perfil"                element={<Perfil profile={profile} onUpdate={onProfileUpdate} />} />
@@ -218,6 +223,7 @@ const TITULOS_ROTA: Record<string,string> = {
   '/avaliacao': 'Avaliação do Encontro',
   '/admin/avaliacao': 'Avaliação pós-evento',
   '/admin/painel': 'Painel',
+  '/admin/cadastro-config': 'Ficha de cadastro',
   '/correio': 'Correio',
   '/logistica': 'Logística',
   '/midia': 'Mídia',

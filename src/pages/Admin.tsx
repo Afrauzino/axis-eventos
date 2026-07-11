@@ -604,7 +604,7 @@ export default function Admin({ profile }: { profile?: Profile }) {
       sexo: data.sexo ?? '', birth_date: data.birth_date ?? '', cpf: data.cpf ?? '', rg: data.rg ?? '',
       cidade: data.cidade ?? '', estado: data.estado ?? '', endereco: data.endereco ?? '',
       bairro: data.bairro ?? '', cep: data.cep ?? '', role_type: data.role_type ?? 'encounterer',
-      team_pref: data.team_pref ?? '', notes: data.notes ?? '', photo_url: data.photo_url ?? null,
+      team_pref: data.team_pref ?? '', cargo: (data as any).cargo ?? '', notes: data.notes ?? '', photo_url: data.photo_url ?? null,
     })
     setEditPessoaId(p.id)
   }
@@ -630,6 +630,7 @@ export default function Admin({ profile }: { profile?: Profile }) {
       bairro: editForm.bairro || null,
       cep: editForm.cep || null,
       notes: editForm.notes || null,
+      cargo: editForm.cargo || null,
       photo_url: editForm.photo_url || null,
       role_type: editForm.role_type,
       team_pref: editForm.team_pref || null,

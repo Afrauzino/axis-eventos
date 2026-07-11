@@ -9,6 +9,7 @@ import UploadFoto from './UploadFoto'
 import Seletor from './Seletor'
 import DataHora from './DataHora'
 import { formatName } from '../utils'
+import { carregarCadastroCfg, cargoVisivel, CADASTRO_CFG_VAZIO, type CadastroCfg } from '../lib/cadastroCfg'
 
 export type MedCtrl = {
   nome:string; tipo:'comprimido'|'gotas'|'outros'
@@ -36,6 +37,7 @@ export type PessoaForm = {
   status: string
   team_pref: string
   referencia_id: string
+  cargo: string
   notes: string
   responsavel_nome: string
   responsavel_tel: string
@@ -59,7 +61,7 @@ export const FORM_VAZIO: PessoaForm = {
   sexo:'', birth_date:'', cpf:'', rg:'',
   cidade:'', estado:'', endereco:'', bairro:'', cep:'',
   role_type:'encounterer', status:'inscrito',
-  team_pref:'', referencia_id:'', notes:'',
+  team_pref:'', referencia_id:'', cargo:'', notes:'',
   responsavel_nome:'', responsavel_tel:'', photo_url:null,
   diabetes:false, hipertensao:false, cardiopatia:false,
   epilepsia:false, ansiedade:false, celiaca:false,
@@ -104,6 +106,8 @@ export default function CadastroPessoa({
 }: Props) {
   const [equipes, setEquipes] = useState<{id:string;name:string;color:string}[]>([])
   const [refs,    setRefs]    = useState<{id:string;name:string;photo_url:string|null}[]>([])
+  const [cadCfg,  setCadCfg]  = useState<CadastroCfg>(CADASTRO_CFG_VAZIO)
+  useEffect(() => { carregarCadastroCfg().then(setCadCfg) }, [])
   const aba: string = 'geral' // Saúde removida do primeiro acesso (preenchida depois no módulo Saúde)
   const [refSearch, setRefSearch] = useState('')
   const [refOpen, setRefOpen]   = useState(false)
@@ -426,6 +430,16 @@ export default function CadastroPessoa({
         <label className="form-label" style={{marginTop:12}}>Ano que passou pelo encontro</label>
         {inp('ano_encontro',{type:'number',placeholder:'Ex: 2024',min:'1990',max:'2100'})}
       </div>
+
+      {/* CARGO — lista fixa configurável em Administração (só aparece se houver cargos e não estiver oculto) */}
+      {cargoVisivel(cadCfg) && (
+        <div className="form-group">
+          <label className="form-label">Cargo {cadCfg.obrigatorio && <span className="req">*</span>}</label>
+          <Seletor titulo="Cargo" placeholder="Selecionar cargo" sheet disabled={modoSoLeitura}
+            value={form.cargo} onChange={v=>s('cargo',v)}
+            opcoes={[{value:'',label:'Nenhum'}, ...cadCfg.cargos.map(c=>({value:c,label:c}))]}/>
+        </div>
+      )}
 
       {showStatus && (
         <div className="form-group">

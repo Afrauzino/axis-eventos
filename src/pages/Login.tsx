@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { carregarConfig } from '../lib/tema'
 import { notificarRegra } from '../lib/notifRegras'
+import { cargoObrigatorioFaltando } from '../lib/cadastroCfg'
 import { biometriaSuportada, ativarBiometria } from '../lib/biometria'
 import CadastroPessoa, { FORM_VAZIO, MED_VAZIO, type PessoaForm, type MedCtrl } from '../components/CadastroPessoa'
 import InstallPWA from '../components/InstallPWA'
@@ -95,7 +96,7 @@ export default function Login() {
     e.preventDefault(); setErro(''); setLoading(true)
     const { data, error } = await supabase
       .from('people')
-      .select('id,name,user_id,event_id,phone,church,role_type,sexo,birth_date,cpf,rg,cidade,estado,endereco,bairro,cep,contact_phone,photo_url,notes,ano_encontro')
+      .select('id,name,user_id,event_id,phone,church,role_type,sexo,birth_date,cpf,rg,cidade,estado,endereco,bairro,cep,contact_phone,photo_url,notes,ano_encontro,cargo')
       .eq('invite_code', codigo.toUpperCase().trim())
       .maybeSingle()
 
@@ -126,6 +127,7 @@ export default function Login() {
       endereco:     data.endereco     ?? '',
       bairro:       data.bairro       ?? '',
       cep:          data.cep          ?? '',
+      cargo:        data.cargo        ?? '',
       notes:        data.notes        ?? '',
       photo_url:    data.photo_url    ?? null,
     }))
@@ -205,6 +207,7 @@ export default function Login() {
     if (!uid) { setErro('Verifique seu email para confirmar o cadastro, depois faça login.'); setLoading(false); return }
 
     const tel = form.phone.trim()
+    if (await cargoObrigatorioFaltando(form.cargo)) { setErro('Escolha um cargo pra concluir o cadastro.'); setLoading(false); return }
     // Cria o próprio registro de pessoa (fica pendente de aprovação do admin)
     const { data: nova, error: pErr } = await supabase.from('people').insert({
       event_id: eventoAtivo.id, user_id: uid, name: nome, phone: tel,
@@ -215,6 +218,7 @@ export default function Login() {
       birth_date: form.birth_date || null, cpf: form.cpf || null, rg: form.rg || null,
       cidade: form.cidade || null, estado: form.estado || null, endereco: form.endereco || null,
       bairro: form.bairro || null, cep: form.cep || null, notes: form.notes || null,
+      cargo: form.cargo || null,
       photo_url: form.photo_url || null, team_pref: form.team_pref || null,
     }).select('id').single()
     if (pErr) { setErro('Erro ao salvar inscrição: ' + pErr.message + ' (o admin precisa rodar sql/41_inscricao_aberta.sql)'); setLoading(false); return }
@@ -306,6 +310,7 @@ export default function Login() {
     // Limpar placeholder "a cadastrar" se ainda estiver no telefone
     const telefoneLimpo = (form.phone && form.phone.toLowerCase()!=='a cadastrar') ? form.phone.trim() : form.phone.trim()
 
+    if (await cargoObrigatorioFaltando(form.cargo)) { setErro('Escolha um cargo pra concluir o cadastro.'); setLoading(false); return }
     // ETAPA 1 — Atualizar people
     const r1 = await supabase.from('people').update({
       user_id: uid,
@@ -325,6 +330,7 @@ export default function Login() {
       bairro: form.bairro || null,
       cep: form.cep || null,
       notes: form.notes || null,
+      cargo: form.cargo || null,
       photo_url: form.photo_url || null,
       role_type: form.role_type,
       team_pref: form.team_pref || null,
