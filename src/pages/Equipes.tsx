@@ -9,6 +9,7 @@ import PrintOverlay from '../components/PrintOverlay'
 import { getInitials, isAdmin, formatName } from '../utils'
 import { useEvento } from '../hooks/useEvento'
 import { usePermissao } from '../hooks/usePermissao'
+import { enviarPush } from '../lib/push'
 import type { Profile } from '../App'
 
 type Equipe  = { id:string; name:string; color:string; leader_id:string|null; co_leader_id:string|null; equipe_saude:boolean; equipe_cardapio?:boolean }
@@ -93,7 +94,12 @@ export default function Equipes({ profile }: { profile?: Profile }) {
         if (teamId) {
           const { data: jaTem } = await supabase.from('people_teams')
             .select('id').eq('person_id', lid).eq('team_id', teamId).maybeSingle()
-          if (!jaTem) await supabase.from('people_teams').insert({ person_id: lid, team_id: teamId })
+          if (!jaTem) {
+            await supabase.from('people_teams').insert({ person_id: lid, team_id: teamId })
+            // Avisa o novo líder (push no celular)
+            const ehLider = lid === form.leader_id
+            enviarPush({ person_ids: [lid], title: ehLider ? '⭐ Você é líder de equipe' : '⭐ Você é vice-líder', body: `Equipe ${formatName(form.name)}.`, url: '/equipes' })
+          }
         }
       }
 
@@ -140,7 +146,12 @@ export default function Equipes({ profile }: { profile?: Profile }) {
     const novos = pessoasSel
       .filter(id => !vinculos.some(v=>v.person_id===id && v.team_id===modalMembro))
       .map(id => ({ person_id:id, team_id:modalMembro! }))
-    if (novos.length > 0) await supabase.from('people_teams').insert(novos)
+    if (novos.length > 0) {
+      await supabase.from('people_teams').insert(novos)
+      // Notifica quem entrou (push no celular, mesmo com app fechado)
+      const nomeEquipe = equipes.find(e=>e.id===modalMembro)?.name || 'uma equipe'
+      enviarPush({ person_ids: novos.map(n=>n.person_id), title: '🛡️ Você entrou numa equipe', body: `Você agora faz parte da equipe ${nomeEquipe}.`, url: '/equipes' })
+    }
     setPessoasSel([])
     setModalMembro(null)
     carregar()

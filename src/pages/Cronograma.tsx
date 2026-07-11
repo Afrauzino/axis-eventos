@@ -14,6 +14,7 @@ import Seletor from '../components/Seletor'
 import { useVoltarFecha } from '../hooks/useVoltarFecha'
 import CronometroPopup from '../components/CronometroPopup'
 import CronometroDisplay from '../components/CronometroDisplay'
+import { enviarPush } from '../lib/push'
 import type { Profile } from '../App'
 
 type TipoAtividade = { id:string; nome:string; cor:string; icone?:string|null; chave?:string|null; protegido?:boolean }
@@ -240,6 +241,22 @@ export default function Cronograma({ profile }: { profile?: Profile }) {
       const item = itens.find(i => i.id === id)
       try { if (item?.theater_id)     await supabase.from('theaters').update({ status:'concluido' }).eq('id', item.theater_id) } catch {}
       try { if (item?.ministracao_id) await supabase.from('ministrações').update({ status:'concluido' }).eq('id', item.ministracao_id) } catch {}
+    }
+    // Notifica o elenco/ministrante quando SEU teatro/ministração começa ou termina
+    if (status === 'em_andamento' || status === 'concluido') {
+      const item = itens.find(i => i.id === id)
+      const verbo = status === 'em_andamento' ? 'começou' : 'terminou'
+      try {
+        if (item?.theater_id) {
+          const { data: el } = await supabase.from('teatro_elenco').select('person_id').eq('theater_id', item.theater_id)
+          const ids = [...new Set((el ?? []).map((e:any)=>e.person_id).filter(Boolean))]
+          if (ids.length) enviarPush({ person_ids: ids, title: `🎭 Seu teatro ${verbo}`, body: item.titulo, url: '/minhas-atividades' })
+        }
+        if (item?.ministracao_id) {
+          const { data: mi } = await supabase.from('ministrações').select('ministrante_id').eq('id', item.ministracao_id).maybeSingle()
+          if ((mi as any)?.ministrante_id) enviarPush({ person_ids: [(mi as any).ministrante_id], title: `🎤 Sua ministração ${verbo}`, body: item.titulo, url: '/minhas-atividades' })
+        }
+      } catch {}
     }
     setItens(prev => prev.map(i => i.id === id ? { ...i, ...extra } : i))
     setDetalhe(prev => prev?.id === id ? { ...prev, ...extra } : prev)
