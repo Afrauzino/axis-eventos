@@ -27,6 +27,7 @@ export default function MinhasAtividades({ profile }: { profile: Profile }) {
   const [filtro, setFiltro]     = useState<'todas'|'pendentes'|'concluidas'>('todas')
   const [myPersonId, setMyPersonId] = useState<string|null>(null)
   const [cardapios, setCardapios] = useState<{id:string;tipo_refeicao_nome:string|null;titulo:string|null;itens:string|null;data_servir:string|null}[]>([])
+  const [feitosCard, setFeitosCard] = useState<Set<string>>(new Set())   // cardápios que EU concluí
   const [cardapioDetalhe, setCardapioDetalhe] = useState<{id:string;tipo_refeicao_nome:string|null;titulo:string|null;itens:string|null;data_servir:string|null}|null>(null)
   useVoltarFecha(!!cardapioDetalhe, () => setCardapioDetalhe(null))
   const [meusAfilhados, setMeusAfilhados] = useState<{id:string;name:string;photo_url:string|null;pct:number;status:string}[]>([])
@@ -124,17 +125,23 @@ export default function MinhasAtividades({ profile }: { profile: Profile }) {
     // #11 — Cronograma → atividades pessoais (ministrante da ministração OU elenco do teatro)
     await carregarDoCronograma(myPerson.id)
 
-    // Cardápios do dia: se eu sou membro de alguma equipe marcada como equipe_cardapio
+    // Cardápios: só pra quem é LIDERADO (membro, não líder) de uma equipe da cozinha
     const { data: meusTimes } = await supabase.from('people_teams').select('team_id').eq('person_id', myPerson.id)
     const teamIds = (meusTimes ?? []).map(t=>t.team_id)
+    let ehCozinhaLiderado = false
     if (teamIds.length > 0) {
-      const { data: timesCardapio } = await supabase.from('teams').select('id').eq('equipe_cardapio', true).in('id', teamIds)
-      if ((timesCardapio ?? []).length > 0) {
-        const { data: cards } = await supabase.from('cozinha_cardapios')
-          .select('id,tipo_refeicao_nome,titulo,itens,data_servir').eq('event_id', evento.id).order('data_servir')
-        setCardapios(cards ?? [])
-      } else setCardapios([])
-    } else setCardapios([])
+      const { data: timesCardapio } = await supabase.from('teams').select('id,leader_id,co_leader_id').eq('equipe_cardapio', true).in('id', teamIds)
+      // o líder não precisa marcar cardápio — só os liderados
+      ehCozinhaLiderado = (timesCardapio ?? []).some((t:any) => t.leader_id !== myPerson.id && t.co_leader_id !== myPerson.id)
+    }
+    if (ehCozinhaLiderado) {
+      const { data: cards } = await supabase.from('cozinha_cardapios')
+        .select('id,tipo_refeicao_nome,titulo,itens,data_servir').eq('event_id', evento.id).order('data_servir')
+      setCardapios(cards ?? [])
+      // o que EU já concluí
+      const { data: conc } = await supabase.from('cozinha_conclusoes').select('cardapio_id').eq('person_id', myPerson.id).eq('feito', true)
+      setFeitosCard(new Set((conc ?? []).map((c:any)=>c.cardapio_id)))
+    } else { setCardapios([]); setFeitosCard(new Set()) }
 
     // Carregar dados dos meus afilhados (se eu for padrinho)
     const afIds = (padrinhos.data ?? []).map(p => p.afiliado_id)
@@ -206,6 +213,19 @@ export default function MinhasAtividades({ profile }: { profile: Profile }) {
   async function toggleItemChk(itemId: string, feito: boolean) {
     setEscalaChk(prev => prev.map(i => i.id===itemId ? {...i, feito} : i))
     await supabase.from('escala_checklist').update({ feito }).eq('id', itemId)
+  }
+  // Marca/desmarca um cardápio como concluído POR MIM
+  async function toggleCardapio(cardapioId: string) {
+    if (!myPersonId || !evento) return
+    const feito = feitosCard.has(cardapioId)
+    setFeitosCard(prev => { const n = new Set(prev); feito ? n.delete(cardapioId) : n.add(cardapioId); return n })  // otimista
+    if (feito) {
+      await supabase.from('cozinha_conclusoes').delete().eq('cardapio_id', cardapioId).eq('person_id', myPersonId)
+    } else {
+      await supabase.from('cozinha_conclusoes').upsert(
+        { event_id: evento.id, cardapio_id: cardapioId, person_id: myPersonId, feito: true, updated_at: new Date().toISOString() },
+        { onConflict: 'cardapio_id,person_id' })
+    }
   }
   // Itens do checklist de uma escala
   function itensDaEscala(escalaId: string) {
@@ -283,22 +303,41 @@ export default function MinhasAtividades({ profile }: { profile: Profile }) {
         </div>
       )}
 
-      {/* Cardápios da cozinha (para membros da equipe de cardápio) */}
-      {cardapios.length > 0 && (
+      {/* Cardápios da cozinha — marque o que você concluiu (barra de progresso em cima) */}
+      {cardapios.length > 0 && (() => {
+        const feitos = cardapios.filter(c=>feitosCard.has(c.id)).length
+        const pct = Math.round((feitos / cardapios.length) * 100)
+        return (
         <div style={{marginBottom:14}}>
-          <p style={{fontSize:13,fontWeight:700,color:'var(--muted)',textTransform:'uppercase',letterSpacing:'0.06em',marginBottom:8}}>🍽️ Cardápios a preparar</p>
-          {cardapios.map(c => (
-            <div key={c.id} onClick={()=>setCardapioDetalhe(c)} style={{background:'white',borderRadius:14,padding:'14px 16px',marginBottom:8,boxShadow:'var(--shadow-sm)',borderLeft:'4px solid #2F855A',cursor:'pointer'}}>
-              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:4}}>
-                <span style={{fontSize:14,fontWeight:700}}>🍽️ {c.tipo_refeicao_nome ?? 'Refeição'}{c.titulo?` — ${c.titulo}`:''}</span>
-                {c.data_servir && <span style={{fontSize:11,color:'var(--muted)',fontWeight:600}}>{new Date(c.data_servir+'T00:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})}</span>}
+          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:6}}>
+            <p style={{fontSize:13,fontWeight:700,color:'var(--muted)',textTransform:'uppercase',letterSpacing:'0.06em'}}>🍽️ Minha cozinha</p>
+            <span style={{fontSize:13,fontWeight:800,color:pct===100?'#2F855A':'var(--primary)'}}>{feitos}/{cardapios.length} · {pct}%</span>
+          </div>
+          <div style={{height:8,background:'var(--bg)',borderRadius:99,overflow:'hidden',marginBottom:12}}>
+            <div style={{height:'100%',width:`${pct}%`,background:pct===100?'#2F855A':'var(--primary)',borderRadius:99,transition:'width .3s'}}/>
+          </div>
+          {cardapios.map(c => {
+            const feito = feitosCard.has(c.id)
+            return (
+              <div key={c.id} style={{display:'flex',alignItems:'stretch',background:'white',borderRadius:14,marginBottom:8,boxShadow:'var(--shadow-sm)',overflow:'hidden',opacity:feito?0.75:1}}>
+                <div style={{width:4,background:feito?'#2F855A':'#E8821A',flexShrink:0}}/>
+                <div onClick={()=>setCardapioDetalhe(c)} style={{flex:1,minWidth:0,padding:'12px 14px',cursor:'pointer'}}>
+                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:2}}>
+                    <span style={{fontSize:14,fontWeight:700,...(feito?{textDecoration:'line-through'}:{})}}>🍽️ {c.tipo_refeicao_nome ?? 'Refeição'}{c.titulo?` — ${c.titulo}`:''}</span>
+                    {c.data_servir && <span style={{fontSize:11,color:'var(--muted)',fontWeight:600,flexShrink:0,marginLeft:8}}>{new Date(c.data_servir+'T00:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})}</span>}
+                  </div>
+                  {c.itens && <p style={{fontSize:12,color:'var(--muted)',whiteSpace:'pre-wrap',overflow:'hidden',textOverflow:'ellipsis',display:'-webkit-box',WebkitLineClamp:1,WebkitBoxOrient:'vertical'}}>{c.itens}</p>}
+                </div>
+                <button onClick={()=>toggleCardapio(c.id)} title={feito?'Concluído':'Marcar como concluído'}
+                  style={{flexShrink:0,background:'none',border:'none',cursor:'pointer',padding:'0 14px',display:'flex',alignItems:'center'}}>
+                  <span className="icon" style={{fontSize:28,color:feito?'#2F855A':'var(--border)'}}>{feito?'check_circle':'radio_button_unchecked'}</span>
+                </button>
               </div>
-              {c.itens && <p style={{fontSize:13,color:'var(--muted)',whiteSpace:'pre-wrap',overflow:'hidden',textOverflow:'ellipsis',display:'-webkit-box',WebkitLineClamp:2,WebkitBoxOrient:'vertical'}}>{c.itens}</p>}
-              <p style={{fontSize:11,color:'#2F855A',fontWeight:600,marginTop:4}}>Toque para ver completo →</p>
-            </div>
-          ))}
+            )
+          })}
         </div>
-      )}
+        )
+      })()}
 
       {/* Alertas recentes */}
       {alertas.length > 0 && (

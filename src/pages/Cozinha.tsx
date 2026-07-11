@@ -7,7 +7,7 @@ import CardItem from '../components/CardItem'
 import Seletor from '../components/Seletor'
 import { useEvento } from '../hooks/useEvento'
 import { usePermissao } from '../hooks/usePermissao'
-import { isAdmin, getInitials } from '../utils'
+import { isAdmin, getInitials, formatName } from '../utils'
 import type { Profile } from '../App'
 
 type RefTipo = { id:string; nome:string; cor:string; ordem:number; emoji?:string|null }
@@ -18,7 +18,12 @@ const CORES = ['#00A99D','#6B46C1','#2F855A','#D69E2E','#E53E3E','#3182CE','#DD6
 
 export default function Cozinha({ profile }: { profile?: Profile }) {
   const { evento, loading:evLoading } = useEvento()
-  const [aba, setAba] = useState<'cardapio'|'tipo'|'restricao'>('restricao')
+  const [aba, setAba] = useState<'cardapio'|'tipo'|'restricao'|'progresso'>('restricao')
+  // Progresso da equipe (líder marca pelos liderados)
+  const [cozMembros, setCozMembros] = useState<{id:string;name:string;photo_url:string|null}[]>([])
+  const [cozFeitos, setCozFeitos] = useState<Set<string>>(new Set())   // "personId|cardapioId"
+  const [cozLoad, setCozLoad] = useState(false)
+  const [expandido, setExpandido] = useState<string|null>(null)
   const [tipos, setTipos] = useState<RefTipo[]>([])
   const [cardapios, setCardapios] = useState<Cardapio[]>([])
   const [restricoes, setRestricoes] = useState<Restricao[]>([])
@@ -71,6 +76,51 @@ export default function Cozinha({ profile }: { profile?: Profile }) {
     setTipos(t.data ?? [])
     setCardapios(c.data ?? [])
     setLoading(false)
+  }
+
+  // Progresso: carrega os liderados da(s) equipe(s) da cozinha + o que cada um concluiu
+  useEffect(() => { if (aba==='progresso' && evento?.id) carregarProgresso() }, [aba, evento?.id])
+  async function carregarProgresso() {
+    if (!evento || !profile) return
+    setCozLoad(true)
+    const { data: myP } = await supabase.from('people').select('id').eq('event_id', evento.id).eq('user_id', profile.user_id).maybeSingle()
+    const meuId = myP?.id ?? null
+    const { data: times } = await supabase.from('teams').select('id,leader_id,co_leader_id').eq('event_id', evento.id).eq('equipe_cardapio', true)
+    const admin = (!!profile && isAdmin(profile.user_role)) || pode('cozinha','editar')
+    const minhas = (times ?? []).filter((t:any) => admin || t.leader_id===meuId || t.co_leader_id===meuId)
+    const teamIds = minhas.map((t:any)=>t.id)
+    const liderIds = new Set(minhas.flatMap((t:any)=>[t.leader_id,t.co_leader_id]).filter(Boolean))
+    let membros: {id:string;name:string;photo_url:string|null}[] = []
+    if (teamIds.length) {
+      const { data: pt } = await supabase.from('people_teams').select('person_id').in('team_id', teamIds)
+      const ids = [...new Set((pt ?? []).map((x:any)=>x.person_id))].filter(id => !liderIds.has(id))
+      if (ids.length) {
+        const { data: pes } = await supabase.from('people').select('id,name,photo_url').in('id', ids).order('name')
+        membros = pes ?? []
+      }
+    }
+    let conc: any[] = []
+    if (membros.length) {
+      const { data } = await supabase.from('cozinha_conclusoes').select('cardapio_id,person_id').eq('feito', true).in('person_id', membros.map(m=>m.id))
+      conc = data ?? []
+    }
+    setCozMembros(membros)
+    setCozFeitos(new Set(conc.map((c:any)=>c.person_id+'|'+c.cardapio_id)))
+    setCozLoad(false)
+  }
+  // Líder marca/desmarca um cardápio POR um liderado
+  async function togglePorMembro(personId: string, cardapioId: string) {
+    if (!evento) return
+    const key = personId+'|'+cardapioId
+    const feito = cozFeitos.has(key)
+    setCozFeitos(prev => { const n = new Set(prev); feito ? n.delete(key) : n.add(key); return n })
+    if (feito) {
+      await supabase.from('cozinha_conclusoes').delete().eq('cardapio_id', cardapioId).eq('person_id', personId)
+    } else {
+      await supabase.from('cozinha_conclusoes').upsert(
+        { event_id: evento.id, cardapio_id: cardapioId, person_id: personId, feito: true, updated_at: new Date().toISOString() },
+        { onConflict: 'cardapio_id,person_id' })
+    }
   }
 
   function abrirNovoTipo() { setEditTipo(null); setNovoTipo({ nome:'', cor:CORES[0], emoji:'🍽️' }); setModalTipo(true) }
@@ -138,8 +188,67 @@ export default function Cozinha({ profile }: { profile?: Profile }) {
       <div className="tabs mb-4" style={{flexWrap:'wrap'}}>
         <button className={`tab ${aba==='restricao'?'active':''}`} onClick={()=>setAba('restricao')}>Restrições</button>
         <button className={`tab ${aba==='cardapio'?'active':''}`} onClick={()=>setAba('cardapio')}>Cardápio</button>
+        <button className={`tab ${aba==='progresso'?'active':''}`} onClick={()=>setAba('progresso')}>Progresso</button>
         <button className={`tab ${aba==='tipo'?'active':''}`} onClick={()=>setAba('tipo')}>Tipo</button>
       </div>
+
+      {/* PROGRESSO — líder vê quem concluiu e marca pelos liderados */}
+      {aba==='progresso' && (
+        cozLoad ? <div className="skeleton" style={{height:120,borderRadius:14}}/> :
+        cardapios.length===0 ? (
+          <div className="empty"><p className="empty-title">Sem cardápios</p><p className="empty-desc">Crie os cardápios na aba Cardápio primeiro.</p></div>
+        ) : cozMembros.length===0 ? (
+          <div className="empty"><p className="empty-title">Sem liderados</p><p className="empty-desc">Só o líder da equipe da cozinha (ou admin) vê o progresso, e a equipe precisa ter membros.</p></div>
+        ) : (() => {
+          const totalCel = cozMembros.length * cardapios.length
+          const feitosTotal = cozMembros.reduce((s,m)=> s + cardapios.filter(c=>cozFeitos.has(m.id+'|'+c.id)).length, 0)
+          const pctGeral = totalCel>0 ? Math.round(feitosTotal/totalCel*100) : 0
+          return (
+            <>
+              <div style={{background:'white',borderRadius:14,padding:'14px 16px',marginBottom:14,boxShadow:'var(--shadow-sm)'}}>
+                <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:6}}>
+                  <span style={{fontSize:14,fontWeight:700}}>Equipe da cozinha · {cozMembros.length} × {cardapios.length}</span>
+                  <span style={{fontSize:14,fontWeight:800,color:pctGeral===100?'#2F855A':'var(--primary)'}}>{feitosTotal}/{totalCel} · {pctGeral}%</span>
+                </div>
+                <div style={{height:9,background:'var(--bg)',borderRadius:99,overflow:'hidden'}}>
+                  <div style={{height:'100%',width:`${pctGeral}%`,background:pctGeral===100?'#2F855A':'var(--primary)',borderRadius:99,transition:'width .3s'}}/>
+                </div>
+              </div>
+
+              {cozMembros.map(m => {
+                const feitos = cardapios.filter(c=>cozFeitos.has(m.id+'|'+c.id)).length
+                const pct = Math.round(feitos/cardapios.length*100)
+                const aberto = expandido===m.id
+                return (
+                  <div key={m.id}>
+                    <CardItem cor={pct===100?'#2F855A':'#E8821A'} ehPessoa fotoUrl={m.photo_url} iniciais={getInitials(m.name)}
+                      titulo={formatName(m.name)} progresso={pct} progressoLabel={`${feitos}/${cardapios.length}`}
+                      onVer={()=>setExpandido(aberto?null:m.id)} />
+                    {aberto && (
+                      <div style={{background:'var(--bg)',borderRadius:12,padding:'10px 12px',margin:'-4px 0 10px'}}>
+                        <p style={{fontSize:11,color:'var(--muted)',fontWeight:700,marginBottom:8}}>Toque pra marcar/desmarcar por {formatName(m.name).split(' ')[0]}:</p>
+                        <div style={{display:'flex',flexWrap:'wrap',gap:6}}>
+                          {cardapios.map(c => {
+                            const f = cozFeitos.has(m.id+'|'+c.id)
+                            return (
+                              <button key={c.id} onClick={()=>togglePorMembro(m.id, c.id)}
+                                style={{display:'inline-flex',alignItems:'center',gap:4,padding:'6px 12px',borderRadius:99,cursor:'pointer',fontFamily:'inherit',fontSize:12,fontWeight:700,
+                                  border: f?'1px solid #2F855A':'1px solid var(--border)', background: f?'#2F855A18':'white', color: f?'#2F855A':'var(--text2)'}}>
+                                {f && <span className="icon" style={{fontSize:14}}>check</span>}
+                                {c.tipo_refeicao_nome ?? 'Refeição'}{c.titulo?` · ${c.titulo}`:''}
+                              </button>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </>
+          )
+        })()
+      )}
 
       {/* Imprimir (inline, na aba Cardápio) */}
       {aba==='cardapio' && cardapios.length>0 && (
