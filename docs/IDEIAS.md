@@ -173,3 +173,14 @@ Pensadas pro contexto real (evento ao vivo, retiro, público variado). Reaprovei
 - **Offline de verdade:** em sítio de retiro o sinal é ruim; melhorar o cache do PWA p/ ver cronograma/crachá/ficha
   sem internet.
 - **Acessibilidade:** modo fonte grande + alto contraste p/ público mais velho.
+
+## Painel de análises (feito Fase 1 em 2026-07-11)
+- **Fase 1 (ENTREGUE):** menu Administração > Sistema > Painel. KPIs reais (online agora,
+  acessaram hoje, com/sem conta, encontristas×encontreiros, arrecadado, % escalas), progresso
+  por equipe, gráfico cadastros/7 dias, donut de tipos, liga/desliga por card (por aparelho),
+  liberação separada da de equipe (modulo='painel', escolhida dentro da tela). SQL 63.
+- **Fase 2 (a fazer):** financeiro completo (pago vs pendente, por tipo, doações, ticket médio),
+  Correio %/entregas, teatro (ensaios/atores), saúde (atendimentos/medicamentos entregues),
+  ocorrências abertas/fechadas, comparativo entre eventos.
+- **Fase 3 (a fazer):** modo TV/telão em tela cheia com rotação automática de cards, exportar PDF,
+  metas por equipe, série histórica de acessos (precisa gravar histórico de last_seen).
