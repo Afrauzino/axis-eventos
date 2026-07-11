@@ -1,6 +1,6 @@
 // Service Worker do AXIS — network-first (nunca serve versão velha quando online).
 // Não intercepta o Supabase (outra origem) nem chamadas não-GET.
-const CACHE = 'axis-runtime-v11'
+const CACHE = 'axis-runtime-v12'
 
 // Chave pública VAPID (mesma do app) — pra reassinar sozinho se o navegador trocar.
 const VAPID_PUBLIC = 'BBGfLWywD_AmYo_c2gkEdN9tlZbThxbnJW4ya6zKy5kOkRnZXKOZNDVLVRdzhgdM7uHa5LneNpRW2_YjDHxDlMY'
@@ -55,8 +55,8 @@ self.addEventListener('push', (event) => {
   const title = d.title || 'AXIS Eventos'
   const options = {
     body: d.body || '',
-    icon: '/axis-192.png',
-    badge: '/axis-192.png',
+    icon: '/axis-notif.png',   // ícone grande (conteúdo) — símbolo limpo, sem texto miúdo
+    badge: '/axis-badge.png',  // ícone pequeno (barra de status) — silhueta branca transparente
     tag: d.tag || undefined,
     renotify: !!d.tag,
     data: { url: d.url || '/' },
