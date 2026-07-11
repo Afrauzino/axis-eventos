@@ -2,11 +2,17 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useVoltarFecha } from '../hooks/useVoltarFecha'
-import { getInitials } from '../utils'
+import { getInitials, formatName, isAdmin } from '../utils'
 import CardItem from '../components/CardItem'
 import { useRegistrarChrome } from '../lib/chrome'
 import { useEvento } from '../hooks/useEvento'
+import { carregarConfig, salvarConfig } from '../lib/tema'
+import { toast } from '../components/Toast'
 import type { Profile } from '../App'
+
+// Mensagem que vai no WhatsApp ao pedir ajuda pra identificar a encontrista.
+// {nome} = nome da pessoa, {foto} = link da foto (o WhatsApp mostra a prévia do link).
+const MSG_REF_PADRAO = 'Olá! Você conhece esta pessoa? Pode me ajudar? 🙏\n\n👤 {nome}\n{foto}'
 
 type Pessoa = {
   id: string; name: string; church: string; photo_url: string | null
@@ -30,6 +36,14 @@ export default function Encontristas({ profile }: { profile: Profile }) {
   const [meuP, setMeuP] = useState<{id:string;name:string;photo_url:string|null;phone:string|null;role_type:string}|null>(null)
   const [conhecidos, setConhecidos] = useState<Marca[]>([])
   const [marcando, setMarcando] = useState(false)
+  // Mensagem do WhatsApp (editável)
+  const [msgRef, setMsgRef] = useState(MSG_REF_PADRAO)
+  const [msgRefSalva, setMsgRefSalva] = useState(MSG_REF_PADRAO)
+  const [modalMsg, setModalMsg] = useState(false)
+  useVoltarFecha(modalMsg, () => setModalMsg(false))
+  const [salvandoMsg, setSalvandoMsg] = useState(false)
+  const admin = isAdmin(profile.user_role) || profile.is_admin
+  useEffect(() => { carregarConfig('msg_referencia').then(v => { const m = v ?? MSG_REF_PADRAO; setMsgRef(m); setMsgRefSalva(m) }) }, [])
 
   useEffect(() => { if (evLoading) return; if (!evento) { setLoading(false); return }; carregar() }, [evento, evLoading])
 
@@ -92,15 +106,28 @@ export default function Encontristas({ profile }: { profile: Profile }) {
     return encontreiros.find(e => e.id === refId) ?? null
   }
 
-  function whatsapp(phone: string, nome: string) {
+  function whatsapp(phone: string) {
     const num = phone.replace(/\D/g, '')
-    const msg = encodeURIComponent(`Oi ${nome}, encontrei um objeto de um encontrista e preciso da sua ajuda para identificar!`)
-    window.open(`https://wa.me/55${num}?text=${msg}`, '_blank')
+    const nome = selecionado ? formatName(selecionado.name) : ''
+    const foto = selecionado?.photo_url || ''
+    const txt = (msgRef || MSG_REF_PADRAO)
+      .split('{nome}').join(nome)
+      .split('{foto}').join(foto)
+      .replace(/\n{3,}/g, '\n\n').trim()   // limpa linhas extras se não houver foto
+    window.open(`https://wa.me/55${num}?text=${encodeURIComponent(txt)}`, '_blank')
+  }
+
+  async function salvarMsgRef() {
+    setSalvandoMsg(true)
+    await salvarConfig('msg_referencia', msgRef.trim() || MSG_REF_PADRAO)
+    setMsgRefSalva(msgRef.trim() || MSG_REF_PADRAO); setSalvandoMsg(false)
+    toast.sucesso('Mensagem salva!')
   }
 
   useRegistrarChrome({
     busca: { value: busca, onChange: setBusca, placeholder: 'Buscar por nome ou igreja...' },
-  }, [busca])
+    configs: admin ? [{ label: 'Editar mensagem do WhatsApp', icon: 'edit', onClick: () => setModalMsg(true) }] : undefined,
+  }, [busca, admin])
 
   return (
     <div className="page">
@@ -183,7 +210,7 @@ export default function Encontristas({ profile }: { profile: Profile }) {
                     </div>
                     {ref.phone && (
                       <button
-                        onClick={() => whatsapp(ref.phone, ref.name.split(' ')[0])}
+                        onClick={() => whatsapp(ref.phone)}
                         style={{ background: '#25D366', border: 'none', borderRadius: 12, width: 48, height: 48, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0, boxShadow: '0 2px 8px rgba(37,211,102,0.4)' }}
                       >
                         <svg width="22" height="22" viewBox="0 0 24 24" fill="white">
@@ -218,7 +245,7 @@ export default function Encontristas({ profile }: { profile: Profile }) {
                       {c.worker_phone && <p style={{ fontSize: 12, color: 'var(--muted)' }}>{c.worker_phone}</p>}
                     </div>
                     {c.worker_phone && (
-                      <button onClick={() => whatsapp(c.worker_phone!, (c.worker_name||'').split(' ')[0])}
+                      <button onClick={() => whatsapp(c.worker_phone!)}
                         style={{ background: '#25D366', border: 'none', borderRadius: 10, width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}>
                         <span className="icon icon-sm" style={{ color: 'white' }}>chat</span>
                       </button>
@@ -258,6 +285,34 @@ export default function Encontristas({ profile }: { profile: Profile }) {
           <button onClick={()=>setFotoAmpliada(null)} style={{position:'absolute',top:20,right:20,background:'rgba(255,255,255,0.2)',border:'none',borderRadius:'50%',width:40,height:40,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}>
             <span className="icon" style={{color:'white',fontSize:24}}>close</span>
           </button>
+        </div>
+      )}
+
+      {/* Editar a mensagem do WhatsApp (só admin) */}
+      {modalMsg && (
+        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.5)',zIndex:400,display:'flex',flexDirection:'column',justifyContent:'flex-end'}} onClick={e=>e.target===e.currentTarget&&setModalMsg(false)}>
+          <div style={{background:'white',borderRadius:'20px 20px 0 0',padding:'8px 20px 28px',maxWidth:520,width:'100%',margin:'0 auto',maxHeight:'90vh',overflowY:'auto'}}>
+            <div style={{width:36,height:4,background:'var(--border)',borderRadius:2,margin:'12px auto 14px'}}/>
+            <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:14}}>
+              <span style={{fontSize:17,fontWeight:800}}>Mensagem do WhatsApp</span>
+              <button onClick={()=>setModalMsg(false)} style={{background:'var(--bg)',border:'1px solid var(--border)',borderRadius:'50%',width:32,height:32,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',fontFamily:'inherit'}}><span className="icon icon-sm">close</span></button>
+            </div>
+            <div className="alert-box mb-3" style={{fontSize:12,background:'var(--bg)',border:'1px solid var(--border)',borderRadius:10,padding:'10px 12px'}}>
+              <b>Atalhos:</b> <code>{'{nome}'}</code> = nome da encontrista, <code>{'{foto}'}</code> = link da foto (o WhatsApp mostra a prévia). O WhatsApp não anexa a foto direto — vai o link, que abre a imagem.
+            </div>
+            <textarea className="form-textarea" value={msgRef} onChange={e=>setMsgRef(e.target.value)}
+              style={{minHeight:150,fontFamily:'inherit',fontSize:14,lineHeight:1.6}} placeholder={MSG_REF_PADRAO}/>
+            <div style={{display:'flex',gap:8,marginTop:10,flexWrap:'wrap'}}>
+              <button className="btn btn-primary" onClick={salvarMsgRef} disabled={salvandoMsg||msgRef===msgRefSalva}>
+                {salvandoMsg?'Salvando...':(msgRef===msgRefSalva?'Salvo':'Salvar mensagem')}
+              </button>
+              <button className="btn btn-ghost" onClick={()=>setMsgRef(MSG_REF_PADRAO)}>Restaurar padrão</button>
+            </div>
+            <p className="section-label" style={{marginTop:18,marginBottom:6}}>Prévia</p>
+            <div style={{background:'var(--bg)',border:'1px solid var(--border)',borderRadius:12,padding:14,whiteSpace:'pre-wrap',fontSize:14,lineHeight:1.6}}>
+              {(msgRef||MSG_REF_PADRAO).split('{nome}').join('Maria Silva').split('{foto}').join('https://…/foto.jpg').replace(/\n{3,}/g,'\n\n').trim()}
+            </div>
+          </div>
         </div>
       )}
     </div>
