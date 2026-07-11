@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import YouTubePlayer from './YouTubePlayer'
 import { toast } from './Toast'
+import { useEvento } from '../hooks/useEvento'
+import { notificarRegra } from '../lib/notifRegras'
 import type { Profile } from '../App'
 
 type Item = { id:string; tipo:string; url:string; ordem:number; duracao?:number }
@@ -15,6 +17,7 @@ const detectarTipo = (u:string) => (ehYoutube(u) || /\.(mp4|webm|ogg|mov)(\?|$)/
 export default function HomeCarousel({ admin, grupo='principal', podeEditar, titulo, instagram=false, profile }: { admin: boolean; grupo?: string; podeEditar?: boolean; titulo?: string; instagram?: boolean; profile?: Profile }) {
   // Quem pode postar/remover: por padrão o admin; no carrossel de fotos, quem tem a liberação.
   const podeMexer = podeEditar ?? admin
+  const { evento } = useEvento()
   const [itens, setItens] = useState<Item[]>([])
   const [idx, setIdx] = useState(0)
   const [carregado, setCarregado] = useState(false)
@@ -95,6 +98,7 @@ export default function HomeCarousel({ admin, grupo='principal', podeEditar, tit
       const { data:u } = supabase.storage.from('arquivos').getPublicUrl(path)
       const tipo = file.type.startsWith('video') ? 'video' : 'imagem'
       await supabase.from('home_midias').insert({ tipo, url:u.publicUrl, ordem:itens.length, duracao:dur, grupo })
+      if (evento?.id && grupo === 'fotos') notificarRegra('foto_nova', { alerta: { event_id: evento.id, target_type: 'all' }, title: '📸 Foto nova no mural', body: 'Tem foto nova no carrossel. Dá uma olhada!', url: '/' })
       await carregar()
     } else toast.falha('Não foi possível enviar. Tente de novo.', error)
     setSubindo(false); setModal(false)

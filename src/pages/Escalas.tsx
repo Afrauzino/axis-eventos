@@ -9,7 +9,7 @@ import { usePermissao } from '../hooks/usePermissao'
 import PersonSelect from '../components/PersonSelect'
 import Seletor from '../components/Seletor'
 import { toast } from '../components/Toast'
-import { enviarPush } from '../lib/push'
+import { notificarRegra } from '../lib/notifRegras'
 import DataHora from '../components/DataHora'
 import BarraData from '../components/BarraData'
 import CardItem from '../components/CardItem'
@@ -210,7 +210,7 @@ export default function Escalas({ profile }: { profile?: Profile }) {
         }
       }
       // Avisa no celular quem foi escalado
-      enviarPush({ person_ids: pessoasSel, title: '📋 Você foi escalado', body: `${form.title}${form.location ? ' · ' + form.location : ''}`, url: '/minhas-atividades' })
+      notificarRegra('escala_nova', { person_ids: pessoasSel, title: '📋 Você foi escalado', body: `${form.title}${form.location ? ' · ' + form.location : ''}`, url: '/minhas-atividades' })
       setModal(false); setSalvando(false); resetForm(); carregar(); return
     }
 
@@ -228,8 +228,9 @@ export default function Escalas({ profile }: { profile?: Profile }) {
     if (editando) { const r = await supabase.from('escalas').update(payload).eq('id',editando.id); err = r.error }
     else { const r = await supabase.from('escalas').insert({ ...payload, created_by: profile?.user_id ?? null }).select('id').single(); err = r.error; escalaId = r.data?.id }
     if (err) { setErro('Erro: '+err.message); setSalvando(false); return }
-    // Avisa no celular só quando é uma escala NOVA (não a cada edição)
-    if (!editando) enviarPush({ person_ids: [form.person_id], title: '📋 Você foi escalado', body: `${form.title}${form.location ? ' · ' + form.location : ''}`, url: '/minhas-atividades' })
+    // Avisa no celular: escala nova, ou alteração de uma existente
+    if (!editando) notificarRegra('escala_nova', { person_ids: [form.person_id], title: '📋 Você foi escalado', body: `${form.title}${form.location ? ' · ' + form.location : ''}`, url: '/minhas-atividades' })
+    else notificarRegra('escala_alterada', { person_ids: [form.person_id], title: '📋 Sua escala mudou', body: `${form.title}${form.location ? ' · ' + form.location : ''}`, url: '/minhas-atividades' })
     // Sincroniza o checklist (apaga e regrava; preserva o "feito" de cada item)
     if (escalaId) {
       await supabase.from('escala_checklist').delete().eq('escala_id', escalaId)
@@ -241,7 +242,9 @@ export default function Escalas({ profile }: { profile?: Profile }) {
 
   async function excluirEscala(id:string) {
     if (!confirm('Excluir esta escala?')) return
+    const esc = escalas.find(e=>e.id===id)
     await supabase.from('escalas').delete().eq('id', id)
+    if (esc?.person_id) notificarRegra('escala_cancelada', { person_ids: [esc.person_id], title: '📋 Escala cancelada', body: esc.title || 'Uma escala sua foi cancelada.', url: '/minhas-atividades' })
     carregar()
   }
 
@@ -259,6 +262,8 @@ export default function Escalas({ profile }: { profile?: Profile }) {
     })
     setEnviandoSolic(false)
     if (error) { toast.falha('Não foi possível enviar. Rode o SQL 44_escala_solicitacoes.sql.', error); return }
+    // Avisa o líder que criou a escala
+    if (modalSolic.created_by) notificarRegra('escala_pediu_troca', { user_ids: [modalSolic.created_by], title: '✋ Pediram troca de escala', body: `${profile?.full_name ?? 'Alguém'} · ${modalSolic.title}`, url: '/escalas' })
     setModalSolic(null); setMsgSolic('')
     toast.sucesso('Solicitação enviada ao líder.')
     carregar()
@@ -266,6 +271,8 @@ export default function Escalas({ profile }: { profile?: Profile }) {
   async function resolverSolic(s: Solic, status: 'aprovada'|'recusada') {
     await supabase.from('escala_solicitacoes').update({ status, resolved_at: new Date().toISOString() }).eq('id', s.id)
     setSolicitacoes(prev => prev.map(x => x.id === s.id ? { ...x, status } : x))
+    // Avisa quem pediu a troca
+    if (s.solicitante_user_id) notificarRegra('escala_troca_resp', { user_ids: [s.solicitante_user_id], incluir_autor: true, title: status === 'aprovada' ? '✅ Troca de escala aprovada' : '❌ Troca de escala recusada', body: s.escala_titulo || 'Sua solicitação foi respondida.', url: '/minhas-atividades' })
     toast.sucesso(status === 'aprovada' ? 'Solicitação aprovada.' : 'Solicitação recusada.')
   }
 

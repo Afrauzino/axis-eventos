@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react'
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
-import { enviarPush } from '../lib/push'
+import { notificarRegra } from '../lib/notifRegras'
 import { useVoltarFecha } from '../hooks/useVoltarFecha'
 import { getInitials, fmtHora, fmtData, isAdmin, toLocalInput } from '../utils'
 import { useEvento } from '../hooks/useEvento'
@@ -213,7 +213,9 @@ export default function Ministracoes({ profile }: { profile?: Profile }) {
     const minAntigo = editando?.ministrante_id ?? null
     const minNovo = form.ministrante_id || null
     if (minNovo && minNovo !== minAntigo) {
-      enviarPush({ person_ids: [minNovo], title: '🎤 Você vai ministrar', body: form.titulo, url: '/minhas-atividades' })
+      notificarRegra('min_nova', { person_ids: [minNovo], title: '🎤 Você vai ministrar', body: form.titulo, url: '/minhas-atividades' })
+    } else if (editando && minNovo && minNovo === minAntigo) {
+      notificarRegra('min_alterada', { person_ids: [minNovo], title: '🎤 Sua ministração mudou', body: form.titulo, url: '/minhas-atividades' })
     }
     // Sync teatro link — garante que só UM teatro fica vinculado.
     // Só o admin/liberado mexe no teatro; o ministrante NÃO altera o vínculo do teatro.

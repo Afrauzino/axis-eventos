@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { carregarConfig } from '../lib/tema'
-import { enviarPush } from '../lib/push'
+import { notificarRegra } from '../lib/notifRegras'
 import Confete from './Confete'
 import type { Profile } from '../App'
 
@@ -80,7 +80,7 @@ export default function ParabensAniversario({ profile, preview, onFecharPreview 
             leaderUsers = (ls ?? []).map((l: any) => l.user_id)
           }
           const nomeCompleto = data.name || profile.full_name || 'Alguém'
-          enviarPush({ user_ids: leaderUsers, notify_admins: true, incluir_autor: true, title: '🎂 Aniversário hoje!', body: `Hoje é aniversário de ${nomeCompleto}! 🎉`, url: '/' })
+          notificarRegra('aniv_hoje', { user_ids: leaderUsers, notify_admins: true, incluir_autor: true, title: '🎂 Aniversário hoje!', body: `Hoje é aniversário de ${nomeCompleto}! 🎉`, url: '/' })
         } catch {}
       }
     })()

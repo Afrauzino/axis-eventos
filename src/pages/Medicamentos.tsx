@@ -9,6 +9,7 @@ import FotoAmpliada from '../components/FotoAmpliada'
 import { getInitials, fmtHora, fmtDataHora, isAdmin } from '../utils'
 import { useEvento } from '../hooks/useEvento'
 import { gerarICS, baixarICS, type EventoICS } from '../lib/ics'
+import { notificarEquipeFlag } from '../lib/notifRegras'
 import type { Profile } from '../App'
 
 // Doses vêm AUTOMÁTICAS da Ficha Médica (med_agenda). Sem agendamento manual.
@@ -86,6 +87,7 @@ export default function Medicamentos({ profile }: { profile?: Profile }) {
       meu = data?.id ?? null
     }
     await supabase.from('med_agenda').update({ entregue:true, entregue_por:meu, entregue_em:new Date().toISOString() }).eq('id', d.id)
+    if (evento) notificarEquipeFlag('remedio_entregue', evento.id, 'equipe_saude', { title: '💊 Remédio entregue', body: `${getPessoa(d.person_id)?.name ?? 'Alguém'} · ${d.nome}`, url: '/saude/medicamentos' })
     setEntregando(null); carregar()
   }
 

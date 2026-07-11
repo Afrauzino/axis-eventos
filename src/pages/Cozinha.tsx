@@ -8,6 +8,7 @@ import Seletor from '../components/Seletor'
 import { useEvento } from '../hooks/useEvento'
 import { usePermissao } from '../hooks/usePermissao'
 import { isAdmin, getInitials, formatName } from '../utils'
+import { notificarRegra, notificarEquipeFlag } from '../lib/notifRegras'
 import type { Profile } from '../App'
 
 type RefTipo = { id:string; nome:string; cor:string; ordem:number; emoji?:string|null }
@@ -179,12 +180,15 @@ export default function Cozinha({ profile }: { profile?: Profile }) {
       tipo_refeicao_nome:tipo?.nome ?? null, titulo:formCard.titulo||null, itens:formCard.itens||null,
       data_servir: formCard.data_servir || null,
     }
+    const nomeRef = tipo?.nome || formCard.titulo || 'Cardápio'
     if (editCard) {
       await supabase.from('cozinha_cardapios').update(payload).eq('id',editCard.id)
       setCardapios(prev=>prev.map(c=>c.id===editCard.id?{...c,...payload}:c))
+      notificarEquipeFlag('cardapio_alterado', evento.id, 'equipe_cardapio', { title: '🍴 Cardápio alterado', body: nomeRef, url: '/cozinha' })
     } else {
       const { data } = await supabase.from('cozinha_cardapios').insert(payload).select().single()
       if (data) setCardapios(prev=>[data,...prev])
+      notificarRegra('cardapio_dia', { alerta: { event_id: evento.id, target_type: 'all' }, title: '🍴 Cardápio de hoje', body: `${nomeRef}${formCard.itens ? ' · ' + String(formCard.itens).slice(0,80) : ''}`, url: '/cozinha' })
     }
     setModalCard(false)
   }

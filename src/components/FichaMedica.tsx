@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase'
 import DataHora from './DataHora'
 import { toLocalInput } from '../utils'
 import { gerarDoses, janelaDoEvento, type JanelaMed } from '../lib/doses'
+import { notificarEquipeFlag } from '../lib/notifRegras'
 
 /**
  * Ficha Médica — componente reutilizável, FONTE ÚNICA (tabela saude_fichas).
@@ -96,6 +97,15 @@ export default function FichaMedica({ personId, eventId, readOnly=false, startOp
       toma_controlado: f.toma_controlado,
     }, { onConflict:'person_id,event_id' })
     if (error) { setSalvando(false); setMsg('Erro: ' + error.message); return }
+
+    // Avisa a equipe de saúde se a ficha tem alergia/restrição
+    if (f.restricao_alimentar || f.alergia_medicamentos) {
+      const partes = [
+        f.restricao_alimentar ? `Restrição: ${f.restricoes_alimentares.trim()}` : '',
+        f.alergia_medicamentos ? `Alergia: ${f.alergias.trim()}` : '',
+      ].filter(Boolean).join(' · ')
+      notificarEquipeFlag('ficha_alergia', eventId, 'equipe_saude', { title: '⚕️ Ficha com alergia/restrição', body: partes || 'Confira a ficha médica.', url: '/saude/ficha' })
+    }
 
     // Medicamentos contínuos: salva cada um e (re)gera as doses pendentes no período fixo.
     // Dedupe: reusa o mesmo registro (por id ou por nome) — NUNCA duplica.

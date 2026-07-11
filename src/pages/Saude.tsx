@@ -6,6 +6,7 @@ import { getInitials, fmtDataHora } from '../utils'
 import { useEvento } from '../hooks/useEvento'
 import PersonSelect from '../components/PersonSelect'
 import CardItem from '../components/CardItem'
+import { notificarEquipeFlag } from '../lib/notifRegras'
 import type { Profile } from '../App'
 import { usePermissao } from '../hooks/usePermissao'
 
@@ -47,6 +48,7 @@ export default function Saude({ profile }: { profile?: Profile }) {
       medicine_name: form.descricao, reason: form.tipo,
       timestamp: new Date().toISOString(),
     })
+    notificarEquipeFlag('atendimento_novo', evento.id, 'equipe_saude', { title: '⚕️ Novo atendimento', body: `${getPessoa(form.person_id)?.name ?? 'Alguém'} · ${form.tipo}`, url: '/saude' })
     setModal(false); setSalvando(false)
     setForm({person_id:'',descricao:'',tipo:'Atendimento geral'}); carregar()
   }

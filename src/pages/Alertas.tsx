@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase'
 import { useVoltarFecha } from '../hooks/useVoltarFecha'
 import { fmtDataHora, isAdmin, isLider } from '../utils'
 import { useEvento } from '../hooks/useEvento'
-import { enviarPush } from '../lib/push'
+import { notificarRegra } from '../lib/notifRegras'
 import Seletor from '../components/Seletor'
 import type { Profile } from '../App'
 
@@ -112,9 +112,10 @@ export default function Alertas({ profile }: { profile?: Profile }) {
       setSalvando(false); return
     }
     // Notifica no celular (app fechado) o público-alvo — a Edge Function resolve quem recebe
-    enviarPush({
+    const critico = form.priority === 'critico' || form.priority === 'urgente'
+    notificarRegra(critico ? 'alerta_critico' : 'aviso_geral', {
       alerta: { event_id: evento.id, target_type: form.target_type, target_team_ids: teamIds },
-      title: `📢 ${form.title.trim()}`,
+      title: `${critico ? '🚨' : '📢'} ${form.title.trim()}`,
       body: form.message.trim().slice(0, 140),
       url: '/alertas',
     })

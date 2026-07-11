@@ -18,6 +18,7 @@ import EmojiGrid from '../components/EmojiGrid'
 import { PERM_CATALOGO, MENUS_CATALOGO } from '../lib/permCatalog'
 import CadastroPessoa, { FORM_VAZIO, type PessoaForm } from '../components/CadastroPessoa'
 import { carregarConfig, salvarConfig } from '../lib/tema'
+import { notificarRegra } from '../lib/notifRegras'
 
 type LogRow = { id:string; actor_name:string|null; action:string; entity:string; entity_id:string|null; description:string|null; metadata:any; created_at:string }
 const ACAO_LABEL: Record<string,string> = { create:'Criou', update:'Editou', delete:'Excluiu', approve:'Aprovou', reject:'Rejeitou', payment:'Pagamento', medication:'Medicação', login:'Login', export:'Exportou', other:'Ação' }
@@ -536,6 +537,7 @@ export default function Admin({ profile }: { profile?: Profile }) {
     const key = p.role_type === 'worker' ? 'encontreiro' : 'encontrista'
     const cfg = CARGOS_APROVACAO.find(c => c.key === key)!
     await alterarRole(p.user_id, key)
+    notificarRegra('insc_aprovada', { user_ids: [p.user_id], title: '✅ Inscrição aprovada!', body: `Bem-vindo(a)! Seu acesso foi liberado como ${cfg.label}.`, url: '/' })
     setPessoaDetalhe(prev => prev && prev.user_id === p.user_id ? { ...prev, user_role: cfg.user_role, role_status: 'approved', role_type: cfg.role_type ?? prev.role_type } : prev)
     registrarLog({ action:'approve', entity:'profiles', entityId:p.id, description:`Aprovou o usuário ${p.name} como ${cfg.label}`, eventId:eventoAtivoId() })
   }
@@ -557,6 +559,7 @@ export default function Admin({ profile }: { profile?: Profile }) {
     if (p.user_role === 'admin' || p.user_role === 'pastor') { toast.aviso('Administradores não podem ser bloqueados. Rebaixe o cargo antes, se precisar.'); return }
     if (!confirm(`Bloquear "${p.name}"?\n\nA pessoa perde o acesso ao app (verá "Conta bloqueada"), mas o cadastro e o login são MANTIDOS. Você pode reverter a qualquer momento enviando um novo código.`)) return
     await supabase.from('profiles').update({ role_status: 'blocked' }).eq('user_id', p.user_id)
+    notificarRegra('insc_recusada', { user_ids: [p.user_id], title: 'Acesso bloqueado', body: 'Seu acesso ao app foi bloqueado. Fale com a organização.', url: '/' })
     setPessoas(prev => prev.map(x => x.user_id === p.user_id ? { ...x, role_status: 'blocked' } : x))
     setPessoaDetalhe(prev => prev && prev.user_id === p.user_id ? { ...prev, role_status: 'blocked' } : prev)
     registrarLog({ action:'update', entity:'profiles', entityId:p.id, description:`Bloqueou a conta de ${p.name}`, eventId:eventoAtivoId() })

@@ -9,7 +9,7 @@ import PrintOverlay from '../components/PrintOverlay'
 import { getInitials, isAdmin, formatName } from '../utils'
 import { useEvento } from '../hooks/useEvento'
 import { usePermissao } from '../hooks/usePermissao'
-import { enviarPush } from '../lib/push'
+import { notificarRegra } from '../lib/notifRegras'
 import type { Profile } from '../App'
 
 type Equipe  = { id:string; name:string; color:string; leader_id:string|null; co_leader_id:string|null; equipe_saude:boolean; equipe_cardapio?:boolean }
@@ -98,7 +98,7 @@ export default function Equipes({ profile }: { profile?: Profile }) {
             await supabase.from('people_teams').insert({ person_id: lid, team_id: teamId })
             // Avisa o novo líder (push no celular)
             const ehLider = lid === form.leader_id
-            enviarPush({ person_ids: [lid], title: ehLider ? '⭐ Você é líder de equipe' : '⭐ Você é vice-líder', body: `Equipe ${formatName(form.name)}.`, url: '/equipes' })
+            notificarRegra('equipe_lider', { person_ids: [lid], title: ehLider ? '⭐ Você é líder de equipe' : '⭐ Você é vice-líder', body: `Equipe ${formatName(form.name)}.`, url: '/equipes' })
           }
         }
       }
@@ -149,8 +149,12 @@ export default function Equipes({ profile }: { profile?: Profile }) {
     if (novos.length > 0) {
       await supabase.from('people_teams').insert(novos)
       // Notifica quem entrou (push no celular, mesmo com app fechado)
-      const nomeEquipe = equipes.find(e=>e.id===modalMembro)?.name || 'uma equipe'
-      enviarPush({ person_ids: novos.map(n=>n.person_id), title: '🛡️ Você entrou numa equipe', body: `Você agora faz parte da equipe ${nomeEquipe}.`, url: '/equipes' })
+      const eq = equipes.find(e=>e.id===modalMembro)
+      const nomeEquipe = eq?.name || 'uma equipe'
+      notificarRegra('equipe_entrou', { person_ids: novos.map(n=>n.person_id), title: '🛡️ Você entrou numa equipe', body: `Você agora faz parte da equipe ${nomeEquipe}.`, url: '/equipes' })
+      // Avisa o líder/vice que entrou gente na equipe dele
+      const lideres = [eq?.leader_id, eq?.co_leader_id].filter(Boolean) as string[]
+      if (lideres.length) notificarRegra('equipe_novo_membro', { person_ids: lideres, title: '🛡️ Novo membro na sua equipe', body: `${novos.length} pessoa(s) entrou(ram) em ${nomeEquipe}.`, url: '/equipes' })
     }
     setPessoasSel([])
     setModalMembro(null)
@@ -163,6 +167,8 @@ export default function Equipes({ profile }: { profile?: Profile }) {
 
   async function removerMembro(personId: string, teamId: string) {
     await supabase.from('people_teams').delete().eq('person_id',personId).eq('team_id',teamId)
+    const nomeEquipe = equipes.find(e=>e.id===teamId)?.name || 'uma equipe'
+    notificarRegra('equipe_removido', { person_ids: [personId], title: '🛡️ Você saiu de uma equipe', body: `Você não faz mais parte da equipe ${nomeEquipe}.`, url: '/equipes' })
     carregar()
   }
 

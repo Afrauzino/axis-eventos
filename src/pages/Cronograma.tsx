@@ -14,7 +14,7 @@ import Seletor from '../components/Seletor'
 import { useVoltarFecha } from '../hooks/useVoltarFecha'
 import CronometroPopup from '../components/CronometroPopup'
 import CronometroDisplay from '../components/CronometroDisplay'
-import { enviarPush } from '../lib/push'
+import { notificarRegra } from '../lib/notifRegras'
 import type { Profile } from '../App'
 
 type TipoAtividade = { id:string; nome:string; cor:string; icone?:string|null; chave?:string|null; protegido?:boolean }
@@ -221,6 +221,8 @@ export default function Cronograma({ profile }: { profile?: Profile }) {
       const r = await supabase.from('cronograma_eventos').insert({ ...payload, event_id: evento.id }); err = r.error
     }
     if (err) { setErro('Erro: ' + err.message); setSalvando(false); return }
+    // Avisa todos que o cronograma mudou (novo item ou alteração) — se ligado
+    notificarRegra('cron_alterado', { alerta: { event_id: evento.id, target_type: 'all' }, title: editando ? '📅 Cronograma atualizado' : '📅 Novidade no cronograma', body: form.titulo, url: '/cronograma' })
     setModal(false); setSalvando(false); setEditando(null)
     setForm({ titulo:'', tipo:'atividade', hora_inicio:nowLocalInput(), hora_fim:nowLocalInput(), duracao_minutos:'60', local:'', descricao:'', ministracao_id:'', theater_id:'', cardapio_id:'' })
     carregar()
@@ -242,20 +244,23 @@ export default function Cronograma({ profile }: { profile?: Profile }) {
       try { if (item?.theater_id)     await supabase.from('theaters').update({ status:'concluido' }).eq('id', item.theater_id) } catch {}
       try { if (item?.ministracao_id) await supabase.from('ministrações').update({ status:'concluido' }).eq('id', item.ministracao_id) } catch {}
     }
-    // Notifica o elenco/ministrante quando SEU teatro/ministração começa ou termina
+    // Notifica quando um item começa/termina
     if (status === 'em_andamento' || status === 'concluido') {
       const item = itens.find(i => i.id === id)
-      const verbo = status === 'em_andamento' ? 'começou' : 'terminou'
+      const comecou = status === 'em_andamento'
+      const verbo = comecou ? 'começou' : 'terminou'
       try {
         if (item?.theater_id) {
           const { data: el } = await supabase.from('teatro_elenco').select('person_id').eq('theater_id', item.theater_id)
           const ids = [...new Set((el ?? []).map((e:any)=>e.person_id).filter(Boolean))]
-          if (ids.length) enviarPush({ person_ids: ids, title: `🎭 Seu teatro ${verbo}`, body: item.titulo, url: '/minhas-atividades' })
+          if (ids.length) notificarRegra(comecou ? 'teatro_comecou' : 'teatro_terminou', { person_ids: ids, title: `🎭 Seu teatro ${verbo}`, body: item.titulo, url: '/minhas-atividades' })
         }
         if (item?.ministracao_id) {
           const { data: mi } = await supabase.from('ministrações').select('ministrante_id').eq('id', item.ministracao_id).maybeSingle()
-          if ((mi as any)?.ministrante_id) enviarPush({ person_ids: [(mi as any).ministrante_id], title: `🎤 Sua ministração ${verbo}`, body: item.titulo, url: '/minhas-atividades' })
+          if ((mi as any)?.ministrante_id) notificarRegra(comecou ? 'min_comecou' : 'min_terminou', { person_ids: [(mi as any).ministrante_id], title: `🎤 Sua ministração ${verbo}`, body: item.titulo, url: '/minhas-atividades' })
         }
+        // Item começou agora → avisa todos (se ligado)
+        if (comecou && evento?.id) notificarRegra('cron_comecou', { alerta: { event_id: evento.id, target_type: 'all' }, title: `▶️ Começou: ${item?.titulo ?? 'programação'}`, body: item?.local ? `Local: ${item.local}` : 'Está na hora!', url: '/cronograma' })
       } catch {}
     }
     setItens(prev => prev.map(i => i.id === id ? { ...i, ...extra } : i))

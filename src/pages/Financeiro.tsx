@@ -7,6 +7,7 @@ import DataHora from '../components/DataHora'
 import { getInitials, isAdmin, fmtData, fmtBRL } from '../utils'
 import { useEvento } from '../hooks/useEvento'
 import PersonSelect from '../components/PersonSelect'
+import { notificarRegra } from '../lib/notifRegras'
 import type { Profile } from '../App'
 
 type Pagamento = { id:string; person_id:string; valor:number; status:string; forma_pagamento:string|null; data_pagamento:string|null; observacoes:string|null }
@@ -75,7 +76,11 @@ export default function Financeiro({ profile }: { profile?: Profile }) {
     }
     const payload = { person_id:form.person_id, valor:novoValor, status:form.status, forma_pagamento:form.forma_pagamento||null, data_pagamento:form.data_pagamento?new Date(form.data_pagamento).toISOString():new Date().toISOString(), observacoes:form.observacoes||null, event_id:evento.id }
     if (editando) await supabase.from('financeiro').update(payload).eq('id',editando.id)
-    else await supabase.from('financeiro').insert(payload)
+    else {
+      await supabase.from('financeiro').insert(payload)
+      // Recibo pra pessoa (só pagamento confirmado)
+      if (form.status === 'pago') notificarRegra('fin_pago', { person_ids: [form.person_id], title: '💰 Pagamento registrado', body: `Recebemos ${fmtBRL(novoValor)}. Obrigado!`, url: '/' })
+    }
     setModal(false); setSalvando(false); setEditando(null); setPersonaSel(null)
     setForm({person_id:'',valor:'',status:'pago',forma_pagamento:'pix',data_pagamento:'',observacoes:''}); carregar()
   }

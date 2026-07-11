@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { carregarConfig } from '../lib/tema'
-import { enviarPush } from '../lib/push'
+import { notificarRegra } from '../lib/notifRegras'
 import { biometriaSuportada, ativarBiometria } from '../lib/biometria'
 import CadastroPessoa, { FORM_VAZIO, MED_VAZIO, type PessoaForm, type MedCtrl } from '../components/CadastroPessoa'
 import InstallPWA from '../components/InstallPWA'
@@ -226,7 +226,7 @@ export default function Login() {
     if (r2.error) { setErro('Erro ao criar perfil: ' + r2.error.message); setLoading(false); return }
 
     // Web Push: avisa os admins (mesmo com o app fechado) que tem gente aguardando
-    enviarPush({ notify_admins: true, title: '🙋 Nova inscrição', body: `${nome} se inscreveu — toque para aprovar`, url: '/admin', tag: 'aprov' })
+    notificarRegra('insc_nova', { notify_admins: true, title: '🙋 Nova inscrição', body: `${nome} se inscreveu — toque para aprovar`, url: '/admin', tag: 'aprov' })
 
     const r3 = await supabase.from('saude_fichas').upsert({
       person_id: personId, event_id: eventoAtivo.id,

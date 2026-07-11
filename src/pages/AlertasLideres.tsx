@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { toast } from '../components/Toast'
 import { getInitials, formatName, isAdmin } from '../utils'
-import { enviarPush } from '../lib/push'
+import { notificarRegra } from '../lib/notifRegras'
 import { useEvento } from '../hooks/useEvento'
 import type { Profile } from '../App'
 
@@ -151,7 +151,7 @@ export default function AlertasLideres({ profile }: { profile?: Profile }) {
     }).select().single()
     if (al) await supabase.from('alertas_lideres_dest').insert(destinatarios.map(d => ({ alerta_id: al.id, destinatario_id: d })))
     // Avisa no celular (app fechado) quem recebeu
-    enviarPush({
+    notificarRegra('aviso_lideranca', {
       person_ids: destinatarios,
       title: nivelFinal==='critico' ? '🚨 Alerta crítico da liderança' : '📨 Aviso da liderança',
       body: (texto.trim().slice(0,140)) || '📷 Foto',

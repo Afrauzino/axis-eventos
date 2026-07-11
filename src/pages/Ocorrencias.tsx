@@ -4,6 +4,7 @@ import { useVoltarFecha } from '../hooks/useVoltarFecha'
 import { useRegistrarChromeNav } from '../lib/chrome'
 import { fmtDataHora, isAdmin } from '../utils'
 import { useEvento } from '../hooks/useEvento'
+import { notificarRegra } from '../lib/notifRegras'
 import type { Profile } from '../App'
 
 type Ocorrencia = { id:string; title:string; description:string; severity:string; status:string; created_at:string; resolved_at?:string|null }
@@ -42,6 +43,8 @@ export default function Ocorrencias({ profile }: { profile?: Profile }) {
 
   async function resolver(id: string) {
     setErroBotao(null)
+    // Descobre quem abriu (pra avisar) antes de resolver
+    const { data: oc } = await supabase.from('occurrences').select('created_by,title').eq('id', id).maybeSingle()
     // Update apenas o status - evita erro de coluna inexistente no banco
     const { error } = await supabase
       .from('occurrences')
@@ -52,6 +55,7 @@ export default function Ocorrencias({ profile }: { profile?: Profile }) {
       setErroBotao('Erro ao resolver: ' + error.message)
       return
     }
+    if ((oc as any)?.created_by) notificarRegra('ocorr_resolvida', { user_ids: [(oc as any).created_by], incluir_autor: true, title: '✅ Ocorrência resolvida', body: (oc as any).title || 'Sua ocorrência foi resolvida.', url: '/ocorrencias' })
     setLista(prev =>
       prev.map(o => o.id === id ? { ...o, status: 'resolved', resolved_at: new Date().toISOString() } : o)
     )
@@ -70,6 +74,8 @@ export default function Ocorrencias({ profile }: { profile?: Profile }) {
       created_by: userData.user.id,
     })
     if (!error) {
+      const grave = form.severity === 'high' || form.severity === 'critical'
+      notificarRegra(grave ? 'ocorr_grave' : 'ocorr_nova', { notify_admins: true, title: grave ? '🚨 Ocorrência GRAVE aberta' : '⚠️ Nova ocorrência', body: form.title, url: '/ocorrencias' })
       setModal(false)
       setForm({ title:'', description:'', severity:'medium' })
       carregar()

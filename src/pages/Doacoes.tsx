@@ -7,6 +7,7 @@ import { useEvento } from '../hooks/useEvento'
 import PersonSelect from '../components/PersonSelect'
 import CardItem from '../components/CardItem'
 import FotoAmpliada from '../components/FotoAmpliada'
+import { notificarRegra } from '../lib/notifRegras'
 import type { Profile } from '../App'
 
 type Doacao = { id:string; person_id:string|null; valor:number; descricao:string|null; forma_pagamento:string|null; data_doacao:string; anonima:boolean; created_at:string }
@@ -51,6 +52,7 @@ export default function Doacoes({ profile }: { profile?: Profile }) {
       anonima:form.anonima,
       data_doacao:new Date().toISOString(),
     })
+    notificarRegra('doacao_nova', { notify_admins: true, incluir_autor: true, title: '💜 Nova doação', body: `${fmtBRL(parseFloat(form.valor))}${form.descricao ? ' · ' + form.descricao : ''}`, url: '/doacoes' })
     setModal(false); setSalvando(false)
     setForm({person_id:'',valor:'',descricao:'',forma_pagamento:'pix',anonima:false}); carregar()
   }
