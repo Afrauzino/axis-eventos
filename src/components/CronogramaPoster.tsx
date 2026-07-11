@@ -88,12 +88,13 @@ export default function CronogramaPoster({ titulo, dias, slim = false, escala = 
                 {l.kind === 'min' ? (
                   <div style={{ flex: 1, display: 'flex', minWidth: 0 }}>
                     {/* Ministrante: foto recortada (vaza pra cima) + pill BEGE, NOME em cima / título embaixo */}
-                    <div style={{ flex: 1, position: 'relative', display: 'flex', alignItems: 'center', padding: t.rowPad, minWidth: 0 }}>
+                    <div style={{ flex: 1, alignSelf: 'center', position: 'relative', display: 'flex', alignItems: 'center', padding: t.rowPad, minWidth: 0 }}>
                       {l.fotoPng ? (
-                        // Caixa FIXA + contain + centralizado embaixo: qualquer PNG aparece
-                        // inteiro (nunca corta o rosto), centralizado, sem invadir o texto
-                        // (o pill reserva paddingLeft maior que a caixa). translateZ evita o "voa" ao rolar.
-                        <div style={{ position: 'absolute', left: s(4), bottom: 0, width: Math.round(t.foto * 1.3), height: Math.round(t.foto * 1.5), zIndex: 2, pointerEvents: 'none', transform: 'translateZ(0)' }}>
+                        // Caixa FIXA + contain + centralizado embaixo: qualquer PNG aparece inteiro
+                        // (nunca corta o rosto), centralizado, sem invadir o texto. Como o container
+                        // usa alignSelf:center, o PNG fica JUNTO do card mesmo quando a linha é alta
+                        // (ex.: teatro com muitas fotos do elenco). translateZ suaviza o "voa" ao rolar.
+                        <div style={{ position: 'absolute', left: s(4), bottom: 0, width: Math.round(t.foto * 1.25), height: Math.round(t.foto * 1.35), zIndex: 2, pointerEvents: 'none', transform: 'translateZ(0)' }}>
                           <img src={l.fotoPng} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain', objectPosition: 'bottom center', display: 'block' }} />
                         </div>
                       ) : l.fotoUrl ? (
