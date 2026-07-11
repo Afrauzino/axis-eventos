@@ -19,7 +19,7 @@ function Estrelas({ valor, max=5, onChange, size=20 }: { valor:number; max?:numb
   return (
     <div style={{display:'flex',gap:2}}>
       {Array.from({length:max},(_,i)=>(
-        <button key={i} type="button" onMouseDown={e=>{e.preventDefault(); onChange?.(i+1)}}
+        <button key={i} type="button" onMouseDown={e=>{e.preventDefault(); onChange?.(i+1===valor ? 0 : i+1)}}
           style={{background:'none',border:'none',cursor:onChange?'pointer':'default',padding:0,lineHeight:1}}>
           <MatIcon name="star" size={size} color={i<valor?'#F6AD55':'var(--border)'}/>
         </button>
@@ -139,9 +139,17 @@ export default function Ranking({ profile }: { profile?: Profile }) {
       .sort((a,b)=>b.nota-a.nota)
   }
 
-  // Vota (ou altera o voto) direto ao clicar na estrela — sem botão "votar"
+  // Vota / altera / TIRA o voto direto ao clicar na estrela — sem botão "votar".
+  // estrelas <= 0 remove o voto de vez (não conta como 0, que baixaria a média).
   async function votarInline(catId:string, personId:string, novasEstrelas:number) {
     if (!myPersonId || !evento) return
+    if (novasEstrelas <= 0) {
+      // tira o voto (apaga a linha)
+      setVotos(prev=>prev.filter(v=>!(v.categoria_id===catId && v.votante_id===myPersonId && v.votado_id===personId)))
+      await supabase.from('ranking_votos').delete()
+        .eq('event_id', evento.id).eq('categoria_id', catId).eq('votante_id', myPersonId).eq('votado_id', personId)
+      return
+    }
     // atualiza a tela na hora (otimista)
     setVotos(prev=>[
       ...prev.filter(v=>!(v.categoria_id===catId && v.votante_id===myPersonId && v.votado_id===personId)),
@@ -301,9 +309,15 @@ export default function Ranking({ profile }: { profile?: Profile }) {
                     </div>
                     <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
                       <span style={{fontSize:11,color:'var(--muted)'}}>{poderes?'Meu voto':'Média'}</span>
-                      {poderes
-                        ? <Estrelas valor={meu} size={26} onChange={v=>votarInline(cat.id, pessoaAberta!.id, v)}/>
-                        : <Estrelas valor={Math.round(media)} size={22}/>}
+                      <div style={{display:'flex',alignItems:'center',gap:8}}>
+                        {poderes && meu>0 && (
+                          <button type="button" onClick={()=>votarInline(cat.id, pessoaAberta!.id, 0)}
+                            style={{background:'none',border:'none',cursor:'pointer',color:'var(--danger)',fontSize:11,fontWeight:700,fontFamily:'inherit',padding:'2px 4px'}}>Tirar voto</button>
+                        )}
+                        {poderes
+                          ? <Estrelas valor={meu} size={26} onChange={v=>votarInline(cat.id, pessoaAberta!.id, v)}/>
+                          : <Estrelas valor={Math.round(media)} size={22}/>}
+                      </div>
                     </div>
                   </div>
                 )
