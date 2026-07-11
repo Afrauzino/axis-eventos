@@ -12,7 +12,7 @@ import type { Profile } from '../App'
 
 // Mensagem que vai no WhatsApp ao pedir ajuda pra identificar a encontrista.
 // {nome} = nome da pessoa, {foto} = link da foto (o WhatsApp mostra a prévia do link).
-const MSG_REF_PADRAO = 'Olá! Você conhece esta pessoa? Pode me ajudar? 🙏\n\n👤 {nome}\n{foto}'
+const MSG_REF_PADRAO = 'Olá! Você conhece esta pessoa? Pode me ajudar?\n\n{nome}\n{foto}'
 
 type Pessoa = {
   id: string; name: string; church: string; photo_url: string | null
@@ -109,7 +109,8 @@ export default function Encontristas({ profile }: { profile: Profile }) {
   function whatsapp(phone: string) {
     const num = phone.replace(/\D/g, '')
     const nome = selecionado ? formatName(selecionado.name) : ''
-    const foto = selecionado?.photo_url || ''
+    // Tira o ?t=... da URL — com query o WhatsApp não gera a prévia da imagem
+    const foto = (selecionado?.photo_url || '').split('?')[0]
     const txt = (msgRef || MSG_REF_PADRAO)
       .split('{nome}').join(nome)
       .split('{foto}').join(foto)
