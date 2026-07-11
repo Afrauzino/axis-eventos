@@ -179,8 +179,11 @@ Pensadas pro contexto real (evento ao vivo, retiro, público variado). Reaprovei
   acessaram hoje, com/sem conta, encontristas×encontreiros, arrecadado, % escalas), progresso
   por equipe, gráfico cadastros/7 dias, donut de tipos, liga/desliga por card (por aparelho),
   liberação separada da de equipe (modulo='painel', escolhida dentro da tela). SQL 63.
-- **Fase 2 (a fazer):** financeiro completo (pago vs pendente, por tipo, doações, ticket médio),
-  Correio %/entregas, teatro (ensaios/atores), saúde (atendimentos/medicamentos entregues),
-  ocorrências abertas/fechadas, comparativo entre eventos.
-- **Fase 3 (a fazer):** modo TV/telão em tela cheia com rotação automática de cards, exportar PDF,
-  metas por equipe, série histórica de acessos (precisa gravar histórico de last_seen).
+- **Fase 2 (ENTREGUE):** financeiro (pago × a receber + inadimplentes, arrecadação/dia, formas de
+  pagamento, maiores doadores), correio %/afilhados, saúde/cozinha (remédios entregues/pendentes,
+  restrições, alergias), ocorrências abertas/resolvidas, fichas médicas, aniversariantes no evento,
+  engajamento do carrossel, comparativo com evento anterior.
+- **Fase 3 (ENTREGUE parcial):** Modo TV (rola a tela sozinha no telão) + tela cheia + botão na Início.
+- **Fase 4 (a fazer):** exportar PDF do painel, metas por equipe (definir e mostrar progresso até a
+  meta), série histórica de acessos por hora/dia (precisa gravar histórico de last_seen), teatro
+  (ensaios/atores/personagens preenchidos).
