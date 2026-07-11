@@ -22,18 +22,33 @@ const cors = {
 }
 const json = (b: unknown, s = 200) => new Response(JSON.stringify(b), { status: s, headers: { ...cors, 'Content-Type': 'application/json' } })
 
-// Chave de SERVIÇO (bypassa RLS): prefere a NOVA (sb_secret_...) e cai na legada.
-function chaveServico(): { key: string; fonte: string } {
+// Acha a secret NOVA (sb_secret_...) em qualquer formato do SUPABASE_SECRET_KEYS.
+function extrairSecret(): string {
   const raw = Deno.env.get('SUPABASE_SECRET_KEYS') || ''
   if (raw) {
-    // Acha a secret nova em qualquer formato do JSON (dict/array/string).
     const m = raw.match(/sb_secret_[A-Za-z0-9_\-]+/)
-    if (m) return { key: m[0], fonte: 'SECRET_KEYS' }
-    try { const p = JSON.parse(raw); if (typeof p === 'string' && p) return { key: p, fonte: 'SECRET_KEYS(str)' } } catch { /* ignore */ }
+    if (m) return m[0]
+    try { const p = JSON.parse(raw); if (typeof p === 'string' && p) return p } catch { /* ignore */ }
   }
-  const legacy = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || ''
-  if (legacy) return { key: legacy, fonte: 'SERVICE_ROLE(legado)' }
-  return { key: '', fonte: 'NENHUMA' }
+  return ''
+}
+
+// Cliente de SERVIÇO que REALMENTE lê o banco. Testa a chave legada e a nova e
+// usa a que conseguir ler push_subscriptions (a outra pode estar sem acesso ao
+// schema public por causa da migração de API keys do Supabase).
+async function adminServico(url: string): Promise<{ admin: any | null; fonte: string; erro?: string }> {
+  const cands = [
+    { key: Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '', fonte: 'SERVICE_ROLE' },
+    { key: extrairSecret(), fonte: 'SECRET_KEYS' },
+  ].filter(c => c.key)
+  let erro = 'nenhuma chave de serviço configurada nos Secrets'
+  for (const c of cands) {
+    const admin = createClient(url, c.key)
+    const { error } = await admin.from('push_subscriptions').select('id').limit(1)
+    if (!error) return { admin, fonte: c.fonte }
+    erro = `${c.fonte}: ${error.message}`
+  }
+  return { admin: null, fonte: 'NENHUMA', erro }
 }
 
 Deno.serve(async (req) => {
@@ -54,9 +69,8 @@ Deno.serve(async (req) => {
 
     const { user_ids, person_ids, notify_admins, alerta, incluir_autor, title, body, url: link, tag } = await req.json().catch(() => ({}))
 
-    const { key: serviceKey, fonte } = chaveServico()
-    if (!serviceKey) return json({ error: 'Sem chave de serviço na função (configure SUPABASE_SECRET_KEYS ou SUPABASE_SERVICE_ROLE_KEY nos Secrets).', enviados: 0, falhas: 0 })
-    const admin = createClient(url, serviceKey)
+    const { admin, fonte, erro } = await adminServico(url)
+    if (!admin) return json({ error: `Chave de serviço sem acesso ao banco (${erro}). Rode o sql/69_grant_service_role.sql no Supabase e republique a função.`, enviados: 0, falhas: 0, fonte })
 
     const alvos = new Set<string>(Array.isArray(user_ids) ? user_ids.filter(Boolean) : [])
     // Alvos por pessoa (people.id) — resolve pro user_id (escala, ministração, teatro, remédio…)
