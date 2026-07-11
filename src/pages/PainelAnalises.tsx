@@ -2,7 +2,8 @@
 // Pensado como APRESENTAÇÃO (TV/notebook), modular (liga/desliga por card),
 // tempo real (recarrega a cada 30s). Acesso: admin OU liberação 'painel' (ver),
 // escolhida DENTRO desta tela. Números são reais (people, financeiro, escalas…).
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useEvento } from '../hooks/useEvento'
 import { usePermissao } from '../hooks/usePermissao'
@@ -27,10 +28,24 @@ const CARDS = [
 const CHAVE_OFF = 'painel_cards_off'
 
 export default function PainelAnalises({ profile }: { profile?: Profile }) {
+  const nav = useNavigate()
   const { evento, loading: evLoading } = useEvento()
   const { pode, carregado } = usePermissao(profile ?? null)
   const admin = (!!profile && isAdmin(profile.user_role)) || !!profile?.is_admin
   const podeVer = admin || pode('painel','ver')
+
+  const raizRef = useRef<HTMLDivElement>(null)
+  const [cheia, setCheia] = useState(false)
+  useEffect(() => {
+    const h = () => setCheia(!!document.fullscreenElement)
+    document.addEventListener('fullscreenchange', h)
+    return () => document.removeEventListener('fullscreenchange', h)
+  }, [])
+  function telaCheia() {
+    const el = raizRef.current as any
+    if (document.fullscreenElement) { document.exitFullscreen?.(); return }
+    ;(el?.requestFullscreen || el?.webkitRequestFullscreen)?.call(el)
+  }
 
   const [pessoas, setPessoas] = useState<Pessoa[]>([])
   const [lastSeen, setLastSeen] = useState<Record<string, string|null>>({})   // user_id -> last_seen
@@ -120,15 +135,22 @@ export default function PainelAnalises({ profile }: { profile?: Profile }) {
   const maxCad = Math.max(1, ...m.dias.map(d=>d.n))
 
   return (
-    <div style={{ padding:'14px 16px 60px', maxWidth:1400, margin:'0 auto' }}>
+    <div ref={raizRef} style={{ padding:'14px 16px 60px', maxWidth: cheia ? '100%' : 1400, margin:'0 auto', background:'var(--bg)', minHeight: cheia ? '100vh' : undefined, overflowY: cheia ? 'auto' : undefined }}>
       {/* Cabeçalho */}
       <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:8,marginBottom:16}}>
-        <div>
-          <p style={{fontSize:20,fontWeight:800}}>Painel · {evento.name}</p>
-          <p style={{fontSize:12,color:'var(--muted)'}}>atualiza sozinho a cada 30s</p>
+        <div style={{display:'flex',alignItems:'center',gap:10}}>
+          <button onClick={()=>{ if (document.fullscreenElement) document.exitFullscreen?.(); nav('/') }} aria-label="Voltar ao início"
+            style={{background:'white',border:'1px solid var(--border)',borderRadius:10,width:38,height:38,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,boxShadow:'var(--shadow-sm)'}}>
+            <span className="icon">arrow_back</span>
+          </button>
+          <div>
+            <p style={{fontSize:20,fontWeight:800}}>Painel · {evento.name}</p>
+            <p style={{fontSize:12,color:'var(--muted)'}}>atualiza sozinho a cada 30s</p>
+          </div>
         </div>
         <div style={{display:'flex',gap:8}}>
           <span style={{display:'inline-flex',alignItems:'center',gap:5,fontSize:12,fontWeight:700,padding:'6px 12px',borderRadius:99,background:'var(--success-bg)',color:'var(--success)'}}><span style={{width:8,height:8,borderRadius:'50%',background:'var(--success)'}}/>{m.online} online</span>
+          <button onClick={telaCheia} className="btn btn-ghost btn-sm"><span className="icon icon-sm">{cheia?'fullscreen_exit':'fullscreen'}</span> {cheia?'Sair':'Tela cheia'}</button>
           <button onClick={()=>setModalCards(true)} className="btn btn-ghost btn-sm"><span className="icon icon-sm">tune</span> Cards</button>
           {admin && <button onClick={()=>setModalAcesso(true)} className="btn btn-ghost btn-sm"><span className="icon icon-sm">lock_open</span> Acesso</button>}
         </div>

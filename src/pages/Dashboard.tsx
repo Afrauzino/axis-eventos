@@ -38,6 +38,7 @@ export default function Dashboard({ profile }: { profile: Profile }) {
   const admin = isAdmin(profile.user_role) || profile.is_admin
   // Indicadores (Encontristas/Encontreiros/Equipes/Alertas) só p/ Admin e Financeiro
   const podeVerStats = admin || profile.user_role === 'financeiro'
+  const podePainel = admin || pode('painel','ver')   // atalho do Painel na Início (liberação própria)
   // Tela de boas-vindas para quem entrou SEM LIBERAÇÃO (não vê nenhum menu)
   const [roleType, setRoleType] = useState<string|null>(null)
   useEffect(() => {
@@ -379,6 +380,19 @@ export default function Dashboard({ profile }: { profile: Profile }) {
 
       {/* Relógio digital: contagem regressiva para o 1º dia do evento (todos veem) */}
       <ContagemRegressiva evento={evento} admin={admin} />
+
+      {/* Atalho do Painel — só quem tem liberação (ou admin). Abre em tela cheia, volta pra Início. */}
+      {podePainel && (
+        <button onClick={()=>navigate('/admin/painel')}
+          style={{width:'100%',display:'flex',alignItems:'center',gap:12,background:'linear-gradient(135deg,#1A202C,#2D3748)',border:'none',borderRadius:14,padding:'14px 16px',marginBottom:16,cursor:'pointer',fontFamily:'inherit',textAlign:'left',boxShadow:'0 4px 14px rgba(0,0,0,0.18)'}}>
+          <span style={{fontSize:24,flexShrink:0}}>📊</span>
+          <div style={{flex:1,minWidth:0}}>
+            <p style={{fontSize:15,fontWeight:800,color:'white',lineHeight:1.2}}>Painel de análises</p>
+            <p style={{fontSize:11,color:'rgba(255,255,255,0.7)',marginTop:2}}>Números do evento em tela cheia</p>
+          </div>
+          <span className="icon" style={{color:'rgba(255,255,255,0.85)',flexShrink:0}}>chevron_right</span>
+        </button>
+      )}
 
       {!evento ? (
         <>

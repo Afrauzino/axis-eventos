@@ -96,6 +96,7 @@ const ROTA_PERM = ([
   ['/doacoes','menu_financeiro'],
   ['/relatorios','menu_admin'],
   ['/ranking','menu_ranking'],
+  ['/admin/painel','painel'],   // Painel tem liberação própria — NÃO exige Administração
   ['/admin','menu_admin'],
 ] as [string, string][]).sort((a, b) => b[0].length - a[0].length) // mais específico primeiro
 
