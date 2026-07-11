@@ -1,8 +1,12 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useRegistrarChromeAdmin } from '../lib/chrome'
+import { useVoltarFecha } from '../hooks/useVoltarFecha'
 import { isAdmin } from '../utils'
 import type { Profile } from '../App'
+
+type Orfao = { categoria:string; tabela:string; quantidade:number }
+type Removido = { categoria:string; tabela:string; removidos:number }
 
 type Limites = {
   limite_arquivos_gb: number
@@ -22,6 +26,35 @@ export default function SaudeSistema({ profile }: { profile?: Profile }) {
   const [erro, setErro] = useState('')
 
   const admin = isAdmin(profile?.user_role) || profile?.is_admin
+
+  // Faxina de dados mortos (registros órfãos)
+  const [limpezaOpen, setLimpezaOpen] = useState(false)
+  const [orfaos, setOrfaos] = useState<Orfao[]>([])
+  const [analisando, setAnalisando] = useState(false)
+  const [limpando, setLimpando] = useState(false)
+  const [resultado, setResultado] = useState<Removido[]|null>(null)
+  const [erroLimpeza, setErroLimpeza] = useState('')
+  useVoltarFecha(limpezaOpen, () => setLimpezaOpen(false))
+
+  async function abrirLimpeza() {
+    setLimpezaOpen(true); setResultado(null); setErroLimpeza(''); setOrfaos([]); setAnalisando(true)
+    const { data, error } = await supabase.rpc('analisar_orfaos')
+    setAnalisando(false)
+    if (error) { setErroLimpeza(error.message); return }
+    setOrfaos((data as any) ?? [])
+  }
+  async function limparAgora() {
+    const total = orfaos.reduce((s,o)=>s+o.quantidade,0)
+    if (!total) return
+    if (!confirm(`Apagar ${total} registro(s) morto(s)?\n\nRemove SÓ o que aponta pra algo que não existe mais. Dados vivos não são tocados. Não dá pra desfazer.`)) return
+    setLimpando(true); setErroLimpeza('')
+    const { data, error } = await supabase.rpc('limpar_orfaos')
+    setLimpando(false)
+    if (error) { setErroLimpeza(error.message); return }
+    setResultado((data as any) ?? [])
+    const { data: d2 } = await supabase.rpc('analisar_orfaos')
+    setOrfaos((d2 as any) ?? [])
+  }
 
   useEffect(() => { if (admin) carregar() }, [])
 
@@ -91,6 +124,16 @@ export default function SaudeSistema({ profile }: { profile?: Profile }) {
       <Medidor titulo="Uso do Sistema no Mês" descricao={`${limites.uso_mensal_atual} de ${limites.limite_uso_mensal} (${pctUso}%)`} pct={pctUso} />
       <Medidor titulo="Pessoas Usando o App" descricao={`${usuariosAtivos} de ${limites.limite_usuarios} permitidos`} pct={pctUsuarios} />
 
+      {/* Faxina de dados mortos */}
+      <button onClick={abrirLimpeza} style={{width:'100%',display:'flex',alignItems:'center',gap:12,background:'white',border:'1px solid var(--border)',borderRadius:14,padding:'16px 18px',marginBottom:12,cursor:'pointer',fontFamily:'inherit',textAlign:'left',boxShadow:'var(--shadow-sm)'}}>
+        <span style={{fontSize:26,flexShrink:0}}>🧹</span>
+        <div style={{flex:1,minWidth:0}}>
+          <p style={{fontSize:15,fontWeight:800}}>Limpeza do sistema</p>
+          <p style={{fontSize:12,color:'var(--muted)',marginTop:2}}>Procura dados mortos (sobras de exclusões) e remove com segurança</p>
+        </div>
+        <span className="icon" style={{color:'var(--muted)',flexShrink:0}}>chevron_right</span>
+      </button>
+
       {/* Configurar limites manuais */}
       <div style={{background:'white',borderRadius:14,padding:'16px 18px',marginTop:8,boxShadow:'var(--shadow-sm)'}}>
         <p style={{fontSize:13,fontWeight:700,color:'var(--muted)',textTransform:'uppercase',letterSpacing:'0.06em',marginBottom:6}}>Definir limites</p>
@@ -105,6 +148,64 @@ export default function SaudeSistema({ profile }: { profile?: Profile }) {
         {ok && <p style={{fontSize:12,color:'var(--success)',fontWeight:700,textAlign:'center',marginTop:8}}>{ok}</p>}
         {erro && <p style={{fontSize:12,color:'var(--danger)',fontWeight:700,textAlign:'center',marginTop:8}}>{erro}</p>}
       </div>
+
+      {limpezaOpen && (() => {
+        const total = orfaos.reduce((s,o)=>s+o.quantidade,0)
+        const totalRemovido = (resultado ?? []).reduce((s,o)=>s+o.removidos,0)
+        return (
+          <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.5)',zIndex:400,display:'flex',flexDirection:'column',justifyContent:'flex-end'}} onClick={e=>e.target===e.currentTarget&&setLimpezaOpen(false)}>
+            <div style={{background:'white',borderRadius:'20px 20px 0 0',padding:'8px 20px 28px',maxWidth:480,width:'100%',margin:'0 auto',maxHeight:'86vh',overflowY:'auto'}}>
+              <div style={{width:36,height:4,background:'var(--border)',borderRadius:2,margin:'12px auto 14px'}}/>
+              <p style={{fontSize:18,fontWeight:800,marginBottom:4}}>🧹 Limpeza do sistema</p>
+              <p style={{fontSize:12,color:'var(--muted)',marginBottom:16}}>Só remove o que aponta pra algo que <b>não existe mais</b> (sobra de exclusão). Dados vivos nunca são tocados.</p>
+
+              {analisando ? (
+                <div style={{textAlign:'center',padding:'28px 0'}}><p style={{fontSize:14,color:'var(--muted)'}}>Procurando dados mortos…</p></div>
+              ) : erroLimpeza ? (
+                <div style={{background:'var(--danger-bg)',borderRadius:10,padding:'12px 14px',marginBottom:14}}>
+                  <p style={{fontSize:13,fontWeight:700,color:'var(--danger)'}}>Não deu certo</p>
+                  <p style={{fontSize:12,color:'var(--text2)',marginTop:2}}>{erroLimpeza}</p>
+                  <p style={{fontSize:11,color:'var(--muted)',marginTop:6}}>Rodou o <b>sql/64_limpeza_sistema.sql</b> no Supabase? Ele cria essa função.</p>
+                </div>
+              ) : resultado ? (
+                <div style={{background:'var(--success-bg)',borderRadius:12,padding:'16px',textAlign:'center',marginBottom:8}}>
+                  <p style={{fontSize:34,marginBottom:6}}>✨</p>
+                  <p style={{fontSize:16,fontWeight:800,color:'var(--success)'}}>{totalRemovido>0?`${totalRemovido} registro(s) morto(s) removido(s)!`:'Nada pra remover'}</p>
+                  {resultado.length>0 && <div style={{marginTop:12,textAlign:'left'}}>{resultado.map((r,i)=>(
+                    <div key={i} style={{display:'flex',justifyContent:'space-between',fontSize:13,padding:'4px 0'}}><span>{r.categoria}</span><b style={{color:'var(--success)'}}>{r.removidos}</b></div>
+                  ))}</div>}
+                  <p style={{fontSize:12,color:'var(--muted)',marginTop:12}}>{total>0?`Ainda restam ${total} — rode de novo se quiser.`:'Sistema limpo. 👍'}</p>
+                </div>
+              ) : total === 0 ? (
+                <div style={{textAlign:'center',padding:'26px 0'}}>
+                  <p style={{fontSize:34,marginBottom:8}}>✅</p>
+                  <p style={{fontSize:15,fontWeight:700}}>Nenhum dado morto encontrado</p>
+                  <p style={{fontSize:13,color:'var(--muted)',marginTop:4}}>Está tudo limpo.</p>
+                </div>
+              ) : (
+                <>
+                  <div style={{background:'var(--warning-bg,#FFFBEB)',border:'1px solid #F6E05E',borderRadius:10,padding:'10px 14px',marginBottom:12}}>
+                    <p style={{fontSize:14,fontWeight:800,color:'#B7791F'}}>{total} registro(s) morto(s) encontrado(s)</p>
+                  </div>
+                  {orfaos.map((o,i)=>(
+                    <div key={i} style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'11px 4px',borderBottom:'1px solid var(--border)'}}>
+                      <div style={{minWidth:0,paddingRight:10}}>
+                        <p style={{fontSize:14,fontWeight:600}}>{o.categoria}</p>
+                        <p style={{fontSize:11,color:'var(--muted)'}}>tabela: {o.tabela}</p>
+                      </div>
+                      <span style={{flexShrink:0,fontSize:15,fontWeight:800,color:'#E8821A',background:'#FFF7ED',borderRadius:8,padding:'4px 10px'}}>{o.quantidade}</span>
+                    </div>
+                  ))}
+                  <button onClick={limparAgora} disabled={limpando} style={{width:'100%',marginTop:16,background:'var(--danger)',color:'white',border:'none',borderRadius:12,padding:'14px',fontSize:15,fontWeight:800,cursor:'pointer',fontFamily:'inherit'}}>
+                    {limpando ? 'Limpando…' : `🧹 Limpar ${total} registro(s) morto(s)`}
+                  </button>
+                </>
+              )}
+              <button className="btn btn-ghost btn-full" style={{marginTop:10}} onClick={()=>setLimpezaOpen(false)}>Fechar</button>
+            </div>
+          </div>
+        )
+      })()}
     </div>
   )
 }
