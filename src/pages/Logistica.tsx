@@ -61,7 +61,9 @@ export default function Logistica({ profile }: { profile?: Profile }) {
   }
 
   // Admin OU liberação "Logística → Criar/editar checklist" (aba Liberações do Admin)
-  const canConfig = isAdmin(profile?.user_role) || pode('logistica','checklist')
+  // Preencher o checklist = quem tem "ver" (é feito na aba Encontristas). Configurar
+  // (criar/editar/excluir itens) = só quem tem "editar".
+  const canConfig = isAdmin(profile?.user_role) || pode('logistica','editar')
 
   useEffect(() => { if (evLoading) return; if (!evento) { setLoading(false); return }; carregar() }, [evento, evLoading])
 

@@ -96,6 +96,25 @@ export default function Equipes({ profile }: { profile?: Profile }) {
           if (!jaTem) await supabase.from('people_teams').insert({ person_id: lid, team_id: teamId })
         }
       }
+
+      // Reverte o cargo do líder REMOVIDO: se ele não lidera mais NENHUMA equipe,
+      // volta pro cargo base (encontreiro/aprovado). Assim o "Nível de acesso" atualiza.
+      if (editando) {
+        const antigos = [editando.leader_id, editando.co_leader_id].filter(Boolean) as string[]
+        const novos = new Set([form.leader_id, form.co_leader_id].filter(Boolean))
+        for (const oldId of antigos) {
+          if (novos.has(oldId)) continue
+          const p = pessoas.find(x => x.id === oldId)
+          if (!p?.user_id) continue
+          const { data: outras } = await supabase.from('teams').select('id')
+            .eq('event_id', evento.id).neq('id', teamId)
+            .or(`leader_id.eq.${oldId},co_leader_id.eq.${oldId}`)
+          if ((outras ?? []).length === 0) {
+            const base = p.role_type === 'worker' ? 'encontreiro' : 'aprovado'
+            await supabase.from('profiles').update({ user_role: base }).eq('user_id', p.user_id).eq('user_role', 'lider')
+          }
+        }
+      }
     }
 
     setModal(false); setSalvando(false); setEditando(null)

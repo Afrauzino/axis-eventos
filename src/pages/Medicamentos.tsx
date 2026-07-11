@@ -89,6 +89,14 @@ export default function Medicamentos({ profile }: { profile?: Profile }) {
     setEntregando(null); carregar()
   }
 
+  // Admin apaga uma entrega do histórico (ela volta pra "pendentes")
+  async function apagarEntrega(d: Dose) {
+    if (!admin) return
+    if (!confirm(`Apagar esta entrega do histórico?\n\n${getPessoa(d.person_id)?.name ?? ''} · ${d.nome}${d.dosagem?` · ${d.dosagem}`:''}\n\nA dose volta para "Pendentes".`)) return
+    await supabase.from('med_agenda').update({ entregue:false, entregue_por:null, entregue_em:null }).eq('id', d.id)
+    carregar()
+  }
+
   const agora = Date.now()
   const pendentes = doses.filter(d=>!d.entregue).sort((a,b)=>a.horario.localeCompare(b.horario))
   const historico = doses.filter(d=>d.entregue).sort((a,b)=>(b.entregue_em??'').localeCompare(a.entregue_em??''))
@@ -190,6 +198,7 @@ export default function Medicamentos({ profile }: { profile?: Profile }) {
               direita={<span className={`badge ${atraso?'badge-warning':'badge-success'}`} style={{fontSize:9}}>{atraso?'Com atraso':'No horário'}</span>}
               extra={<div style={{background:'var(--bg)',borderRadius:8,padding:'8px 10px',fontSize:11,color:'var(--muted)'}}>Previsto: {fmtHora(d.horario)} · Entregue: {d.entregue_em?fmtDataHora(d.entregue_em):'—'}{quem?` · por ${quem.name.split(' ')[0]}`:''}</div>}
               onFoto={()=>p?.photo_url && setFotoAmpliada(p.photo_url)}
+              acoes={admin ? [{ label:'Apagar entrega', icon:'delete', danger:true, onClick:()=>apagarEntrega(d) }] : undefined}
             />
           )
         })

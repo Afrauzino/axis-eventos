@@ -17,9 +17,10 @@ type Props = {
   onImprimir?: (doc: Documento) => void
   onChange?: (doc: Documento) => void   // avisa a tela a cada mudança (indicador da folha, etc.)
   subirImagem?: SubirImagem            // a tela decide onde guardar a imagem
+  somenteLeitura?: boolean             // quem só tem "ver": não edita o modelo, só imprime
 }
 
-export default function Editor({ inicial, dados, onSalvar, onImprimir, onChange, subirImagem }: Props) {
+export default function Editor({ inicial, dados, onSalvar, onImprimir, onChange, subirImagem, somenteLeitura }: Props) {
   const ed = useEditor(inicial)
   const [ferramenta, setFerramenta] = useState<string | null>(null)
 
@@ -54,8 +55,9 @@ export default function Editor({ inicial, dados, onSalvar, onImprimir, onChange,
 
       {/* Topo */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '6px 10px', background: 'white', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
-        {btnTopo('undo', 'Desfazer', ed.desfazer, ed.podeDesfazer)}
-        {btnTopo('redo', 'Refazer', ed.refazer, ed.podeRefazer)}
+        {!somenteLeitura && btnTopo('undo', 'Desfazer', ed.desfazer, ed.podeDesfazer)}
+        {!somenteLeitura && btnTopo('redo', 'Refazer', ed.refazer, ed.podeRefazer)}
+        {somenteLeitura && <span style={{ fontSize: 12, color: 'var(--muted)', display: 'inline-flex', alignItems: 'center', gap: 4 }}><span className="icon icon-sm">visibility</span> Só visualização</span>}
         <div style={{ flex: 1 }} />
         <span style={{ fontSize: 12, color: 'var(--muted)', marginRight: 6 }}>
           Página {ed.paginaAtual + 1}/{ed.doc.paginas.length}
@@ -77,10 +79,11 @@ export default function Editor({ inicial, dados, onSalvar, onImprimir, onChange,
         moverSelecao={moverSelecao} dados={dados}
         onFimGesto={ed.encerrarInteracao}
         onExcluir={ids => ed.dispatch({ t: 'excluir', ids })}
+        somenteLeitura={somenteLeitura}
       />
 
       {/* Painel da ferramenta ativa */}
-      {ativa && (
+      {!somenteLeitura && ativa && (
         <div style={{ background: 'white', borderTop: '1px solid var(--border)', padding: '8px 12px', maxHeight: '30vh', overflowY: 'auto', flexShrink: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 7 }}>
             <span style={{ fontSize: 12, fontWeight: 800, color: 'var(--muted)' }}>{ativa.nome}</span>
@@ -93,7 +96,8 @@ export default function Editor({ inicial, dados, onSalvar, onImprimir, onChange,
         </div>
       )}
 
-      {/* Barra inferior — montada pelo REGISTRO de ferramentas */}
+      {/* Barra inferior — montada pelo REGISTRO de ferramentas (some no modo só-leitura) */}
+      {!somenteLeitura && (
       <div style={{ display: 'flex', gap: 2, padding: '6px 4px', background: '#fafafa', borderTop: '1px solid var(--border)', flexShrink: 0 }}>
         {ferramentas.map(f => {
           const bloqueada = f.precisaSelecao && !temSelecao
@@ -110,6 +114,7 @@ export default function Editor({ inicial, dados, onSalvar, onImprimir, onChange,
           )
         })}
       </div>
+      )}
     </div>
   )
 }

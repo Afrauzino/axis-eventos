@@ -84,7 +84,7 @@ export default function GaleriaModelos({
       <div style={{ flex: 1, overflowY: 'auto', padding: 16 }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 14 }}>
 
-          {cardVazio('note_add', 'Começar do zero', onZero, true)}
+          {podeEditar && cardVazio('note_add', 'Começar do zero', onZero, true)}
 
           {modelos.map(m => {
             const emUso = docAtual.id === m.id
@@ -143,7 +143,7 @@ export default function GaleriaModelos({
               </>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {acao('edit', 'Abrir para editar', () => { onAbrir(aberto); fecharAcoes() })}
+                {acao(podeEditar?'edit':'visibility', podeEditar?'Abrir para editar':'Abrir para imprimir', () => { onAbrir(aberto); fecharAcoes() })}
                 {podeEditar && acao('save_as', 'Substituir por este que estou editando', () => {
                   if (confirm(`Substituir "${aberto.nome}" pelo modelo aberto agora? O antigo será perdido.`)) { onSubstituir(aberto); fecharAcoes() }
                 })}

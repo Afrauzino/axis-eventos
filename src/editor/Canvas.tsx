@@ -20,6 +20,7 @@ type Props = {
   moverSelecao: (patch: Partial<Elemento>) => void
   onFimGesto?: () => void
   onExcluir?: (ids: Id[]) => void
+  somenteLeitura?: boolean
   dados?: Record<string, any>
   onZoom?: (z: number) => void
 }
@@ -30,7 +31,7 @@ type Arraste =
   | { modo: 'girar'; id: Id; cx: number; cy: number; ang0: number; rot0: number }
   | null
 
-export default function Canvas({ doc, paginaAtual, selecao, selecionar, moverSelecao, onFimGesto, onExcluir, dados }: Props) {
+export default function Canvas({ doc, paginaAtual, selecao, selecionar, moverSelecao, onFimGesto, onExcluir, dados, somenteLeitura }: Props) {
   const wrapRef = useRef<HTMLDivElement>(null)
   const folhaRef = useRef<HTMLDivElement>(null)
   const [escala, setEscala] = useState(1)
@@ -56,7 +57,7 @@ export default function Canvas({ doc, paginaAtual, selecao, selecionar, moverSel
   const paraMm = (px: number) => px / (PX_POR_MM * escala)
 
   function pointerDownElemento(e: React.PointerEvent, el: Elemento) {
-    if (el.bloqueado) return
+    if (somenteLeitura || el.bloqueado) return   // só-leitura: não seleciona nem arrasta
     e.stopPropagation()
     selecionar([el.id])
     ;(e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId)
@@ -157,7 +158,7 @@ export default function Canvas({ doc, paginaAtual, selecao, selecionar, moverSel
                 }}>
                 <div style={estiloRecorte(el)}>{def.Render({ el, dados, modo: 'tela' })}</div>
 
-                {sel && !el.bloqueado && (
+                {sel && !el.bloqueado && !somenteLeitura && (
                   <>
                     {(['nw', 'ne', 'sw', 'se'] as const).map(c => (
                       <span key={c} onPointerDown={e => pointerDownAlca(e, el, c)}

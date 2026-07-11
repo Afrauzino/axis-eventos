@@ -251,6 +251,7 @@ export default function Impressao({ profile }: { profile?: Profile }) {
           inicial={doc}
           dados={dadosPrevia}
           subirImagem={subirImagem}
+          somenteLeitura={!canEdit}
           onChange={aoMudarDoc}
           onSalvar={canEdit ? (d)=>{ setNomeModelo(d.nome && d.nome!=='Sem título' ? d.nome : ''); setSalvando(d) } : undefined}
           onImprimir={(d)=>{

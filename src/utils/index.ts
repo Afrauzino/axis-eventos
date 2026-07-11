@@ -150,7 +150,7 @@ export const ROLE_LABELS: Record<string, string> = {
   visitante:          'Visitante',
   aprovado:           'Aprovado',
   encontreiro:        'Encontreiro',
-  lider:              'Líder Correio',
+  lider:              'Líder',
   lider_cozinha:      'Líder Cozinha',
   lider_enfermaria:   'Líder Enfermaria',
   lider_financeiro:   'Líder Financeiro',
