@@ -19,6 +19,7 @@ import { PERM_CATALOGO, MENUS_CATALOGO } from '../lib/permCatalog'
 import CadastroPessoa, { FORM_VAZIO, type PessoaForm } from '../components/CadastroPessoa'
 import { carregarConfig, salvarConfig } from '../lib/tema'
 import { notificarRegra } from '../lib/notifRegras'
+import { fotoRequerida, carregarCadastroCfg } from '../lib/cadastroCfg'
 
 type LogRow = { id:string; actor_name:string|null; action:string; entity:string; entity_id:string|null; description:string|null; metadata:any; created_at:string }
 const ACAO_LABEL: Record<string,string> = { create:'Criou', update:'Editou', delete:'Excluiu', approve:'Aprovou', reject:'Rejeitou', payment:'Pagamento', medication:'Medicação', login:'Login', export:'Exportou', other:'Ação' }
@@ -612,7 +613,7 @@ export default function Admin({ profile }: { profile?: Profile }) {
   async function salvarEdicaoCompleta() {
     if (!editPessoaId) return
     if (!editForm.name.trim()) { toast.aviso('O nome é obrigatório.'); return }
-    if (!editForm.photo_url) { toast.aviso('A foto é obrigatória. Adicione uma foto para salvar.'); return }
+    if (fotoRequerida(await carregarCadastroCfg()) && !editForm.photo_url) { toast.aviso('A foto é obrigatória. Adicione uma foto para salvar.'); return }
     setSalvandoEdit(true)
     const { error } = await supabase.from('people').update({
       name: formatName(editForm.name),

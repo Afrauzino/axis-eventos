@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useRegistrarChromeAdmin } from '../lib/chrome'
 import { isAdmin } from '../utils'
 import { toast } from '../components/Toast'
-import { carregarCadastroCfg, salvarCadastroCfg } from '../lib/cadastroCfg'
+import { carregarCadastroCfg, salvarCadastroCfg, CAMPOS, type CampoCfg } from '../lib/cadastroCfg'
 import type { Profile } from '../App'
 
 // Administração → Ficha de cadastro. Por enquanto: o campo "Cargo" (lista fixa
@@ -14,12 +14,15 @@ export default function CadastroConfig({ profile }: { profile?: Profile }) {
   const [cargos, setCargos] = useState<string[]>([])
   const [obrigatorio, setObrigatorio] = useState(false)
   const [oculto, setOculto] = useState(false)
+  const [campos, setCampos] = useState<Record<string, CampoCfg>>({})
   const [carregado, setCarregado] = useState(false)
   const [salvando, setSalvando] = useState(false)
 
   useEffect(() => {
-    carregarCadastroCfg(true).then(cfg => { setCargos(cfg.cargos.length ? cfg.cargos : ['']); setObrigatorio(cfg.obrigatorio); setOculto(cfg.oculto); setCarregado(true) })
+    carregarCadastroCfg(true).then(cfg => { setCargos(cfg.cargos.length ? cfg.cargos : ['']); setObrigatorio(cfg.obrigatorio); setOculto(cfg.oculto); setCampos(cfg.campos || {}); setCarregado(true) })
   }, [])
+
+  const setCampo = (key: string, patch: CampoCfg) => setCampos(prev => ({ ...prev, [key]: { ...prev[key], ...patch } }))
 
   function setCargo(i: number, v: string) { setCargos(prev => prev.map((c, idx) => idx === i ? v : c)) }
   function addCargo() { setCargos(prev => [...prev, '']) }
@@ -31,7 +34,7 @@ export default function CadastroConfig({ profile }: { profile?: Profile }) {
   async function salvar() {
     setSalvando(true)
     const limpos = cargos.map(c => c.trim()).filter(Boolean)
-    const ok = await salvarCadastroCfg({ cargos: limpos, obrigatorio, oculto })
+    const ok = await salvarCadastroCfg({ cargos: limpos, obrigatorio, oculto, campos })
     setCargos(limpos.length ? limpos : [''])
     setSalvando(false)
     ok ? toast.sucesso('Ficha de cadastro salva!') : toast.falha('Não foi possível salvar.')
@@ -71,8 +74,43 @@ export default function CadastroConfig({ profile }: { profile?: Profile }) {
         <ToggleLinha ligado={oculto} onToggle={() => setOculto(v => !v)} titulo="Ocultar o campo Cargo" desc="Esconde a caixa de cargo do cadastro (mesmo com lista preenchida)." />
       </div>
 
+      {/* Outros campos da ficha — mostrar / obrigatório */}
+      <div className="section-label mb-2">🧩 Outros campos da ficha</div>
+      <div style={{ background: 'white', borderRadius: 14, padding: '8px 14px 14px', boxShadow: 'var(--shadow-sm)', marginBottom: 14 }}>
+        <p style={{ fontSize: 12, color: 'var(--muted)', margin: '8px 0 6px' }}>Ligue o que quer <b>mostrar</b> no cadastro e o que é <b>obrigatório</b>. <b>Nome</b> e <b>Celular</b> são sempre obrigatórios (base do cadastro).</p>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 18, padding: '2px 4px 8px' }}>
+          <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--muted)', width: 54, textAlign: 'center' }}>MOSTRAR</span>
+          <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--muted)', width: 54, textAlign: 'center' }}>OBRIGAT.</span>
+        </div>
+        {CAMPOS.map(c => {
+          const mostrar = campos[c.key]?.oculto !== true
+          // Foto é obrigatória por padrão (comportamento de hoje); os demais, opcional por padrão.
+          const obrig = c.key === 'foto' ? campos[c.key]?.obrigatorio !== false : campos[c.key]?.obrigatorio === true
+          return (
+            <div key={c.key} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '9px 4px', borderTop: '1px solid var(--border)' }}>
+              <span style={{ flex: 1, fontSize: 14, fontWeight: 600, opacity: mostrar ? 1 : 0.5 }}>{c.label}</span>
+              <div style={{ width: 54, display: 'flex', justifyContent: 'center' }}>
+                <Switch on={mostrar} onClick={() => setCampo(c.key, { oculto: mostrar })} />
+              </div>
+              <div style={{ width: 54, display: 'flex', justifyContent: 'center' }}>
+                <Switch on={obrig} disabled={!mostrar} onClick={() => mostrar && setCampo(c.key, { obrigatorio: !obrig })} />
+              </div>
+            </div>
+          )
+        })}
+      </div>
+
       <button className="btn btn-primary btn-full" onClick={salvar} disabled={salvando}>{salvando ? 'Salvando...' : 'Salvar'}</button>
     </div>
+  )
+}
+
+function Switch({ on, onClick, disabled }: { on: boolean; onClick: () => void; disabled?: boolean }) {
+  return (
+    <button type="button" onClick={onClick} disabled={disabled} aria-pressed={on}
+      style={{ width: 44, height: 26, borderRadius: 99, background: on ? 'var(--success)' : 'var(--border)', position: 'relative', flexShrink: 0, border: 'none', cursor: disabled ? 'default' : 'pointer', opacity: disabled ? 0.4 : 1, transition: 'background .15s', fontFamily: 'inherit' }}>
+      <span style={{ position: 'absolute', top: 3, left: on ? 21 : 3, width: 20, height: 20, borderRadius: '50%', background: 'white', transition: 'left .15s', boxShadow: '0 1px 3px rgba(0,0,0,0.3)' }} />
+    </button>
   )
 }
 

@@ -9,7 +9,7 @@ import UploadFoto from './UploadFoto'
 import Seletor from './Seletor'
 import DataHora from './DataHora'
 import { formatName } from '../utils'
-import { carregarCadastroCfg, cargoVisivel, CADASTRO_CFG_VAZIO, type CadastroCfg } from '../lib/cadastroCfg'
+import { carregarCadastroCfg, cargoVisivel, campoOculto, campoObrigatorio, fotoRequerida, CADASTRO_CFG_VAZIO, type CadastroCfg } from '../lib/cadastroCfg'
 
 export type MedCtrl = {
   nome:string; tipo:'comprimido'|'gotas'|'outros'
@@ -108,6 +108,9 @@ export default function CadastroPessoa({
   const [refs,    setRefs]    = useState<{id:string;name:string;photo_url:string|null}[]>([])
   const [cadCfg,  setCadCfg]  = useState<CadastroCfg>(CADASTRO_CFG_VAZIO)
   useEffect(() => { carregarCadastroCfg().then(setCadCfg) }, [])
+  // Config por campo: mostrar? e "*" de obrigatório
+  const mostra = (key: string) => !campoOculto(cadCfg, key)
+  const obg = (key: string) => campoObrigatorio(cadCfg, key) ? <span className="req">*</span> : null
   const aba: string = 'geral' // Saúde removida do primeiro acesso (preenchida depois no módulo Saúde)
   const [refSearch, setRefSearch] = useState('')
   const [refOpen, setRefOpen]   = useState(false)
@@ -294,6 +297,7 @@ export default function CadastroPessoa({
       {/* ABA GERAL */}
       {aba==='geral' && <>
       {/* FOTO */}
+      {mostra('foto') && (
       <div style={{display:'flex',justifyContent:'center',marginBottom:20}}>
         <div style={{position:'relative'}}>
           <UploadFoto
@@ -305,13 +309,14 @@ export default function CadastroPessoa({
             size={96}
             shape="circle"
           />
-          {fotoObrigatoria && !form.photo_url && (
+          {(fotoObrigatoria || fotoRequerida(cadCfg)) && !form.photo_url && (
             <div style={{position:'absolute',bottom:-4,left:'50%',transform:'translateX(-50%)',background:'var(--danger)',color:'white',fontSize:9,fontWeight:700,padding:'2px 8px',borderRadius:99,whiteSpace:'nowrap'}}>
               Obrigatória
             </div>
           )}
         </div>
       </div>
+      )}
 
       {/* FUNÇÃO NO EVENTO */}
       {showRole && (
@@ -345,23 +350,29 @@ export default function CadastroPessoa({
           <label className="form-label">Celular <span className="req">*</span></label>
           {inp('phone',{required:true,type:'tel',placeholder:'(11) 99999-9999'})}
         </div>
+        {mostra('contact_phone') && (
         <div className="form-group">
-          <label className="form-label">Contato de emergência</label>
+          <label className="form-label">Contato de emergência {obg('contact_phone')}</label>
           {inp('contact_phone',{type:'tel',placeholder:'(11) 99999-9999'})}
         </div>
+        )}
       </div>
 
       <div className="form-grid-2">
+        {mostra('sexo') && (
         <div className="form-group">
-          <label className="form-label">Sexo</label>
+          <label className="form-label">Sexo {obg('sexo')}</label>
           <Seletor titulo="Sexo" placeholder="Selecionar" disabled={modoSoLeitura}
             value={form.sexo} onChange={v=>s('sexo',v)}
             opcoes={[{value:'M',label:'Masculino'},{value:'F',label:'Feminino'}]}/>
         </div>
+        )}
+        {mostra('birth_date') && (
         <div className="form-group">
-          <label className="form-label">Nascimento</label>
+          <label className="form-label">Nascimento {obg('birth_date')}</label>
           <DataHora modo="date" value={form.birth_date} onChange={v=>s('birth_date',v)} disabled={modoSoLeitura}/>
         </div>
+        )}
       </div>
 
       {form.birth_date && isMenor(form.birth_date) && (
@@ -380,56 +391,86 @@ export default function CadastroPessoa({
         </div>
       )}
 
+      {(mostra('cpf') || mostra('rg')) && (
       <div className="form-grid-2">
+        {mostra('cpf') && (
         <div className="form-group">
-          <label className="form-label">CPF</label>
+          <label className="form-label">CPF {obg('cpf')}</label>
           {inp('cpf',{placeholder:'000.000.000-00'})}
         </div>
+        )}
+        {mostra('rg') && (
         <div className="form-group">
-          <label className="form-label">RG</label>
+          <label className="form-label">RG {obg('rg')}</label>
           {inp('rg')}
         </div>
+        )}
       </div>
+      )}
 
       {/* ENDEREÇO */}
-      <p className="section-label mb-2" style={{marginTop:16}}>Endereço</p>
+      {(mostra('endereco') || mostra('bairro') || mostra('cep') || mostra('cidade') || mostra('estado')) && (
+        <p className="section-label mb-2" style={{marginTop:16}}>Endereço</p>
+      )}
 
+      {mostra('endereco') && (
       <div className="form-group">
-        <label className="form-label">Endereço</label>
+        <label className="form-label">Endereço {obg('endereco')}</label>
         {inp('endereco',{placeholder:'Rua, número, complemento'})}
       </div>
+      )}
+      {(mostra('bairro') || mostra('cep')) && (
       <div className="form-grid-2">
+        {mostra('bairro') && (
         <div className="form-group">
-          <label className="form-label">Bairro</label>
+          <label className="form-label">Bairro {obg('bairro')}</label>
           {inp('bairro')}
         </div>
+        )}
+        {mostra('cep') && (
         <div className="form-group">
-          <label className="form-label">CEP</label>
+          <label className="form-label">CEP {obg('cep')}</label>
           {inp('cep',{placeholder:'00000-000'})}
         </div>
+        )}
       </div>
+      )}
+      {(mostra('cidade') || mostra('estado')) && (
       <div className="form-grid-2">
+        {mostra('cidade') && (
         <div className="form-group">
-          <label className="form-label">Cidade</label>
+          <label className="form-label">Cidade {obg('cidade')}</label>
           {inp('cidade')}
         </div>
+        )}
+        {mostra('estado') && (
         <div className="form-group">
-          <label className="form-label">Estado</label>
+          <label className="form-label">Estado {obg('estado')}</label>
           <Seletor titulo="Estado (UF)" placeholder="UF" sheet disabled={modoSoLeitura}
             value={form.estado} onChange={v=>s('estado',v)}
             opcoes={[{value:'',label:'Nenhum'}, ...['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO'].map(uf=>({value:uf,label:uf}))]}/>
         </div>
+        )}
       </div>
+      )}
 
       {/* EVENTO */}
-      <p className="section-label mb-2" style={{marginTop:16}}>Evento</p>
+      {(mostra('church') || mostra('ano_encontro')) && (
+        <p className="section-label mb-2" style={{marginTop:16}}>Evento</p>
+      )}
 
+      {(mostra('church') || mostra('ano_encontro')) && (
       <div className="form-group">
-        <label className="form-label">Igreja</label>
-        {inp('church',{placeholder:'Nome da sua igreja'})}
-        <label className="form-label" style={{marginTop:12}}>Ano que passou pelo encontro</label>
-        {inp('ano_encontro',{type:'number',placeholder:'Ex: 2024',min:'1990',max:'2100'})}
+        {mostra('church') && <>
+          <label className="form-label">Igreja {obg('church')}</label>
+          {inp('church',{placeholder:'Nome da sua igreja'})}
+        </>}
+        {mostra('ano_encontro') && <>
+          <label className="form-label" style={{marginTop:mostra('church')?12:0}}>Ano que passou pelo encontro {obg('ano_encontro')}</label>
+          {inp('ano_encontro',{type:'number',placeholder:'Ex: 2024',min:'1990',max:'2100'})}
+        </>}
       </div>
+      )}
 
       {/* CARGO — lista fixa configurável em Administração (só aparece se houver cargos e não estiver oculto) */}
       {cargoVisivel(cadCfg) && (
@@ -505,10 +546,12 @@ export default function CadastroPessoa({
         </div>
       )}
 
+      {mostra('notes') && (
       <div className="form-group">
-        <label className="form-label">Observações</label>
+        <label className="form-label">Observações {obg('notes')}</label>
         <textarea className="form-textarea" value={form.notes} onChange={e=>s('notes',e.target.value)} disabled={modoSoLeitura} style={{minHeight:60}}/>
       </div>
+      )}
       </>}
     </div>
   )

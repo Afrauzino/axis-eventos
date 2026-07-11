@@ -8,7 +8,7 @@ import { toast } from '../components/Toast'
 import { pathOriginal, urlOriginal, imagemCarrega, baixarImagem } from '../lib/foto'
 import { biometriaSuportada, biometriaAtiva, ativarBiometria, desativarBiometria } from '../lib/biometria'
 import { testarPush } from '../lib/push'
-import { cargoObrigatorioFaltando } from '../lib/cadastroCfg'
+import { validarCadastroFaltando } from '../lib/cadastroCfg'
 import type { Profile } from '../App'
 
 export default function Perfil({ profile, onUpdate }: { profile: Profile; onUpdate: () => void }) {
@@ -74,7 +74,7 @@ export default function Perfil({ profile, onUpdate }: { profile: Profile; onUpda
 
   async function salvarMeuCadastro() {
     if (!cadForm.name.trim()) { toast.aviso('O nome é obrigatório.'); return }
-    if (await cargoObrigatorioFaltando(cadForm.cargo)) { toast.aviso('Escolha um cargo.'); return }
+    { const faltam = await validarCadastroFaltando(cadForm); if (faltam.length) { toast.aviso('Preencha: ' + faltam.join(', ') + '.'); return } }
     setSalvandoCad(true)
     const payload = {
       name: formatName(cadForm.name),

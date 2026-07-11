@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { carregarConfig } from '../lib/tema'
 import { notificarRegra } from '../lib/notifRegras'
-import { cargoObrigatorioFaltando } from '../lib/cadastroCfg'
+import { validarCadastroFaltando, fotoRequerida, carregarCadastroCfg } from '../lib/cadastroCfg'
 import { biometriaSuportada, ativarBiometria } from '../lib/biometria'
 import CadastroPessoa, { FORM_VAZIO, MED_VAZIO, type PessoaForm, type MedCtrl } from '../components/CadastroPessoa'
 import InstallPWA from '../components/InstallPWA'
@@ -169,8 +169,9 @@ export default function Login() {
   async function inscreverConta(e: React.FormEvent) {
     e.preventDefault(); setErro(''); setLoading(true)
     if (!eventoAtivo) { setErro('As inscrições estão fechadas no momento.'); setLoading(false); return }
+    const fotoReq = fotoRequerida(await carregarCadastroCfg())
     const erroValid =
-      !form.photo_url ? 'A foto é obrigatória.' :
+      (fotoReq && !form.photo_url) ? 'A foto é obrigatória.' :
       !form.name.trim() ? 'Nome é obrigatório.' :
       !form.phone.trim() ? 'Celular é obrigatório.' :
       !email.trim() ? 'Email é obrigatório.' :
@@ -207,7 +208,7 @@ export default function Login() {
     if (!uid) { setErro('Verifique seu email para confirmar o cadastro, depois faça login.'); setLoading(false); return }
 
     const tel = form.phone.trim()
-    if (await cargoObrigatorioFaltando(form.cargo)) { setErro('Escolha um cargo pra concluir o cadastro.'); setLoading(false); return }
+    { const faltam = await validarCadastroFaltando(form); if (faltam.length) { setErro('Preencha: ' + faltam.join(', ') + '.'); setLoading(false); return } }
     // Cria o próprio registro de pessoa (fica pendente de aprovação do admin)
     const { data: nova, error: pErr } = await supabase.from('people').insert({
       event_id: eventoAtivo.id, user_id: uid, name: nome, phone: tel,
@@ -257,8 +258,9 @@ export default function Login() {
     // Validações
     // Validação: mostra um TOAST (visível em qualquer posição da tela) + rola pro topo,
     // pra pessoa não achar que o botão "não faz nada" quando está rolada lá embaixo.
+    const fotoReq = fotoRequerida(await carregarCadastroCfg())
     const erroValid =
-      !form.photo_url ? 'A foto é obrigatória.' :
+      (fotoReq && !form.photo_url) ? 'A foto é obrigatória.' :
       !form.name.trim() ? 'Nome é obrigatório.' :
       !form.phone.trim() ? 'Celular é obrigatório.' :
       !email.trim() ? 'Email é obrigatório.' :
@@ -310,7 +312,7 @@ export default function Login() {
     // Limpar placeholder "a cadastrar" se ainda estiver no telefone
     const telefoneLimpo = (form.phone && form.phone.toLowerCase()!=='a cadastrar') ? form.phone.trim() : form.phone.trim()
 
-    if (await cargoObrigatorioFaltando(form.cargo)) { setErro('Escolha um cargo pra concluir o cadastro.'); setLoading(false); return }
+    { const faltam = await validarCadastroFaltando(form); if (faltam.length) { setErro('Preencha: ' + faltam.join(', ') + '.'); setLoading(false); return } }
     // ETAPA 1 — Atualizar people
     const r1 = await supabase.from('people').update({
       user_id: uid,
