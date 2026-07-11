@@ -62,6 +62,7 @@ function rotulo(value: string, modo: ModoDataHora): string {
 export default function DataHora({ value, onChange, modo = 'date', disabled, placeholder, titulo, min, max }: Props) {
   const [aberto, setAberto] = useState(false)
   const [anoAberto, setAnoAberto] = useState(false)
+  const [digitado, setDigitado] = useState('')  // permite DIGITAR a data (DD/MM/AAAA)
   useVoltarFecha(aberto, () => setAberto(false))  // voltar do celular fecha o calendário
   const [work, setWork] = useState<Partes>(() => parse(value, modo))
   // sem valor, o calendário abre no mês do "min" (quando há trava de início) senão em "hoje"
@@ -91,8 +92,28 @@ export default function DataHora({ value, onChange, modo = 'date', disabled, pla
     setWork(p)
     const b = baseView()
     setView({ y: isNaN(p.y) ? b.y : p.y, m: isNaN(p.m) ? b.m : p.m })
+    setDigitado(!isNaN(p.d) ? `${pad(p.d)}/${pad(p.m + 1)}/${p.y}` : '')
     setAnoAberto(false)
     setAberto(true)
+  }
+
+  // Digitar a data: formata em DD/MM/AAAA e, quando completa e válida, aplica.
+  function onDigitar(raw: string) {
+    const dig = raw.replace(/\D/g, '').slice(0, 8)
+    let out = dig
+    if (dig.length > 4) out = `${dig.slice(0, 2)}/${dig.slice(2, 4)}/${dig.slice(4)}`
+    else if (dig.length > 2) out = `${dig.slice(0, 2)}/${dig.slice(2)}`
+    setDigitado(out)
+    if (dig.length === 8) {
+      const d = +dig.slice(0, 2), m = +dig.slice(2, 4), y = +dig.slice(4)
+      if (d >= 1 && d <= 31 && m >= 1 && m <= 12 && y >= 1900 && y <= 2100) {
+        const diasNoMes = new Date(y, m, 0).getDate()
+        const dd = Math.min(d, diasNoMes)
+        setWork(w => ({ ...w, d: dd, m: m - 1, y }))
+        setView({ y, m: m - 1 })
+        setAnoAberto(false)
+      }
+    }
   }
 
   function confirmar() {
@@ -122,6 +143,7 @@ export default function DataHora({ value, onChange, modo = 'date', disabled, pla
 
   function escolherDia(dia: number, mesDoDia: number, anoDoDia: number) {
     setWork(w => ({ ...w, y: anoDoDia, m: mesDoDia, d: dia }))
+    setDigitado(`${pad(dia)}/${pad(mesDoDia + 1)}/${anoDoDia}`)
     if (mesDoDia !== view.m) setView({ y: anoDoDia, m: mesDoDia })
   }
 
@@ -149,6 +171,19 @@ export default function DataHora({ value, onChange, modo = 'date', disabled, pla
           <div style={{ background: 'white', borderRadius: '20px 20px 0 0', padding: '8px 16px 20px', maxHeight: '82vh', overflowY: 'auto', maxWidth: 480, width: '100%', margin: '0 auto' }}>
             <div style={{ width: 36, height: 4, background: 'var(--border)', borderRadius: 2, margin: '12px auto 14px' }} />
             <p style={{ fontSize: 15, fontWeight: 800, marginBottom: 14, padding: '0 4px' }}>{tit}</p>
+
+            {/* DIGITAR a data (opcional) — DD/MM/AAAA */}
+            {usaData && (
+              <div style={{ marginBottom: 12 }}>
+                <input
+                  value={digitado}
+                  onChange={e => onDigitar(e.target.value)}
+                  inputMode="numeric"
+                  placeholder="Digite: DD/MM/AAAA"
+                  style={{ width: '100%', border: '1.5px solid var(--primary)', borderRadius: 10, padding: '11px 14px', fontFamily: 'inherit', fontSize: 15, color: 'var(--text)', outline: 'none', boxSizing: 'border-box' }}
+                />
+              </div>
+            )}
 
             {/* CALENDÁRIO */}
             {usaData && (
