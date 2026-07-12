@@ -2,6 +2,26 @@
 
 > Atualizado no fim da sessão de 06/07/2026. Leia tudo antes de agir.
 
+---
+## 🔧 SESSÃO 12/07/2026 (Claude Opus) — 2 bugs críticos RESOLVIDOS e TESTADOS no app real
+
+Outra IA estava mexendo no repo em paralelo — só commitei os arquivos abaixo, deixei o resto (WIP dela) intocado.
+
+1. **Cadastros sumiam (salvava sem erro e não aparecia na lista).**
+   - **Causa (auditando o banco REAL pelo Chrome):** havia um trigger `BEFORE INSERT` em `public.people` chamado **`trg_set_valor_pessoa`** (criado direto no banco, provavelmente pelo "cadastro modular" — NÃO estava no código) que preenchia `valor_total` mas **não retornava NEW** → em trigger BEFORE INSERT, retornar NULL **descarta a linha em silêncio**. Todo insert em people sumia.
+   - **Conserto:** `sql/74_fix_trigger_cadastro.sql` = `drop trigger if exists trg_set_valor_pessoa on public.people;`. **JÁ RODADO** (por mim, via Chrome do Anderson). Verificado: trigger sumiu, insert de teste (em transação com rollback) retornou linha, count intacto (131). O app não usa `people.valor_total` (calcula de `events.valor_encontrista/encontreiro`).
+   - ⚠️ **Se você recriar "cadastro modular", NÃO recrie esse trigger sem `RETURN NEW`.**
+
+2. **Ao salvar a FOTO de perfil, o modal de cadastro fechava sozinho (só no PC).**
+   - **Causa:** `src/hooks/useVoltarFecha.ts` (botão voltar fecha modal). Em modal-dentro-de-modal (RecortarFoto sobre o Pré-cadastro), o hook liberava a trava `limpando` num `setTimeout(0)`. Como `history.back()` é **assíncrono**, no PC o timeout rodava ANTES da `popstate` do back() → o "voltar" vazava pro modal de baixo e fechava ele.
+   - **Conserto (commit `c1f0da9`):** a trava agora é liberada **só quando a `popstate` do próprio `back()` chega** (com rede de segurança de 300ms). Vale pra QUALQUER modal-dentro-de-modal. **Testado no app real:** salvar a foto mantém o Pré-cadastro aberto. ✅
+
+**Novo no fluxo de trabalho:** o Anderson me autorizou a **rodar SQL eu mesmo** pelo **Chrome logado dele** (SQL Editor do Supabase) e a **testar no app** (com `?web=1` pra pular a trava de instalação PWA). Se VOCÊ (outra IA) não tiver esse acesso ao Chrome, continue entregando `sql/NN` pra ele rodar — mas o `sql/74` já foi aplicado.
+
+**Observação menor (não urgente):** o **Excluir** em `Cadastros` usa `window.confirm` nativo. Pra usuário real funciona; só travou minha automação (CDP não alcança dialog nativo). Existe um `components/Confirmar.tsx` (dialog in-app) que poderia substituir — polimento opcional.
+
+---
+
 ## 0. Como trabalhar aqui (REGRAS do usuário — Anderson)
 - **Não programador.** Fale 100% em **português**, simples, sem jargão. Listas numeradas curtas para as ações DELE; caixa de seleção (AskUserQuestion) para decisões de produto.
 - **App é 98% MOBILE.** Sempre mobile-first.
