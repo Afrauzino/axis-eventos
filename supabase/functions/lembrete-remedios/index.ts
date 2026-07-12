@@ -90,7 +90,7 @@ Deno.serve(async (req) => {
       for (const d of lista) {
         const quem = nomeDe[d.person_id] ?? 'Participante'
         const payload = JSON.stringify({
-          title: '💊 Hora do remédio',
+          title: 'Hora do remédio',
           body: `${quem} — ${d.nome}${d.dosagem ? ` (${d.dosagem})` : ''} às ${horaBR(d.horario)}`,
           url: '/saude/medicamentos',
           tag: 'remedio-' + d.id,

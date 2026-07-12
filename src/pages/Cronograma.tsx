@@ -222,7 +222,7 @@ export default function Cronograma({ profile }: { profile?: Profile }) {
     }
     if (err) { setErro('Erro: ' + err.message); setSalvando(false); return }
     // Avisa todos que o cronograma mudou (novo item ou alteração) — se ligado
-    notificarRegra('cron_alterado', { alerta: { event_id: evento.id, target_type: 'all' }, title: editando ? '📅 Cronograma atualizado' : '📅 Novidade no cronograma', body: form.titulo, url: '/cronograma' })
+    notificarRegra('cron_alterado', { alerta: { event_id: evento.id, target_type: 'all' }, title: editando ? 'Cronograma atualizado' : 'Novidade no cronograma', body: form.titulo, url: '/cronograma' })
     setModal(false); setSalvando(false); setEditando(null)
     setForm({ titulo:'', tipo:'atividade', hora_inicio:nowLocalInput(), hora_fim:nowLocalInput(), duracao_minutos:'60', local:'', descricao:'', ministracao_id:'', theater_id:'', cardapio_id:'' })
     carregar()

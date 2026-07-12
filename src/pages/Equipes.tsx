@@ -98,7 +98,7 @@ export default function Equipes({ profile }: { profile?: Profile }) {
             await supabase.from('people_teams').insert({ person_id: lid, team_id: teamId })
             // Avisa o novo líder (push no celular)
             const ehLider = lid === form.leader_id
-            notificarRegra('equipe_lider', { person_ids: [lid], title: ehLider ? '⭐ Você é líder de equipe' : '⭐ Você é vice-líder', body: `Equipe ${formatName(form.name)}.`, url: '/equipes' })
+            notificarRegra('equipe_lider', { person_ids: [lid], title: ehLider ? 'Você é líder de equipe' : 'Você é vice-líder', body: `Equipe ${formatName(form.name)}.`, url: '/equipes' })
           }
         }
       }
