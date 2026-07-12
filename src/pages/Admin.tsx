@@ -69,6 +69,13 @@ const CARGOS_APROVACAO: { key:string; label:string; user_role:string; status:str
   { key:'encontreiro', label:'Encontreiro',   user_role:'encontreiro', status:'approved', role_type:'worker' },
   { key:'admin',       label:'Administrador', user_role:'admin',       status:'approved', role_type:null },
 ]
+// Modelo(s) de reprovação que já vêm prontos (o admin pode editar/apagar/criar).
+const MODELOS_REPROV_PADRAO = [{
+  id: 'foto-obrigatoria',
+  titulo: 'Foto de perfil obrigatória',
+  corpo: '<b>Foto de perfil obrigatória</b><br><br>Para que seu cadastro seja aprovado, é necessário enviar uma foto de perfil no estilo <b><span style="color:#C53030">3x4, com o rosto de frente</span></b>, bem iluminado e claramente visível.<br><br>Essa foto será utilizada para identificação, confecção de crachás e outras necessidades relacionadas ao evento.<br><br>Não serão aprovados cadastros com fotos que não permitam identificar o participante ou que não sejam adequadas para esse fim.<br><br>Agradecemos pela compreensão e colaboração.',
+}]
+
 // Descobre qual opção representa a pessoa hoje (para o seletor mostrar certo)
 function cargoKey(p: { user_role?:string|null; role_status?:string|null; role_type?:string|null }): string {
   if (p.user_role === 'admin') return 'admin'
@@ -174,7 +181,10 @@ export default function Admin({ profile }: { profile?: Profile }) {
   const [reprovarHtml, setReprovarHtml] = useState('')
   const [modelosReprov, setModelosReprov] = useState<{ id: string; titulo: string; corpo: string }[]>([])
   useVoltarFecha(!!reprovar, () => setReprovar(null))
-  useEffect(() => { carregarConfig('reprovacao_modelos').then(v => { if (v) { try { setModelosReprov(JSON.parse(v)) } catch {} } }) }, [])
+  useEffect(() => { carregarConfig('reprovacao_modelos').then(v => {
+    if (v == null) { setModelosReprov(MODELOS_REPROV_PADRAO); salvarConfig('reprovacao_modelos', JSON.stringify(MODELOS_REPROV_PADRAO)) }  // 1ª vez → semeia o modelo pronto
+    else { try { setModelosReprov(JSON.parse(v)) } catch {} }
+  }) }, [])
   // Unificar contas duplicadas
   const [unifBase, setUnifBase] = useState<typeof pessoas[0]|null>(null)   // origem
   const [unifAlvo, setUnifAlvo] = useState<typeof pessoas[0]|null>(null)   // duplicado escolhido
