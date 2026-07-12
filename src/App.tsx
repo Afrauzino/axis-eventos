@@ -10,6 +10,7 @@ import NotificacoesCenter, { sincronizarPushLocal } from './components/Notificac
 import { ativarPush } from './lib/push'
 import InstallPWA from './components/InstallPWA'
 import { ToastHost } from './components/Toast'
+import { ConfirmHost } from './components/Confirmar'
 import BotaoConfig from './components/BotaoConfig'
 import { ChromeProvider } from './lib/chrome'
 import { useEvento } from './hooks/useEvento'
@@ -454,6 +455,7 @@ export default function App() {
 
         <CriticalAlert profile={profile}/>
         <ToastHost />
+        <ConfirmHost />
       </div>
      </ChromeProvider>
     </BrowserRouter>

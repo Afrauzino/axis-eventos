@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { confirmar } from '../components/Confirmar'
 import { supabase } from '../lib/supabase'
 import { useVoltarFecha } from '../hooks/useVoltarFecha'
 import { isAdmin } from '../utils'
@@ -81,7 +82,7 @@ export default function Locais({ profile }: { profile?: Profile }) {
   }
 
   async function excluir(id: string) {
-    if (!confirm('Excluir este local?')) return
+    if (!(await confirmar({ titulo: 'Excluir este local?', perigo: true }))) return
     await supabase.from('locais').delete().eq('id',id)
     setModal(false); carregar()
   }

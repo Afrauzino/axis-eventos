@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { confirmar } from '../components/Confirmar'
 import { supabase } from '../lib/supabase'
 import { useRegistrarChromeAdmin } from '../lib/chrome'
 import { useVoltarFecha } from '../hooks/useVoltarFecha'
@@ -46,7 +47,7 @@ export default function SaudeSistema({ profile }: { profile?: Profile }) {
   async function limparAgora() {
     const total = orfaos.reduce((s,o)=>s+o.quantidade,0)
     if (!total) return
-    if (!confirm(`Apagar ${total} registro(s) morto(s)?\n\nRemove SÓ o que aponta pra algo que não existe mais. Dados vivos não são tocados. Não dá pra desfazer.`)) return
+    if (!(await confirmar({ titulo: `Apagar ${total} registro(s) morto(s)?`, mensagem: 'Remove SÓ o que aponta pra algo que não existe mais. Dados vivos não são tocados. Não dá pra desfazer.', confirmar: 'Apagar', perigo: true }))) return
     setLimpando(true); setErroLimpeza('')
     const { data, error } = await supabase.rpc('limpar_orfaos')
     setLimpando(false)

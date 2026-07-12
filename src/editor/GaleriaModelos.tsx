@@ -9,6 +9,7 @@
 // Salvar um modelo NOVO é o botão "Salvar" do editor (nome novo = modelo novo),
 // por isso aqui não há "Salvar como novo" nem "Modelo pronto" — seria repetido.
 import { useState } from 'react'
+import { confirmar } from '../components/Confirmar'
 import type { Documento } from './tipos'
 import Miniatura from './render/Miniatura'
 
@@ -144,12 +145,12 @@ export default function GaleriaModelos({
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {acao(podeEditar?'edit':'visibility', podeEditar?'Abrir para editar':'Abrir para imprimir', () => { onAbrir(aberto); fecharAcoes() })}
-                {podeEditar && acao('save_as', 'Substituir por este que estou editando', () => {
-                  if (confirm(`Substituir "${aberto.nome}" pelo modelo aberto agora? O antigo será perdido.`)) { onSubstituir(aberto); fecharAcoes() }
+                {podeEditar && acao('save_as', 'Substituir por este que estou editando', async () => {
+                  if (await confirmar({ titulo: `Substituir "${aberto.nome}"?`, mensagem: 'Você substitui pelo modelo aberto agora. O antigo será perdido.', confirmar: 'Substituir' })) { onSubstituir(aberto); fecharAcoes() }
                 })}
                 {podeEditar && acao('text_fields', 'Renomear', () => { setNome(aberto.nome); setRenomeando(true) })}
-                {podeEditar && acao('delete', 'Excluir', () => {
-                  if (confirm(`Excluir o modelo "${aberto.nome}"?`)) { onExcluir(aberto); fecharAcoes() }
+                {podeEditar && acao('delete', 'Excluir', async () => {
+                  if (await confirmar({ titulo: `Excluir o modelo "${aberto.nome}"?`, perigo: true })) { onExcluir(aberto); fecharAcoes() }
                 }, true)}
               </div>
             )}

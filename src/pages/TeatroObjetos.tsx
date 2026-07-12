@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { confirmar } from '../components/Confirmar'
 import { supabase } from '../lib/supabase'
 import { useVoltarFecha } from '../hooks/useVoltarFecha'
 import { isAdmin } from '../utils'
@@ -63,7 +64,7 @@ export default function TeatroObjetos({ profile }: { profile?: Profile }) {
   }
 
   async function excluir(id: string) {
-    if (!confirm('Excluir objeto?')) return
+    if (!(await confirmar({ titulo: 'Excluir objeto?', perigo: true }))) return
     await supabase.from('objetos_globais').delete().eq('id',id)
     carregar()
   }

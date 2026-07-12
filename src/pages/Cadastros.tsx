@@ -4,6 +4,7 @@
  * Sistema gera código de acesso → pessoa usa no Primeiro Acesso para criar conta completa
  */
 import { useEffect, useState } from 'react'
+import { confirmar } from '../components/Confirmar'
 import { supabase } from '../lib/supabase'
 import { useVoltarFecha } from '../hooks/useVoltarFecha'
 import PrintOverlay from '../components/PrintOverlay'
@@ -100,14 +101,16 @@ export default function Cadastros({ profile }: { profile: Profile }) {
 
     async function gravar(comColuna: boolean) {
       const payload = comColuna ? { ...dadosBase, conhecido_por_id: conhecido } : { ...dadosBase }
-      if (editando) return supabase.from('people').update(payload).eq('id', editando.id)
-      return supabase.from('people').insert({ ...payload, status: 'inscrito', event_id: evento!.id, invite_code: code })
+      // .select('id').single() é ESSENCIAL: sem ele o supabase responde "ok" mesmo
+      // quando NADA foi gravado (0 linhas) → a tela achava que salvou e não salvava.
+      if (editando) return supabase.from('people').update(payload).eq('id', editando.id).select('id').single()
+      return supabase.from('people').insert({ ...payload, status: 'inscrito', event_id: evento!.id, invite_code: code }).select('id').single()
     }
 
     let r = await gravar(true)
     // se a coluna conhecido_por_id não existir (sql/28 não rodado), grava sem ela
     if (r.error && /conhecido_por_id/.test(r.error.message)) r = await gravar(false)
-    if (r.error) { setErro('Erro: ' + r.error.message); setSalvando(false); return }
+    if (r.error || !r.data) { setErro('NÃO SALVOU: ' + (r.error?.message || 'o banco não gravou a linha (algo está descartando o cadastro — provável trigger/regra criado direto no Supabase). Me mande este texto.')); setSalvando(false); return }
     setModal(false); setSalvando(false); setEditando(null)
     setForm({ name:'', phone:'', church:'', role_type:'encounterer', photo_url:null, conhecido_por_id:null })
     carregar()
@@ -124,7 +127,7 @@ export default function Cadastros({ profile }: { profile: Profile }) {
   }
 
   async function excluirPessoa(p: Pessoa) {
-    if (!confirm(`Excluir "${p.name}"?\n\nSe ela tiver conta, a conta também será removida.`)) return
+    if (!(await confirmar({ titulo: `Excluir "${p.name}"?`, mensagem: 'Se ela tiver conta, a conta também será removida.', perigo: true }))) return
 
     // Excluir dados vinculados
     await supabase.from('saude_fichas').delete().eq('person_id', p.id)

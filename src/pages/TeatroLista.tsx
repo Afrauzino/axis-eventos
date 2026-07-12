@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { confirmar } from '../components/Confirmar'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useVoltarFecha } from '../hooks/useVoltarFecha'
@@ -106,7 +107,7 @@ export default function TeatroLista({ profile }: { profile?: Profile }) {
   }
 
   async function excluir(id: string) {
-    if (!confirm('Excluir este teatro? Todas as cenas e elenco serão removidos.')) return
+    if (!(await confirmar({ titulo: 'Excluir este teatro?', mensagem: 'Todas as cenas e elenco serão removidos.', perigo: true }))) return
     // Apaga/desvincula tudo que aponta pro teatro (senão o banco bloqueia por FK)
     await supabase.from('teatro_cenas').delete().eq('theater_id', id)
     await supabase.from('teatro_elenco').delete().eq('theater_id', id)

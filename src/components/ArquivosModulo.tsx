@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from 'react'
+import { confirmar } from './Confirmar'
 import { supabase } from '../lib/supabase'
 import { toast } from './Toast'
 
@@ -47,7 +48,7 @@ export default function ArquivosModulo({ eventId, modulo, referenciaId, pessoaId
   }
 
   async function excluir(arq: Arquivo) {
-    if (!confirm(`Excluir "${arq.nome}"?`)) return
+    if (!(await confirmar({ titulo: `Excluir "${arq.nome}"?`, perigo: true }))) return
     await supabase.from('arquivos_modulo').delete().eq('id', arq.id)
     setArquivos(prev => prev.filter(a => a.id !== arq.id))
   }

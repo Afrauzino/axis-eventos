@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { confirmar } from '../components/Confirmar'
 import { supabase } from '../lib/supabase'
 import { useVoltarFecha } from '../hooks/useVoltarFecha'
 import ArquivosModulo from '../components/ArquivosModulo'
@@ -89,7 +90,7 @@ export default function Midia({ profile }: { profile?: Profile }) {
   }
 
   async function excluir(id: string) {
-    if (!confirm('Excluir esta mídia? (o arquivo na nuvem não é afetado)')) return
+    if (!(await confirmar({ titulo: 'Excluir esta mídia?', mensagem: 'O arquivo na nuvem não é afetado.', perigo: true }))) return
     await supabase.from('midias').delete().eq('id', id)
     setMidias(prev => prev.filter(m => m.id !== id))
   }

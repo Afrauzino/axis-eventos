@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { confirmar } from '../components/Confirmar'
 import { supabase } from '../lib/supabase'
 import { useVoltarFecha } from '../hooks/useVoltarFecha'
 import { getInitials, isAdmin } from '../utils'
@@ -63,7 +64,7 @@ export default function TeatroPersonagens({ profile }: { profile?: Profile }) {
   }
 
   async function excluir(id: string) {
-    if (!confirm('Excluir personagem? Será removido de todas as cenas e elencos de teatros.')) return
+    if (!(await confirmar({ titulo: 'Excluir personagem?', mensagem: 'Será removido de todas as cenas e elencos de teatros.', perigo: true }))) return
     // Remove from teatro_cenas
     await supabase.from('teatro_cenas').update({ personagem_id: null }).eq('personagem_id', id)
     // Remove from teatro_elenco
