@@ -30,10 +30,20 @@ export function useVoltarFecha(aberto: boolean, fechar: () => void) {
       ativo = false
       window.removeEventListener('popstate', onPop)
       if (!fechadoPeloVoltar) {
-        // Fechou pelo X/backdrop: tira o estado que empurramos (sem disparar fechar de novo).
+        // Fechou pelo X/backdrop/confirmar: tira o estado que empurramos (sem disparar
+        // fechar de novo — nem nos modais de baixo, quando é um modal-dentro-de-modal).
+        //
+        // ATENÇÃO: history.back() é ASSÍNCRONO — o popstate dele chega DEPOIS. Se a gente
+        // liberasse a trava num setTimeout(0), no PC (loop rápido) o timeout rodava ANTES
+        // do popstate, a trava já estava solta e o "voltar" VAZAVA pro modal de baixo,
+        // fechando ele (era o bug: salvar a foto fechava o cadastro inteiro).
+        // Então liberamos a trava SÓ quando o popstate do nosso próprio back() chega.
         limpando = true
+        const liberar = () => { limpando = false; window.removeEventListener('popstate', liberar) }
+        window.addEventListener('popstate', liberar)
         window.history.back()
-        setTimeout(() => { limpando = false }, 0)
+        // rede de segurança: se por algum motivo o popstate não vier, solta assim mesmo.
+        setTimeout(() => { if (limpando) liberar() }, 300)
       }
     }
   }, [aberto])
