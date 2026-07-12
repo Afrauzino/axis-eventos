@@ -111,11 +111,11 @@ export async function testarPush(userId: string): Promise<{ ok: boolean; etapa: 
   let localOk = false
   try {
     const reg = await navigator.serviceWorker.ready
-    await reg.showNotification('🔔 Teste do AXIS (local)', { body: 'Se você vê isso, o aparelho exibe notificações.', icon: '/axis-notif.png', badge: '/axis-badge.png', tag: 'teste-local' })
+    await reg.showNotification('Teste do AXIS (local)', { body: 'Se você vê isso, o aparelho exibe notificações.', icon: '/axis-notif.png', badge: '/axis-badge.png', tag: 'teste-local' })
     localOk = true
   } catch {}
   // 2) Prova SERVIDOR: push de verdade (Edge Function) pra você mesmo.
-  const r = await enviarPush({ user_ids: [userId], incluir_autor: true, title: '🔔 Teste do AXIS (servidor)', body: 'O push do servidor chegou!', url: '/' })
+  const r = await enviarPush({ user_ids: [userId], incluir_autor: true, title: 'Teste do AXIS (servidor)', body: 'O push do servidor chegou!', url: '/' })
   return { ok: !!(r && r.enviados > 0), etapa: 'enviar', localOk, detalhe: r }
 }
 
@@ -189,14 +189,14 @@ export async function diagnosticoPush(userId: string): Promise<ResultadoDiag> {
   // 8) Notificação LOCAL (o aparelho consegue exibir?)
   let localOk = false
   try {
-    if (reg) { await reg.showNotification('🔔 Diagnóstico AXIS (local)', { body: 'Se você VÊ isto, o aparelho exibe notificações.', icon: '/axis-notif.png', badge: '/axis-badge.png', tag: 'diag-local' }); localOk = true }
+    if (reg) { await reg.showNotification('Diagnóstico AXIS (local)', { body: 'Se você VÊ isto, o aparelho exibe notificações.', icon: '/axis-notif.png', badge: '/axis-badge.png', tag: 'diag-local' }); localOk = true }
   } catch {}
   add({ id: 'local', label: 'O aparelho exibe notificações', status: localOk ? 'ok' : 'fail', detalhe: localOk ? 'Confira a bandeja/topo da tela agora.' : 'Não exibiu. É a permissão do Android (Config → Apps → AXIS → Notificações).' })
 
   // 9) Push do SERVIDOR (app fechado)
   let enviados = 0, falhas = 0, semAlvos = false, erroServ: string | undefined
   try {
-    const rr: any = await enviarPush({ user_ids: [userId], incluir_autor: true, title: '🔔 Diagnóstico AXIS (servidor)', body: 'O push do SERVIDOR chegou! 🎉', url: '/', tag: 'diag-serv' })
+    const rr: any = await enviarPush({ user_ids: [userId], incluir_autor: true, title: 'Diagnóstico AXIS (servidor)', body: 'O push do SERVIDOR chegou! 🎉', url: '/', tag: 'diag-serv' })
     enviados = rr?.enviados ?? 0; falhas = rr?.falhas ?? 0; semAlvos = !!rr?.semAlvos; if (rr?.error) erroServ = String(rr.error)
   } catch (e) { erroServ = String(e) }
   add({
