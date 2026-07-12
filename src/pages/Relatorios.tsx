@@ -88,6 +88,28 @@ export default function Relatorios({ profile }: { profile?: Profile }) {
   const selecionados = eventos.filter(e => sel.includes(e.id))
   const fmt = (v:number, money?:boolean) => money ? fmtBRL(v) : String(v)
 
+  // Exporta a MESMA tabela da tela como arquivo que o Excel abre nativo (.xls).
+  // Sem biblioteca: um HTML de <table> com MIME de Excel — o Excel lê direto.
+  function exportarExcel() {
+    if (!selecionados.length) return
+    const esc = (s:any) => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    const head = `<tr><th>Métrica</th>${selecionados.map(e=>`<th>${esc(e.name)}</th>`).join('')}</tr>`
+    const linhas = LINHAS.map(ln => {
+      const celulas = selecionados.map(e => {
+        const m = metricas[e.id]
+        return `<td>${m ? esc(fmt(m[ln.key] as number, ln.money)) : ''}</td>`
+      }).join('')
+      return `<tr><td>${esc(ln.label)}</td>${celulas}</tr>`
+    }).join('')
+    const html = `<html xmlns:x="urn:schemas-microsoft-com:office:excel"><head><meta charset="utf-8"></head><body><table border="1">${head}${linhas}</table></body></html>`
+    const blob = new Blob(['﻿', html], { type: 'application/vnd.ms-excel' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url; a.download = 'AXIS-comparativo.xls'
+    document.body.appendChild(a); a.click(); a.remove()
+    URL.revokeObjectURL(url)
+  }
+
   return (
     <div className="page">
       <h1 style={{fontSize:20,fontWeight:800,marginBottom:4}}>📊 Comparativo entre eventos</h1>
@@ -111,6 +133,16 @@ export default function Relatorios({ profile }: { profile?: Profile }) {
           )
         })}
       </div>
+
+      {/* Exportar (só quando há evento selecionado) */}
+      {selecionados.length>0 && (
+        <div style={{display:'flex',justifyContent:'flex-end',marginBottom:10}}>
+          <button onClick={exportarExcel}
+            style={{padding:'8px 14px',borderRadius:10,cursor:'pointer',fontFamily:'inherit',fontSize:13,fontWeight:700,border:'none',background:'var(--primary)',color:'white',display:'flex',alignItems:'center',gap:6}}>
+            <span className="icon" style={{fontSize:16}}>download</span> Exportar Excel
+          </button>
+        </div>
+      )}
 
       {/* Tabela comparativa */}
       {selecionados.length===0 ? (
