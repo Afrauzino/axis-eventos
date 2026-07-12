@@ -20,6 +20,16 @@ Outra IA estava mexendo no repo em paralelo — só commitei os arquivos abaixo,
 
 **Observação menor (não urgente):** o **Excluir** em `Cadastros` usa `window.confirm` nativo. Pra usuário real funciona; só travou minha automação (CDP não alcança dialog nativo). Existe um `components/Confirmar.tsx` (dialog in-app) que poderia substituir — polimento opcional.
 
+### Testes de 2 sessões (admin + anônimo) — feitos 12/07, tudo OK
+Testei com o Chrome logado (admin) + navegador anônimo (sem login) o fluxo do convite ponta a ponta: admin gera código → anônimo abre `?codigo=` → tela "Primeiro acesso" carrega o pré-cadastro ("Olá, {nome}!") → foto/recorte funcionam no primeiro acesso também (não fecha) → `Concluir cadastro` NÃO foi clicado (não crio conta/senha). Segurança OK: anônimo em `/` e `/cadastros` cai no login. Dados de teste apagados; auditoria (`public.audit_logs`) confirma que só as MINHAS linhas de teste foram deletadas — nenhuma pessoa real.
+
+### 🐛 ACHADO em aberto — link `?codigo=` não preenche o campo
+No fluxo de convite, abrir `https://.../?codigo=XXXXXXXX` **muda pra aba "Primeiro acesso" (certo)** mas **NÃO preenche** o campo do código — o usuário ainda tem que digitar. O item 10 deste handoff dizia que era pra vir preenchido. Ver `src/pages/Login.tsx` (leitura de `?codigo=`): provável que o `useSearchParams`/redirect esteja perdendo a query, ou o efeito não seta o input antes do submit. **Não corrigi ainda** (perguntei ao Anderson se quer). Pequeno, mas tira a comodidade do convite por link.
+
+### Preferências novas do Anderson (12/07)
+- Quando for **mais rápido** e não precisar do login dele, posso usar meu **navegador próprio** (não o Chrome logado).
+- Ele me autorizou **rodar SQL e testar no app** eu mesmo pelo Chrome logado dele (ver `sql/74` já aplicado).
+
 ---
 
 ## 0. Como trabalhar aqui (REGRAS do usuário — Anderson)
