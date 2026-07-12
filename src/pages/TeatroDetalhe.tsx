@@ -280,7 +280,7 @@ export default function TeatroDetalhe({ profile }: { profile?: Profile }) {
     if (!confirm('Remover do elenco?')) return
     const pid = elenco.find(e=>e.id===id)?.person_id
     await supabase.from('teatro_elenco').delete().eq('id', id)
-    if (pid) notificarRegra('teatro_removido', { person_ids: [pid], title: '🎭 Você saiu do elenco', body: teatro?.nome ? `Elenco de ${teatro.nome}` : 'Você foi removido de um teatro.', url: '/minhas-atividades' })
+    if (pid) notificarRegra('teatro_removido', { person_ids: [pid], title: 'Você saiu do elenco', body: teatro?.nome ? `Elenco de ${teatro.nome}` : 'Você foi removido de um teatro.', url: '/minhas-atividades' })
     carregar()
   }
 
@@ -295,7 +295,7 @@ export default function TeatroDetalhe({ profile }: { profile?: Profile }) {
       const { error } = await supabase.from('teatro_elenco').insert(novos)
       if (error) { setSalvandoElenco(false); toast.falha('Não foi possível salvar o elenco.', error); return }
       // avisa no celular quem entrou no elenco
-      notificarRegra('teatro_entrou', { person_ids: novos.map(n=>n.person_id), title:'🎭 Você está no elenco', body: teatro?.nome ? `Elenco de ${teatro.nome}` : 'Você entrou no elenco de um teatro.', url:'/minhas-atividades' })
+      notificarRegra('teatro_entrou', { person_ids: novos.map(n=>n.person_id), title:'Você está no elenco', body: teatro?.nome ? `Elenco de ${teatro.nome}` : 'Você entrou no elenco de um teatro.', url:'/minhas-atividades' })
     }
     setSalvandoElenco(false); setModalElenco(false); setElencoForm({ personagem_id:'', person_ids:[] }); carregar(); toast.sucesso('Elenco atualizado!')
   }

@@ -77,7 +77,7 @@ export default function HomeCarousel({ admin, grupo='principal', podeEditar, tit
       setCurtidas(prev => [...prev, { midia_id: midiaId, user_id: profile.user_id }])
       const { error } = await supabase.from('home_midias_curtidas').insert({ midia_id: midiaId, user_id: profile.user_id })
       if (error) toast.falha('Não foi possível curtir. Rode o SQL 47_carrossel_interacoes.sql.', error)
-      else { const dono = itens.find(i => i.id === midiaId)?.autor_user_id; if (dono) notificarRegra('foto_curtida', { user_ids: [dono], title: `❤️ ${profile.full_name ?? 'Alguém'} curtiu sua foto`, body: '', url: '/' }) }
+      else { const dono = itens.find(i => i.id === midiaId)?.autor_user_id; if (dono) notificarRegra('foto_curtida', { user_ids: [dono], title: `${profile.full_name ?? 'Alguém'} curtiu sua foto`, body: '', url: '/' }) }
     }
   }
   async function enviarComentario(midiaId: string) {
@@ -87,7 +87,7 @@ export default function HomeCarousel({ admin, grupo='principal', podeEditar, tit
       autor_nome: profile.full_name, autor_foto: profile.avatar_url, texto: t.slice(0, 300),
     })
     if (error) { toast.falha('Não foi possível comentar. Rode o SQL 47_carrossel_interacoes.sql.', error); return }
-    { const dono = itens.find(i => i.id === midiaId)?.autor_user_id; if (dono) notificarRegra('foto_comentario', { user_ids: [dono], title: `💬 ${profile.full_name ?? 'Alguém'} comentou sua foto`, body: t.slice(0, 80), url: '/' }) }
+    { const dono = itens.find(i => i.id === midiaId)?.autor_user_id; if (dono) notificarRegra('foto_comentario', { user_ids: [dono], title: `${profile.full_name ?? 'Alguém'} comentou sua foto`, body: t.slice(0, 80), url: '/' }) }
     setNovoComent(''); carregar()
   }
 
@@ -100,7 +100,7 @@ export default function HomeCarousel({ admin, grupo='principal', podeEditar, tit
       const { data:u } = supabase.storage.from('arquivos').getPublicUrl(path)
       const tipo = file.type.startsWith('video') ? 'video' : 'imagem'
       await supabase.from('home_midias').insert({ tipo, url:u.publicUrl, ordem:itens.length, duracao:dur, grupo, autor_user_id: profile?.user_id ?? null })
-      if (evento?.id && grupo === 'fotos') notificarRegra('foto_nova', { alerta: { event_id: evento.id, target_type: 'all' }, title: '📸 Foto nova no mural', body: 'Tem foto nova no carrossel. Dá uma olhada!', url: '/' })
+      if (evento?.id && grupo === 'fotos') notificarRegra('foto_nova', { alerta: { event_id: evento.id, target_type: 'all' }, title: 'Foto nova no mural', body: 'Tem foto nova no carrossel. Dá uma olhada!', url: '/' })
       await carregar()
     } else toast.falha('Não foi possível enviar. Tente de novo.', error)
     setSubindo(false); setModal(false)

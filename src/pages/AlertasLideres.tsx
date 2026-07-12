@@ -161,7 +161,7 @@ export default function AlertasLideres({ profile }: { profile?: Profile }) {
     // Avisa no celular (app fechado) quem recebeu
     notificarRegra('aviso_lideranca', {
       person_ids: destinatarios,
-      title: nivelFinal==='critico' ? '🚨 Alerta crítico da liderança' : '📨 Aviso da liderança',
+      title: nivelFinal==='critico' ? 'Alerta crítico da liderança' : 'Aviso da liderança',
       body: (texto.trim().slice(0,140)) || '📷 Foto',
       url: '/alertas-lideres',
       tag: nivelFinal==='critico' ? undefined : 'aviso-lider',

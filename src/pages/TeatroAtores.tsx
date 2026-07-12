@@ -59,7 +59,7 @@ export default function TeatroAtores({ profile }: { profile?: Profile }) {
     if (error) { setErro('Erro: '+error.message); setSalvando(false); return }
     // Avisa no celular quem entrou no elenco
     const tname = (teatros.find((t:any)=>t.id===form.theater_id) as any)?.nome
-    notificarRegra('teatro_entrou', { person_ids: [form.person_id], title: '🎭 Você está no teatro', body: tname ? `Elenco de ${tname}` : 'Você entrou no elenco de um teatro.', url: '/minhas-atividades' })
+    notificarRegra('teatro_entrou', { person_ids: [form.person_id], title: 'Você está no teatro', body: tname ? `Elenco de ${tname}` : 'Você entrou no elenco de um teatro.', url: '/minhas-atividades' })
     setModal(false); setSalvando(false)
     setForm({theater_id:'',person_id:'',personagem_id:'',observacoes:''}); carregar()
   }

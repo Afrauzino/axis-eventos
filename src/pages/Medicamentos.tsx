@@ -87,7 +87,7 @@ export default function Medicamentos({ profile }: { profile?: Profile }) {
       meu = data?.id ?? null
     }
     await supabase.from('med_agenda').update({ entregue:true, entregue_por:meu, entregue_em:new Date().toISOString() }).eq('id', d.id)
-    if (evento) notificarEquipeFlag('remedio_entregue', evento.id, 'equipe_saude', { title: '💊 Remédio entregue', body: `${getPessoa(d.person_id)?.name ?? 'Alguém'} · ${d.nome}`, url: '/saude/medicamentos' })
+    if (evento) notificarEquipeFlag('remedio_entregue', evento.id, 'equipe_saude', { title: 'Remédio entregue', body: `${getPessoa(d.person_id)?.name ?? 'Alguém'} · ${d.nome}`, url: '/saude/medicamentos' })
     setEntregando(null); carregar()
   }
 

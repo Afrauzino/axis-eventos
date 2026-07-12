@@ -171,10 +171,10 @@ export default function Equipes({ profile }: { profile?: Profile }) {
       // Notifica quem entrou (push no celular, mesmo com app fechado)
       const eq = equipes.find(e=>e.id===modalMembro)
       const nomeEquipe = eq?.name || 'uma equipe'
-      notificarRegra('equipe_entrou', { person_ids: novos.map(n=>n.person_id), title: '🛡️ Você entrou numa equipe', body: `Você agora faz parte da equipe ${nomeEquipe}.`, url: '/equipes' })
+      notificarRegra('equipe_entrou', { person_ids: novos.map(n=>n.person_id), title: 'Você entrou numa equipe', body: `Você agora faz parte da equipe ${nomeEquipe}.`, url: '/equipes' })
       // Avisa o líder/vice que entrou gente na equipe dele
       const lideres = [eq?.leader_id, eq?.co_leader_id].filter(Boolean) as string[]
-      if (lideres.length) notificarRegra('equipe_novo_membro', { person_ids: lideres, title: '🛡️ Novo membro na sua equipe', body: `${novos.length} pessoa(s) entrou(ram) em ${nomeEquipe}.`, url: '/equipes' })
+      if (lideres.length) notificarRegra('equipe_novo_membro', { person_ids: lideres, title: 'Novo membro na sua equipe', body: `${novos.length} pessoa(s) entrou(ram) em ${nomeEquipe}.`, url: '/equipes' })
     }
     setPessoasSel([])
     setModalMembro(null)
@@ -188,7 +188,7 @@ export default function Equipes({ profile }: { profile?: Profile }) {
   async function removerMembro(personId: string, teamId: string) {
     await supabase.from('people_teams').delete().eq('person_id',personId).eq('team_id',teamId)
     const nomeEquipe = equipes.find(e=>e.id===teamId)?.name || 'uma equipe'
-    notificarRegra('equipe_removido', { person_ids: [personId], title: '🛡️ Você saiu de uma equipe', body: `Você não faz mais parte da equipe ${nomeEquipe}.`, url: '/equipes' })
+    notificarRegra('equipe_removido', { person_ids: [personId], title: 'Você saiu de uma equipe', body: `Você não faz mais parte da equipe ${nomeEquipe}.`, url: '/equipes' })
     carregar()
   }
 

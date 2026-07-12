@@ -80,7 +80,7 @@ export default function ParabensAniversario({ profile, preview, onFecharPreview 
             leaderUsers = (ls ?? []).map((l: any) => l.user_id)
           }
           const nomeCompleto = data.name || profile.full_name || 'Alguém'
-          notificarRegra('aniv_hoje', { user_ids: leaderUsers, notify_admins: true, incluir_autor: true, title: '🎂 Aniversário hoje!', body: `Hoje é aniversário de ${nomeCompleto}! 🎉`, url: '/' })
+          notificarRegra('aniv_hoje', { user_ids: leaderUsers, notify_admins: true, incluir_autor: true, title: 'Aniversário hoje!', body: `Hoje é aniversário de ${nomeCompleto}! 🎉`, url: '/' })
         } catch {}
       }
     })()

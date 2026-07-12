@@ -111,7 +111,7 @@ export async function testarPush(userId: string): Promise<{ ok: boolean; etapa: 
   let localOk = false
   try {
     const reg = await navigator.serviceWorker.ready
-    await reg.showNotification('Teste do AXIS (local)', { body: 'Se você vê isso, o aparelho exibe notificações.', icon: '/axis-notif.png', badge: '/axis-badge.png', tag: 'teste-local' })
+    await reg.showNotification('Teste do AXIS (local)', { body: 'Se você vê isso, o aparelho exibe notificações.', badge: '/axis-badge.png', tag: 'teste-local' })
     localOk = true
   } catch {}
   // 2) Prova SERVIDOR: push de verdade (Edge Function) pra você mesmo.
@@ -189,7 +189,7 @@ export async function diagnosticoPush(userId: string): Promise<ResultadoDiag> {
   // 8) Notificação LOCAL (o aparelho consegue exibir?)
   let localOk = false
   try {
-    if (reg) { await reg.showNotification('Diagnóstico AXIS (local)', { body: 'Se você VÊ isto, o aparelho exibe notificações.', icon: '/axis-notif.png', badge: '/axis-badge.png', tag: 'diag-local' }); localOk = true }
+    if (reg) { await reg.showNotification('Diagnóstico AXIS (local)', { body: 'Se você VÊ isto, o aparelho exibe notificações.', badge: '/axis-badge.png', tag: 'diag-local' }); localOk = true }
   } catch {}
   add({ id: 'local', label: 'O aparelho exibe notificações', status: localOk ? 'ok' : 'fail', detalhe: localOk ? 'Confira a bandeja/topo da tela agora.' : 'Não exibiu. É a permissão do Android (Config → Apps → AXIS → Notificações).' })
 

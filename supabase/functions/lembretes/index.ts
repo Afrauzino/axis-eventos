@@ -88,19 +88,19 @@ Deno.serve(async (req) => {
       if (on('cron_proximo', false) && it.event_id) {
         const { data: pe } = await admin.from('people').select('user_id').eq('event_id', it.event_id).not('user_id', 'is', null)
         const uids = [...new Set((pe ?? []).map((p: any) => p.user_id).filter(Boolean))]
-        if (uids.length) { await enviar(uids, { title: '⏰ Começa em breve', body: `${it.titulo}${hora ? ' às ' + hora : ''}${it.local ? ' · ' + it.local : ''}`, url: '/cronograma', tag: 'cron-' + it.id }); mandou = true }
+        if (uids.length) { await enviar(uids, { title: 'Começa em breve', body: `${it.titulo}${hora ? ' às ' + hora : ''}${it.local ? ' · ' + it.local : ''}`, url: '/cronograma', tag: 'cron-' + it.id }); mandou = true }
       }
       // Teatro do elenco
       if (on('teatro_breve', true) && it.theater_id) {
         const { data: el } = await admin.from('teatro_elenco').select('person_id').eq('theater_id', it.theater_id)
         const uids = await usersDePeople((el ?? []).map((e: any) => e.person_id))
-        if (uids.length) { await enviar(uids, { title: '🎭 Seu teatro começa em breve', body: `${it.titulo}${hora ? ' às ' + hora : ''}`, url: '/minhas-atividades', tag: 'teatro-' + it.id }); mandou = true }
+        if (uids.length) { await enviar(uids, { title: 'Seu teatro começa em breve', body: `${it.titulo}${hora ? ' às ' + hora : ''}`, url: '/minhas-atividades', tag: 'teatro-' + it.id }); mandou = true }
       }
       // Ministração do ministrante
       if (on('min_breve', true) && it.ministracao_id) {
         const { data: mi } = await admin.from('ministrações').select('ministrante_id').eq('id', it.ministracao_id).maybeSingle()
         const uids = await usersDePeople([(mi as any)?.ministrante_id].filter(Boolean))
-        if (uids.length) { await enviar(uids, { title: '🎤 Sua ministração começa em breve', body: `${it.titulo}${hora ? ' às ' + hora : ''}`, url: '/minhas-atividades', tag: 'min-' + it.id }); mandou = true }
+        if (uids.length) { await enviar(uids, { title: 'Sua ministração começa em breve', body: `${it.titulo}${hora ? ' às ' + hora : ''}`, url: '/minhas-atividades', tag: 'min-' + it.id }); mandou = true }
       }
       if (mandou) marcarCron.push(it.id)
     }
@@ -117,7 +117,7 @@ Deno.serve(async (req) => {
         const uids = await usersDePeople([e.person_id])
         if (uids.length) {
           const hora = horaBR(e.start_time)
-          await enviar(uids, { title: '📋 Sua escala começa em breve', body: `${e.title}${hora ? ' às ' + hora : ''}${e.location ? ' · ' + e.location : ''}`, url: '/minhas-atividades', tag: 'escala-' + e.id })
+          await enviar(uids, { title: 'Sua escala começa em breve', body: `${e.title}${hora ? ' às ' + hora : ''}${e.location ? ' · ' + e.location : ''}`, url: '/minhas-atividades', tag: 'escala-' + e.id })
           marcarEsc.push(e.id)
         }
       }
@@ -151,7 +151,7 @@ Deno.serve(async (req) => {
           if (esperado <= 0 || !p.user_id) continue
           const dev = esperado - (pagoPor[p.id] || 0)
           if (dev <= 0.009) continue
-          await enviar([p.user_id], { title: '💰 Falta acertar sua inscrição', body: `O encontro está chegando. Ainda falta pagar R$ ${dev.toFixed(2).replace('.', ',')}.`, url: '/', tag: 'fin-' + ev.id })
+          await enviar([p.user_id], { title: 'Falta acertar sua inscrição', body: `O encontro está chegando. Ainda falta pagar R$ ${dev.toFixed(2).replace('.', ',')}.`, url: '/', tag: 'fin-' + ev.id })
           finCobrados++
         }
         await admin.from('configuracoes').upsert({ chave: flagKey, valor: '1' }, { onConflict: 'chave' })

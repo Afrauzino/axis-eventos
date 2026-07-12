@@ -48,7 +48,7 @@ export default function Saude({ profile }: { profile?: Profile }) {
       medicine_name: form.descricao, reason: form.tipo,
       timestamp: new Date().toISOString(),
     })
-    notificarEquipeFlag('atendimento_novo', evento.id, 'equipe_saude', { title: '⚕️ Novo atendimento', body: `${getPessoa(form.person_id)?.name ?? 'Alguém'} · ${form.tipo}`, url: '/saude' })
+    notificarEquipeFlag('atendimento_novo', evento.id, 'equipe_saude', { title: 'Novo atendimento', body: `${getPessoa(form.person_id)?.name ?? 'Alguém'} · ${form.tipo}`, url: '/saude' })
     setModal(false); setSalvando(false)
     setForm({person_id:'',descricao:'',tipo:'Atendimento geral'}); carregar()
   }

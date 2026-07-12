@@ -52,7 +52,7 @@ export default function Doacoes({ profile }: { profile?: Profile }) {
       anonima:form.anonima,
       data_doacao:new Date().toISOString(),
     })
-    notificarRegra('doacao_nova', { notify_admins: true, incluir_autor: true, title: '💜 Nova doação', body: `${fmtBRL(parseFloat(form.valor))}${form.descricao ? ' · ' + form.descricao : ''}`, url: '/doacoes' })
+    notificarRegra('doacao_nova', { notify_admins: true, incluir_autor: true, title: 'Nova doação', body: `${fmtBRL(parseFloat(form.valor))}${form.descricao ? ' · ' + form.descricao : ''}`, url: '/doacoes' })
     setModal(false); setSalvando(false)
     setForm({person_id:'',valor:'',descricao:'',forma_pagamento:'pix',anonima:false}); carregar()
   }

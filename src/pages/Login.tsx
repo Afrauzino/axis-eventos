@@ -231,7 +231,7 @@ export default function Login() {
     if (r2.error) { setErro('Erro ao criar perfil: ' + r2.error.message); setLoading(false); return }
 
     // Web Push: avisa os admins (mesmo com o app fechado) que tem gente aguardando
-    notificarRegra('insc_nova', { notify_admins: true, title: '🙋 Nova inscrição', body: `${nome} se inscreveu — toque para aprovar`, url: '/admin', tag: 'aprov' })
+    notificarRegra('insc_nova', { notify_admins: true, title: 'Nova inscrição', body: `${nome} se inscreveu — toque para aprovar`, url: '/admin', tag: 'aprov' })
 
     const r3 = await supabase.from('saude_fichas').upsert({
       person_id: personId, event_id: eventoAtivo.id,

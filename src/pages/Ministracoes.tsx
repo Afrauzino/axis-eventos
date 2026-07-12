@@ -213,9 +213,9 @@ export default function Ministracoes({ profile }: { profile?: Profile }) {
     const minAntigo = editando?.ministrante_id ?? null
     const minNovo = form.ministrante_id || null
     if (minNovo && minNovo !== minAntigo) {
-      notificarRegra('min_nova', { person_ids: [minNovo], title: '🎤 Você vai ministrar', body: form.titulo, url: '/minhas-atividades' })
+      notificarRegra('min_nova', { person_ids: [minNovo], title: 'Você vai ministrar', body: form.titulo, url: '/minhas-atividades' })
     } else if (editando && minNovo && minNovo === minAntigo) {
-      notificarRegra('min_alterada', { person_ids: [minNovo], title: '🎤 Sua ministração mudou', body: form.titulo, url: '/minhas-atividades' })
+      notificarRegra('min_alterada', { person_ids: [minNovo], title: 'Sua ministração mudou', body: form.titulo, url: '/minhas-atividades' })
     }
     // Sync teatro link — garante que só UM teatro fica vinculado.
     // Só o admin/liberado mexe no teatro; o ministrante NÃO altera o vínculo do teatro.

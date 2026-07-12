@@ -182,7 +182,7 @@ export default function Correio({ profile }: { profile?: Profile }) {
       const pads = padrinhos.filter(p => p.afiliado_id === afiliadoId).map(p => p.padrinho_id).filter(Boolean)
       if (pads.length) {
         const nome = todasPessoas.find(p => p.id === afiliadoId)?.name
-        notificarRegra('correio_checklist', { person_ids: pads, title: '📬 Checklist do afilhado avançou', body: nome ? `${formatName(nome)} — um item foi concluído.` : 'Um item do checklist foi concluído.', url: '/correio' })
+        notificarRegra('correio_checklist', { person_ids: pads, title: 'Checklist do afilhado avançou', body: nome ? `${formatName(nome)} — um item foi concluído.` : 'Um item do checklist foi concluído.', url: '/correio' })
       }
     }
   }

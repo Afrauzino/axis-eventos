@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { confirmar } from '../components/Confirmar'
 import { supabase } from '../lib/supabase'
 import { useVoltarFecha } from '../hooks/useVoltarFecha'
 import { fmtDataHora, isAdmin, isLider } from '../utils'
@@ -115,7 +116,7 @@ export default function Alertas({ profile }: { profile?: Profile }) {
     const critico = form.priority === 'critico' || form.priority === 'urgente'
     notificarRegra(critico ? 'alerta_critico' : 'aviso_geral', {
       alerta: { event_id: evento.id, target_type: form.target_type, target_team_ids: teamIds },
-      title: `${critico ? '🚨' : '📢'} ${form.title.trim()}`,
+      title: form.title.trim(),
       body: form.message.trim().slice(0, 140),
       url: '/alertas',
     })
@@ -125,7 +126,7 @@ export default function Alertas({ profile }: { profile?: Profile }) {
   }
 
   async function excluir(id: string) {
-    if (!confirm('Excluir este alerta?')) return
+    if (!(await confirmar({ titulo: 'Excluir este alerta?', perigo: true }))) return
     await supabase.from('alerts').delete().eq('id',id)
     carregar()
   }

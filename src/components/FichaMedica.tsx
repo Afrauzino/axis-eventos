@@ -104,7 +104,7 @@ export default function FichaMedica({ personId, eventId, readOnly=false, startOp
         f.restricao_alimentar ? `Restrição: ${f.restricoes_alimentares.trim()}` : '',
         f.alergia_medicamentos ? `Alergia: ${f.alergias.trim()}` : '',
       ].filter(Boolean).join(' · ')
-      notificarEquipeFlag('ficha_alergia', eventId, 'equipe_saude', { title: '⚕️ Ficha com alergia/restrição', body: partes || 'Confira a ficha médica.', url: '/saude/ficha' })
+      notificarEquipeFlag('ficha_alergia', eventId, 'equipe_saude', { title: 'Ficha com alergia/restrição', body: partes || 'Confira a ficha médica.', url: '/saude/ficha' })
     }
 
     // Medicamentos contínuos: salva cada um e (re)gera as doses pendentes no período fixo.

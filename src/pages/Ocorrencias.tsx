@@ -55,7 +55,7 @@ export default function Ocorrencias({ profile }: { profile?: Profile }) {
       setErroBotao('Erro ao resolver: ' + error.message)
       return
     }
-    if ((oc as any)?.created_by) notificarRegra('ocorr_resolvida', { user_ids: [(oc as any).created_by], incluir_autor: true, title: '✅ Ocorrência resolvida', body: (oc as any).title || 'Sua ocorrência foi resolvida.', url: '/ocorrencias' })
+    if ((oc as any)?.created_by) notificarRegra('ocorr_resolvida', { user_ids: [(oc as any).created_by], incluir_autor: true, title: 'Ocorrência resolvida', body: (oc as any).title || 'Sua ocorrência foi resolvida.', url: '/ocorrencias' })
     setLista(prev =>
       prev.map(o => o.id === id ? { ...o, status: 'resolved', resolved_at: new Date().toISOString() } : o)
     )
@@ -75,7 +75,7 @@ export default function Ocorrencias({ profile }: { profile?: Profile }) {
     })
     if (!error) {
       const grave = form.severity === 'high' || form.severity === 'critical'
-      notificarRegra(grave ? 'ocorr_grave' : 'ocorr_nova', { notify_admins: true, title: grave ? '🚨 Ocorrência GRAVE aberta' : '⚠️ Nova ocorrência', body: form.title, url: '/ocorrencias' })
+      notificarRegra(grave ? 'ocorr_grave' : 'ocorr_nova', { notify_admins: true, title: grave ? 'Ocorrência GRAVE aberta' : 'Nova ocorrência', body: form.title, url: '/ocorrencias' })
       setModal(false)
       setForm({ title:'', description:'', severity:'medium' })
       carregar()

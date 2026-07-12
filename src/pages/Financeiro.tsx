@@ -79,7 +79,7 @@ export default function Financeiro({ profile }: { profile?: Profile }) {
     else {
       await supabase.from('financeiro').insert(payload)
       // Recibo pra pessoa (só pagamento confirmado)
-      if (form.status === 'pago') notificarRegra('fin_pago', { person_ids: [form.person_id], title: '💰 Pagamento registrado', body: `Recebemos ${fmtBRL(novoValor)}. Obrigado!`, url: '/' })
+      if (form.status === 'pago') notificarRegra('fin_pago', { person_ids: [form.person_id], title: 'Pagamento registrado', body: `Recebemos ${fmtBRL(novoValor)}. Obrigado!`, url: '/' })
     }
     setModal(false); setSalvando(false); setEditando(null); setPersonaSel(null)
     setForm({person_id:'',valor:'',status:'pago',forma_pagamento:'pix',data_pagamento:'',observacoes:''}); carregar()

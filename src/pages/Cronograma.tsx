@@ -253,14 +253,14 @@ export default function Cronograma({ profile }: { profile?: Profile }) {
         if (item?.theater_id) {
           const { data: el } = await supabase.from('teatro_elenco').select('person_id').eq('theater_id', item.theater_id)
           const ids = [...new Set((el ?? []).map((e:any)=>e.person_id).filter(Boolean))]
-          if (ids.length) notificarRegra(comecou ? 'teatro_comecou' : 'teatro_terminou', { person_ids: ids, title: `🎭 Seu teatro ${verbo}`, body: item.titulo, url: '/minhas-atividades' })
+          if (ids.length) notificarRegra(comecou ? 'teatro_comecou' : 'teatro_terminou', { person_ids: ids, title: `Seu teatro ${verbo}`, body: item.titulo, url: '/minhas-atividades' })
         }
         if (item?.ministracao_id) {
           const { data: mi } = await supabase.from('ministrações').select('ministrante_id').eq('id', item.ministracao_id).maybeSingle()
-          if ((mi as any)?.ministrante_id) notificarRegra(comecou ? 'min_comecou' : 'min_terminou', { person_ids: [(mi as any).ministrante_id], title: `🎤 Sua ministração ${verbo}`, body: item.titulo, url: '/minhas-atividades' })
+          if ((mi as any)?.ministrante_id) notificarRegra(comecou ? 'min_comecou' : 'min_terminou', { person_ids: [(mi as any).ministrante_id], title: `Sua ministração ${verbo}`, body: item.titulo, url: '/minhas-atividades' })
         }
         // Item começou agora → avisa todos (se ligado)
-        if (comecou && evento?.id) notificarRegra('cron_comecou', { alerta: { event_id: evento.id, target_type: 'all' }, title: `▶️ Começou: ${item?.titulo ?? 'programação'}`, body: item?.local ? `Local: ${item.local}` : 'Está na hora!', url: '/cronograma' })
+        if (comecou && evento?.id) notificarRegra('cron_comecou', { alerta: { event_id: evento.id, target_type: 'all' }, title: `Começou: ${item?.titulo ?? 'programação'}`, body: item?.local ? `Local: ${item.local}` : 'Está na hora!', url: '/cronograma' })
       } catch {}
     }
     setItens(prev => prev.map(i => i.id === id ? { ...i, ...extra } : i))
