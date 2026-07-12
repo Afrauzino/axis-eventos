@@ -20,6 +20,7 @@ import CadastroPessoa, { FORM_VAZIO, type PessoaForm } from '../components/Cadas
 import { carregarConfig, salvarConfig } from '../lib/tema'
 import { notificarRegra } from '../lib/notifRegras'
 import { fotoRequerida, carregarCadastroCfg } from '../lib/cadastroCfg'
+import EditorTexto from '../components/EditorTexto'
 
 type LogRow = { id:string; actor_name:string|null; action:string; entity:string; entity_id:string|null; description:string|null; metadata:any; created_at:string }
 const ACAO_LABEL: Record<string,string> = { create:'Criou', update:'Editou', delete:'Excluiu', approve:'Aprovou', reject:'Rejeitou', payment:'Pagamento', medication:'Medicação', login:'Login', export:'Exportou', other:'Ação' }
@@ -168,6 +169,12 @@ export default function Admin({ profile }: { profile?: Profile }) {
   const [gerandoCodigos, setGerandoCodigos] = useState(false)
   const [pessoaDetalhe, setPessoaDetalhe] = useState<typeof pessoas[0]|null>(null)
   useVoltarFecha(!!pessoaDetalhe, () => setPessoaDetalhe(null))
+  // Reprovar cadastro (mensagem + modelos + WhatsApp)
+  const [reprovar, setReprovar] = useState<typeof pessoas[0]|null>(null)
+  const [reprovarHtml, setReprovarHtml] = useState('')
+  const [modelosReprov, setModelosReprov] = useState<{ id: string; titulo: string; corpo: string }[]>([])
+  useVoltarFecha(!!reprovar, () => setReprovar(null))
+  useEffect(() => { carregarConfig('reprovacao_modelos').then(v => { if (v) { try { setModelosReprov(JSON.parse(v)) } catch {} } }) }, [])
   // Unificar contas duplicadas
   const [unifBase, setUnifBase] = useState<typeof pessoas[0]|null>(null)   // origem
   const [unifAlvo, setUnifAlvo] = useState<typeof pessoas[0]|null>(null)   // duplicado escolhido
@@ -426,7 +433,7 @@ export default function Admin({ profile }: { profile?: Profile }) {
     if (activeId) {
       const { data: pe } = await supabase
         .from('people')
-        .select('id,name,photo_url,church,role_type,invite_code,user_id')
+        .select('id,name,photo_url,church,role_type,invite_code,user_id,phone')
         .eq('event_id', activeId).order('name')
       
       const pessoasComInfo = (pe??[]).map((p:any) => {
@@ -569,6 +576,43 @@ export default function Admin({ profile }: { profile?: Profile }) {
     setPessoaDetalhe(prev => prev && prev.user_id === p.user_id ? { ...prev, role_status: 'blocked' } : prev)
     registrarLog({ action:'update', entity:'profiles', entityId:p.id, description:`Bloqueou a conta de ${p.name}`, eventId:eventoAtivoId() })
     toast.sucesso('Conta bloqueada. Reverta quando quiser pelo botão "Reativar".')
+  }
+
+  // ===== REPROVAR CADASTRO (mensagem + modelos + WhatsApp) =====
+  function abrirReprovar(p: typeof pessoas[0]) { setReprovarHtml(''); setReprovar(p) }
+  async function salvarModeloReprov() {
+    const titulo = prompt('Nome do modelo (ex.: Foto obrigatória):')?.trim()
+    if (!titulo) return
+    const limpo = (reprovarHtml || '').trim()
+    if (!limpo || limpo === '<br>') { toast.aviso('Escreva a mensagem antes de salvar como modelo.'); return }
+    const arr = [...modelosReprov, { id: String(Date.now()), titulo, corpo: reprovarHtml }]
+    setModelosReprov(arr)
+    await salvarConfig('reprovacao_modelos', JSON.stringify(arr))
+    toast.sucesso('Modelo salvo!')
+  }
+  async function excluirModeloReprov(id: string) {
+    const arr = modelosReprov.filter(m => m.id !== id)
+    setModelosReprov(arr)
+    await salvarConfig('reprovacao_modelos', JSON.stringify(arr))
+  }
+  async function confirmarReprovar() {
+    if (!reprovar) return
+    if (!reprovar.user_id) { toast.aviso('Essa pessoa não tem conta pra reprovar.'); return }
+    const limpo = (reprovarHtml || '').replace(/<br>/g, '').trim()
+    if (!limpo) { toast.aviso('Escreva a mensagem da reprovação.'); return }
+    const { error } = await supabase.from('profiles').update({ role_status: 'rejected', rejeicao_msg: reprovarHtml }).eq('user_id', reprovar.user_id)
+    if (error) { toast.falha('Não foi possível reprovar. Rode o sql/72_reprovacao.sql.', error); return }
+    setPessoas(prev => prev.map(x => x.user_id === reprovar.user_id ? { ...x, role_status: 'rejected' } : x))
+    setPessoaDetalhe(prev => prev && prev.user_id === reprovar.user_id ? { ...prev, role_status: 'rejected' } : prev)
+    // WhatsApp com a mensagem fixa + link do app
+    let tel = ((reprovar as any).phone || '').replace(/\D/g, '')
+    if (tel && (tel.length === 10 || tel.length === 11)) tel = '55' + tel
+    const link = 'https://axis-eventos-sage.vercel.app'
+    const msgWa = `Encontramos algumas pendências no seu cadastro. Acesse o aplicativo para verificar os detalhes e concluir a regularização.\n\n${link}`
+    if (tel) window.open(`https://wa.me/${tel}?text=${encodeURIComponent(msgWa)}`, '_blank')
+    registrarLog({ action: 'update', entity: 'profiles', entityId: reprovar.id, description: `Reprovou o cadastro de ${reprovar.name}`, eventId: eventoAtivoId() })
+    setReprovar(null); setPessoaDetalhe(null)
+    toast.sucesso(tel ? 'Cadastro reprovado. WhatsApp aberto pra enviar.' : 'Cadastro reprovado. (Sem telefone pra WhatsApp.)')
   }
 
   // Reativar conta bloqueada — libera o acesso e gera um novo código de primeiro acesso pra reenviar
@@ -1343,6 +1387,12 @@ export default function Admin({ profile }: { profile?: Profile }) {
                       <span className="icon icon-sm" style={{color:'white'}}>check_circle</span> Aprovar agora
                     </button>
                   )}
+                  {pessoaDetalhe.role_status==='pending' && pessoaDetalhe.user_id && (
+                    <button onClick={()=>abrirReprovar(pessoaDetalhe)}
+                      style={{width:'100%',marginTop:8,padding:'10px',background:'var(--danger-bg)',color:'var(--danger)',border:'1px solid var(--danger)',borderRadius:10,cursor:'pointer',fontSize:13,fontWeight:700,fontFamily:'inherit',display:'flex',alignItems:'center',justifyContent:'center',gap:6}}>
+                      <span className="icon icon-sm" style={{color:'var(--danger)'}}>cancel</span> Não aprovar (pedir correção)
+                    </button>
+                  )}
 
                   {/* Bloquear / Reativar — mantém o login, reversível */}
                   {pessoaDetalhe.role_status==='blocked' ? (
@@ -2064,6 +2114,43 @@ export default function Admin({ profile }: { profile?: Profile }) {
           </div>
         </div>
       )}
+      {/* NÃO APROVAR — mensagem (modelos + editor) + WhatsApp */}
+      {reprovar && (
+        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.5)',zIndex:500,display:'flex',flexDirection:'column',justifyContent:'flex-end'}} onClick={e=>e.target===e.currentTarget&&setReprovar(null)}>
+          <div style={{background:'white',borderRadius:'20px 20px 0 0',padding:'8px 20px 24px',maxWidth:520,width:'100%',margin:'0 auto',maxHeight:'88vh',overflowY:'auto'}}>
+            <div style={{width:36,height:4,background:'var(--border)',borderRadius:2,margin:'12px auto 14px'}}/>
+            <p style={{fontSize:17,fontWeight:800,marginBottom:2}}>Não aprovar — {reprovar.name}</p>
+            <p style={{fontSize:12,color:'var(--muted)',marginBottom:14}}>A pessoa recebe essa mensagem no app (com um botão pra refazer o cadastro) e um WhatsApp com o link.</p>
+
+            {modelosReprov.length>0 && (
+              <div style={{marginBottom:12}}>
+                <label className="form-label">Modelos</label>
+                <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+                  {modelosReprov.map(m => (
+                    <span key={m.id} style={{display:'inline-flex',alignItems:'center',border:'1px solid var(--border)',borderRadius:99,overflow:'hidden'}}>
+                      <button onClick={()=>setReprovarHtml(m.corpo)} style={{background:'none',border:'none',padding:'6px 10px',cursor:'pointer',fontFamily:'inherit',fontSize:13,fontWeight:600,color:'var(--primary-dark)'}}>{m.titulo}</button>
+                      <button onClick={()=>excluirModeloReprov(m.id)} title="Apagar modelo" style={{background:'none',border:'none',borderLeft:'1px solid var(--border)',padding:'6px 8px',cursor:'pointer',color:'var(--muted)',display:'flex',alignItems:'center'}}><span className="icon icon-sm">close</span></button>
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <label className="form-label">Mensagem</label>
+            <EditorTexto value={reprovarHtml} onChange={setReprovarHtml} placeholder="Ex.: Foto de perfil obrigatória — envie uma foto 3x4, rosto de frente..." />
+
+            <button onClick={salvarModeloReprov} className="btn btn-ghost btn-sm" style={{marginTop:10}}>
+              <span className="icon icon-sm">bookmark_add</span> Salvar como modelo
+            </button>
+
+            <button onClick={confirmarReprovar} style={{width:'100%',marginTop:14,padding:'13px',background:'var(--danger)',color:'white',border:'none',borderRadius:12,cursor:'pointer',fontSize:15,fontWeight:800,fontFamily:'inherit',display:'flex',alignItems:'center',justifyContent:'center',gap:8}}>
+              <span className="icon">send</span> Reprovar e avisar no WhatsApp
+            </button>
+            <button className="btn btn-ghost btn-full" style={{marginTop:8}} onClick={()=>setReprovar(null)}>Cancelar</button>
+          </div>
+        </div>
+      )}
+
       <FotoAmpliada url={fotoAmpliada} onClose={()=>setFotoAmpliada(null)} />
     </div>
   )
