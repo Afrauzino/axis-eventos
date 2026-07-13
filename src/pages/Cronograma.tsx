@@ -503,10 +503,10 @@ export default function Cronograma({ profile }: { profile?: Profile }) {
                   return min?.foto_poster ? (
                     <div style={{position:'absolute',right:52,bottom:0,pointerEvents:'none',zIndex:1}}>
                       <img src={min.foto_poster} alt="" style={{width:128,height:158,objectFit:'contain',objectPosition:'bottom center',display:'block'}} />
-                      {primeiro && <span style={{position:'absolute',left:'50%',bottom:6,transform:'translateX(-50%)',background:'#EADFCF',color:'#2a1c0c',fontFamily:"'Anton', system-ui, sans-serif",fontSize:17,letterSpacing:'0.02em',padding:'3px 16px',borderRadius:99,whiteSpace:'nowrap',boxShadow:'0 2px 7px rgba(0,0,0,0.22)'}}>{rotulo}</span>}
+                      {primeiro && <span style={{position:'absolute',left:'50%',bottom:0,transform:'translateX(-50%)',background:'#EADFCF',color:'#2a1c0c',fontFamily:"'Anton', system-ui, sans-serif",fontSize:17,letterSpacing:'0.02em',padding:'3px 16px',borderRadius:99,whiteSpace:'nowrap',boxShadow:'0 2px 7px rgba(0,0,0,0.22)'}}>{rotulo}</span>}
                     </div>
                   ) : (
-                    <div style={{position:'absolute',right:54,bottom:6,display:'flex',flexDirection:'column',alignItems:'center',gap:3,pointerEvents:'none',zIndex:1}}>
+                    <div style={{position:'absolute',right:54,bottom:0,display:'flex',flexDirection:'column',alignItems:'center',gap:3,pointerEvents:'none',zIndex:1}}>
                       <div style={{width:54,height:54,borderRadius:'50%',overflow:'hidden',background:'#f3f4f6',display:'flex',alignItems:'center',justifyContent:'center'}}>
                         {mfoto?.photo_url
                           ? <img src={mfoto.photo_url} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}} />
