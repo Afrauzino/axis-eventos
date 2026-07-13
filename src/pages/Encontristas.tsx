@@ -9,6 +9,7 @@ import ImprimirCadastros from '../components/ImprimirCadastros'
 import ImprimirAdocoes from '../components/ImprimirAdocoes'
 import { useEvento } from '../hooks/useEvento'
 import { usePermissao } from '../hooks/usePermissao'
+import { IGREJAS, IGREJAS_NOMEADAS } from '../lib/igrejas'
 import { carregarConfig, salvarConfig } from '../lib/tema'
 import { toast } from '../components/Toast'
 import type { Profile } from '../App'
@@ -156,7 +157,6 @@ export default function Encontristas({ profile }: { profile: Profile }) {
     setLoading(false)
   }
 
-  const igrejas = Array.from(new Set(lista.map(p => p.church).filter(Boolean))).sort() as string[]
   const nFiltros = (filtroIgreja !== 'todas' ? 1 : 0) + (filtroSexo !== 'todos' ? 1 : 0) + (filtroAdocao !== 'todos' ? 1 : 0)
 
   const filtrados = lista.filter(p => {
@@ -164,7 +164,10 @@ export default function Encontristas({ profile }: { profile: Profile }) {
       const q = busca.toLowerCase()
       if (!(p.name.toLowerCase().includes(q) || (p.church || '').toLowerCase().includes(q))) return false
     }
-    if (filtroIgreja !== 'todas' && p.church !== filtroIgreja) return false
+    if (filtroIgreja !== 'todas') {
+      if (filtroIgreja === 'Outros') { if (IGREJAS_NOMEADAS.includes(p.church as any)) return false }
+      else if (p.church !== filtroIgreja) return false
+    }
     if (filtroSexo !== 'todos' && p.sexo !== filtroSexo) return false
     if (filtroAdocao !== 'todos') {
       const ad = adotadas.get(p.id)
@@ -251,7 +254,7 @@ export default function Encontristas({ profile }: { profile: Profile }) {
             <select value={filtroIgreja} onChange={e=>setFiltroIgreja(e.target.value)}
               style={{width:'100%',padding:'11px 12px',borderRadius:10,border:'1px solid var(--border)',fontFamily:'inherit',fontSize:14,background:'white',color:'var(--text)',marginBottom:20}}>
               <option value="todas">Todas as igrejas</option>
-              {igrejas.map(ig => <option key={ig} value={ig}>{ig}</option>)}
+              {IGREJAS.map(ig => <option key={ig} value={ig}>{ig}</option>)}
             </select>
 
             <p style={{fontSize:12,color:'var(--muted)',fontWeight:700,marginBottom:8}}>Sexo</p>
