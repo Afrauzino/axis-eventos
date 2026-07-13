@@ -154,7 +154,7 @@ export async function sincronizarPushLocal(profile: Profile, eventoId: string | 
       const set = new Set<string>(salvos ?? [])
       const novos = primeira ? [] : naoLidas.filter(i => !set.has(i.id))
       for (const n of novos.slice(0, 3)) {         // no máx 3 por ciclo
-        try { new Notification(n.titulo, { body: n.sub || '', tag: n.id, badge: '/axis-badge.png' }) } catch {}
+        try { new Notification(n.titulo, { body: n.sub || '', tag: n.id, badge: '/axis-badge.png', icon: '/transparente.png' }) } catch {}
         set.add(n.id)
       }
       naoLidas.forEach(i => set.add(i.id))          // marca as atuais como já "vistas" p/ não repetir
