@@ -57,6 +57,8 @@ export default function ImprimirCadastros({ onClose }: { onClose: () => void }) 
   const [sel, setSel] = useState<Set<string>>(new Set(PADRAO))
   const [foto, setFoto] = useState(false)
   const [filtro, setFiltro] = useState<'todos' | 'encontrista' | 'encontreiro'>('todos')
+  const [formato, setFormato] = useState<'tabela' | 'tirinhas'>('tabela')
+  const [colunas, setColunas] = useState(2)
   const [imprimir, setImprimir] = useState(false)
 
   useEffect(() => {
@@ -83,6 +85,26 @@ export default function ImprimirCadastros({ onClose }: { onClose: () => void }) 
         <p style={{ fontSize: 11, color: '#6b7280', margin: '0 0 12px' }}>
           {filtro === 'todos' ? 'Todos' : filtro === 'encontreiro' ? 'Encontreiros' : 'Encontristas'} · {filtradas.length} pessoa(s)
         </p>
+        {formato === 'tirinhas' ? (
+          <div style={{ display: 'grid', gridTemplateColumns: `repeat(${colunas}, 1fr)`, gap: 8 }}>
+            {filtradas.map(p => (
+              <div key={p.id} style={{ border: '1px solid #d1d5db', borderRadius: 10, padding: '8px 10px', breakInside: 'avoid', display: 'flex', gap: 9, alignItems: 'flex-start' }}>
+                {foto && (
+                  <div style={{ width: 42, height: 42, borderRadius: '50%', overflow: 'hidden', background: '#f3f4f6', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    {p.photo_url ? <img src={p.photo_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontSize: 13, fontWeight: 700, color: '#6b7280' }}>{getInitials(p.name)}</span>}
+                  </div>
+                )}
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  <p style={{ fontSize: 12.5, fontWeight: 800, margin: 0, lineHeight: 1.2 }}>{formatName(p.name)}</p>
+                  {campos.map(c => {
+                    const v = valorCampo(p, c.key as string)
+                    return v ? <p key={c.key as string} style={{ fontSize: 10.5, margin: '2px 0 0', lineHeight: 1.25 }}><span style={{ color: '#6b7280' }}>{c.label}:</span> {v}</p> : null
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11 }}>
           <thead>
             <tr>
@@ -107,6 +129,7 @@ export default function ImprimirCadastros({ onClose }: { onClose: () => void }) 
             ))}
           </tbody>
         </table>
+        )}
       </PrintOverlay>
     )
   }
@@ -130,6 +153,25 @@ export default function ImprimirCadastros({ onClose }: { onClose: () => void }) 
             </button>
           ))}
         </div>
+
+        {/* Formato: tabela ou tirinhas (cards) */}
+        <div style={{ display: 'flex', gap: 6, marginBottom: formato === 'tirinhas' ? 10 : 16 }}>
+          {([['tabela', 'Tabela'], ['tirinhas', 'Tirinhas (card)']] as const).map(([k, lb]) => (
+            <button key={k} onClick={() => setFormato(k)}
+              style={{ flex: 1, padding: '8px', borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit', fontSize: 12, fontWeight: 700,
+                border: formato === k ? '2px solid var(--primary)' : '1px solid var(--border)', background: formato === k ? 'var(--primary-light)' : 'white', color: formato === k ? 'var(--primary)' : 'var(--text)' }}>{lb}</button>
+          ))}
+        </div>
+        {formato === 'tirinhas' && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+            <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--muted)' }}>Colunas</span>
+            {[1, 2, 3].map(n => (
+              <button key={n} onClick={() => setColunas(n)}
+                style={{ width: 34, height: 34, borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, fontWeight: 800,
+                  border: colunas === n ? '2px solid var(--primary)' : '1px solid var(--border)', background: colunas === n ? 'var(--primary-light)' : 'white', color: colunas === n ? 'var(--primary)' : 'var(--text)' }}>{n}</button>
+            ))}
+          </div>
+        )}
 
         <div className="section-label mb-2">Campos</div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 20 }}>
