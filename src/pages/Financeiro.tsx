@@ -34,6 +34,7 @@ export default function Financeiro({ profile }: { profile?: Profile }) {
   const [pessoas, setPessoas]       = useState<Pessoa[]>([])
   const [loading, setLoading]       = useState(true)
   const [busca, setBusca]             = useState('')
+  const [fSit, setFSit]               = useState('todos')
   const [modal, setModal]             = useState(false)
   useVoltarFecha(modal, () => setModal(false))
   const [editando, setEditando]       = useState<Pagamento|null>(null)
@@ -91,15 +92,24 @@ export default function Financeiro({ profile }: { profile?: Profile }) {
     carregar()
   }
 
-  // Deduplica pessoas que aparecem na lista
+  // Deduplica pessoas que aparecem na lista + aplica busca e filtro de situação
   const pessoasUnicas = pessoas.filter(p => {
     if (busca && !p.name.toLowerCase().includes(busca.toLowerCase())) return false
+    if (fSit !== 'todos' && getSituacao(p) !== fSit) return false
     return true
   })
 
   useRegistrarChromeNav('financeiro', {
     busca: { value: busca, onChange: setBusca, placeholder: 'Buscar por nome...' },
-  }, [busca])
+    grupos: [{ chave: 'sit', label: 'Situação', opcoes: [
+      { value: 'todos', label: 'Todos' },
+      { value: 'inscrito', label: 'Inscrito' },
+      { value: 'pendente', label: 'Pendente' },
+      { value: 'confirmado', label: 'Confirmado' },
+    ] }],
+    valores: { sit: fSit },
+    onFiltro: (chave, value) => { if (chave === 'sit') setFSit(value) },
+  }, [busca, fSit])
 
   return (
     <div className="page">
