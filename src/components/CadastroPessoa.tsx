@@ -7,7 +7,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import UploadFoto from './UploadFoto'
 import Seletor from './Seletor'
-import { IGREJA_OPCOES } from '../lib/igrejas'
+import SeletorIgreja from './SeletorIgreja'
 import DataHora from './DataHora'
 import { formatName } from '../utils'
 import { carregarCadastroCfg, cargoVisivel, campoOculto, campoObrigatorio, fotoRequerida, CADASTRO_CFG_VAZIO, type CadastroCfg } from '../lib/cadastroCfg'
@@ -464,8 +464,7 @@ export default function CadastroPessoa({
       <div className="form-group">
         {mostra('church') && <>
           <label className="form-label">Igreja {obg('church')}</label>
-          <Seletor titulo="Igreja" placeholder="Selecionar igreja" disabled={modoSoLeitura}
-            value={form.church} onChange={v=>s('church',v)} opcoes={IGREJA_OPCOES}/>
+          <SeletorIgreja value={form.church} onChange={v=>s('church',v)} disabled={modoSoLeitura}/>
         </>}
         {mostra('ano_encontro') && <>
           <label className="form-label" style={{marginTop:mostra('church')?12:0}}>Ano que passou pelo encontro {obg('ano_encontro')}</label>

@@ -9,7 +9,8 @@ import ImprimirCadastros from '../components/ImprimirCadastros'
 import ImprimirAdocoes from '../components/ImprimirAdocoes'
 import { useEvento } from '../hooks/useEvento'
 import { usePermissao } from '../hooks/usePermissao'
-import { IGREJAS, IGREJAS_NOMEADAS } from '../lib/igrejas'
+import { useIgrejas, OUTROS } from '../lib/igrejas'
+import GerenciarIgrejas from '../components/GerenciarIgrejas'
 import { carregarConfig, salvarConfig } from '../lib/tema'
 import { toast } from '../components/Toast'
 import type { Profile } from '../App'
@@ -31,6 +32,8 @@ export default function Encontristas({ profile }: { profile: Profile }) {
   const [lista, setLista]         = useState<Pessoa[]>([])
   const [encontreiros, setEncontreiros] = useState<Encontreiro[]>([])
   const [busca, setBusca]         = useState('')
+  const { nomeadas: igrejasLista, recarregar: recarregarIgrejas } = useIgrejas()
+  const [gerenciarIgrejas, setGerenciarIgrejas] = useState(false)
   const [modalFiltros, setModalFiltros] = useState(false)
   const [filtroIgreja, setFiltroIgreja] = useState('todas')
   const [filtroSexo, setFiltroSexo]     = useState('todos')
@@ -40,6 +43,7 @@ export default function Encontristas({ profile }: { profile: Profile }) {
   const [selecionado, setSelecionado] = useState<Pessoa | null>(null)
   useVoltarFecha(!!selecionado, () => setSelecionado(null))
   useVoltarFecha(modalFiltros, () => setModalFiltros(false))
+  useVoltarFecha(gerenciarIgrejas, () => setGerenciarIgrejas(false))
   // #19 — "conheço esta pessoa"
   type Marca = { id:string; worker_user_id:string|null; worker_name:string|null; worker_photo:string|null; worker_phone:string|null }
   const [meuP, setMeuP] = useState<{id:string;name:string;photo_url:string|null;phone:string|null;role_type:string}|null>(null)
@@ -165,7 +169,7 @@ export default function Encontristas({ profile }: { profile: Profile }) {
       if (!(p.name.toLowerCase().includes(q) || (p.church || '').toLowerCase().includes(q))) return false
     }
     if (filtroIgreja !== 'todas') {
-      if (filtroIgreja === 'Outros') { if (IGREJAS_NOMEADAS.includes(p.church as any)) return false }
+      if (filtroIgreja === OUTROS) { if (igrejasLista.includes(p.church)) return false }
       else if (p.church !== filtroIgreja) return false
     }
     if (filtroSexo !== 'todos' && p.sexo !== filtroSexo) return false
@@ -208,7 +212,10 @@ export default function Encontristas({ profile }: { profile: Profile }) {
     ...(podeAdocoes ? [{ label: 'Imprimir responsáveis (adoções)', onClick: () => setImprimirAdoc(true) }] : []),
   ]
   useRegistrarChrome({
-    configs: admin ? [{ label: 'Editar mensagem do WhatsApp', icon: 'edit', onClick: () => setModalMsg(true) }] : undefined,
+    configs: admin ? [
+      { label: 'Gerenciar igrejas', icon: 'church', onClick: () => setGerenciarIgrejas(true) },
+      { label: 'Editar mensagem do WhatsApp', icon: 'edit', onClick: () => setModalMsg(true) },
+    ] : undefined,
     impressoes: impressoes.length ? impressoes : undefined,
   }, [admin, podeAdocoes])
 
@@ -216,6 +223,7 @@ export default function Encontristas({ profile }: { profile: Profile }) {
     <div className="page">
       {imprimirCad && <ImprimirCadastros onClose={() => setImprimirCad(false)} />}
       {imprimirAdoc && <ImprimirAdocoes onClose={() => setImprimirAdoc(false)} />}
+      {gerenciarIgrejas && <GerenciarIgrejas onClose={() => setGerenciarIgrejas(false)} onSalvo={recarregarIgrejas} />}
 
       {/* Busca + botão de filtros */}
       <div style={{display:'flex',gap:8,marginBottom:14}}>
@@ -254,7 +262,7 @@ export default function Encontristas({ profile }: { profile: Profile }) {
             <select value={filtroIgreja} onChange={e=>setFiltroIgreja(e.target.value)}
               style={{width:'100%',padding:'11px 12px',borderRadius:10,border:'1px solid var(--border)',fontFamily:'inherit',fontSize:14,background:'white',color:'var(--text)',marginBottom:20}}>
               <option value="todas">Todas as igrejas</option>
-              {IGREJAS.map(ig => <option key={ig} value={ig}>{ig}</option>)}
+              {[...igrejasLista, OUTROS].map(ig => <option key={ig} value={ig}>{ig}</option>)}
             </select>
 
             <p style={{fontSize:12,color:'var(--muted)',fontWeight:700,marginBottom:8}}>Sexo</p>
