@@ -36,13 +36,23 @@ export default function CronogramaImpressao({ titulo, dias }: { titulo: string; 
     <>
       <style>{`
         @media screen {
-          .crono-fundo { background:#e9edf1; padding:18px 8px; border-radius:12px; }
-          .crono-folha { background:white; width:190mm; max-width:100%; margin:0 auto; padding:12mm 10mm; box-shadow:0 3px 16px rgba(0,0,0,0.18); border-radius:2px; }
+          .crono-fundo { background:#e9edf1; padding:18px 8px; border-radius:12px; overflow-x:auto; }
+          /* Folha em A4 REAL (210mm: 190mm de conteúdo + 10mm de margem cada lado).
+             O layout é montado exatamente como sai no PDF. */
+          .crono-folha { background:white; width:190mm; margin:0 auto; padding:12mm 10mm; box-shadow:0 3px 16px rgba(0,0,0,0.18); border-radius:2px; }
         }
+        /* Celular/tablet: encolhe a FOLHA A4 inteira pra caber na tela mantendo o
+           layout idêntico ao PDF (antes o max-width:100% espremia o conteúdo, e a
+           prévia ficava diferente da impressão). */
+        @media screen and (max-width: 820px){ .crono-folha{ zoom:0.62 } }
+        @media screen and (max-width: 640px){ .crono-folha{ zoom:0.52 } }
+        @media screen and (max-width: 480px){ .crono-folha{ zoom:0.46 } }
+        @media screen and (max-width: 412px){ .crono-folha{ zoom:0.42 } }
+        @media screen and (max-width: 360px){ .crono-folha{ zoom:0.38 } }
         @media print {
           .crono-toolbar { display:none !important; }
-          .crono-fundo { background:none !important; padding:0 !important; }
-          .crono-folha { box-shadow:none !important; padding:0 !important; width:auto !important; }
+          .crono-fundo { background:none !important; padding:0 !important; overflow:visible !important; }
+          .crono-folha { box-shadow:none !important; padding:0 !important; width:auto !important; zoom:1 !important; }
         }
       `}</style>
 
