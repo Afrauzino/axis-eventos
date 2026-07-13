@@ -13,6 +13,7 @@ import UploadFoto from '../components/UploadFoto'
 import PersonSelect from '../components/PersonSelect'
 import CardItem from '../components/CardItem'
 import FotoAmpliada from '../components/FotoAmpliada'
+import SeletorIgreja from '../components/SeletorIgreja'
 import { useRegistrarChrome } from '../lib/chrome'
 import { formatName, getInitials, isAdmin, canEditPessoas, normalizarNome } from '../utils'
 import { useEvento } from '../hooks/useEvento'
@@ -356,7 +357,7 @@ export default function Cadastros({ profile }: { profile: Profile }) {
                 </div>
                 <div className="form-group">
                   <label className="form-label">Igreja</label>
-                  <input className="form-input" value={form.church} onChange={e=>setForm(f=>({...f,church:e.target.value}))} placeholder="Nome da igreja"/>
+                  <SeletorIgreja value={form.church} onChange={v=>setForm(f=>({...f,church:v}))}/>
                 </div>
               </div>
 

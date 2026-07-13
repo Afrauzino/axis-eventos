@@ -5,12 +5,13 @@ import { useVoltarFecha } from '../hooks/useVoltarFecha'
 import { getInitials } from '../utils'
 import { useEvento } from '../hooks/useEvento'
 import { useRegistrarChrome } from '../lib/chrome'
+import { useIgrejas, OUTROS } from '../lib/igrejas'
 import { carregarConfig, salvarConfig } from '../lib/tema'
 import { notificarRegra } from '../lib/notifRegras'
 import type { Profile } from '../App'
 
 type Categoria = { id:string; nome:string; descricao:string|null; icone:string; cor:string; ordem:number }
-type Pessoa    = { id:string; name:string; photo_url:string|null }
+type Pessoa    = { id:string; name:string; photo_url:string|null; church:string|null; sexo:string|null }
 type Voto      = { categoria_id:string; votante_id:string; votado_id:string; estrelas:number }
 
 function MatIcon({ name, size=18, color='currentColor' }: { name:string; size?:number; color?:string }) {
@@ -39,8 +40,13 @@ export default function Ranking({ profile }: { profile?: Profile }) {
   const [erro,       setErro]       = useState<string|null>(null)
   const [catSel,     setCatSel]     = useState<Categoria|null>(null)
   const [busca,      setBusca]      = useState('')
+  const { nomeadas: igrejasLista } = useIgrejas()
+  const [modalFiltros, setModalFiltros] = useState(false)
+  const [filtroIgreja, setFiltroIgreja] = useState('todas')
+  const [filtroSexo,   setFiltroSexo]   = useState('todos')
   const [pessoaAberta, setPessoaAberta] = useState<Pessoa|null>(null)
   useVoltarFecha(!!pessoaAberta, () => setPessoaAberta(null))
+  useVoltarFecha(modalFiltros, () => setModalFiltros(false))
   const [myPersonId, setMyPersonId] = useState<string|null>(null)
   const [aberto, setAberto] = useState(false)  // votação aberta? (admin inicia/termina)
   const [voltarPara, setVoltarPara] = useState<string|null>(null) // origem quando aberto via "Votar neste encontrista"
@@ -77,7 +83,7 @@ export default function Ranking({ profile }: { profile?: Profile }) {
 
     const [ca, pe, vo] = await Promise.all([
       supabase.from('ranking_categorias').select('*').eq('event_id',evento.id).order('ordem'),
-      supabase.from('people').select('id,name,photo_url').eq('event_id',evento.id).eq('role_type','encounterer').order('name'),
+      supabase.from('people').select('id,name,photo_url,church,sexo').eq('event_id',evento.id).eq('role_type','encounterer').order('name'),
       supabase.from('ranking_votos').select('categoria_id,votante_id,votado_id,estrelas').eq('event_id',evento.id),
     ])
 
@@ -155,6 +161,14 @@ export default function Ranking({ profile }: { profile?: Profile }) {
     return [...pessoas]
       .map(p=>({...p, nota:notaMedia(catId,p.id), mv:meuVoto(catId,p.id)}))
       .filter(p => !b || p.name.toLowerCase().includes(b))
+      .filter(p => {
+        if (filtroIgreja !== 'todas') {
+          if (filtroIgreja === OUTROS) { if (igrejasLista.includes(p.church||'')) return false }
+          else if (p.church !== filtroIgreja) return false
+        }
+        if (filtroSexo !== 'todos' && p.sexo !== filtroSexo) return false
+        return true
+      })
       .sort((a,b)=>b.nota-a.nota)
   }
 
@@ -186,11 +200,10 @@ export default function Ranking({ profile }: { profile?: Profile }) {
 
   // ⚙️ do topo: escolher a categoria do ranking (padrao das outras telas)
   useRegistrarChrome({
-    busca: { value: busca, onChange: setBusca, placeholder: 'Buscar pessoa...' },
     grupos: categorias.length ? [{ chave:'categoria', label:'Categoria', opcoes: categorias.map(c=>({ value:c.id, label:c.nome })) }] : undefined,
     valores: { categoria: catSel?.id ?? '' },
     onFiltro: (_k, v) => { const c = categorias.find(x=>x.id===v); if (c) setCatSel(c) },
-  }, [categorias, catSel, busca])
+  }, [categorias, catSel])
 
   if (loading) return <div className="page">{[1,2,3].map(i=><div key={i} className="skeleton" style={{height:80,marginBottom:8,borderRadius:14}}/>)}</div>
 
@@ -218,9 +231,63 @@ export default function Ranking({ profile }: { profile?: Profile }) {
   const lista = catSel ? rankingCompleto(catSel.id) : []
   const poderes = !!profile && (profile.role_status === 'approved' || profile.user_role === 'admin')
   const podeVotar = poderes && aberto   // só vota com a votação ABERTA
+  const nFiltros = (filtroIgreja !== 'todas' ? 1 : 0) + (filtroSexo !== 'todos' ? 1 : 0)
 
   return (
     <div className="page">
+      {/* Busca + botão de filtros */}
+      <div style={{display:'flex',gap:8,marginBottom:14}}>
+        <div className="search-bar" style={{flex:1,marginBottom:0}}>
+          <span className="icon icon-sm" style={{color:'var(--muted-light)'}}>search</span>
+          <input placeholder="Buscar pessoa..." value={busca} onChange={e=>setBusca(e.target.value)}/>
+          {busca && <button onClick={()=>setBusca('')} style={{background:'none',border:'none',cursor:'pointer',color:'var(--muted-light)',padding:0,fontFamily:'inherit'}}><span className="icon icon-sm">close</span></button>}
+        </div>
+        <button onClick={()=>setModalFiltros(true)} aria-label="Filtros"
+          style={{position:'relative',flexShrink:0,width:44,height:44,borderRadius:12,border:`1px solid ${nFiltros>0?'var(--primary)':'var(--border)'}`,background:nFiltros>0?'var(--primary-light)':'white',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',fontFamily:'inherit'}}>
+          <span className="icon" style={{color:nFiltros>0?'var(--primary)':'var(--text2)'}}>tune</span>
+          {nFiltros>0 && <span style={{position:'absolute',top:-5,right:-5,minWidth:18,height:18,background:'var(--primary)',borderRadius:99,fontSize:10,fontWeight:800,color:'white',display:'flex',alignItems:'center',justifyContent:'center',padding:'0 4px'}}>{nFiltros}</span>}
+        </button>
+      </div>
+
+      {/* Chips dos filtros ativos */}
+      {nFiltros>0 && (
+        <div style={{display:'flex',gap:6,flexWrap:'wrap',marginBottom:12}}>
+          {filtroIgreja!=='todas' && <ChipFiltro label={filtroIgreja} onClear={()=>setFiltroIgreja('todas')} />}
+          {filtroSexo!=='todos' && <ChipFiltro label={filtroSexo==='M'?'Masculino':'Feminino'} onClear={()=>setFiltroSexo('todos')} />}
+        </div>
+      )}
+
+      {/* Modal de filtros */}
+      {modalFiltros && (
+        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.5)',zIndex:400,display:'flex',flexDirection:'column',justifyContent:'flex-end'}} onClick={e=>e.target===e.currentTarget&&setModalFiltros(false)}>
+          <div style={{background:'white',borderRadius:'20px 20px 0 0',padding:'8px 20px 28px',maxWidth:480,width:'100%',margin:'0 auto',maxHeight:'85vh',overflowY:'auto'}}>
+            <div style={{width:36,height:4,background:'var(--border)',borderRadius:2,margin:'12px auto 14px'}}/>
+            <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:18}}>
+              <span style={{fontSize:17,fontWeight:800}}>Filtros</span>
+              {nFiltros>0 && <button onClick={()=>{setFiltroIgreja('todas');setFiltroSexo('todos')}} style={{background:'none',border:'none',color:'var(--primary)',fontSize:13,fontWeight:700,cursor:'pointer',fontFamily:'inherit'}}>Limpar tudo</button>}
+            </div>
+
+            <p style={{fontSize:12,color:'var(--muted)',fontWeight:700,marginBottom:8}}>Igreja</p>
+            <select value={filtroIgreja} onChange={e=>setFiltroIgreja(e.target.value)}
+              style={{width:'100%',padding:'11px 12px',borderRadius:10,border:'1px solid var(--border)',fontFamily:'inherit',fontSize:14,background:'white',color:'var(--text)',marginBottom:20}}>
+              <option value="todas">Todas as igrejas</option>
+              {[...igrejasLista, OUTROS].map(ig => <option key={ig} value={ig}>{ig}</option>)}
+            </select>
+
+            <p style={{fontSize:12,color:'var(--muted)',fontWeight:700,marginBottom:8}}>Sexo</p>
+            <div style={{display:'flex',gap:8,flexWrap:'wrap',marginBottom:20}}>
+              {[{value:'todos',label:'Todos'},{value:'M',label:'Masculino'},{value:'F',label:'Feminino'}].map(o=>{
+                const sel = filtroSexo===o.value
+                return <button key={o.value} onClick={()=>setFiltroSexo(o.value)}
+                  style={{padding:'9px 16px',borderRadius:10,cursor:'pointer',fontFamily:'inherit',fontSize:14,fontWeight:700,border:sel?'2px solid var(--primary)':'1px solid var(--border)',background:sel?'var(--primary-light)':'white',color:sel?'var(--primary-dark)':'var(--text2)'}}>{o.label}</button>
+              })}
+            </div>
+
+            <button className="btn btn-primary btn-full" onClick={()=>setModalFiltros(false)}>Ver resultados</button>
+          </div>
+        </div>
+      )}
+
       {/* Status da votação + controle do admin */}
       <div style={{background:'white',borderRadius:12,padding:'12px 14px',boxShadow:'var(--shadow-sm)',marginBottom:14,display:'flex',alignItems:'center',gap:10}}>
         <span style={{fontSize:22}}>{aberto?'🟢':'🔴'}</span>
@@ -294,12 +361,16 @@ export default function Ranking({ profile }: { profile?: Profile }) {
               </div>
               <div style={{flex:1,minWidth:0}}>
                 <p style={{fontWeight:700,fontSize:14,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{p.name}</p>
-                {p.mv>0 && <p style={{fontSize:11,color:catSel.cor,fontWeight:600}}>Meu voto: {p.mv}★</p>}
+                {p.nota>0
+                  ? <div style={{display:'flex',alignItems:'center',gap:5,marginTop:2}}>
+                      <Estrelas valor={Math.round(p.nota)} size={14}/>
+                      <span style={{fontWeight:800,fontSize:12,color:catSel.cor}}>{p.nota.toFixed(1)}</span>
+                      <span style={{fontSize:11,color:'var(--muted)'}}>· {totalVotos(catSel.id,p.id)} voto{totalVotos(catSel.id,p.id)===1?'':'s'}</span>
+                    </div>
+                  : <p style={{fontSize:11,color:'var(--muted)',marginTop:2}}>Sem votos ainda</p>}
+                {p.mv>0 && <p style={{fontSize:11,color:catSel.cor,fontWeight:600,marginTop:2}}>Meu voto: {p.mv}★</p>}
               </div>
-              <div style={{display:'flex',alignItems:'center',gap:6}}>
-                {p.nota>0 && <Estrelas valor={Math.round(p.nota)} size={16}/>}
-                <MatIcon name="chevron_right" size={20} color="var(--muted)"/>
-              </div>
+              <MatIcon name="chevron_right" size={20} color="var(--muted)"/>
             </button>
           ))}
         </>
@@ -364,5 +435,14 @@ export default function Ranking({ profile }: { profile?: Profile }) {
         </div>
       )}
     </div>
+  )
+}
+
+function ChipFiltro({ label, onClear }: { label: string; onClear: () => void }) {
+  return (
+    <span style={{display:'inline-flex',alignItems:'center',gap:4,background:'var(--primary-light)',color:'var(--primary-dark)',borderRadius:99,padding:'4px 6px 4px 12px',fontSize:12,fontWeight:700,maxWidth:'100%'}}>
+      <span style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',maxWidth:180}}>{label}</span>
+      <button onClick={onClear} style={{background:'none',border:'none',cursor:'pointer',color:'inherit',display:'flex',padding:0}}><span className="icon" style={{fontSize:15}}>close</span></button>
+    </span>
   )
 }

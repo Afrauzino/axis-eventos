@@ -4,6 +4,7 @@ import { formatName, getInitials, ROLE_LABELS } from '../utils'
 import { useEvento } from '../hooks/useEvento'
 import RecortarFoto from '../components/RecortarFoto'
 import CadastroPessoa, { FORM_VAZIO, type PessoaForm } from '../components/CadastroPessoa'
+import SeletorIgreja from '../components/SeletorIgreja'
 import { toast } from '../components/Toast'
 import { pathOriginal, urlOriginal, imagemCarrega, baixarImagem } from '../lib/foto'
 import { biometriaSuportada, biometriaAtiva, ativarBiometria, desativarBiometria } from '../lib/biometria'
@@ -278,7 +279,7 @@ export default function Perfil({ profile, onUpdate }: { profile: Profile; onUpda
           </div>
           <div className="form-group">
             <label className="form-label">Igreja</label>
-            <input className="form-input" placeholder="Nome da sua igreja" value={form.church} onChange={e=>setForm(f=>({...f,church:e.target.value}))}/>
+            <SeletorIgreja value={form.church} onChange={v=>setForm(f=>({...f,church:v}))}/>
           </div>
           <button type="submit" className="btn btn-primary btn-full" disabled={salvando}>
             {salvando ? 'Salvando...' : 'Salvar dados'}
