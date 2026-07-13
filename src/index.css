@@ -49,7 +49,10 @@
   --drawer-w: 72px;
 }
 
-html { height: 100%; }
+/* O app tem tema PRÓPRIO (claro) — nunca segue o modo escuro do aparelho.
+   'only light' desliga o "escurecimento automático" do Chrome no Android. */
+html { height: 100%; color-scheme: only light; }
+:root { color-scheme: only light; }
 /* iOS Safari viewport fix */
 html, body {
   height: -webkit-fill-available;
