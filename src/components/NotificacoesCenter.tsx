@@ -176,6 +176,19 @@ function lembrete(quando?: string | null): string | null {
   return min <= 1 ? 'Começa agora' : `Começa em ${min} min`
 }
 
+// Tempo relativo pro cabeçalho do cartão (igual à notificação do celular: "agora", "há 5 min"…)
+function tempoRel(quando?: string | null): string {
+  if (!quando) return ''
+  const diff = Date.now() - new Date(quando).getTime()
+  if (diff < 0) return 'em breve'
+  const min = Math.round(diff / 60000)
+  if (min < 1) return 'agora'
+  if (min < 60) return `há ${min} min`
+  const h = Math.round(min / 60)
+  if (h < 24) return `há ${h} h`
+  return `há ${Math.round(h / 24)} d`
+}
+
 export default function NotificacoesCenter({ profile, onClose, onUnread }: { profile: Profile; onClose: () => void; onUnread?: (n: number) => void }) {
   useVoltarFecha(true, onClose)  // voltar do celular fecha as notificações
   const navigate = useNavigate()
@@ -225,20 +238,23 @@ export default function NotificacoesCenter({ profile, onClose, onUnread }: { pro
               <p style={{ fontSize: 14, color: 'var(--muted)' }}>Nenhuma notificação por enquanto.</p>
             </div>
           ) : visiveis.map(n => {
-            const naoLida = true
             const lb = lembrete(n.quando)
+            const quando = tempoRel(n.quando)
             return (
               <button key={n.id} onClick={() => abrir(n)}
-                style={{ width: '100%', display: 'flex', alignItems: 'flex-start', gap: 12, padding: '12px 10px', borderBottom: '1px solid var(--border)', background: naoLida ? 'var(--primary-light)' : 'white', border: 'none', borderRadius: 10, marginBottom: 4, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' }}>
-                <span style={{ fontSize: 22, flexShrink: 0, lineHeight: 1.2 }}>{n.emoji}</span>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ fontSize: 14, fontWeight: naoLida ? 700 : 600, color: 'var(--text)' }}>{n.titulo}</p>
-                  <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginTop: 2, flexWrap: 'wrap' }}>
-                    {n.sub && <span style={{ fontSize: 12, color: 'var(--muted)' }}>{n.sub}</span>}
-                    {lb && <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--danger)', background: 'var(--danger-bg)', padding: '1px 7px', borderRadius: 99 }}>⏰ {lb}</span>}
-                  </div>
+                style={{ width: '100%', display: 'flex', alignItems: 'flex-start', gap: 12, padding: '12px 12px', background: 'white', border: '1px solid var(--border)', borderRadius: 14, marginBottom: 8, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left', boxShadow: 'var(--shadow-sm)' }}>
+                {/* Ícone do app (igual à notificação do celular) + emoji do tipo por cima */}
+                <div style={{ position: 'relative', flexShrink: 0 }}>
+                  <img src="/axis-notif.png" alt="" style={{ width: 42, height: 42, borderRadius: 11, objectFit: 'cover', display: 'block' }} />
+                  <span style={{ position: 'absolute', right: -4, bottom: -4, fontSize: 14, lineHeight: 1, background: 'white', borderRadius: '50%', width: 20, height: 20, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }}>{n.emoji}</span>
                 </div>
-                {naoLida && <span style={{ width: 9, height: 9, borderRadius: '50%', background: 'var(--primary)', flexShrink: 0, marginTop: 4 }} />}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ fontSize: 11.5, color: 'var(--muted)', fontWeight: 600, marginBottom: 1 }}>AXIS Eventos{quando ? ` · ${quando}` : ''}</p>
+                  <p style={{ fontSize: 14.5, fontWeight: 800, color: 'var(--text)', lineHeight: 1.25 }}>{n.titulo}</p>
+                  {n.sub && <p style={{ fontSize: 12.5, color: 'var(--text2)', lineHeight: 1.35, marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{n.sub}</p>}
+                  {lb && <span style={{ display: 'inline-block', marginTop: 4, fontSize: 11, fontWeight: 700, color: 'var(--danger)', background: 'var(--danger-bg)', padding: '1px 7px', borderRadius: 99 }}>⏰ {lb}</span>}
+                </div>
+                <span style={{ width: 9, height: 9, borderRadius: '50%', background: 'var(--primary)', flexShrink: 0, marginTop: 6 }} />
               </button>
             )
           })}
