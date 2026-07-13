@@ -46,11 +46,19 @@ export function useVoltarFecha(aberto: boolean, fechar: () => void) {
         // fechando ele (era o bug: salvar a foto fechava o cadastro inteiro).
         // Então liberamos a trava SÓ quando o popstate do nosso próprio back() chega.
         limpando = true
-        const liberar = () => { limpando = false; window.removeEventListener('popstate', liberar) }
+        const liberar = () => {
+          window.removeEventListener('popstate', liberar)
+          // Solta a trava só DEPOIS que todos os onPop deste MESMO popstate rodaram
+          // (o setTimeout roda após o dispatch do evento). Se soltasse aqui na hora, o
+          // `liberar` (registrado ANTES) rodava antes do onPop de um modal que abriu no
+          // mesmo clique (ex.: seleção → impressão em Equipes): esse modal via
+          // limpando=false e se fechava sozinho ("clica imprimir e fecha tudo").
+          setTimeout(() => { limpando = false }, 0)
+        }
         window.addEventListener('popstate', liberar)
         window.history.back()
-        // rede de segurança: se por algum motivo o popstate não vier, solta assim mesmo.
-        setTimeout(() => { if (limpando) liberar() }, 300)
+        // rede de segurança: se o popstate não vier, solta assim mesmo.
+        setTimeout(() => { if (limpando) { window.removeEventListener('popstate', liberar); limpando = false } }, 300)
       }
     }
   }, [aberto])
