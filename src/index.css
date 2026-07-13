@@ -966,10 +966,11 @@ body {
 .sched-card:hover { box-shadow: 0 2px 9px rgba(0,0,0,0.16); }
 /* Card com foto (PNG) do ministrante: altura PADRÃO + o PNG grande com a cabeça
    saindo BEM pra fora do topo. Reservamos margem acima pra não invadir o card de cima. */
-.sched-card.tem-foto { overflow: visible; min-height: 118px; margin-top: 48px; }
-.sched-card.tem-avatar { overflow: visible; min-height: 96px; }
-.sched-card.tem-foto .sched-body,
-.sched-card.tem-avatar .sched-body { display: flex; flex-direction: column; justify-content: center; }
+.sched-card.tem-foto { position: relative; overflow: visible; min-height: 116px; margin-top: 50px; }
+.sched-card.tem-avatar { position: relative; overflow: visible; min-height: 96px; }
+/* espaço à direita pro PNG (que fica em cima, absoluto) não deixar o texto embaixo dele */
+.sched-card.tem-foto .sched-body { display: flex; flex-direction: column; justify-content: center; padding-right: 104px; }
+.sched-card.tem-avatar .sched-body { display: flex; flex-direction: column; justify-content: center; padding-right: 76px; }
 
 .sched-bar { width: 6px; flex-shrink: 0; align-self: stretch; }
 .sched-bar.ministracao { background: #6B46C1; }
