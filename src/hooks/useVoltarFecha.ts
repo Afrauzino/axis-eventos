@@ -29,7 +29,14 @@ export function useVoltarFecha(aberto: boolean, fechar: () => void) {
     return () => {
       ativo = false
       window.removeEventListener('popstate', onPop)
-      if (!fechadoPeloVoltar) {
+      // Só desfaz o estado que empurramos se ele AINDA estiver no topo do histórico.
+      // Se navegamos pra outra página com o modal aberto (ex.: clicar numa notificação
+      // do sininho → navigate() substitui o nosso estado), o topo já NÃO é `axisModal`;
+      // aí NÃO damos back() — senão o "voltar" desfazia a navegação (bug: clicava e
+      // não ia pro lugar).
+      let noTopo = true
+      try { noTopo = !!(window.history.state && (window.history.state as any).axisModal) } catch { /* ignore */ }
+      if (!fechadoPeloVoltar && noTopo) {
         // Fechou pelo X/backdrop/confirmar: tira o estado que empurramos (sem disparar
         // fechar de novo — nem nos modais de baixo, quando é um modal-dentro-de-modal).
         //

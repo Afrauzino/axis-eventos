@@ -194,7 +194,10 @@ export default function NotificacoesCenter({ profile, onClose, onUnread }: { pro
 
   function abrir(n: Notif) {
     const novo = new Set(lidas); novo.add(n.id); setLidas(novo); salvarLidas(profile.user_id, novo)
-    onClose(); navigate(n.rota)
+    // Navega ANTES de fechar, com replace: troca o estado do painel pela rota destino.
+    // Assim o fechamento do painel NÃO faz history.back() desfazendo a navegação
+    // (bug: clicava na notificação e não ia pro lugar). Ver useVoltarFecha.
+    navigate(n.rota, { replace: true }); onClose()
   }
   function marcarTodas() {
     const novo = new Set(lidas); itens.forEach(i => novo.add(i.id)); setLidas(novo); salvarLidas(profile.user_id, novo)
