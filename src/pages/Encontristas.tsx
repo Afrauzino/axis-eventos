@@ -5,6 +5,7 @@ import { useVoltarFecha } from '../hooks/useVoltarFecha'
 import { getInitials, formatName, isAdmin } from '../utils'
 import CardItem from '../components/CardItem'
 import { useRegistrarChrome } from '../lib/chrome'
+import ImprimirCadastros from '../components/ImprimirCadastros'
 import { useEvento } from '../hooks/useEvento'
 import { carregarConfig, salvarConfig } from '../lib/tema'
 import { toast } from '../components/Toast'
@@ -125,13 +126,16 @@ export default function Encontristas({ profile }: { profile: Profile }) {
     toast.sucesso('Mensagem salva!')
   }
 
+  const [imprimirCad, setImprimirCad] = useState(false)
   useRegistrarChrome({
     busca: { value: busca, onChange: setBusca, placeholder: 'Buscar por nome ou igreja...' },
     configs: admin ? [{ label: 'Editar mensagem do WhatsApp', icon: 'edit', onClick: () => setModalMsg(true) }] : undefined,
+    impressoes: admin ? [{ label: 'Imprimir cadastros', onClick: () => setImprimirCad(true) }] : undefined,
   }, [busca, admin])
 
   return (
     <div className="page">
+      {imprimirCad && <ImprimirCadastros onClose={() => setImprimirCad(false)} />}
       {/* Contador */}
       <p style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 12 }}>
         {busca ? `${filtrados.length} resultado(s) para "${busca}"` : `${lista.length} encontrista(s)`}
