@@ -440,7 +440,7 @@ export default function Cronograma({ profile }: { profile?: Profile }) {
             const { min, tea, ministrante } = getInfo(item)
             const mfoto = min?.ministrante_id ? pessoaFoto[min.ministrante_id] : null
             return (
-              <div key={item.id} className="sched-card" onClick={() => setDetalhe(item)}>
+              <div key={item.id} className={"sched-card" + (min?.foto_poster ? ' tem-foto' : '')} onClick={() => setDetalhe(item)}>
                 <div className="sched-bar" style={{background: tiposDB.find(t=>t.nome.toLowerCase()===item.tipo.toLowerCase())?.cor ?? TIPO_COR_FALLBACK[item.tipo] ?? 'var(--primary)'}} />
                 <div className="sched-body">
                   <div className="sched-time">{fmtHora(item.hora_inicio)} — {fmtHora(item.hora_fim)}</div>
@@ -464,8 +464,8 @@ export default function Cronograma({ profile }: { profile?: Profile }) {
                 {/* Foto do ministrante: PNG (foto_poster) se tiver, senão a bolinha (avatar) */}
                 {(min?.ministrante_id || ministrante) && (
                   min?.foto_poster
-                    ? <img src={min.foto_poster} alt="" style={{width:60,maxHeight:82,objectFit:'contain',objectPosition:'bottom center',alignSelf:'flex-end',flexShrink:0}} />
-                    : <div style={{width:46,height:46,borderRadius:'50%',overflow:'hidden',background:'#f3f4f6',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,alignSelf:'center'}}>
+                    ? <img src={min.foto_poster} alt="" style={{width:64,height:92,marginTop:-22,marginRight:10,objectFit:'contain',objectPosition:'bottom center',alignSelf:'flex-end',flexShrink:0,pointerEvents:'none'}} />
+                    : <div style={{width:46,height:46,borderRadius:'50%',overflow:'hidden',background:'#f3f4f6',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,alignSelf:'center',marginRight:8}}>
                         {mfoto?.photo_url
                           ? <img src={mfoto.photo_url} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}} />
                           : <span style={{fontWeight:700,color:'#6b7280',fontSize:15}}>{getInitials(mfoto?.name ?? ministrante?.name ?? '?')}</span>}

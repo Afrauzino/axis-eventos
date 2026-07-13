@@ -1222,7 +1222,10 @@ export default function Admin({ profile }: { profile?: Profile }) {
             .filter(p => !buscaUser || normalizarNome(p.name).includes(normalizarNome(buscaUser)))
             .map(p => {
             const corPessoa = p.role_type==='worker' ? 'var(--primary)' : '#6B46C1'
-            const sub = [p.role_type==='worker'?'Encontreiro':'Encontrista', p.church||'Igreja não informada', (p.user_role && p.user_role!=='visitante') ? (cargos.find(cg=>cg.role===p.user_role)?.label ?? p.user_role) : ''].filter(Boolean).join(' · ')
+            // cargo só quando é um papel ELEVADO (Líder/Pastor/Coordenador...). Os básicos
+            // 'aprovado' (encontrista) e 'encontreiro' repetem o tipo — não mostra (era o bug
+            // "Encontreiro · igreja · Encontreiro").
+            const sub = [p.role_type==='worker'?'Encontreiro':'Encontrista', p.church||'Igreja não informada', (p.user_role && !['visitante','aprovado','encontreiro'].includes(p.user_role)) ? (cargos.find(cg=>cg.role===p.user_role)?.label ?? p.user_role) : ''].filter(Boolean).join(' · ')
             const direita = p.user_id ? (
               <>
                 <button

@@ -961,6 +961,8 @@ body {
 }
 
 .sched-card:hover { box-shadow: 0 2px 9px rgba(0,0,0,0.16); }
+/* Card com foto do ministrante: deixa a cabeça do PNG "vazar" pra cima sem cortar. */
+.sched-card.tem-foto { overflow: visible; }
 
 .sched-bar { width: 6px; flex-shrink: 0; align-self: stretch; }
 .sched-bar.ministracao { background: #6B46C1; }
