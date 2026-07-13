@@ -17,7 +17,7 @@ export const PERM_CATALOGO: PermArea[] = [
   { modulo:'cadastros',    label:'Cadastros',    emoji:'📝', funcoes: VER_EDITAR },
   { modulo:'ministracoes', label:'Ministrações', emoji:'🎤', funcoes: VER_EDITAR },
   { modulo:'ranking',      label:'Ranking',      emoji:'🏆', funcoes:[{acao:'ver',label:'Ver'},{acao:'votar',label:'Votar'}] },
-  { modulo:'correio',      label:'Correio',      emoji:'📬', funcoes:[{acao:'ver',label:'Ver afilhados'},{acao:'checklist',label:'Configurar checklist/padrinhos'}] },
+  { modulo:'correio',      label:'Correio',      emoji:'📬', funcoes:[{acao:'ver',label:'Ver afilhados'},{acao:'checklist',label:'Configurar checklist/padrinhos'},{acao:'adocoes',label:'Ver responsáveis das cartas (adoções)',dica:'Vê quem adotou cada encontrista, pode imprimir a lista e tirar adoções'}] },
   { modulo:'logistica',    label:'Logística',    emoji:'📦', funcoes:[{acao:'ver',label:'Ver / Imprimir'},{acao:'checklist',label:'Criar/editar checklist'}] },
   { modulo:'equipes',      label:'Equipes',      emoji:'🛡️', funcoes: VER_EDITAR },
   { modulo:'escalas',      label:'Escalas',      emoji:'🗓️', funcoes: VER_EDITAR },

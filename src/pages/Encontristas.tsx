@@ -6,7 +6,9 @@ import { getInitials, formatName, isAdmin } from '../utils'
 import CardItem from '../components/CardItem'
 import { useRegistrarChrome } from '../lib/chrome'
 import ImprimirCadastros from '../components/ImprimirCadastros'
+import ImprimirAdocoes from '../components/ImprimirAdocoes'
 import { useEvento } from '../hooks/useEvento'
+import { usePermissao } from '../hooks/usePermissao'
 import { carregarConfig, salvarConfig } from '../lib/tema'
 import { toast } from '../components/Toast'
 import type { Profile } from '../App'
@@ -37,6 +39,12 @@ export default function Encontristas({ profile }: { profile: Profile }) {
   const [meuP, setMeuP] = useState<{id:string;name:string;photo_url:string|null;phone:string|null;role_type:string}|null>(null)
   const [conhecidos, setConhecidos] = useState<Marca[]>([])
   const [marcando, setMarcando] = useState(false)
+  // Adoção ("Adotar essa pessoa") — quem é responsável pela carta de cada encontrista
+  const { pode } = usePermissao(profile)
+  const [adotadas, setAdotadas] = useState<Map<string, { mine: boolean }>>(new Map())
+  const [respMap, setRespMap]   = useState<Map<string, { worker_name: string|null; worker_photo: string|null; worker_phone: string|null }>>(new Map())
+  const [adotando, setAdotando] = useState(false)
+  const [imprimirAdoc, setImprimirAdoc] = useState(false)
   // Mensagem do WhatsApp (editável)
   const [msgRef, setMsgRef] = useState(MSG_REF_PADRAO)
   const [msgRefSalva, setMsgRefSalva] = useState(MSG_REF_PADRAO)
@@ -44,6 +52,7 @@ export default function Encontristas({ profile }: { profile: Profile }) {
   useVoltarFecha(modalMsg, () => setModalMsg(false))
   const [salvandoMsg, setSalvandoMsg] = useState(false)
   const admin = isAdmin(profile.user_role) || profile.is_admin
+  const podeAdocoes = admin || pode('correio', 'adocoes')
   useEffect(() => { carregarConfig('msg_referencia').then(v => { const m = v ?? MSG_REF_PADRAO; setMsgRef(m); setMsgRefSalva(m) }) }, [])
 
   useEffect(() => { if (evLoading) return; if (!evento) { setLoading(false); return }; carregar() }, [evento, evLoading])
@@ -80,6 +89,52 @@ export default function Encontristas({ profile }: { profile: Profile }) {
     }
     await carregarConhecidos(selecionado.id)
     setMarcando(false)
+  }
+
+  // Carrega o status de adoção (quem já está adotado, sem revelar nomes) + os
+  // nomes dos responsáveis (só chega pra quem tem permissão / admin / dono).
+  async function loadAdocoes() {
+    if (!evento?.id) return
+    const { data: st } = await supabase.rpc('adocao_status', { p_event: evento.id })
+    const m = new Map<string, { mine: boolean }>()
+    ;(st ?? []).forEach((r: any) => m.set(r.encontrista_id, { mine: r.mine }))
+    setAdotadas(m)
+    const { data: full } = await supabase.from('encontrista_adocao')
+      .select('encontrista_id,worker_name,worker_photo,worker_phone')
+      .eq('event_id', evento.id)
+    const rm = new Map<string, any>()
+    ;(full ?? []).forEach((r: any) => rm.set(r.encontrista_id, r))
+    setRespMap(rm)
+  }
+
+  useEffect(() => { if (evento?.id) loadAdocoes() }, [evento?.id, podeAdocoes])
+
+  async function adotar() {
+    if (!selecionado || !meuP || !profile?.user_id) return
+    setAdotando(true)
+    const { error } = await supabase.from('encontrista_adocao').insert({
+      event_id: evento?.id ?? null, encontrista_id: selecionado.id,
+      worker_user_id: profile.user_id, worker_name: meuP.name,
+      worker_photo: meuP.photo_url, worker_phone: meuP.phone,
+    })
+    if (error) {
+      // provavelmente outra pessoa adotou primeiro (unique)
+      toast.erro('Alguém já adotou esta pessoa.')
+    } else {
+      toast.sucesso('Você adotou esta pessoa 💌')
+    }
+    await loadAdocoes()
+    setAdotando(false)
+  }
+
+  async function tirarAdocao() {
+    if (!selecionado) return
+    setAdotando(true)
+    const { error } = await supabase.from('encontrista_adocao').delete().eq('encontrista_id', selecionado.id)
+    if (error) toast.erro('Não foi possível tirar a adoção.')
+    else toast.sucesso('Adoção removida.')
+    await loadAdocoes()
+    setAdotando(false)
   }
 
   async function carregar() {
@@ -127,15 +182,20 @@ export default function Encontristas({ profile }: { profile: Profile }) {
   }
 
   const [imprimirCad, setImprimirCad] = useState(false)
+  const impressoes = [
+    ...(admin ? [{ label: 'Imprimir cadastros', onClick: () => setImprimirCad(true) }] : []),
+    ...(podeAdocoes ? [{ label: 'Imprimir responsáveis (adoções)', onClick: () => setImprimirAdoc(true) }] : []),
+  ]
   useRegistrarChrome({
     busca: { value: busca, onChange: setBusca, placeholder: 'Buscar por nome ou igreja...' },
     configs: admin ? [{ label: 'Editar mensagem do WhatsApp', icon: 'edit', onClick: () => setModalMsg(true) }] : undefined,
-    impressoes: admin ? [{ label: 'Imprimir cadastros', onClick: () => setImprimirCad(true) }] : undefined,
-  }, [busca, admin])
+    impressoes: impressoes.length ? impressoes : undefined,
+  }, [busca, admin, podeAdocoes])
 
   return (
     <div className="page">
       {imprimirCad && <ImprimirCadastros onClose={() => setImprimirCad(false)} />}
+      {imprimirAdoc && <ImprimirAdocoes onClose={() => setImprimirAdoc(false)} />}
       {/* Contador */}
       <p style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 12 }}>
         {busca ? `${filtrados.length} resultado(s) para "${busca}"` : `${lista.length} encontrista(s)`}
@@ -270,6 +330,50 @@ export default function Encontristas({ profile }: { profile: Profile }) {
                   </button>
                 )}
               </div>
+
+              {/* Adoção — orar + escrever carta à mão */}
+              {(() => {
+                const st = adotadas.get(selecionado.id)          // undefined=livre; {mine}
+                const resp = respMap.get(selecionado.id)
+                const souWorker = meuP?.role_type === 'worker'
+                return (
+                  <div style={{ marginBottom: 8 }}>
+                    {podeAdocoes && st && resp && (
+                      <div style={{ background:'#FDF2F8', border:'1px solid #F9A8D4', borderRadius:12, padding:'10px 12px', marginBottom:10, display:'flex', alignItems:'center', gap:10 }}>
+                        <span style={{fontSize:20}}>💌</span>
+                        <div style={{flex:1,minWidth:0}}>
+                          <p style={{fontSize:11,fontWeight:700,color:'#9d174d',textTransform:'uppercase',letterSpacing:'.05em'}}>Responsável pela carta</p>
+                          <p style={{fontSize:15,fontWeight:800,color:'#831843'}}>{resp.worker_name || 'Encontreiro'}</p>
+                        </div>
+                      </div>
+                    )}
+                    {souWorker && (
+                      st?.mine ? (
+                        <button onClick={tirarAdocao} disabled={adotando}
+                          style={{width:'100%',background:'var(--danger-bg)',color:'var(--danger)',border:'1px solid var(--danger)',borderRadius:10,padding:'12px',cursor:'pointer',fontSize:14,fontWeight:700,fontFamily:'inherit',display:'flex',alignItems:'center',justifyContent:'center',gap:8,marginBottom:8}}>
+                          <span className="icon icon-sm">heart_minus</span>
+                          {adotando?'...':'Tirar adoção dessa pessoa'}
+                        </button>
+                      ) : st ? (
+                        <div style={{width:'100%',background:'var(--bg)',color:'var(--muted)',border:'1px solid var(--border)',borderRadius:10,padding:'12px',fontSize:13,fontWeight:700,textAlign:'center',marginBottom:8}}>
+                          💌 Já adotado{podeAdocoes && resp ? ` por ${(resp.worker_name||'').split(' ')[0]}` : ' por outra pessoa'}
+                        </div>
+                      ) : (
+                        <>
+                          <button onClick={adotar} disabled={adotando}
+                            style={{width:'100%',background:'#DB2777',color:'white',border:'none',borderRadius:10,padding:'12px',cursor:'pointer',fontSize:14,fontWeight:700,fontFamily:'inherit',display:'flex',alignItems:'center',justifyContent:'center',gap:8,marginBottom:6}}>
+                            <span className="icon icon-sm">volunteer_activism</span>
+                            {adotando?'...':'Adotar essa pessoa'}
+                          </button>
+                          <p style={{fontSize:11.5,color:'var(--muted)',lineHeight:1.4,marginBottom:8,textAlign:'center'}}>
+                            Adotar significa assumir o compromisso de orar por ela e escrever uma carta à mão, entregue durante o Encontro com Deus.
+                          </p>
+                        </>
+                      )
+                    )}
+                  </div>
+                )
+              })()}
 
               <button
                 onClick={()=>{ const alvo=selecionado.id; setSelecionado(null); navigate('/ranking', { state:{ votarPessoaId: alvo, origem:'/encontristas' } }) }}
