@@ -41,8 +41,8 @@ Sintomas dele: (1) ao aprovar, as informações do cadastro **não vêm** (foto 
 ### Item 3 — botão "Unificar com duplicado" (mesclar contas) — ✅ CAUSA RESOLVIDA
 Causa: a RPC `unificar_pessoas` (chamada em `Admin.tsx:761`) **não existia no banco** — o `sql/61_unificar_pessoas.sql` nunca tinha sido rodado, então o botão só dava "rode o sql/61". **Rodei o sql/61 eu mesmo (via Chrome) e confirmei que a função existe** e está com GRANT EXECUTE p/ authenticated. O botão agora executa o merge de verdade. Falta o Anderson **testar o clique** em 2 duplicados reais (não consegui auto-testar: o classificador barrou simular login p/ rodar a função de exclusão de conta — correto; e o botão usa `confirm()` nativo que minha automação não clica). Obs.: a função tem `is_admin()` guard e migra FKs genéricos — bem robusta.
 
-### Correio — arquivos de padrinho→afilhado (Claude vai fazer)
-Pedido: encontreiro **padrinho** pode pôr/excluir arquivo no **afilhado**; TODOS os padrinhos daquele afilhado + o líder veem os mesmos arquivos. Tabelas já existem (`correio_padrinhos`, `correio_arquivos`). Provável faltar **RLS** deixando o padrinho (não só líder) INSERT/SELECT/DELETE em `correio_arquivos` do seu afilhado. **Eu (Claude) assumo esse.**
+### Correio — arquivos de padrinho→afilhado — ✅ RESOLVIDO (Claude)
+Investiguei: **RLS não era o bloqueio** — TODAS as `correio_*` já estão abertas (SELECT `true`, escrita `auth.uid() IS NOT NULL`) e o Storage `correio` também (sql/21). A UI já mostra "Enviar arquivo(s)" + lista + excluir pra quem abre o afilhado, e `arquivosDe(afId)` mostra TODOS os arquivos daquele afilhado (então os dois padrinhos + líder veem os mesmos). O gap real era **ENTRAR no Correio**: a rota `/correio` e o menu só checavam `menu_correio`, então dar a liberação "Correio → Ver afilhados" (`correio/ver`) não abria a tela. **Fix (commit 48c2d3e):** `correio/ver` também libera a rota (App.tsx) e o item de menu (Nav.tsx). Aditivo. Para usar: líder define padrinhos em Correio→Configurar; admin dá a liberação "Correio → Ver afilhados" ao encontreiro (ou à equipe Correio) → ele entra, vê "Meus Afilhados" e põe/exclui arquivos.
 
 ---
 
