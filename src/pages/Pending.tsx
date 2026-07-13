@@ -5,6 +5,7 @@ import CadastroPessoa, { FORM_VAZIO, type PessoaForm } from '../components/Cadas
 import { validarCadastroFaltando, fotoRequerida, carregarCadastroCfg } from '../lib/cadastroCfg'
 import { toast } from '../components/Toast'
 import { formatName } from '../utils'
+import { notificarRegra } from '../lib/notifRegras'
 import type { Profile } from '../App'
 
 export default function Pending({ profile }: { profile: Profile | null }) {
@@ -62,6 +63,9 @@ export default function Pending({ profile }: { profile: Profile | null }) {
     setSalvando(false)
     if (e2) { toast.falha('Falta rodar o sql/72_reprovacao.sql no Supabase.', e2); return }
     toast.sucesso('Cadastro reenviado! Agora é só aguardar a aprovação.')
+    // Avisa os admins que um cadastro corrigido voltou pra fila de aprovação
+    // (é como uma inscrição nova: precisa reaprovar).
+    try { notificarRegra('insc_nova', { notify_admins: true, title: 'Cadastro reenviado para aprovação', body: `${formatName(cadForm.name)} corrigiu e reenviou o cadastro.`, url: '/minhas-atividades' }) } catch {}
     setTimeout(() => window.location.reload(), 1000)
   }
 
