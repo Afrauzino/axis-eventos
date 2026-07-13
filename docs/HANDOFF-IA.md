@@ -30,6 +30,20 @@ No fluxo de convite, abrir `https://.../?codigo=XXXXXXXX` **muda pra aba "Primei
 - Quando for **mais rápido** e não precisar do login dele, posso usar meu **navegador próprio** (não o Chrome logado).
 - Ele me autorizou **rodar SQL e testar no app** eu mesmo pelo Chrome logado dele (ver `sql/74` já aplicado).
 
+### 🐛 DIAGNÓSTICO (Anderson reportou 12/07) — cadastro por CÓDIGO perde os dados
+Sintomas dele: (1) ao aprovar, as informações do cadastro **não vêm** (foto some também); (2) devolveu o cadastro pra pessoa refazer, mas: **2.1** o cadastro devolvido **não fica visível pro admin ver**; **2.2** pra pessoa aparece só a **mensagem** de recusa, os **dados somem** e ela **não consegue reenviar**.
+
+**Causa provável (NÃO corrigida — deixei pra quem está na área de cadastro/RLS):** o pré-cadastro (admin) cria a linha em `people` com `user_id` NULL + `invite_code`. Ao completar pelo código, `Login.tsx:317` faz `people.update({user_id: uid, ...dados}).eq('id', pessoa.id)`. Se a **policy de UPDATE de `people`** exigir `user_id = auth.uid()` no USING, o usuário novo (uid) **não "casa"** com a linha (user_id ainda NULL) → o UPDATE atinge **0 linhas em SILÊNCIO (sem erro)** → `user_id`/dados nunca gravam. Daí: admin não vê dados (1/2), e `Pending.abrirRefazer` (busca `people` por `user_id`) volta vazio → 2.2.
+- **Verificar:** a policy de UPDATE em `public.people` (USING/WITH CHECK). 
+- **Correção sugerida:** permitir "reivindicar" a linha órfã — USING `user_id = auth.uid() OR user_id IS NULL` + WITH CHECK `user_id = auth.uid()`; OU uma RPC SECURITY DEFINER (padrão do `reenviar_meu_cadastro`) que faz o vínculo. Confirmar rodando um cadastro real por código e conferindo se `people.user_id`/dados gravaram.
+- **2.1 (admin ver o recusado):** a lista de cadastros/aprovação some com quem está `rejected`; manter visível um filtro "Recusados" pro admin reabrir.
+
+### Item 3 — botão "Unificar com duplicado" (mesclar contas) não funciona
+Fica em `Admin.tsx:1504` (`merge_type` "Unificar com duplicado"). Anderson diz que não funciona. **Eu (Claude) vou olhar esse** — é fora dos seus arquivos de cadastro.
+
+### Correio — arquivos de padrinho→afilhado (Claude vai fazer)
+Pedido: encontreiro **padrinho** pode pôr/excluir arquivo no **afilhado**; TODOS os padrinhos daquele afilhado + o líder veem os mesmos arquivos. Tabelas já existem (`correio_padrinhos`, `correio_arquivos`). Provável faltar **RLS** deixando o padrinho (não só líder) INSERT/SELECT/DELETE em `correio_arquivos` do seu afilhado. **Eu (Claude) assumo esse.**
+
 ---
 
 ## 0. Como trabalhar aqui (REGRAS do usuário — Anderson)
