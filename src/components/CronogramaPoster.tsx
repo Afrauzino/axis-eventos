@@ -41,7 +41,7 @@ export default function CronogramaPoster({ titulo, dias, slim = false, escala = 
     horaW:     s(slim ? 74 : 96),
     durW:      s(slim ? 84 : 110),
     hdColFonte: s(slim ? 12 : 15),
-    foto:      s(slim ? 72 : 54),   // FOTO MAIOR no slim
+    foto:      s(slim ? 62 : 54),   // FOTO grande no slim (reduzida um pouco p/ o título respirar)
     gap:       s(slim ? 6 : 8),
     rowPad:    slim ? '4px 6px 4px 7px' : '8px 8px 8px 10px',
     pillPad:   slim ? '4px 10px' : '6px 12px',
@@ -88,13 +88,13 @@ export default function CronogramaPoster({ titulo, dias, slim = false, escala = 
                 {l.kind === 'min' ? (
                   <div style={{ flex: 1, display: 'flex', minWidth: 0 }}>
                     {/* Ministrante: foto recortada (vaza pra cima) + pill BEGE, NOME em cima / título embaixo */}
-                    <div style={{ flex: 1, alignSelf: 'center', position: 'relative', display: 'flex', alignItems: 'center', padding: t.rowPad, minWidth: 0 }}>
+                    <div style={{ flex: mostrarElenco ? 1 : 1.5, alignSelf: 'center', position: 'relative', display: 'flex', alignItems: 'center', padding: t.rowPad, minWidth: 0 }}>
                       {l.fotoPng ? (
                         // Caixa FIXA + contain + centralizado embaixo: qualquer PNG aparece inteiro
                         // (nunca corta o rosto), centralizado, sem invadir o texto. Como o container
                         // usa alignSelf:center, o PNG fica JUNTO do card mesmo quando a linha é alta
                         // (ex.: teatro com muitas fotos do elenco). translateZ suaviza o "voa" ao rolar.
-                        <div style={{ position: 'absolute', left: s(4), bottom: 0, width: Math.round(t.foto * 1.25), height: Math.round(t.foto * 1.35), zIndex: 2, pointerEvents: 'none', transform: 'translateZ(0)' }}>
+                        <div style={{ position: 'absolute', left: s(4), bottom: 0, width: Math.round(t.foto * 1.08), height: Math.round(t.foto * 1.22), zIndex: 2, pointerEvents: 'none', transform: 'translateZ(0)' }}>
                           <img src={l.fotoPng} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain', objectPosition: 'bottom center', display: 'block' }} />
                         </div>
                       ) : l.fotoUrl ? (
@@ -102,7 +102,7 @@ export default function CronogramaPoster({ titulo, dias, slim = false, escala = 
                       ) : (
                         <div style={{ width: t.foto, height: t.foto, borderRadius: '50%', background: '#e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, border: t.borda, position: 'relative', zIndex: 2 }}><span style={{ fontWeight: 800, color: '#6b7280', fontSize: 16 }}>{getInitials(l.ministrante ?? '?')}</span></div>
                       )}
-                      <div style={{ flex: 1, background: PEACH, color: '#1b1206', borderRadius: t.pillRad, padding: l.fotoPng ? `${s(6)}px ${s(12)}px ${s(6)}px ${Math.round(t.foto * 1.5)}px` : `${s(6)}px ${s(12)}px`, marginLeft: l.fotoPng ? 0 : s(8), minWidth: 0 }}>
+                      <div style={{ flex: 1, background: PEACH, color: '#1b1206', borderRadius: t.pillRad, padding: l.fotoPng ? `${s(6)}px ${s(10)}px ${s(6)}px ${Math.round(t.foto * 1.18)}px` : `${s(6)}px ${s(12)}px`, marginLeft: l.fotoPng ? 0 : s(8), minWidth: 0 }}>
                         <p style={{ fontSize: t.nome, fontWeight: 800, lineHeight: 1.1, margin: 0 }}>{l.ministrante}</p>
                         <p style={{ fontSize: t.tituloFonte, fontWeight: 900, lineHeight: 1.05, margin: '1px 0 0' }}>{l.titulo}</p>
                       </div>
