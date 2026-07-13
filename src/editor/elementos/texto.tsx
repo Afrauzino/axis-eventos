@@ -30,7 +30,7 @@ registrarElemento({
   tipo: 'texto',
   nome: 'Texto',
   icone: 'title',
-  camposLigaveis: ['nome', 'equipe', 'igreja', 'funcao'],
+  camposLigaveis: ['nome', 'funcao', 'cargo', 'equipe', 'igreja', 'celular', 'contato', 'sexo', 'nascimento', 'cpf', 'rg', 'cidade', 'estado', 'endereco', 'bairro', 'cep', 'ano', 'codigo'],
 
   criar: () => ({
     ...ELEMENTO_PADRAO, w: 60, h: 10,
