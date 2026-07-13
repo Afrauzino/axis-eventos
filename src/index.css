@@ -964,8 +964,9 @@ body {
 }
 
 .sched-card:hover { box-shadow: 0 2px 9px rgba(0,0,0,0.16); }
-/* Card com foto do ministrante: altura PADRÃO + deixa a cabeça do PNG "vazar" pra cima. */
-.sched-card.tem-foto { overflow: visible; min-height: 96px; }
+/* Card com foto do ministrante: altura PADRÃO + a cabeça do PNG "vaza" pra cima,
+   MAS reservamos margem acima pra ela NÃO invadir o card de cima. */
+.sched-card.tem-foto { overflow: visible; min-height: 96px; margin-top: 28px; }
 .sched-card.tem-foto .sched-body { display: flex; flex-direction: column; justify-content: center; }
 
 .sched-bar { width: 6px; flex-shrink: 0; align-self: stretch; }
