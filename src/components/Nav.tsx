@@ -63,7 +63,7 @@ export default function Nav({ profile, onClose }: { profile: Profile; onClose: (
 
   // cada menu só aparece se admin OU a permissão liberar; menu_config pode ocultar/renomear/reordenar
   const menu = buildMenu()
-    .filter(item => admin || pode(item.perm))
+    .filter(item => admin || pode(item.perm) || (item.id === 'correio' && pode('correio', 'ver')))
     .filter(item => ovr[item.cfg ?? item.perm]?.visivel !== false)
     .map(item => {
       const o = ovr[item.cfg ?? item.perm]

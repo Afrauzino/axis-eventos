@@ -137,7 +137,10 @@ function AppRoutes({ profile, onProfileUpdate, versaoFotos }: { profile: Profile
   // Cadeado: sem permissão → tela "Sem acesso" (admin passa sempre)
   if (perm && !admin) {
     if (!carregado) return <div className="page">{[1,2,3].map(i=><div key={i} className="skeleton" style={{height:80,marginBottom:10,borderRadius:14}}/>)}</div>
-    if (!pode(perm)) return <SemAcesso />
+    // Correio: a liberação "Ver afilhados" (correio/ver) também ABRE o Correio, pra o
+    // padrinho entrar e cuidar dos arquivos/checklist dos afilhados (menu_correio segue valendo).
+    const correioPorVer = loc.pathname.startsWith('/correio') && pode('correio', 'ver')
+    if (!pode(perm) && !correioPorVer) return <SemAcesso />
     // Telas de GESTÃO da Administração exigem EDITAR (só 'ver' vê o cadeado).
     // Exceção: o Painel (/admin/painel) é de visualização e tem liberação própria.
     if (loc.pathname.startsWith('/admin') && !loc.pathname.startsWith('/admin/painel') && !pode('menu_admin', 'editar')) return <SemAcesso />
