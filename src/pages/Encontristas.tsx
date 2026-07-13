@@ -30,10 +30,15 @@ export default function Encontristas({ profile }: { profile: Profile }) {
   const [lista, setLista]         = useState<Pessoa[]>([])
   const [encontreiros, setEncontreiros] = useState<Encontreiro[]>([])
   const [busca, setBusca]         = useState('')
+  const [modalFiltros, setModalFiltros] = useState(false)
+  const [filtroIgreja, setFiltroIgreja] = useState('todas')
+  const [filtroSexo, setFiltroSexo]     = useState('todos')
+  const [filtroAdocao, setFiltroAdocao] = useState('todos')
   const [fotoAmpliada, setFotoAmpliada] = useState<string|null>(null)
   const [loading, setLoading]     = useState(true)
   const [selecionado, setSelecionado] = useState<Pessoa | null>(null)
   useVoltarFecha(!!selecionado, () => setSelecionado(null))
+  useVoltarFecha(modalFiltros, () => setModalFiltros(false))
   // #19 — "conheço esta pessoa"
   type Marca = { id:string; worker_user_id:string|null; worker_name:string|null; worker_photo:string|null; worker_phone:string|null }
   const [meuP, setMeuP] = useState<{id:string;name:string;photo_url:string|null;phone:string|null;role_type:string}|null>(null)
@@ -151,10 +156,23 @@ export default function Encontristas({ profile }: { profile: Profile }) {
     setLoading(false)
   }
 
+  const igrejas = Array.from(new Set(lista.map(p => p.church).filter(Boolean))).sort() as string[]
+  const nFiltros = (filtroIgreja !== 'todas' ? 1 : 0) + (filtroSexo !== 'todos' ? 1 : 0) + (filtroAdocao !== 'todos' ? 1 : 0)
+
   const filtrados = lista.filter(p => {
-    if (!busca.trim()) return true
-    const q = busca.toLowerCase()
-    return p.name.toLowerCase().includes(q) || p.church.toLowerCase().includes(q)
+    if (busca.trim()) {
+      const q = busca.toLowerCase()
+      if (!(p.name.toLowerCase().includes(q) || (p.church || '').toLowerCase().includes(q))) return false
+    }
+    if (filtroIgreja !== 'todas' && p.church !== filtroIgreja) return false
+    if (filtroSexo !== 'todos' && p.sexo !== filtroSexo) return false
+    if (filtroAdocao !== 'todos') {
+      const ad = adotadas.get(p.id)
+      if (filtroAdocao === 'adotados' && !ad) return false
+      if (filtroAdocao === 'sem' && ad) return false
+      if (filtroAdocao === 'meus' && !ad?.mine) return false
+    }
+    return true
   })
 
   function getReferencia(refId: string | null) {
@@ -187,18 +205,85 @@ export default function Encontristas({ profile }: { profile: Profile }) {
     ...(podeAdocoes ? [{ label: 'Imprimir responsáveis (adoções)', onClick: () => setImprimirAdoc(true) }] : []),
   ]
   useRegistrarChrome({
-    busca: { value: busca, onChange: setBusca, placeholder: 'Buscar por nome ou igreja...' },
     configs: admin ? [{ label: 'Editar mensagem do WhatsApp', icon: 'edit', onClick: () => setModalMsg(true) }] : undefined,
     impressoes: impressoes.length ? impressoes : undefined,
-  }, [busca, admin, podeAdocoes])
+  }, [admin, podeAdocoes])
 
   return (
     <div className="page">
       {imprimirCad && <ImprimirCadastros onClose={() => setImprimirCad(false)} />}
       {imprimirAdoc && <ImprimirAdocoes onClose={() => setImprimirAdoc(false)} />}
+
+      {/* Busca + botão de filtros */}
+      <div style={{display:'flex',gap:8,marginBottom:14}}>
+        <div className="search-bar" style={{flex:1,marginBottom:0}}>
+          <span className="icon icon-sm" style={{color:'var(--muted-light)'}}>search</span>
+          <input placeholder="Buscar pessoa..." value={busca} onChange={e=>setBusca(e.target.value)}/>
+          {busca && <button onClick={()=>setBusca('')} style={{background:'none',border:'none',cursor:'pointer',color:'var(--muted-light)',padding:0,fontFamily:'inherit'}}><span className="icon icon-sm">close</span></button>}
+        </div>
+        <button onClick={()=>setModalFiltros(true)} aria-label="Filtros"
+          style={{position:'relative',flexShrink:0,width:44,height:44,borderRadius:12,border:`1px solid ${nFiltros>0?'var(--primary)':'var(--border)'}`,background:nFiltros>0?'var(--primary-light)':'white',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',fontFamily:'inherit'}}>
+          <span className="icon" style={{color:nFiltros>0?'var(--primary)':'var(--text2)'}}>tune</span>
+          {nFiltros>0 && <span style={{position:'absolute',top:-5,right:-5,minWidth:18,height:18,background:'var(--primary)',borderRadius:99,fontSize:10,fontWeight:800,color:'white',display:'flex',alignItems:'center',justifyContent:'center',padding:'0 4px'}}>{nFiltros}</span>}
+        </button>
+      </div>
+
+      {/* Chips dos filtros ativos */}
+      {nFiltros>0 && (
+        <div style={{display:'flex',gap:6,flexWrap:'wrap',marginBottom:12}}>
+          {filtroIgreja!=='todas' && <ChipFiltro label={filtroIgreja} onClear={()=>setFiltroIgreja('todas')} />}
+          {filtroSexo!=='todos' && <ChipFiltro label={filtroSexo==='M'?'Masculino':'Feminino'} onClear={()=>setFiltroSexo('todos')} />}
+          {filtroAdocao!=='todos' && <ChipFiltro label={filtroAdocao==='adotados'?'Adotados':filtroAdocao==='sem'?'Sem responsável':'Meus adotados'} onClear={()=>setFiltroAdocao('todos')} />}
+        </div>
+      )}
+
+      {/* Modal de filtros */}
+      {modalFiltros && (
+        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.5)',zIndex:400,display:'flex',flexDirection:'column',justifyContent:'flex-end'}} onClick={e=>e.target===e.currentTarget&&setModalFiltros(false)}>
+          <div style={{background:'white',borderRadius:'20px 20px 0 0',padding:'8px 20px 28px',maxWidth:480,width:'100%',margin:'0 auto',maxHeight:'85vh',overflowY:'auto'}}>
+            <div style={{width:36,height:4,background:'var(--border)',borderRadius:2,margin:'12px auto 14px'}}/>
+            <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:18}}>
+              <span style={{fontSize:17,fontWeight:800}}>Filtros</span>
+              {nFiltros>0 && <button onClick={()=>{setFiltroIgreja('todas');setFiltroSexo('todos');setFiltroAdocao('todos')}} style={{background:'none',border:'none',color:'var(--primary)',fontSize:13,fontWeight:700,cursor:'pointer',fontFamily:'inherit'}}>Limpar tudo</button>}
+            </div>
+
+            <p style={{fontSize:12,color:'var(--muted)',fontWeight:700,marginBottom:8}}>Igreja</p>
+            <select value={filtroIgreja} onChange={e=>setFiltroIgreja(e.target.value)}
+              style={{width:'100%',padding:'11px 12px',borderRadius:10,border:'1px solid var(--border)',fontFamily:'inherit',fontSize:14,background:'white',color:'var(--text)',marginBottom:20}}>
+              <option value="todas">Todas as igrejas</option>
+              {igrejas.map(ig => <option key={ig} value={ig}>{ig}</option>)}
+            </select>
+
+            <p style={{fontSize:12,color:'var(--muted)',fontWeight:700,marginBottom:8}}>Sexo</p>
+            <div style={{display:'flex',gap:8,flexWrap:'wrap',marginBottom:20}}>
+              {[{value:'todos',label:'Todos'},{value:'M',label:'Masculino'},{value:'F',label:'Feminino'}].map(o=>{
+                const sel = filtroSexo===o.value
+                return <button key={o.value} onClick={()=>setFiltroSexo(o.value)}
+                  style={{padding:'9px 16px',borderRadius:10,cursor:'pointer',fontFamily:'inherit',fontSize:14,fontWeight:700,border:sel?'2px solid var(--primary)':'1px solid var(--border)',background:sel?'var(--primary-light)':'white',color:sel?'var(--primary-dark)':'var(--text2)'}}>{o.label}</button>
+              })}
+            </div>
+
+            <p style={{fontSize:12,color:'var(--muted)',fontWeight:700,marginBottom:8}}>Adoção (carta)</p>
+            <div style={{display:'flex',flexDirection:'column',gap:8,marginBottom:20}}>
+              {[{value:'todos',label:'Todos',emoji:'📋'},{value:'adotados',label:'Adotados',emoji:'💌'},{value:'sem',label:'Sem responsável',emoji:'⚪'},...(meuP?.role_type==='worker'?[{value:'meus',label:'Meus adotados',emoji:'🙋'}]:[])].map(o=>{
+                const sel = filtroAdocao===o.value
+                return <button key={o.value} onClick={()=>setFiltroAdocao(o.value)}
+                  style={{display:'flex',alignItems:'center',gap:10,padding:'12px 14px',borderRadius:10,cursor:'pointer',fontFamily:'inherit',textAlign:'left',border:sel?'2px solid var(--primary)':'1px solid var(--border)',background:sel?'var(--primary-light)':'white'}}>
+                  <span style={{fontSize:20}}>{o.emoji}</span>
+                  <span style={{flex:1,fontSize:14,fontWeight:sel?800:600,color:sel?'var(--primary-dark)':'var(--text)'}}>{o.label}</span>
+                  {sel && <span className="icon icon-sm" style={{color:'var(--primary)'}}>check</span>}
+                </button>
+              })}
+            </div>
+
+            <button className="btn btn-primary btn-full" onClick={()=>setModalFiltros(false)}>Ver resultados</button>
+          </div>
+        </div>
+      )}
+
       {/* Contador */}
       <p style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 12 }}>
-        {busca ? `${filtrados.length} resultado(s) para "${busca}"` : `${lista.length} encontrista(s)`}
+        {(busca || nFiltros>0) ? `${filtrados.length} resultado(s)` : `${lista.length} encontrista(s)`}
       </p>
 
       {/* Lista */}
@@ -425,5 +510,14 @@ export default function Encontristas({ profile }: { profile: Profile }) {
         </div>
       )}
     </div>
+  )
+}
+
+function ChipFiltro({ label, onClear }: { label: string; onClear: () => void }) {
+  return (
+    <span style={{display:'inline-flex',alignItems:'center',gap:4,background:'var(--primary-light)',color:'var(--primary-dark)',borderRadius:99,padding:'4px 6px 4px 12px',fontSize:12,fontWeight:700,maxWidth:'100%'}}>
+      <span style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',maxWidth:180}}>{label}</span>
+      <button onClick={onClear} style={{background:'none',border:'none',cursor:'pointer',color:'inherit',display:'flex',padding:0}}><span className="icon" style={{fontSize:15}}>close</span></button>
+    </span>
   )
 }
