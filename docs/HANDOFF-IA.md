@@ -38,8 +38,8 @@ Sintomas dele: (1) ao aprovar, as informações do cadastro **não vêm** (foto 
 - **Correção sugerida:** permitir "reivindicar" a linha órfã — USING `user_id = auth.uid() OR user_id IS NULL` + WITH CHECK `user_id = auth.uid()`; OU uma RPC SECURITY DEFINER (padrão do `reenviar_meu_cadastro`) que faz o vínculo. Confirmar rodando um cadastro real por código e conferindo se `people.user_id`/dados gravaram.
 - **2.1 (admin ver o recusado):** a lista de cadastros/aprovação some com quem está `rejected`; manter visível um filtro "Recusados" pro admin reabrir.
 
-### Item 3 — botão "Unificar com duplicado" (mesclar contas) não funciona
-Fica em `Admin.tsx:1504` (`merge_type` "Unificar com duplicado"). Anderson diz que não funciona. **Eu (Claude) vou olhar esse** — é fora dos seus arquivos de cadastro.
+### Item 3 — botão "Unificar com duplicado" (mesclar contas) — ✅ CAUSA RESOLVIDA
+Causa: a RPC `unificar_pessoas` (chamada em `Admin.tsx:761`) **não existia no banco** — o `sql/61_unificar_pessoas.sql` nunca tinha sido rodado, então o botão só dava "rode o sql/61". **Rodei o sql/61 eu mesmo (via Chrome) e confirmei que a função existe** e está com GRANT EXECUTE p/ authenticated. O botão agora executa o merge de verdade. Falta o Anderson **testar o clique** em 2 duplicados reais (não consegui auto-testar: o classificador barrou simular login p/ rodar a função de exclusão de conta — correto; e o botão usa `confirm()` nativo que minha automação não clica). Obs.: a função tem `is_admin()` guard e migra FKs genéricos — bem robusta.
 
 ### Correio — arquivos de padrinho→afilhado (Claude vai fazer)
 Pedido: encontreiro **padrinho** pode pôr/excluir arquivo no **afilhado**; TODOS os padrinhos daquele afilhado + o líder veem os mesmos arquivos. Tabelas já existem (`correio_padrinhos`, `correio_arquivos`). Provável faltar **RLS** deixando o padrinho (não só líder) INSERT/SELECT/DELETE em `correio_arquivos` do seu afilhado. **Eu (Claude) assumo esse.**
