@@ -411,12 +411,14 @@ export default function Cronograma({ profile }: { profile?: Profile }) {
     grupos: [{ chave:'status', label:'Mostrar', opcoes:[{value:'todos',label:'Todos (todos os dias)'},{value:'planejado',label:'Planejados'},{value:'em_andamento',label:'Em andamento'},{value:'concluido',label:'Concluídos'}] }],
     valores: { status: filtro },
     onFiltro: (_,v)=>setFiltro(v),
-    impressoes: itens.length>0 ? [
+    // Impressão só p/ quem EDITA o cronograma (admin/coordenador). Encontreiro que
+    // só VÊ o cronograma não imprime (era: qualquer um que via, imprimia).
+    impressoes: (canEdit && itens.length>0) ? [
       { label:'Imprimir resumido (A4)', icon:'view_agenda', onClick:()=>setImprimir('resumido-slim') },
       { label:'Imprimir inteiro', onClick:()=>setImprimir('inteiro') },
       { label:'Imprimir com detalhes', onClick:()=>setImprimir('detalhado') },
     ] : undefined,
-  }, [filtro, itens.length])
+  }, [filtro, itens.length, canEdit])
 
   return (
     <div className="page">
