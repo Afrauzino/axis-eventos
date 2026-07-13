@@ -90,10 +90,10 @@ export default function CronogramaPoster({ titulo, dias, slim = false, escala = 
                     {/* Ministrante: foto recortada (vaza pra cima) + pill BEGE, NOME em cima / título embaixo */}
                     <div style={{ flex: mostrarElenco ? 1 : 1.5, display: 'flex', alignItems: 'center', gap: s(6), padding: t.rowPad, minWidth: 0 }}>
                       {l.fotoPng ? (
-                        // PNG recortado (fundo transparente): item NORMAL ancorado embaixo, SEM
-                        // position:absolute/translateZ — antes vazava e "voava" ao rolar (piorou com
-                        // o zoom da prévia A4). Agora fica contido, nunca escapa da linha.
-                        <img src={l.fotoPng} alt="" style={{ width: Math.round(t.foto * 1.05), height: Math.round(t.foto * 1.28), objectFit: 'contain', objectPosition: 'bottom center', alignSelf: 'flex-end', flexShrink: 0, display: 'block' }} />
+                        // PNG recortado: TODAS as fotos no MESMO quadro (mesmo tamanho), preenchendo
+                        // e cortando o que sobra (cover) com o rosto no topo — assim uma foto de corpo
+                        // e uma de rosto ficam padronizadas. Fundo claro pros cantos transparentes.
+                        <img src={l.fotoPng} alt="" style={{ width: Math.round(t.foto * 1.05), height: Math.round(t.foto * 1.28), objectFit: 'cover', objectPosition: 'top center', alignSelf: 'center', flexShrink: 0, display: 'block', borderRadius: s(8), background: '#eef1f4' }} />
                       ) : l.fotoUrl ? (
                         <img src={l.fotoUrl} alt="" style={{ width: t.foto, height: t.foto, borderRadius: '50%', objectFit: 'cover', flexShrink: 0, border: t.borda }} />
                       ) : (
