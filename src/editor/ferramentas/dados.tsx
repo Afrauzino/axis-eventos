@@ -4,12 +4,28 @@ import { obterElemento } from '../elementos'
 // Liga elementos aos dados do sistema.
 // Um campo novo (ex: "quarto") = adicionar aqui + no montador de dados da tela.
 
+// Todos os campos do cadastro que dá pra ligar a um elemento (texto/foto).
+// A chave TEM que bater com a chave montada em registroDe() (Impressao.tsx).
 const CAMPOS: Record<string, string> = {
   nome: 'Nome',
   foto: 'Foto',
+  funcao: 'Função (Encontrista/Encontreiro)',
+  cargo: 'Cargo',
   equipe: 'Equipe',
   igreja: 'Igreja',
-  funcao: 'Função',
+  celular: 'Celular',
+  contato: 'Contato de emergência',
+  sexo: 'Sexo',
+  nascimento: 'Nascimento',
+  cpf: 'CPF',
+  rg: 'RG',
+  cidade: 'Cidade',
+  estado: 'UF',
+  endereco: 'Endereço',
+  bairro: 'Bairro',
+  cep: 'CEP',
+  ano: 'Ano do encontro',
+  codigo: 'Código de acesso',
 }
 
 registrarFerramenta({

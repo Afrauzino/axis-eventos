@@ -18,7 +18,7 @@ import EscolherPessoas from '../components/EscolherPessoas'
 import { criarElemento } from '../editor/elementos'
 import { novoId, type Documento } from '../editor/tipos'
 
-type Pessoa = { id:string; name:string; photo_url:string|null; role_type?:string|null; church?:string|null }
+type Pessoa = { id:string; name:string; photo_url:string|null; role_type?:string|null; church?:string|null; cargo?:string|null; phone?:string|null; contact_phone?:string|null; sexo?:string|null; birth_date?:string|null; cpf?:string|null; rg?:string|null; cidade?:string|null; estado?:string|null; endereco?:string|null; bairro?:string|null; cep?:string|null; ano_encontro?:number|null; invite_code?:string|null }
 
 const CHAVE = 'impressao_modelos_v2'
 
@@ -95,7 +95,7 @@ export default function Impressao({ profile }: { profile?: Profile }) {
     if (!evento) return
     setLoading(true)
     const [pe, tm, pt] = await Promise.all([
-      supabase.from('people').select('id,name,photo_url,role_type,church').eq('event_id',evento.id).order('name'),
+      supabase.from('people').select('id,name,photo_url,role_type,church,cargo,phone,contact_phone,sexo,birth_date,cpf,rg,cidade,estado,endereco,bairro,cep,ano_encontro,invite_code').eq('event_id',evento.id).order('name'),
       supabase.from('teams').select('id,name').eq('event_id',evento.id).order('name'),
       supabase.from('people_teams').select('person_id,team_id'),
     ])
@@ -114,9 +114,23 @@ export default function Impressao({ profile }: { profile?: Profile }) {
   const registroDe = (p: Pessoa) => ({
     nome: formatName(p.name),
     foto: p.photo_url ?? '',
+    funcao: p.role_type === 'worker' ? 'Encontreiro' : 'Encontrista',
+    cargo: p.cargo ?? '',
     equipe: nomeEquipes(p.id),
     igreja: p.church ?? '',
-    funcao: p.role_type === 'worker' ? 'Encontreiro' : 'Encontrista',
+    celular: p.phone ?? '',
+    contato: p.contact_phone ?? '',
+    sexo: p.sexo ?? '',
+    nascimento: p.birth_date ? p.birth_date.replace(/^(\d{4})-(\d{2})-(\d{2}).*/, '$3/$2/$1') : '',
+    cpf: p.cpf ?? '',
+    rg: p.rg ?? '',
+    cidade: p.cidade ?? '',
+    estado: p.estado ?? '',
+    endereco: p.endereco ?? '',
+    bairro: p.bairro ?? '',
+    cep: p.cep ?? '',
+    ano: p.ano_encontro ? String(p.ano_encontro) : '',
+    codigo: p.invite_code ?? '',
   })
 
   /** Só quem foi escolhido na tela de impressão, na ordem alfabética da lista. */
@@ -128,7 +142,7 @@ export default function Impressao({ profile }: { profile?: Profile }) {
   /** Prévia dentro do editor: a primeira pessoa cadastrada.
    *  Memorizado pra não trocar de identidade e redesenhar o editor à toa. */
   const dadosPrevia = useMemo(
-    () => (pessoas[0] ? registroDe(pessoas[0]) : { nome: 'Nome da Pessoa', foto: '', equipe: 'Equipe', igreja: '', funcao: '' }),
+    () => registroDe(pessoas[0] ?? ({ id: '', name: 'Nome da Pessoa', photo_url: null } as Pessoa)),
     [pessoas, equipeIds, equipes])
 
   /** Sobe a imagem escolhida no celular e devolve a URL pública. */
