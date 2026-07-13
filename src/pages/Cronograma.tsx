@@ -18,6 +18,29 @@ import { notificarRegra } from '../lib/notifRegras'
 import type { Profile } from '../App'
 
 type TipoAtividade = { id:string; nome:string; cor:string; icone?:string|null; chave?:string|null; protegido?:boolean }
+// Abreviação do cargo eclesiástico na frente do nome (Pr., Pra., Ev., Pb.…).
+// Se não conhecer o cargo, mostra ele como está.
+function abrevCargo(cargo?: string | null): string {
+  if (!cargo) return ''
+  const c = cargo.trim().toLowerCase()
+  const map: Record<string, string> = {
+    'pastor': 'Pr.', 'pastora': 'Pra.',
+    'presbítero': 'Pb.', 'presbitero': 'Pb.', 'presbítera': 'Pb.', 'presbitera': 'Pb.',
+    'diácono': 'Dc.', 'diacono': 'Dc.', 'diaconisa': 'Dca.',
+    'evangelista': 'Ev.',
+    'missionário': 'Miss.', 'missionario': 'Miss.', 'missionária': 'Miss.', 'missionaria': 'Miss.',
+    'bispo': 'Bp.', 'bispa': 'Bpa.',
+    'apóstolo': 'Ap.', 'apostolo': 'Ap.', 'apóstola': 'Ap.', 'apostola': 'Ap.',
+    'reverendo': 'Rev.', 'reverenda': 'Rev.',
+    'presidente': 'Pres.', 'vice-presidente': 'Vice-Pres.',
+    'ancião': 'Anc.', 'anciao': 'Anc.', 'anciã': 'Anc.',
+    'cooperador': 'Coop.', 'cooperadora': 'Coop.',
+    'obreiro': 'Obr.', 'obreira': 'Obr.',
+    'diácona': 'Dca.',
+  }
+  return map[c] ?? cargo
+}
+
 type Ministracao = { id:string; titulo:string; ministrante_id:string|null; local:string|null; descricao:string|null; tema:string|null; foto_poster:string|null }
 type Teatro      = { id:string; nome:string; local:string|null; descricao:string|null; ministracao_id?:string|null }
 type Local       = { id:string; nome:string; tipo:string }
@@ -90,7 +113,7 @@ export default function Cronograma({ profile }: { profile?: Profile }) {
   })
   const [cardapios, setCardapios] = useState<{id:string;tipo_refeicao_nome:string|null;titulo:string|null}[]>([])
   // fotos/elenco para a impressão "com detalhes"
-  const [pessoaFoto, setPessoaFoto] = useState<Record<string,{name:string;photo_url:string|null}>>({})
+  const [pessoaFoto, setPessoaFoto] = useState<Record<string,{name:string;photo_url:string|null;cargo?:string|null}>>({})
   const [personagensMap, setPersonagensMap] = useState<Record<string,string>>({})
   const [elencoPorTeatro, setElencoPorTeatro] = useState<Record<string,{person_id:string;personagem_id:string|null}[]>>({})
 
@@ -157,7 +180,7 @@ export default function Cronograma({ profile }: { profile?: Profile }) {
       supabase.from('people').select('id,name').eq('event_id', evento.id).eq('role_type','worker').order('name'),
       supabase.from('cronograma_tipos').select('id,nome,cor,icone,chave,protegido').eq('ativo',true).order('ordem'),
       supabase.from('cozinha_cardapios').select('id,tipo_refeicao_nome,titulo').eq('event_id', evento.id),
-      supabase.from('people').select('id,name,photo_url').eq('event_id', evento.id),
+      supabase.from('people').select('id,name,photo_url,cargo').eq('event_id', evento.id),
       supabase.from('personagens_globais').select('id,nome'),
     ])
     setItens(it.data ?? [])
@@ -168,7 +191,7 @@ export default function Cronograma({ profile }: { profile?: Profile }) {
     setTiposDB(ti.data ?? [])
     setCardapios(cd.data ?? [])
     // mapas para impressão detalhada
-    const fmap: Record<string,{name:string;photo_url:string|null}> = {}; (peAll.data ?? []).forEach((p:any)=>{ fmap[p.id]={name:p.name,photo_url:p.photo_url} })
+    const fmap: Record<string,{name:string;photo_url:string|null;cargo?:string|null}> = {}; (peAll.data ?? []).forEach((p:any)=>{ fmap[p.id]={name:p.name,photo_url:p.photo_url,cargo:p.cargo} })
     setPessoaFoto(fmap)
     const pgmap: Record<string,string> = {}; (pgAll.data ?? []).forEach((p:any)=>{ pgmap[p.id]=p.nome })
     setPersonagensMap(pgmap)
@@ -462,15 +485,25 @@ export default function Cronograma({ profile }: { profile?: Profile }) {
                   <CronometroDisplay item={item} />
                 </div>
                 {/* Foto do ministrante: PNG (foto_poster) se tiver, senão a bolinha (avatar) */}
-                {(min?.ministrante_id || ministrante) && (
-                  min?.foto_poster
-                    ? <img src={min.foto_poster} alt="" style={{width:64,height:92,marginTop:-22,marginRight:10,objectFit:'contain',objectPosition:'bottom center',alignSelf:'flex-end',flexShrink:0,pointerEvents:'none'}} />
-                    : <div style={{width:46,height:46,borderRadius:'50%',overflow:'hidden',background:'#f3f4f6',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,alignSelf:'center',marginRight:8}}>
-                        {mfoto?.photo_url
-                          ? <img src={mfoto.photo_url} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}} />
-                          : <span style={{fontWeight:700,color:'#6b7280',fontSize:15}}>{getInitials(mfoto?.name ?? ministrante?.name ?? '?')}</span>}
-                      </div>
-                )}
+                {(min?.ministrante_id || ministrante) && (() => {
+                  const nome = mfoto?.name ?? ministrante?.name ?? ''
+                  const primeiro = nome.split(' ')[0]
+                  const cg = abrevCargo(mfoto?.cargo)
+                  return (
+                    <div style={{display:'flex',flexDirection:'column',alignItems:'center',alignSelf:'flex-end',marginRight:10,flexShrink:0,pointerEvents:'none'}}>
+                      {min?.foto_poster
+                        ? <img src={min.foto_poster} alt="" style={{width:70,height:96,marginTop:-24,objectFit:'contain',objectPosition:'bottom center'}} />
+                        : <div style={{width:48,height:48,borderRadius:'50%',overflow:'hidden',background:'#f3f4f6',display:'flex',alignItems:'center',justifyContent:'center'}}>
+                            {mfoto?.photo_url
+                              ? <img src={mfoto.photo_url} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}} />
+                              : <span style={{fontWeight:700,color:'#6b7280',fontSize:16}}>{getInitials(nome||'?')}</span>}
+                          </div>}
+                      {primeiro && (
+                        <span style={{marginTop:-7,background:'#EADFCF',color:'#2a1c0c',fontFamily:"'Anton', system-ui, sans-serif",fontSize:13,lineHeight:1.4,letterSpacing:'0.02em',padding:'2px 12px',borderRadius:99,whiteSpace:'nowrap',boxShadow:'0 1px 5px rgba(0,0,0,0.16)'}}>{cg ? cg+' ' : ''}{primeiro}</span>
+                      )}
+                    </div>
+                  )
+                })()}
                 <button onClick={(e)=>{e.stopPropagation();setCronometro(item)}} title="Cronômetro" style={{background:'none',border:'none',cursor:'pointer',padding:'8px',display:'flex',alignItems:'center'}}>
                   <span className="icon" style={{color: item.cron_estado==='correndo'?'#E53E3E':'var(--primary)'}}>timer</span>
                 </button>
