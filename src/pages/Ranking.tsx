@@ -38,6 +38,7 @@ export default function Ranking({ profile }: { profile?: Profile }) {
   const [loading,    setLoading]    = useState(true)
   const [erro,       setErro]       = useState<string|null>(null)
   const [catSel,     setCatSel]     = useState<Categoria|null>(null)
+  const [busca,      setBusca]      = useState('')
   const [pessoaAberta, setPessoaAberta] = useState<Pessoa|null>(null)
   useVoltarFecha(!!pessoaAberta, () => setPessoaAberta(null))
   const [myPersonId, setMyPersonId] = useState<string|null>(null)
@@ -150,8 +151,10 @@ export default function Ranking({ profile }: { profile?: Profile }) {
   }
 
   function rankingCompleto(catId:string) {
+    const b = busca.trim().toLowerCase()
     return [...pessoas]
       .map(p=>({...p, nota:notaMedia(catId,p.id), mv:meuVoto(catId,p.id)}))
+      .filter(p => !b || p.name.toLowerCase().includes(b))
       .sort((a,b)=>b.nota-a.nota)
   }
 
@@ -183,10 +186,11 @@ export default function Ranking({ profile }: { profile?: Profile }) {
 
   // ⚙️ do topo: escolher a categoria do ranking (padrao das outras telas)
   useRegistrarChrome({
+    busca: { value: busca, onChange: setBusca, placeholder: 'Buscar pessoa...' },
     grupos: categorias.length ? [{ chave:'categoria', label:'Categoria', opcoes: categorias.map(c=>({ value:c.id, label:c.nome })) }] : undefined,
     valores: { categoria: catSel?.id ?? '' },
     onFiltro: (_k, v) => { const c = categorias.find(x=>x.id===v); if (c) setCatSel(c) },
-  }, [categorias, catSel])
+  }, [categorias, catSel, busca])
 
   if (loading) return <div className="page">{[1,2,3].map(i=><div key={i} className="skeleton" style={{height:80,marginBottom:8,borderRadius:14}}/>)}</div>
 

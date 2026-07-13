@@ -33,6 +33,7 @@ export default function Logistica({ profile }: { profile?: Profile }) {
   const [fotoAmpliada, setFotoAmpliada] = useState<string|null>(null)
   const [novoItem, setNovoItem] = useState('')
   const [busca, setBusca] = useState('')
+  const [fComp, setFComp] = useState('todos')
   const [imprimir, setImprimir] = useState(false)
   const [gerando, setGerando] = useState(false)
   const [fichaMap, setFichaMap] = useState<Record<string,any>>({})
@@ -42,10 +43,13 @@ export default function Logistica({ profile }: { profile?: Profile }) {
     aba==='encontristas'
       ? {
           busca: { value: busca, onChange: setBusca, placeholder: 'Buscar encontrista...' },
+          grupos: [{ chave:'comp', label:'Checklist', opcoes:[{value:'todos',label:'Todos'},{value:'completos',label:'Concluídos'},{value:'incompletos',label:'Pendentes'}] }],
+          valores: { comp: fComp },
+          onFiltro: (_,v)=>setFComp(v),
           impressoes: [{ label: gerando?'Gerando PDF...':'Gerar PDF de todos (checklist + ficha)', icon:'picture_as_pdf', onClick: gerarPdfTodos, disabled: gerando }],
         }
       : {},
-    [aba, busca, gerando]
+    [aba, busca, gerando, fComp]
   )
 
   async function gerarPdfTodos() {
@@ -140,7 +144,12 @@ export default function Logistica({ profile }: { profile?: Profile }) {
   if (evLoading || loading) return <div className="page">{[1,2,3].map(i=><div key={i} className="skeleton" style={{height:80,marginBottom:10,borderRadius:14}}/>)}</div>
   if (!evento) return <div className="page"><div className="empty"><p className="empty-title">Nenhum evento ativo</p></div></div>
 
-  const filtrados = encontristas.filter(e => !busca || formatName(e.name).toLowerCase().includes(busca.toLowerCase()))
+  const filtrados = encontristas.filter(e => {
+    if (busca && !formatName(e.name).toLowerCase().includes(busca.toLowerCase())) return false
+    if (fComp === 'completos' && !info(e.id).concluido) return false
+    if (fComp === 'incompletos' && info(e.id).concluido) return false
+    return true
+  })
 
   return (
     <div className="page slide-up">

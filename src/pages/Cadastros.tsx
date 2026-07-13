@@ -8,6 +8,7 @@ import { confirmar } from '../components/Confirmar'
 import { supabase } from '../lib/supabase'
 import { useVoltarFecha } from '../hooks/useVoltarFecha'
 import PrintOverlay from '../components/PrintOverlay'
+import ImprimirCadastros from '../components/ImprimirCadastros'
 import UploadFoto from '../components/UploadFoto'
 import PersonSelect from '../components/PersonSelect'
 import CardItem from '../components/CardItem'
@@ -47,6 +48,7 @@ export default function Cadastros({ profile }: { profile: Profile }) {
   const [editando, setEditando] = useState<Pessoa|null>(null)
   const [copiadoId, setCopiadoId] = useState<string|null>(null)
   const [imprimir, setImprimir] = useState(false)
+  const [imprimirCad, setImprimirCad] = useState(false)
   const [fotoAmpliada, setFotoAmpliada] = useState<string|null>(null)
 
   async function copiarCodigo(p: Pessoa) {
@@ -163,6 +165,7 @@ export default function Cadastros({ profile }: { profile: Profile }) {
   useRegistrarChrome({
     impressoes: canEdit ? [
       { label:'Imprimir lista atual (com fotos)', onClick:()=>setImprimir(true) },
+      { label:'Imprimir cadastros (escolher campos)', onClick:()=>setImprimirCad(true) },
     ] : undefined,
   }, [canEdit])
 
@@ -390,6 +393,7 @@ export default function Cadastros({ profile }: { profile: Profile }) {
         </div>
       )}
 
+      {imprimirCad && <ImprimirCadastros onClose={()=>setImprimirCad(false)} />}
       {imprimir && (
         <PrintOverlay titulo="Lista com fotos" onClose={()=>setImprimir(false)}>
           {([['Encontristas','encounterer'],['Encontreiros','worker']] as const).map(([tit,rt])=>{

@@ -42,6 +42,8 @@ export default function Correio({ profile }: { profile?: Profile }) {
 
   // aba: 'meus' (padrinho) | 'todos' (líder) | 'config' (líder de correio)
   const [aba, setAba] = useState<'meus'|'todos'|'config'>('meus')
+  const [buscaCorreio, setBuscaCorreio] = useState('')
+  const [fStatus, setFStatus] = useState('todos')
   const [afiliadoAberto, setAfiliadoAberto] = useState<Pessoa|null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
   const [uploadando, setUploadando] = useState(false)
@@ -53,7 +55,16 @@ export default function Correio({ profile }: { profile?: Profile }) {
   useVoltarFecha(!!modalPadrinho, () => setModalPadrinho(null))
   const [buscaPadrinho, setBuscaPadrinho] = useState('') // filtro de nome no modal de padrinhos
   const [fotoAmpliada, setFotoAmpliada] = useState<string|null>(null)
-  useRegistrarChrome(aba==='todos' ? { impressoes:[{ label:'Imprimir com checklist', onClick:()=>setImprimir(true) }] } : {}, [aba])
+  useRegistrarChrome(
+    aba==='config' ? {} : {
+      busca: { value: buscaCorreio, onChange: setBuscaCorreio, placeholder: 'Buscar afilhado...' },
+      grupos: [{ chave:'st', label:'Status', opcoes:[{value:'todos',label:'Todos'},{value:'em_processo',label:'Em processo'},{value:'concluido',label:'Concluído'},{value:'cancelado',label:'Cancelado'}] }],
+      valores: { st: fStatus },
+      onFiltro: (_,v)=>setFStatus(v),
+      impressoes: aba==='todos' ? [{ label:'Imprimir com checklist', onClick:()=>setImprimir(true) }] : undefined,
+    },
+    [aba, buscaCorreio, fStatus]
+  )
 
   // Admin e Líder veem tudo. Membro da equipe Correio vê só "Meus Afilhados".
   const podeVerTudo = isAdmin(profile?.user_role) || souLider
@@ -150,6 +161,15 @@ export default function Correio({ profile }: { profile?: Profile }) {
   }
   function statusDe(afiliadoId: string): string {
     return afStatus.find(s => s.afiliado_id === afiliadoId)?.status ?? 'em_processo'
+  }
+  // aplica a busca (nome) + o filtro de status do ⚙️ do topo
+  function filtrarLista(lista: Pessoa[]): Pessoa[] {
+    const b = buscaCorreio.trim().toLowerCase()
+    return lista.filter(p => {
+      if (b && !p.name.toLowerCase().includes(b)) return false
+      if (fStatus !== 'todos' && statusDe(p.id) !== fStatus) return false
+      return true
+    })
   }
 
   // Progresso do conjunto: concluídos sobre os ativos (cancelados saem da conta)
@@ -283,7 +303,7 @@ export default function Correio({ profile }: { profile?: Profile }) {
           <BarraProgresso titulo={`Conclusão dos meus afilhados`} pct={progressoConjunto(meusAfiliados)} />
           {meusAfiliados.length === 0
             ? <div className="empty"><p className="empty-title">Você ainda não tem afilhados</p><p className="empty-sub">O líder de correio define os padrinhos.</p></div>
-            : ordenarPorStatus(meusAfiliados).map(af => (
+            : ordenarPorStatus(filtrarLista(meusAfiliados)).map(af => (
               <CardAfiliado key={af.id} af={af} pct={progressoAfiliado(af.id)} status={statusDe(af.id)} onClick={()=>setAfiliadoAberto(af)} />
             ))
           }
@@ -296,7 +316,7 @@ export default function Correio({ profile }: { profile?: Profile }) {
           <BarraProgresso titulo="Conclusão de todos os encontristas" pct={progressoConjunto(encontristas)} />
           {encontristas.length === 0
             ? <div className="empty"><p className="empty-title">Nenhum encontrista cadastrado</p></div>
-            : ordenarPorStatus(encontristas).map(af => (
+            : ordenarPorStatus(filtrarLista(encontristas)).map(af => (
               <CardAfiliado key={af.id} af={af} pct={progressoAfiliado(af.id)} status={statusDe(af.id)} onClick={()=>setAfiliadoAberto(af)} />
             ))
           }
