@@ -34,7 +34,7 @@ registrarElemento({
 
   criar: () => ({
     ...ELEMENTO_PADRAO, w: 60, h: 10,
-    props: { conteudo: 'Texto', campo: null, nomes: 0, fonte: 'Padrão', tam: 5, cor: '#111827', negrito: true, italico: false, sublinhado: false, alinhar: 'center' },
+    props: { conteudo: 'Texto', campo: null, nomes: 0, fonte: 'Padrão', tam: 5, cor: '#111827', negrito: true, italico: false, sublinhado: false, alinhar: 'center', sombra: false, sombraCor: '#000000', contorno: 0, contornoCor: '#ffffff' },
   }),
 
   Render: ({ el, dados }) => {
@@ -53,8 +53,11 @@ registrarElemento({
           fontWeight: p.negrito ? 800 : 400,
           fontStyle: p.italico ? 'italic' : 'normal',
           textDecoration: p.sublinhado ? 'underline' : 'none',
+          textShadow: p.sombra ? `0.3mm 0.35mm 0.5mm ${p.sombraCor || '#000000'}` : undefined,
+          WebkitTextStroke: p.contorno ? `${p.contorno}mm ${p.contornoCor || '#ffffff'}` : undefined,
+          paintOrder: 'stroke fill',   // desenha a borda ATRÁS do preenchimento (senão come o texto)
           wordBreak: 'break-word',
-        }}>{texto}</span>
+        } as any}>{texto}</span>
       </div>
     )
   },
@@ -119,6 +122,32 @@ registrarElemento({
           Tamanho da letra ({p.tam}mm)
           <input type="range" min={2} max={30} step={0.5} value={p.tam}
             onChange={e => setProps({ tam: Number(e.target.value) })} style={{ width: '100%' }} />
+        </label>
+
+        {/* Sombra no texto */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          <button type="button" style={btn(!!p.sombra)} onClick={() => setProps({ sombra: !p.sombra })}>
+            <span className="icon icon-sm" style={{ verticalAlign: 'middle', marginRight: 4 }}>contrast</span>Sombra
+          </button>
+          {p.sombra && (
+            <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--muted)' }}>
+              cor
+              <input type="color" value={p.sombraCor ?? '#000000'} onChange={e => setProps({ sombraCor: e.target.value })}
+                style={{ width: 32, height: 28, borderRadius: 6, border: '1px solid var(--border)', cursor: 'pointer', padding: 1 }} />
+            </span>
+          )}
+        </div>
+
+        {/* Borda (contorno) no texto */}
+        <label style={{ fontSize: 13, color: 'var(--text2)' }}>
+          Borda no texto ({(p.contorno ?? 0)}mm)
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
+            <input type="range" min={0} max={1} step={0.05} value={p.contorno ?? 0}
+              onChange={e => setProps({ contorno: Number(e.target.value) })} style={{ flex: 1 }} />
+            <input type="color" value={p.contornoCor ?? '#ffffff'} onChange={e => setProps({ contornoCor: e.target.value })}
+              style={{ width: 32, height: 28, borderRadius: 6, border: '1px solid var(--border)', cursor: 'pointer', padding: 1 }} />
+          </div>
+          <p style={{ fontSize: 11, color: 'var(--muted)', marginTop: 3 }}>0 = sem borda. Ótimo pra texto claro sobre foto.</p>
         </label>
       </div>
     )

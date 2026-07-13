@@ -141,9 +141,11 @@ export default function Impressao({ profile }: { profile?: Profile }) {
 
   /** Prévia dentro do editor: a primeira pessoa cadastrada.
    *  Memorizado pra não trocar de identidade e redesenhar o editor à toa. */
+  // Pessoa que aparece na PRÉVIA (modelo). null = a primeira da lista. Só afeta a prévia.
+  const [modeloId, setModeloId] = useState<string | null>(null)
   const dadosPrevia = useMemo(
-    () => registroDe(pessoas[0] ?? ({ id: '', name: 'Nome da Pessoa', photo_url: null } as Pessoa)),
-    [pessoas, equipeIds, equipes])
+    () => registroDe(pessoas.find(p => p.id === modeloId) ?? pessoas[0] ?? ({ id: '', name: 'Nome da Pessoa', photo_url: null } as Pessoa)),
+    [pessoas, modeloId, equipeIds, equipes])
 
   /** Sobe a imagem escolhida no celular e devolve a URL pública. */
   async function subirImagem(f: File): Promise<string|null> {
@@ -288,6 +290,15 @@ export default function Impressao({ profile }: { profile?: Profile }) {
           <button className="btn btn-ghost btn-sm" onClick={()=>{ setPainel(false); setGaleria(true) }}>
             <span className="icon icon-sm">bookmarks</span> Meus modelos ({modelos.length})
           </button>
+          {docAtual.fonteDados === 'pessoas' && pessoas.length > 0 && (
+            <label style={{ display:'flex', alignItems:'center', gap:5, fontSize:12, color:'var(--muted)' }} title="Pessoa que aparece na prévia (não muda a impressão)">
+              <span className="icon icon-sm">person</span>
+              <select value={modeloId ?? (pessoas[0]?.id ?? '')} onChange={e=>setModeloId(e.target.value)}
+                style={{ maxWidth:160, padding:'5px 8px', border:'1px solid var(--border)', borderRadius:8, fontFamily:'inherit', fontSize:12, background:'white' }}>
+                {pessoas.map(p => <option key={p.id} value={p.id}>{formatName(p.name)}</option>)}
+              </select>
+            </label>
+          )}
           {docAtual.fonteDados === 'pessoas' && (() => {
             const prox: Orientacao = orientacao==='auto' ? 'retrato' : orientacao==='retrato' ? 'paisagem' : 'auto'
             return (
