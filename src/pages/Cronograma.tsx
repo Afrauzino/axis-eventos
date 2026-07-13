@@ -472,43 +472,47 @@ export default function Cronograma({ profile }: { profile?: Profile }) {
             const { min, tea, ministrante } = getInfo(item)
             const mfoto = min?.ministrante_id ? pessoaFoto[min.ministrante_id] : null
             return (
-              <div key={item.id} className={"sched-card" + (min?.foto_poster ? ' tem-foto' : '')} onClick={() => setDetalhe(item)}>
+              <div key={item.id} className={"sched-card" + (min?.foto_poster ? ' tem-foto' : (min?.ministrante_id || ministrante) ? ' tem-avatar' : '')} onClick={() => setDetalhe(item)}>
                 <div className="sched-bar" style={{background: tiposDB.find(t=>t.nome.toLowerCase()===item.tipo.toLowerCase())?.cor ?? TIPO_COR_FALLBACK[item.tipo] ?? 'var(--primary)'}} />
                 <div className="sched-body">
                   <div className="sched-time">{fmtHora(item.hora_inicio)} — {fmtHora(item.hora_fim)}</div>
                   <div className="sched-title" style={ehConcluido(item)?{textDecoration:'line-through',opacity:0.6}:undefined}>{min?.titulo ?? item.titulo}{ehConcluido(item) && <span style={{marginLeft:6,fontSize:11,color:'var(--success)'}}>✓ concluído</span>}</div>
-                  <div className="sched-desc">
-                    {tiposDB.find(t=>t.nome.toLowerCase()===item.tipo.toLowerCase())?.nome ?? item.tipo}
-                  </div>
+                  {!(min?.ministrante_id || ministrante) && (
+                    <div className="sched-desc">
+                      {tiposDB.find(t=>t.nome.toLowerCase()===item.tipo.toLowerCase())?.nome ?? item.tipo}
+                    </div>
+                  )}
                   {tea && (
                     <button onClick={(e)=>{e.stopPropagation(); navigate('/teatro/'+tea.id)}}
                       style={{marginTop:6,display:'inline-flex',alignItems:'center',gap:5,background:'#FFF3E0',border:'1px solid #F0993B55',borderRadius:8,padding:'3px 10px',cursor:'pointer',fontFamily:'inherit'}}
                       title="Abrir teatro">
                       <span style={{fontSize:13}}>🎭</span>
-                      <span style={{fontSize:11,fontWeight:700,color:'#9a5b12'}}>{abreviarTeatro(tea.nome)}</span>
+                      <span style={{fontSize:11,fontWeight:700,color:'#9a5b12'}}>Teatro: {abreviarTeatro(tea.nome)}</span>
                       <span className="icon" style={{fontSize:14,color:'#c07a2b'}}>chevron_right</span>
                     </button>
                   )}
                   <CronometroDisplay item={item} />
                 </div>
-                {/* Foto do ministrante: PNG (foto_poster) num tamanho PADRÃO (não distorce,
-                    vaza pra cima), senão a bolinha. O nome vai no subtítulo, sem caixinha. */}
+                {/* PNG GRANDE do ministrante saindo pra fora do topo; nome na caixinha
+                    (Anton) sobre a parte de baixo da pessoa. Senão, bolinha + caixinha. */}
                 {(min?.ministrante_id || ministrante) && (() => {
                   const nome = mfoto?.name ?? ministrante?.name ?? ''
                   const primeiro = nome.split(' ')[0]
                   const cg = abrevCargo(mfoto?.cargo)
-                  return (
-                    <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'flex-end',alignSelf:'flex-end',marginRight:6,flexShrink:0,pointerEvents:'none'}}>
-                      {min?.foto_poster
-                        ? <img src={min.foto_poster} alt="" style={{width:92,height:104,marginTop:-24,objectFit:'contain',objectPosition:'bottom center'}} />
-                        : <div style={{width:50,height:50,borderRadius:'50%',overflow:'hidden',background:'#f3f4f6',display:'flex',alignItems:'center',justifyContent:'center'}}>
-                            {mfoto?.photo_url
-                              ? <img src={mfoto.photo_url} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}} />
-                              : <span style={{fontWeight:700,color:'#6b7280',fontSize:16}}>{getInitials(nome||'?')}</span>}
-                          </div>}
-                      {primeiro && (
-                        <span style={{marginTop:-4,marginBottom:2,background:'#EADFCF',color:'#2a1c0c',fontFamily:"'Anton', system-ui, sans-serif",fontSize:12.5,letterSpacing:'0.02em',padding:'2px 11px',borderRadius:99,whiteSpace:'nowrap',boxShadow:'0 1px 4px rgba(0,0,0,0.18)'}}>{cg ? cg+' ' : ''}{primeiro}</span>
-                      )}
+                  const rotulo = (cg ? cg+' ' : '') + primeiro
+                  return min?.foto_poster ? (
+                    <div style={{position:'relative',display:'flex',alignItems:'flex-end',alignSelf:'flex-end',marginRight:2,flexShrink:0,pointerEvents:'none'}}>
+                      <img src={min.foto_poster} alt="" style={{width:132,height:162,objectFit:'contain',objectPosition:'bottom center',display:'block'}} />
+                      {primeiro && <span style={{position:'absolute',left:'50%',bottom:30,transform:'translateX(-50%)',background:'#EADFCF',color:'#2a1c0c',fontFamily:"'Anton', system-ui, sans-serif",fontSize:17,letterSpacing:'0.02em',padding:'3px 16px',borderRadius:99,whiteSpace:'nowrap',boxShadow:'0 2px 7px rgba(0,0,0,0.22)'}}>{rotulo}</span>}
+                    </div>
+                  ) : (
+                    <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',alignSelf:'center',gap:4,marginRight:6,flexShrink:0,pointerEvents:'none'}}>
+                      <div style={{width:54,height:54,borderRadius:'50%',overflow:'hidden',background:'#f3f4f6',display:'flex',alignItems:'center',justifyContent:'center'}}>
+                        {mfoto?.photo_url
+                          ? <img src={mfoto.photo_url} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}} />
+                          : <span style={{fontWeight:700,color:'#6b7280',fontSize:17}}>{getInitials(nome||'?')}</span>}
+                      </div>
+                      {primeiro && <span style={{background:'#EADFCF',color:'#2a1c0c',fontFamily:"'Anton', system-ui, sans-serif",fontSize:14,letterSpacing:'0.02em',padding:'2px 12px',borderRadius:99,whiteSpace:'nowrap',boxShadow:'0 1px 4px rgba(0,0,0,0.18)'}}>{rotulo}</span>}
                     </div>
                   )
                 })()}

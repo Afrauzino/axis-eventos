@@ -964,10 +964,12 @@ body {
 }
 
 .sched-card:hover { box-shadow: 0 2px 9px rgba(0,0,0,0.16); }
-/* Card com foto do ministrante: altura PADRÃO + a cabeça do PNG "vaza" pra cima,
-   MAS reservamos margem acima pra ela NÃO invadir o card de cima. */
-.sched-card.tem-foto { overflow: visible; min-height: 96px; margin-top: 28px; }
-.sched-card.tem-foto .sched-body { display: flex; flex-direction: column; justify-content: center; }
+/* Card com foto (PNG) do ministrante: altura PADRÃO + o PNG grande com a cabeça
+   saindo BEM pra fora do topo. Reservamos margem acima pra não invadir o card de cima. */
+.sched-card.tem-foto { overflow: visible; min-height: 118px; margin-top: 48px; }
+.sched-card.tem-avatar { overflow: visible; min-height: 96px; }
+.sched-card.tem-foto .sched-body,
+.sched-card.tem-avatar .sched-body { display: flex; flex-direction: column; justify-content: center; }
 
 .sched-bar { width: 6px; flex-shrink: 0; align-self: stretch; }
 .sched-bar.ministracao { background: #6B46C1; }
@@ -978,8 +980,8 @@ body {
 .sched-bar.atividade { background: var(--primary); }
 
 .sched-body { flex: 1; padding: 14px 15px; }
-.sched-time { font-size: 12px; font-weight: 700; color: var(--primary); margin-bottom: 2px; }
-.sched-title { font-size: 15px; font-weight: 700; color: var(--text); margin-bottom: 2px; }
+.sched-time { font-size: 11.5px; font-weight: 700; color: var(--primary); margin-bottom: 2px; }
+.sched-title { font-size: 14px; font-weight: 700; color: var(--text); margin-bottom: 2px; }
 .sched-desc { font-size: 12px; color: var(--muted); }
 .sched-chevron { display: flex; align-items: center; padding-right: 12px; color: var(--muted-light); }
 
