@@ -15,6 +15,7 @@ import RichEditor from '../components/RichEditor'
 import ArquivosModulo from '../components/ArquivosModulo'
 import PrintOverlay from '../components/PrintOverlay'
 import EmojiGrid from '../components/EmojiGrid'
+import EnquadrarPoster from '../components/EnquadrarPoster'
 import type { Profile } from '../App'
 
 type Ministracao = {
@@ -65,13 +66,14 @@ export default function Ministracoes({ profile }: { profile?: Profile }) {
   const blocoArqRef = useRef<HTMLInputElement>(null)
   const posterRef = useRef<HTMLInputElement>(null)
   const [posterEnviando, setPosterEnviando] = useState(false)
+  const [framing, setFraming] = useState<string | null>(null)   // url sendo enquadrada
+  useVoltarFecha(!!framing, () => setFraming(null))
 
-  // Envia o PNG (fundo transparente) do ministrante, sem cortar — só pro pôster.
-  async function enviarPoster(file: File) {
+  // Envia o PNG (já enquadrado, fundo transparente) pro pôster do cronograma.
+  async function enviarPoster(file: Blob) {
     setPosterEnviando(true)
-    const ext = (file.name.split('.').pop() || 'png').toLowerCase()
-    const path = `poster-${Date.now()}.${ext}`
-    const { error } = await supabase.storage.from('pessoas').upload(path, file, { upsert: true, contentType: file.type || 'image/png' })
+    const path = `poster-${Date.now()}.png`
+    const { error } = await supabase.storage.from('pessoas').upload(path, file, { upsert: true, contentType: 'image/png' })
     if (error) { toast.falha('Não foi possível enviar a imagem.', error); setPosterEnviando(false); return }
     const { data } = supabase.storage.from('pessoas').getPublicUrl(path)
     setForm(f => ({ ...f, foto_poster: data.publicUrl }))
@@ -524,11 +526,13 @@ export default function Ministracoes({ profile }: { profile?: Profile }) {
                             <button type="button" className="btn btn-ghost btn-sm" onClick={()=>posterRef.current?.click()} disabled={posterEnviando}>
                               <span className="icon icon-sm">upload</span> {posterEnviando ? 'Enviando...' : (form.foto_poster ? 'Trocar PNG' : 'Enviar PNG')}
                             </button>
+                            {form.foto_poster && <button type="button" className="btn btn-ghost btn-sm" onClick={()=>setFraming(form.foto_poster)} disabled={posterEnviando}><span className="icon icon-sm">crop</span> Enquadrar</button>}
                             {form.foto_poster && <button type="button" className="btn btn-ghost btn-sm" onClick={()=>setForm(f=>({...f,foto_poster:''}))}>Remover</button>}
                           </div>
                         </div>
-                        <p className="form-hint" style={{marginTop:6}}>Se enviar, o pôster do cronograma usa essa imagem (recortada) no lugar da foto de perfil.</p>
-                        <input ref={posterRef} type="file" accept="image/png,image/*" style={{display:'none'}} onChange={e=>{ if(e.target.files?.[0]) enviarPoster(e.target.files[0]); e.target.value='' }}/>
+                        <p className="form-hint" style={{marginTop:6}}>Ao enviar você já enquadra a foto (com linhas-guia) pra ficar no padrão de todas. O pôster do cronograma usa essa imagem no lugar da foto de perfil.</p>
+                        <input ref={posterRef} type="file" accept="image/png,image/*" style={{display:'none'}} onChange={e=>{ const f=e.target.files?.[0]; if(f) setFraming(URL.createObjectURL(f)); e.target.value='' }}/>
+                        {framing && <EnquadrarPoster src={framing} onClose={()=>setFraming(null)} onAplicar={async(blob)=>{ await enviarPoster(blob); setFraming(null) }} />}
                       </div>
                     )}
                     {/* #10 — Ministração não tem mais data/horário/duração. A agenda fica só no Cronograma. */}
