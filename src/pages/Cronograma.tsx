@@ -23,6 +23,9 @@ type TipoAtividade = { id:string; nome:string; cor:string; icone?:string|null; c
 function abrevCargo(cargo?: string | null): string {
   if (!cargo) return ''
   const c = cargo.trim().toLowerCase()
+  // Pastor(a) Presidente/Presidenta e variações → só Pr./Pra. (pastora antes de pastor).
+  if (c.includes('pastora')) return 'Pra.'
+  if (c.includes('pastor')) return 'Pr.'
   const map: Record<string, string> = {
     'pastor': 'Pr.', 'pastora': 'Pra.',
     'presbítero': 'Pb.', 'presbitero': 'Pb.', 'presbítera': 'Pb.', 'presbitera': 'Pb.',
@@ -39,6 +42,12 @@ function abrevCargo(cargo?: string | null): string {
     'diácona': 'Dca.',
   }
   return map[c] ?? cargo
+}
+
+// Nome do teatro no card: só encurta se ficar grande demais.
+function abreviarTeatro(nome: string): string {
+  const n = (nome || '').trim()
+  return n.length > 32 ? n.slice(0, 30).trimEnd() + '…' : n
 }
 
 type Ministracao = { id:string; titulo:string; ministrante_id:string|null; local:string|null; descricao:string|null; tema:string|null; foto_poster:string|null }
@@ -469,41 +478,35 @@ export default function Cronograma({ profile }: { profile?: Profile }) {
                   <div className="sched-time">{fmtHora(item.hora_inicio)} — {fmtHora(item.hora_fim)}</div>
                   <div className="sched-title" style={ehConcluido(item)?{textDecoration:'line-through',opacity:0.6}:undefined}>{min?.titulo ?? item.titulo}{ehConcluido(item) && <span style={{marginLeft:6,fontSize:11,color:'var(--success)'}}>✓ concluído</span>}</div>
                   <div className="sched-desc">
-                    {tiposDB.find(t=>t.nome.toLowerCase()===item.tipo.toLowerCase())?.nome ?? item.tipo}
-                    {item.local ? ` · ${item.local}` : ''}
-                    {ministrante ? ` · ${ministrante.name.split(' ')[0]}` : ''}
+                    {(min?.ministrante_id || ministrante) ? (
+                      <span style={{display:'inline-flex',alignItems:'center',gap:5}}>
+                        <span className="icon" style={{fontSize:16,color:'var(--muted)',lineHeight:1}}>person</span>
+                        {[abrevCargo(mfoto?.cargo), (mfoto?.name ?? ministrante?.name ?? '').split(' ')[0]].filter(Boolean).join(' ')}
+                      </span>
+                    ) : (tiposDB.find(t=>t.nome.toLowerCase()===item.tipo.toLowerCase())?.nome ?? item.tipo)}
                   </div>
                   {tea && (
                     <button onClick={(e)=>{e.stopPropagation(); navigate('/teatro/'+tea.id)}}
                       style={{marginTop:6,display:'inline-flex',alignItems:'center',gap:5,background:'#FFF3E0',border:'1px solid #F0993B55',borderRadius:8,padding:'3px 10px',cursor:'pointer',fontFamily:'inherit'}}
                       title="Abrir teatro">
                       <span style={{fontSize:13}}>🎭</span>
-                      <span style={{fontSize:11,fontWeight:700,color:'#9a5b12'}}>Teatro: {tea.nome}</span>
+                      <span style={{fontSize:11,fontWeight:700,color:'#9a5b12'}}>{abreviarTeatro(tea.nome)}</span>
                       <span className="icon" style={{fontSize:14,color:'#c07a2b'}}>chevron_right</span>
                     </button>
                   )}
                   <CronometroDisplay item={item} />
                 </div>
-                {/* Foto do ministrante: PNG (foto_poster) se tiver, senão a bolinha (avatar) */}
-                {(min?.ministrante_id || ministrante) && (() => {
-                  const nome = mfoto?.name ?? ministrante?.name ?? ''
-                  const primeiro = nome.split(' ')[0]
-                  const cg = abrevCargo(mfoto?.cargo)
-                  return (
-                    <div style={{display:'flex',flexDirection:'column',alignItems:'center',alignSelf:'flex-end',marginRight:10,flexShrink:0,pointerEvents:'none'}}>
-                      {min?.foto_poster
-                        ? <img src={min.foto_poster} alt="" style={{width:70,height:96,marginTop:-24,objectFit:'contain',objectPosition:'bottom center'}} />
-                        : <div style={{width:48,height:48,borderRadius:'50%',overflow:'hidden',background:'#f3f4f6',display:'flex',alignItems:'center',justifyContent:'center'}}>
-                            {mfoto?.photo_url
-                              ? <img src={mfoto.photo_url} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}} />
-                              : <span style={{fontWeight:700,color:'#6b7280',fontSize:16}}>{getInitials(nome||'?')}</span>}
-                          </div>}
-                      {primeiro && (
-                        <span style={{marginTop:-7,background:'#EADFCF',color:'#2a1c0c',fontFamily:"'Anton', system-ui, sans-serif",fontSize:13,lineHeight:1.4,letterSpacing:'0.02em',padding:'2px 12px',borderRadius:99,whiteSpace:'nowrap',boxShadow:'0 1px 5px rgba(0,0,0,0.16)'}}>{cg ? cg+' ' : ''}{primeiro}</span>
-                      )}
-                    </div>
-                  )
-                })()}
+                {/* Foto do ministrante: PNG (foto_poster) num tamanho PADRÃO (não distorce,
+                    vaza pra cima), senão a bolinha. O nome vai no subtítulo, sem caixinha. */}
+                {(min?.ministrante_id || ministrante) && (
+                  min?.foto_poster
+                    ? <img src={min.foto_poster} alt="" style={{width:96,height:118,marginTop:-30,marginRight:8,objectFit:'contain',objectPosition:'bottom center',alignSelf:'flex-end',flexShrink:0,pointerEvents:'none'}} />
+                    : <div style={{width:48,height:48,borderRadius:'50%',overflow:'hidden',background:'#f3f4f6',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,alignSelf:'center',marginRight:8}}>
+                        {mfoto?.photo_url
+                          ? <img src={mfoto.photo_url} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}} />
+                          : <span style={{fontWeight:700,color:'#6b7280',fontSize:16}}>{getInitials(mfoto?.name ?? ministrante?.name ?? '?')}</span>}
+                      </div>
+                )}
                 <button onClick={(e)=>{e.stopPropagation();setCronometro(item)}} title="Cronômetro" style={{background:'none',border:'none',cursor:'pointer',padding:'8px',display:'flex',alignItems:'center'}}>
                   <span className="icon" style={{color: item.cron_estado==='correndo'?'#E53E3E':'var(--primary)'}}>timer</span>
                 </button>
