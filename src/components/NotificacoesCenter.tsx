@@ -243,11 +243,8 @@ export default function NotificacoesCenter({ profile, onClose, onUnread }: { pro
             return (
               <button key={n.id} onClick={() => abrir(n)}
                 style={{ width: '100%', display: 'flex', alignItems: 'flex-start', gap: 12, padding: '12px 12px', background: 'white', border: '1px solid var(--border)', borderRadius: 14, marginBottom: 8, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left', boxShadow: 'var(--shadow-sm)' }}>
-                {/* Ícone do app (igual à notificação do celular) + emoji do tipo por cima */}
-                <div style={{ position: 'relative', flexShrink: 0 }}>
-                  <img src="/axis-notif.png" alt="" style={{ width: 42, height: 42, borderRadius: 11, objectFit: 'cover', display: 'block' }} />
-                  <span style={{ position: 'absolute', right: -4, bottom: -4, fontSize: 14, lineHeight: 1, background: 'white', borderRadius: '50%', width: 20, height: 20, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }}>{n.emoji}</span>
-                </div>
+                {/* Ícone do app, limpo (igual à notificação do celular) */}
+                <img src="/axis-notif.png" alt="" style={{ width: 42, height: 42, borderRadius: 11, objectFit: 'cover', display: 'block', flexShrink: 0 }} />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <p style={{ fontSize: 11.5, color: 'var(--muted)', fontWeight: 600, marginBottom: 1 }}>AXIS Eventos{quando ? ` · ${quando}` : ''}</p>
                   <p style={{ fontSize: 14.5, fontWeight: 800, color: 'var(--text)', lineHeight: 1.25 }}>{n.titulo}</p>
