@@ -63,7 +63,7 @@ export default function CronogramaPoster({ titulo, dias, slim = false, escala = 
 
   const corpo = (
     <div style={{ fontFamily: 'Arial, Helvetica, sans-serif', color: '#111827' }}>
-      <h1 style={{ fontSize: t.h1, fontWeight: 900, letterSpacing: '-0.02em', margin: `0 0 ${t.h1mb}px` }}>{titulo}</h1>
+      {titulo ? <h1 style={{ fontSize: t.h1, fontWeight: 900, letterSpacing: '-0.02em', margin: `0 0 ${t.h1mb}px` }}>{titulo}</h1> : null}
 
       {dias.map((d, di) => (
         <div key={di} className={separarDias ? 'print-break' : undefined} style={{ display: 'flex', border: t.borda, borderRadius: t.diaRad, overflow: 'hidden', marginBottom: t.diaMb, breakInside: 'avoid' }}>
@@ -88,18 +88,20 @@ export default function CronogramaPoster({ titulo, dias, slim = false, escala = 
                 {l.kind === 'min' ? (
                   <div style={{ flex: 1, display: 'flex', minWidth: 0 }}>
                     {/* Ministrante: foto recortada (vaza pra cima) + pill BEGE, NOME em cima / título embaixo */}
-                    <div style={{ flex: mostrarElenco ? 1 : 1.5, display: 'flex', alignItems: 'center', gap: s(6), padding: t.rowPad, minWidth: 0 }}>
+                    <div style={{ flex: mostrarElenco ? 1 : 1.5, display: 'flex', alignItems: 'flex-end', gap: s(6), padding: t.rowPad, minWidth: 0, background: PEACH, borderRadius: t.pillRad, position: 'relative' }}>
                       {l.fotoPng ? (
-                        // PNG recortado: TODAS as fotos no MESMO quadro (mesmo tamanho), preenchendo
-                        // e cortando o que sobra (cover) com o rosto no topo — assim uma foto de corpo
-                        // e uma de rosto ficam padronizadas. Fundo claro pros cantos transparentes.
-                        <img src={l.fotoPng} alt="" style={{ width: Math.round(t.foto * 1.05), height: Math.round(t.foto * 1.28), objectFit: 'cover', objectPosition: 'top center', alignSelf: 'center', flexShrink: 0, display: 'block', borderRadius: s(8), background: '#eef1f4' }} />
+                        // PNG recortado (fundo transparente, vem da ministração). NÃO cortar (sem denegrir):
+                        // fica ancorado no FUNDO da tarja bege e a cabeça/pescoço VAZA PRA CIMA da tarja.
+                        // position:absolute → não estica a altura da linha; z-index deixa a cabeça por cima.
+                        <div style={{ width: Math.round(t.foto * 1.25), alignSelf: 'stretch', position: 'relative', flexShrink: 0 }}>
+                          <img src={l.fotoPng} alt="" style={{ position: 'absolute', left: 0, bottom: 0, width: '100%', height: 'auto', display: 'block', zIndex: 2 }} />
+                        </div>
                       ) : l.fotoUrl ? (
-                        <img src={l.fotoUrl} alt="" style={{ width: t.foto, height: t.foto, borderRadius: '50%', objectFit: 'cover', flexShrink: 0, border: t.borda }} />
+                        <img src={l.fotoUrl} alt="" style={{ width: t.foto, height: t.foto, borderRadius: '50%', objectFit: 'cover', flexShrink: 0, border: t.borda, alignSelf: 'center' }} />
                       ) : (
-                        <div style={{ width: t.foto, height: t.foto, borderRadius: '50%', background: '#e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, border: t.borda }}><span style={{ fontWeight: 800, color: '#6b7280', fontSize: 16 }}>{getInitials(l.ministrante ?? '?')}</span></div>
+                        <div style={{ width: t.foto, height: t.foto, borderRadius: '50%', background: '#e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, border: t.borda, alignSelf: 'center' }}><span style={{ fontWeight: 800, color: '#6b7280', fontSize: 16 }}>{getInitials(l.ministrante ?? '?')}</span></div>
                       )}
-                      <div style={{ flex: 1, background: PEACH, color: '#1b1206', borderRadius: t.pillRad, padding: `${s(6)}px ${s(11)}px`, minWidth: 0 }}>
+                      <div style={{ flex: 1, color: '#1b1206', minWidth: 0, alignSelf: 'center', padding: `0 ${s(4)}px` }}>
                         <p style={{ fontSize: t.nome, fontWeight: 800, lineHeight: 1.1, margin: 0 }}>{l.ministrante}</p>
                         <p style={{ fontSize: t.tituloFonte, fontWeight: 900, lineHeight: 1.05, margin: '1px 0 0' }}>{l.titulo}</p>
                       </div>
