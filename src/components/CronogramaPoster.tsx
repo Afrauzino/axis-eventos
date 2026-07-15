@@ -95,7 +95,7 @@ export default function CronogramaPoster({ titulo, dias, slim = false, escala = 
                         // da tarja; a cabeça vaza pra cima um valor FIXO (~meia linha), igual pra todos —
                         // nunca passa da metade da linha de cima nem tampa a foto de cima.
                         <div style={{ width: Math.round(t.foto * 1.25), height: t.foto, alignSelf: 'flex-end', position: 'relative', flexShrink: 0 }}>
-                          <img src={l.fotoPng} alt="" style={{ position: 'absolute', left: 0, bottom: 0, width: '100%', height: Math.round(t.foto * 1.5), objectFit: 'cover', objectPosition: 'top center', display: 'block', borderRadius: s(6), zIndex: 2 }} />
+                          <img src={l.fotoPng} alt="" style={{ position: 'absolute', left: 0, bottom: 0, width: '100%', height: Math.round(t.foto * 1.5), objectFit: 'cover', objectPosition: 'top center', display: 'block', borderRadius: s(6) }} />
                         </div>
                       ) : l.fotoUrl ? (
                         <img src={l.fotoUrl} alt="" style={{ width: t.foto, height: t.foto, borderRadius: '50%', objectFit: 'cover', flexShrink: 0, border: t.borda, alignSelf: 'center' }} />
