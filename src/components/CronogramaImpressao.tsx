@@ -37,24 +37,53 @@ export default function CronogramaImpressao({ titulo, dias }: { titulo: string; 
   // é cortado; só ganha folha própria quando sozinho não cabe (aí a impressão
   // quebra ele — sem opção). Fallback: 1 dia por folha até medir.
   const [paginas, setPaginas] = useState<DiaPoster[][]>(() => dias.map(d => [d]))
+  // Fator de encolhimento POR FOLHA. Bug real (visto no PDF do Anderson): em PAISAGEM
+  // só cabem 194mm e o SÁBADO tem 202mm — os 8mm que sobravam EXPULSAVAM a última
+  // linha ("RECOLHER") pra uma página nova quase em branco, e o PDF saía com 4 páginas
+  // enquanto o preview mostrava 3 folhas. Agora a folha que passaria da página encolhe
+  // o exato pra caber, então preview e PDF batem 1:1.
+  const [fatores, setFatores] = useState<number[]>(() => dias.map(() => 1))
   const medRef = useRef<HTMLDivElement>(null)
   useLayoutEffect(() => {
     const cont = medRef.current
-    if (!cont) { setPaginas(dias.map(d => [d])); return }
+    if (!cont) { setPaginas(dias.map(d => [d])); setFatores(dias.map(() => 1)); return }
     const MMPX = 3.7795275591          // px por mm (medimos em zoom 1, igual à impressão)
-    const usavel = (paisagem ? 163 : 250) * MMPX  // altura útil: A4 retrato ~253mm / paisagem (deitada) ~166mm
+    // Altura REAL que cabe: A4 retrato 297mm / paisagem 210mm, menos a margem de 8mm dos dois lados
+    const A4UTIL = (paisagem ? 194 : 281) * MMPX
+    const SAFE = A4UTIL - 6 * MMPX     // respiro: nunca encosta na borda
     const tituloPx = titulo ? 64 : 0   // reserva pro título só na 1ª folha
-    const blocos = Array.from(cont.children) as HTMLElement[]
-    const alturas = dias.map((_, i) => blocos[i]?.getBoundingClientRect().height ?? usavel)
-    const pags: DiaPoster[][] = []
-    let atual: DiaPoster[] = []; let h = 0
-    dias.forEach((_d, i) => {
-      const budget = usavel - (pags.length === 0 ? tituloPx : 0)
-      if (atual.length && h + alturas[i] > budget) { pags.push(atual); atual = []; h = 0 }
-      atual.push(dias[i]); h += alturas[i]
-    })
-    if (atual.length) pags.push(atual)
-    setPaginas(pags.length ? pags : dias.map(d => [d]))
+    const recompute = () => {
+      const blocos = Array.from(cont.children) as HTMLElement[]
+      const alturas = dias.map((_, i) => blocos[i]?.getBoundingClientRect().height ?? A4UTIL)
+      // empacota DIAS INTEIROS por folha (nunca corta um dia no meio)
+      const pags: number[][] = []
+      let atual: number[] = []; let h = 0
+      dias.forEach((_d, i) => {
+        const budget = SAFE - (pags.length === 0 ? tituloPx : 0)
+        if (atual.length && h + alturas[i] > budget) { pags.push(atual); atual = []; h = 0 }
+        atual.push(i); h += alturas[i]
+      })
+      if (atual.length) pags.push(atual)
+      // Folha que ainda passaria da página (dia sozinho grande demais) encolhe só ela
+      const facs = pags.map((idxs, pi) => {
+        const soma = idxs.reduce((a, i) => a + alturas[i], 0) + (pi === 0 ? tituloPx : 0)
+        return soma > A4UTIL ? Math.max(0.5, (A4UTIL - 12 * MMPX) / soma) : 1
+      })
+      setPaginas(pags.length ? pags.map(idxs => idxs.map(i => dias[i])) : dias.map(d => [d]))
+      setFatores(pags.length ? facs : dias.map(() => 1))
+    }
+    recompute()
+    // Re-medir quando layout/fotos assentam (medir a frio subestima a altura)
+    const raf = requestAnimationFrame(() => requestAnimationFrame(recompute))
+    const imgs = Array.from(cont.querySelectorAll('img')) as HTMLImageElement[]
+    const pend = imgs.filter(im => !im.complete)
+    let faltam = pend.length
+    const onImg = () => { if (--faltam <= 0) recompute() }
+    pend.forEach(im => { im.addEventListener('load', onImg, { once: true }); im.addEventListener('error', onImg, { once: true }) })
+    return () => {
+      cancelAnimationFrame(raf)
+      pend.forEach(im => { im.removeEventListener('load', onImg); im.removeEventListener('error', onImg) })
+    }
   }, [dias, escala, elenco, titulo, paisagem])
 
   return (
@@ -111,7 +140,12 @@ export default function CronogramaImpressao({ titulo, dias }: { titulo: string; 
         {paginas.map((grupo, i) => (
           <div className="crono-folha" key={i}>
             <span className="folha-tag">Folha {i + 1} de {paginas.length}</span>
-            <CronogramaPoster titulo={i === 0 ? titulo : ''} dias={grupo} slim escala={escala} mostrarElenco={elenco} />
+            {/* zoom (geométrico) e NÃO a prop escala: no slim os paddings/bordas são px
+                fixos, então mexer só na fonte quase não baixa a altura. O zoom encolhe
+                linha inteira — é o que garante a folha caber exatamente numa página. */}
+            <div style={{ zoom: fatores[i] ?? 1 }}>
+              <CronogramaPoster titulo={i === 0 ? titulo : ''} dias={grupo} slim escala={escala} mostrarElenco={elenco} />
+            </div>
           </div>
         ))}
       </div>
