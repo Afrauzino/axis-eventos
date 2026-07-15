@@ -90,11 +90,12 @@ export default function CronogramaPoster({ titulo, dias, slim = false, escala = 
                     {/* Ministrante: foto recortada (vaza pra cima) + pill BEGE, NOME em cima / título embaixo */}
                     <div style={{ flex: mostrarElenco ? 1 : 1.5, display: 'flex', alignItems: 'flex-end', gap: s(6), padding: t.rowPad, minWidth: 0, background: PEACH, borderRadius: t.pillRad, position: 'relative' }}>
                       {l.fotoPng ? (
-                        // PNG recortado (fundo transparente, vem da ministração). NÃO cortar (sem denegrir):
-                        // fica ancorado no FUNDO da tarja bege e a cabeça/pescoço VAZA PRA CIMA da tarja.
-                        // position:absolute → não estica a altura da linha; z-index deixa a cabeça por cima.
-                        <div style={{ width: Math.round(t.foto * 1.25), alignSelf: 'stretch', position: 'relative', flexShrink: 0 }}>
-                          <img src={l.fotoPng} alt="" style={{ position: 'absolute', left: 0, bottom: 0, width: '100%', height: 'auto', display: 'block', zIndex: 2 }} />
+                        // PNG recortado (foto_poster da ministração): TODAS no MESMO tamanho (box fixo),
+                        // rosto no topo (objectPosition top center → não corta o rosto). Ancorado no fundo
+                        // da tarja; a cabeça vaza pra cima um valor FIXO (~meia linha), igual pra todos —
+                        // nunca passa da metade da linha de cima nem tampa a foto de cima.
+                        <div style={{ width: Math.round(t.foto * 1.25), height: t.foto, alignSelf: 'flex-end', position: 'relative', flexShrink: 0 }}>
+                          <img src={l.fotoPng} alt="" style={{ position: 'absolute', left: 0, bottom: 0, width: '100%', height: Math.round(t.foto * 1.5), objectFit: 'cover', objectPosition: 'top center', display: 'block', borderRadius: s(6), zIndex: 2 }} />
                         </div>
                       ) : l.fotoUrl ? (
                         <img src={l.fotoUrl} alt="" style={{ width: t.foto, height: t.foto, borderRadius: '50%', objectFit: 'cover', flexShrink: 0, border: t.borda, alignSelf: 'center' }} />
