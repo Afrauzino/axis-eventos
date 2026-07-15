@@ -28,7 +28,6 @@ function Segmento({ label, value, opcoes, onChange }: {
 
 export default function CronogramaImpressao({ titulo, dias }: { titulo: string; dias: DiaPoster[] }) {
   const [escala, setEscala] = useState(1)
-  const [separar, setSeparar] = useState(false)
   const [elenco, setElenco] = useState(false)
   const pct = Math.round(escala * 100)
 
@@ -37,13 +36,14 @@ export default function CronogramaImpressao({ titulo, dias }: { titulo: string; 
       <style>{`
         @media screen {
           .crono-fundo { background:#e9edf1; padding:18px 8px; border-radius:12px; overflow-x:auto; }
-          /* Folha em A4 REAL (210mm: 190mm de conteúdo + 10mm de margem cada lado).
-             O layout é montado exatamente como sai no PDF. */
-          .crono-folha { background:white; width:190mm; margin:0 auto; padding:12mm 10mm; box-shadow:0 3px 16px rgba(0,0,0,0.18); border-radius:2px; }
+          /* Cada DIA vira uma FOLHA A4 separada (é onde a impressão quebra de verdade).
+             190mm de conteúdo + margem; min-height A4 pra parecer uma página real. */
+          .crono-folha { position:relative; background:white; width:190mm; min-height:277mm; margin:0 auto 22px; padding:12mm 10mm; box-shadow:0 4px 18px rgba(0,0,0,0.22); border-radius:2px; overflow:hidden; }
+          .crono-folha:last-child { margin-bottom:0; }
+          .folha-tag { position:absolute; top:7px; right:12px; font-size:10px; font-weight:800; color:#9aa3ad; letter-spacing:.05em; }
         }
         /* Celular/tablet: encolhe a FOLHA A4 inteira pra caber na tela mantendo o
-           layout idêntico ao PDF (antes o max-width:100% espremia o conteúdo, e a
-           prévia ficava diferente da impressão). */
+           layout idêntico ao PDF. */
         @media screen and (max-width: 820px){ .crono-folha{ zoom:0.62 } }
         @media screen and (max-width: 640px){ .crono-folha{ zoom:0.52 } }
         @media screen and (max-width: 480px){ .crono-folha{ zoom:0.46 } }
@@ -52,12 +52,13 @@ export default function CronogramaImpressao({ titulo, dias }: { titulo: string; 
         @media print {
           .crono-toolbar { display:none !important; }
           .crono-fundo { background:none !important; padding:0 !important; overflow:visible !important; }
-          .crono-folha { box-shadow:none !important; padding:0 !important; width:auto !important; zoom:1 !important; }
+          .crono-folha { box-shadow:none !important; padding:0 !important; width:auto !important; min-height:0 !important; margin:0 !important; zoom:1 !important; page-break-after:always; break-after:page; }
+          .crono-folha:last-child { page-break-after:auto; break-after:auto; }
+          .folha-tag { display:none !important; }
         }
       `}</style>
 
       <div className="crono-toolbar no-print" style={{ display: 'flex', flexWrap: 'wrap', gap: 14, alignItems: 'center', padding: '4px 4px 16px' }}>
-        <Segmento label="Dias" value={separar} onChange={setSeparar} opcoes={[{ v: false, l: 'Juntos (o que couber)' }, { v: true, l: 'Um por página' }]} />
         <Segmento label="Teatro" value={elenco} onChange={setElenco} opcoes={[{ v: false, l: 'Nome' }, { v: true, l: 'Fotos do elenco' }]} />
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <span style={{ fontSize: 12, fontWeight: 700, color: '#6b7280' }}>Fonte</span>
@@ -68,9 +69,12 @@ export default function CronogramaImpressao({ titulo, dias }: { titulo: string; 
       </div>
 
       <div className="crono-fundo">
-        <div className="crono-folha">
-          <CronogramaPoster titulo={titulo} dias={dias} slim escala={escala} separarDias={separar} mostrarElenco={elenco} />
-        </div>
+        {dias.map((d, i) => (
+          <div className="crono-folha" key={i}>
+            <span className="folha-tag">Folha {i + 1} de {dias.length}</span>
+            <CronogramaPoster titulo={i === 0 ? titulo : ''} dias={[d]} slim escala={escala} mostrarElenco={elenco} />
+          </div>
+        ))}
       </div>
     </>
   )
