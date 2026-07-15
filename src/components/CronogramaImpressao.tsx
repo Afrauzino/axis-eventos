@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef, useLayoutEffect } from 'react'
 import CronogramaPoster, { type DiaPoster } from './CronogramaPoster'
 
 // Painel de impressão do cronograma resumido: controles simples (fonte, dias,
@@ -30,6 +30,31 @@ export default function CronogramaImpressao({ titulo, dias }: { titulo: string; 
   const [escala, setEscala] = useState(1)
   const [elenco, setElenco] = useState(false)
   const pct = Math.round(escala * 100)
+
+  // Paginação AUTOMÁTICA: mede a altura de cada DIA (numa cópia escondida, mesma
+  // escala) e ENFIA quantos dias inteiros couberem em cada folha A4. Um dia NUNCA
+  // é cortado; só ganha folha própria quando sozinho não cabe (aí a impressão
+  // quebra ele — sem opção). Fallback: 1 dia por folha até medir.
+  const [paginas, setPaginas] = useState<DiaPoster[][]>(() => dias.map(d => [d]))
+  const medRef = useRef<HTMLDivElement>(null)
+  useLayoutEffect(() => {
+    const cont = medRef.current
+    if (!cont) { setPaginas(dias.map(d => [d])); return }
+    const MMPX = 3.7795275591          // px por mm (medimos em zoom 1, igual à impressão)
+    const usavel = 250 * MMPX          // altura útil de uma folha A4 (conservador; margens incluídas)
+    const tituloPx = titulo ? 64 : 0   // reserva pro título só na 1ª folha
+    const blocos = Array.from(cont.children) as HTMLElement[]
+    const alturas = dias.map((_, i) => blocos[i]?.getBoundingClientRect().height ?? usavel)
+    const pags: DiaPoster[][] = []
+    let atual: DiaPoster[] = []; let h = 0
+    dias.forEach((_d, i) => {
+      const budget = usavel - (pags.length === 0 ? tituloPx : 0)
+      if (atual.length && h + alturas[i] > budget) { pags.push(atual); atual = []; h = 0 }
+      atual.push(dias[i]); h += alturas[i]
+    })
+    if (atual.length) pags.push(atual)
+    setPaginas(pags.length ? pags : dias.map(d => [d]))
+  }, [dias, escala, elenco, titulo])
 
   return (
     <>
@@ -68,11 +93,21 @@ export default function CronogramaImpressao({ titulo, dias }: { titulo: string; 
         </div>
       </div>
 
-      <div className="crono-fundo">
+      {/* Cópia ESCONDIDA só pra medir a altura de cada dia (visibility:hidden mantém o
+          tamanho no layout; NÃO usar display:none, senão a altura vira 0). */}
+      <div ref={medRef} aria-hidden style={{ position: 'absolute', left: -99999, top: 0, width: '190mm', visibility: 'hidden', pointerEvents: 'none' }}>
         {dias.map((d, i) => (
+          <div key={i} style={{ padding: '0 10mm' }}>
+            <CronogramaPoster titulo="" dias={[d]} slim escala={escala} mostrarElenco={elenco} />
+          </div>
+        ))}
+      </div>
+
+      <div className="crono-fundo">
+        {paginas.map((grupo, i) => (
           <div className="crono-folha" key={i}>
-            <span className="folha-tag">Folha {i + 1} de {dias.length}</span>
-            <CronogramaPoster titulo={i === 0 ? titulo : ''} dias={[d]} slim escala={escala} mostrarElenco={elenco} />
+            <span className="folha-tag">Folha {i + 1} de {paginas.length}</span>
+            <CronogramaPoster titulo={i === 0 ? titulo : ''} dias={grupo} slim escala={escala} mostrarElenco={elenco} />
           </div>
         ))}
       </div>
