@@ -27,6 +27,15 @@ function salvarLidas(userId: string | undefined, ids: Set<string>) {
   try { localStorage.setItem(chaveLidas(userId), JSON.stringify([...ids])) } catch {}
 }
 
+// "Iminente": de 5 min atrás até 90 min à frente. Escala/ministração/teatro SÓ entram
+// no sino quando estão PERTO de começar (lembrete); senão viram ESTADO PERMANENTE que
+// volta toda vez que a pessoa reabre o app. A lista completa mora em Minhas Atividades.
+function iminente(quando?: string | null): boolean {
+  if (!quando) return false
+  const diff = new Date(quando).getTime() - Date.now()
+  return diff > -5 * 60000 && diff <= 90 * 60000
+}
+
 // Monta a lista de notificações do usuário (chamável de fora pra contar não-lidas)
 export async function montarNotificacoes(profile: Profile, eventoId: string | null): Promise<Notif[]> {
   const out: Notif[] = []
@@ -75,12 +84,14 @@ export async function montarNotificacoes(profile: Profile, eventoId: string | nu
     if (avIds.length > 0) out.push({ id: 'lider-avisos-' + avIds.join('_'), emoji: '📨', titulo: `${avIds.length} aviso(s) da liderança`, sub: 'Toque para ver', rota: '/alertas-lideres' })
   } catch {}
 
-  // Minhas escalas
+  // Minhas escalas — SÓ como lembrete quando está PERTO de começar (senão vira estado
+  // permanente que fica voltando no sino; a escala em si mora em Minhas Atividades).
   try {
     const { data } = await supabase.from('escalas').select('id,title,start_time,location,status').eq('event_id', eventoId).eq('person_id', personId).order('start_time')
     for (const e of data ?? []) {
       if (e.status === 'concluido' || e.status === 'cancelado') continue
-      out.push({ id: 'escala-' + e.id, emoji: '📋', titulo: `Você está escalado: ${e.title}`, sub: e.location || 'Escala', quando: e.start_time, rota: '/minhas-atividades' })
+      if (!iminente(e.start_time)) continue
+      out.push({ id: 'escala-' + e.id, emoji: '📋', titulo: `Escala em breve: ${e.title}`, sub: e.location || 'Escala', quando: e.start_time, rota: '/minhas-atividades' })
     }
   } catch {}
 
@@ -97,8 +108,9 @@ export async function montarNotificacoes(profile: Profile, eventoId: string | nu
     if (minIds.length) { const { data } = await supabase.from('ministrações').select('id').in('id', minIds).eq('ministrante_id', personId); minhasMin = new Set((data ?? []).map((m: any) => m.id)) }
     if (teaIds.length) { const { data } = await supabase.from('teatro_elenco').select('theater_id').in('theater_id', teaIds).eq('person_id', personId); meusTea = new Set((data ?? []).map((t: any) => t.theater_id)) }
     for (const c of cron ?? []) {
-      if (c.ministracao_id && minhasMin.has(c.ministracao_id)) out.push({ id: 'cron-min-' + c.id, emoji: '🎤', titulo: `Você é o ministrante: ${c.titulo}`, sub: c.local || 'Ministração', quando: c.hora_inicio, rota: '/minhas-atividades' })
-      else if (c.theater_id && meusTea.has(c.theater_id)) out.push({ id: 'cron-tea-' + c.id, emoji: '🎭', titulo: `Você está no teatro: ${c.titulo}`, sub: c.local || 'Teatro', quando: c.hora_inicio, rota: '/minhas-atividades' })
+      if (!iminente(c.hora_inicio)) continue   // só lembrete quando está perto; a agenda mora em Minhas Atividades
+      if (c.ministracao_id && minhasMin.has(c.ministracao_id)) out.push({ id: 'cron-min-' + c.id, emoji: '🎤', titulo: `Sua ministração em breve: ${c.titulo}`, sub: c.local || 'Ministração', quando: c.hora_inicio, rota: '/minhas-atividades' })
+      else if (c.theater_id && meusTea.has(c.theater_id)) out.push({ id: 'cron-tea-' + c.id, emoji: '🎭', titulo: `Seu teatro em breve: ${c.titulo}`, sub: c.local || 'Teatro', quando: c.hora_inicio, rota: '/minhas-atividades' })
     }
   } catch {}
 
