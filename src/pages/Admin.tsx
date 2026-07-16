@@ -1684,7 +1684,12 @@ export default function Admin({ profile }: { profile?: Profile }) {
                       </div>
                       <div style={{flex:1,minWidth:0}}>
                         <p style={{fontSize:14,fontWeight:600,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{formatName(p.name)}</p>
-                        <p style={{fontSize:11,color:'var(--muted)'}}>{p.user_id?'Tem conta':(p.invite_code?'Só código':'Sem código')}</p>
+                        <p style={{fontSize:11,color:'var(--muted)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+                          {p.role_type==='worker'?'🛡️ Encontreiro':'🙋 Encontrista'}{p.church?` · ${p.church}`:''}
+                        </p>
+                        <p style={{fontSize:10.5,color:'var(--muted-light)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+                          {p.user_id ? (emails.get(p.user_id) || 'com conta') : (p.invite_code?'só código':'sem código')}{p.phone?` · ${p.phone}`:''}
+                        </p>
                       </div>
                     </button>
                   ))}
@@ -1693,24 +1698,44 @@ export default function Admin({ profile }: { profile?: Profile }) {
             ) : (
               // Fase 2: escolher quem prevalece e confirmar
               (() => {
+                const statusLabel = (p: typeof pessoas[0]) => {
+                  if (!p.user_id) return p.invite_code ? 'Só código (sem login)' : 'Sem conta'
+                  const s = (p as any).role_status
+                  return s==='approved'?'Aprovado':s==='pending'?'Pendente':s==='rejected'?'Recusado':s==='blocked'?'Bloqueado':s==='suspended'?'Suspenso':'Com conta'
+                }
+                const linha = (label: string, valor: string, temDado: boolean) => (
+                  <div style={{display:'flex',justifyContent:'space-between',gap:6}}>
+                    <span style={{color:'var(--muted)',flexShrink:0}}>{label}</span>
+                    <span style={{fontWeight:600,color:temDado?'var(--text)':'var(--muted-light)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',maxWidth:'62%',textAlign:'right'}}>{valor}</span>
+                  </div>
+                )
                 const cartao = (p: typeof pessoas[0]) => {
                   const manter = unifManterId===p.id
+                  const email = p.user_id ? (emails.get(p.user_id) || '') : ''
                   return (
                     <button onClick={()=>setUnifManterId(p.id)}
-                      style={{flex:1,textAlign:'left',borderRadius:12,padding:10,cursor:'pointer',fontFamily:'inherit',
+                      style={{flex:1,minWidth:0,textAlign:'left',borderRadius:12,padding:10,cursor:'pointer',fontFamily:'inherit',
                         border: manter?'2px solid var(--primary)':'1px solid var(--border)', background: manter?'var(--primary-light)':'white'}}>
                       <div style={{display:'flex',alignItems:'center',gap:5,marginBottom:6}}>
                         <span className="icon icon-sm" style={{color: manter?'var(--primary)':'var(--danger)'}}>{manter?'check_circle':'delete'}</span>
                         <span style={{fontSize:10,fontWeight:800,color: manter?'var(--primary)':'var(--danger)'}}>{manter?'PREVALECE':'SERÁ APAGADO'}</span>
                       </div>
-                      <div style={{display:'flex',alignItems:'center',gap:8}}>
-                        <div style={{width:34,height:34,borderRadius:'50%',overflow:'hidden',flexShrink:0,background:'var(--primary-light)',display:'flex',alignItems:'center',justifyContent:'center'}}>
+                      <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:8}}>
+                        <div style={{width:38,height:38,borderRadius:'50%',overflow:'hidden',flexShrink:0,background:'var(--primary-light)',display:'flex',alignItems:'center',justifyContent:'center'}}>
                           {p.photo_url?<img src={p.photo_url} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}}/>:<span style={{fontSize:12,fontWeight:700,color:'var(--primary)'}}>{getInitials(p.name)}</span>}
                         </div>
-                        <div style={{minWidth:0}}>
+                        <div style={{minWidth:0,flex:1}}>
                           <p style={{fontSize:13,fontWeight:700,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{formatName(p.name)}</p>
-                          <p style={{fontSize:11,color:'var(--muted)'}}>{p.user_id?'Tem conta':(p.invite_code?'Só código':'Sem código')}</p>
+                          <p style={{fontSize:10.5,color:'var(--muted)'}}>{p.role_type==='worker'?'🛡️ Encontreiro':'🙋 Encontrista'}</p>
                         </div>
+                      </div>
+                      <div style={{display:'flex',flexDirection:'column',gap:3,fontSize:10.5,lineHeight:1.3}}>
+                        {linha('Situação', statusLabel(p), !!p.user_id)}
+                        {!!p.user_id && linha('Email', email || '—', !!email)}
+                        {linha('Telefone', p.phone||'—', !!p.phone)}
+                        {linha('Igreja', p.church||'—', !!p.church)}
+                        {linha('Foto', p.photo_url?'sim':'não', !!p.photo_url)}
+                        {!!p.invite_code && linha('Código', p.invite_code, true)}
                       </div>
                     </button>
                   )
@@ -1720,7 +1745,8 @@ export default function Admin({ profile }: { profile?: Profile }) {
                     <p style={{fontSize:13,color:'var(--muted)',marginBottom:8}}>Toque em quem <b>prevalece</b> (nome, foto, dados e login dele ficam):</p>
                     <div style={{display:'flex',gap:8,marginBottom:14}}>{cartao(unifBase)}{cartao(unifAlvo)}</div>
                     <div style={{background:'var(--bg)',border:'1px solid var(--border)',borderRadius:10,padding:'10px 12px',marginBottom:12,fontSize:12,color:'var(--text2)',lineHeight:1.6}}>
-                      Migra pro que prevalece: <b>equipes, escalas, teatro, ministração, liberações, saúde</b> e o resto.
+                      <b>Migra</b> pro que prevalece: equipes, escalas, teatro, ministração, liberações, saúde e o resto.<br/>
+                      <b>Ficam</b> os dados pessoais (nome, foto, telefone, igreja) de <b>quem prevalece</b> — os do outro são apagados. Escolha o mais completo.
                     </div>
                     <div className="alert-box alert-error mb-3" style={{fontSize:12}}>
                       O outro cadastro será <b>apagado por completo</b> (cadastro e login). Não dá pra desfazer.
