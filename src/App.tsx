@@ -24,6 +24,8 @@ import DicaInstalariOS from './components/DicaInstalariOS'
 import AberturaGate from './components/AberturaGate'
 import BloqueioBiometrico from './components/BloqueioBiometrico'
 import { biometriaAtiva } from './lib/biometria'
+// Registro de acesso — dispara 1x por carregamento do app (flag de módulo).
+let acessoRegistrado = false
 // #perf — telas carregadas SOB DEMANDA (lazy): a inicial abre bem mais rápido, sem perder nada
 const MinhasAtividades = lazy(() => import('./pages/MinhasAtividades'))
 const Cronograma       = lazy(() => import('./pages/Cronograma'))
@@ -364,6 +366,14 @@ export default function App() {
     const t = setInterval(() => { if (!notifOpen) calc() }, 60000)
     return () => { ativo = false; clearInterval(t) }
   }, [profile, eventoAtivo?.id, notifOpen])
+
+  // Registro de acesso (pro painel de Análises "quem entrou e quando"). 1x por
+  // carregamento do app; a função no banco é idempotente (soma qtd por dia).
+  useEffect(() => {
+    if (!profile?.user_id || !eventoAtivo?.id || acessoRegistrado) return
+    acessoRegistrado = true
+    supabase.rpc('registrar_acesso', { p_event: eventoAtivo.id }).then(() => {}, () => {})
+  }, [profile?.user_id, eventoAtivo?.id])
 
   // Web Push — ao entrar: se já permitiu, assina; se ainda não decidiu, PEDE a permissão
   // (no APK isso dispara o pedido do Android já na 1ª abertura).

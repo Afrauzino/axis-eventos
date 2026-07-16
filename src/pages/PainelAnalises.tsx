@@ -92,6 +92,7 @@ export default function PainelAnalises({ profile }: { profile?: Profile }) {
   const [comentarios, setComentarios] = useState(0)
   const [anterior, setAnterior] = useState<{name:string;cadastros:number;arrecadado:number}|null>(null)
   const [loading, setLoading] = useState(true)
+  const [acessosDia, setAcessosDia] = useState<{dia:string;pessoas:number;acessos:number}[]>([])
 
   const [off, setOff] = useState<Set<string>>(() => { try { return new Set(JSON.parse(localStorage.getItem(CHAVE_OFF) || '[]')) } catch { return new Set() } })
   const [modalCards, setModalCards] = useState(false)
@@ -100,6 +101,21 @@ export default function PainelAnalises({ profile }: { profile?: Profile }) {
   useVoltarFecha(modalAcesso, () => setModalAcesso(false))
 
   useEffect(() => { if (evLoading || !podeVer) return; carregar(); const t = setInterval(carregar, 30000); return () => clearInterval(t) }, [evento?.id, evLoading, podeVer])
+
+  // Histórico real de acessos por dia (tabela acessos_log). Cada linha = 1 conta num dia.
+  useEffect(() => {
+    if (!evento?.id || !podeVer) return
+    const d = new Date(); d.setDate(d.getDate() - 30); const desde = d.toISOString().slice(0, 10)
+    supabase.from('acessos_log').select('dia,qtd').eq('event_id', evento.id).gte('dia', desde).then(({ data }) => {
+      const map: Record<string, { pessoas: number; acessos: number }> = {}
+      ;(data ?? []).forEach((r: any) => {
+        if (!map[r.dia]) map[r.dia] = { pessoas: 0, acessos: 0 }
+        map[r.dia].pessoas += 1
+        map[r.dia].acessos += (r.qtd || 1)
+      })
+      setAcessosDia(Object.entries(map).map(([dia, v]) => ({ dia, ...v })).sort((a, b) => a.dia < b.dia ? -1 : 1))
+    }, () => {})
+  }, [evento?.id, podeVer, loading])
 
   async function carregar() {
     if (!evento) { setLoading(false); return }
@@ -296,6 +312,29 @@ export default function PainelAnalises({ profile }: { profile?: Profile }) {
           <Kpi label="Sem conta" valor={m.semConta} cor="#E8821A"/>
         </div>
       )}
+      {/* Acessos por dia (histórico real — acessos_log) */}
+      {mostra('acessos') && acessosDia.length > 0 && (() => {
+        const ultimos = acessosDia.slice(-14)
+        const maxP = Math.max(1, ...ultimos.map(d => d.pessoas))
+        return (
+          <div style={{ background: 'white', borderRadius: 14, boxShadow: 'var(--shadow-sm)', padding: '14px 16px', marginBottom: 14 }}>
+            <p style={{ fontSize: 13, fontWeight: 800, marginBottom: 2 }}>📅 Acessos por dia</p>
+            <p style={{ fontSize: 11, color: 'var(--muted)', marginBottom: 12 }}>pessoas diferentes que abriram · (entre parênteses: total de aberturas)</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {ultimos.map(d => (
+                <div key={d.dia} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', width: 44, flexShrink: 0 }}>{d.dia.slice(8, 10)}/{d.dia.slice(5, 7)}</span>
+                  <div style={{ flex: 1, background: 'var(--bg)', borderRadius: 6, height: 18, overflow: 'hidden' }}>
+                    <div style={{ width: `${Math.round(d.pessoas / maxP * 100)}%`, height: '100%', background: 'var(--primary)', borderRadius: 6, minWidth: d.pessoas > 0 ? 4 : 0 }} />
+                  </div>
+                  <span style={{ fontSize: 11, fontWeight: 800, width: 66, textAlign: 'right', flexShrink: 0 }}>{d.pessoas} <span style={{ color: 'var(--muted)', fontWeight: 500 }}>({d.acessos})</span></span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )
+      })()}
+
       {/* KPIs — Pessoas */}
       {mostra('cadastros') && (
         <div style={gridKpi}>
