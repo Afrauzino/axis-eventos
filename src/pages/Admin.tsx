@@ -242,6 +242,9 @@ export default function Admin({ profile }: { profile?: Profile }) {
   const [termoEncontrista, setTermoEncontrista] = useState('')
   const [termoEncontreiro, setTermoEncontreiro] = useState('')
   const [salvandoTermos, setSalvandoTermos] = useState(false)
+  // Valor a pagar por tipo — sai na FICHA DE INSCRIÇÃO impressa (Cadastros)
+  const [valorEncontrista, setValorEncontrista] = useState('')
+  const [valorEncontreiro, setValorEncontreiro] = useState('')
   // Permissões
   const [permsPessoa, setPermsPessoa]   = useState<any[]>([])
   const [detMinistracoes, setDetMinistracoes] = useState<string[]>([])
@@ -273,13 +276,22 @@ export default function Admin({ profile }: { profile?: Profile }) {
   useEffect(() => {
     carregarConfig('termo_encontrista').then(v => setTermoEncontrista(v ?? ''))
     carregarConfig('termo_encontreiro').then(v => setTermoEncontreiro(v ?? ''))
+    carregarConfig('valor_encontrista').then(v => setValorEncontrista(v ?? ''))
+    carregarConfig('valor_encontreiro').then(v => setValorEncontreiro(v ?? ''))
   }, [])
   async function salvarTermos() {
     setSalvandoTermos(true)
-    await salvarConfig('termo_encontrista', termoEncontrista)
-    await salvarConfig('termo_encontreiro', termoEncontreiro)
+    // salvarConfig devolve false quando o banco recusa (RLS). Antes o "Termos
+    // salvos!" era incondicional — dizia salvo com nada gravado.
+    const oks = await Promise.all([
+      salvarConfig('termo_encontrista', termoEncontrista),
+      salvarConfig('termo_encontreiro', termoEncontreiro),
+      salvarConfig('valor_encontrista', valorEncontrista.trim()),
+      salvarConfig('valor_encontreiro', valorEncontreiro.trim()),
+    ])
     setSalvandoTermos(false)
-    toast.sucesso('Termos salvos!')
+    if (oks.every(Boolean)) toast.sucesso('Termos e valores salvos!')
+    else toast.erro('NÃO SALVOU: o banco recusou. Confira se você está como admin.')
   }
 
   // Inscrições abertas/fechadas (link público)
@@ -2085,8 +2097,27 @@ export default function Admin({ profile }: { profile?: Profile }) {
             <label className="form-label">Termo do <b>Encontreiro</b></label>
             <textarea className="form-textarea" value={termoEncontreiro} onChange={e=>setTermoEncontreiro(e.target.value)}
               style={{minHeight:130,fontFamily:'inherit',fontSize:14,lineHeight:1.6,marginBottom:14}} placeholder="Ex: Compromisso de servo, disponibilidade..."/>
+
+            {/* Valores — saem na FICHA DE INSCRIÇÃO impressa (Cadastros → ⚙️ → Imprimir ficha) */}
+            <p style={{fontSize:14,fontWeight:800,margin:'6px 0 4px'}}>💵 Valor a ser pago</p>
+            <p style={{fontSize:12,color:'var(--muted)',marginBottom:12,lineHeight:1.6}}>
+              Sai impresso na ficha de inscrição, junto do termo do tipo. Deixe em branco para a ficha sair sem valor.
+            </p>
+            <div className="form-grid-2">
+              <div className="form-group">
+                <label className="form-label">Valor do <b>Encontrista</b></label>
+                <input className="form-input" value={valorEncontrista} onChange={e=>setValorEncontrista(e.target.value)}
+                  placeholder="Ex: R$ 250,00"/>
+              </div>
+              <div className="form-group">
+                <label className="form-label">Valor do <b>Encontreiro</b></label>
+                <input className="form-input" value={valorEncontreiro} onChange={e=>setValorEncontreiro(e.target.value)}
+                  placeholder="Ex: R$ 120,00"/>
+              </div>
+            </div>
+
             <button className="btn btn-primary" onClick={salvarTermos} disabled={salvandoTermos}>
-              {salvandoTermos?'Salvando...':'Salvar termos'}
+              {salvandoTermos?'Salvando...':'Salvar termos e valores'}
             </button>
           </div>
         </div>

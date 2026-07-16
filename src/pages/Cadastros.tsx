@@ -9,6 +9,7 @@ import { supabase } from '../lib/supabase'
 import { useVoltarFecha } from '../hooks/useVoltarFecha'
 import PrintOverlay from '../components/PrintOverlay'
 import ImprimirCadastros from '../components/ImprimirCadastros'
+import ImprimirFicha from '../components/ImprimirFicha'
 import UploadFoto from '../components/UploadFoto'
 import PersonSelect from '../components/PersonSelect'
 import CardItem from '../components/CardItem'
@@ -50,6 +51,8 @@ export default function Cadastros({ profile }: { profile: Profile }) {
   const [copiadoId, setCopiadoId] = useState<string|null>(null)
   const [imprimir, setImprimir] = useState(false)
   const [imprimirCad, setImprimirCad] = useState(false)
+  // Ficha de inscrição: 'todos' = todas as fichas (1 por folha) | id = só a daquela pessoa
+  const [imprimirFicha, setImprimirFicha] = useState<string|null>(null)
   const [fotoAmpliada, setFotoAmpliada] = useState<string|null>(null)
 
   async function copiarCodigo(p: Pessoa) {
@@ -165,6 +168,7 @@ export default function Cadastros({ profile }: { profile: Profile }) {
   // ⚙️ do topo agora serve SÓ pra imprimir (busca e filtros ficam na tela).
   useRegistrarChrome({
     impressoes: canEdit ? [
+      { label:'Imprimir ficha de inscrição (1 por folha)', onClick:()=>setImprimirFicha('todos') },
       { label:'Imprimir lista atual (com fotos)', onClick:()=>setImprimir(true) },
       { label:'Imprimir cadastros (escolher campos)', onClick:()=>setImprimirCad(true) },
     ] : undefined,
@@ -287,6 +291,7 @@ export default function Cadastros({ profile }: { profile: Profile }) {
             extra={statusRow}
             onFoto={()=>p.photo_url && setFotoAmpliada(p.photo_url)}
             onEditar={canEdit ? ()=>{setErro('');setEditando(p);setForm({name:p.name,phone:p.phone??'',church:(p as any).church??'',role_type:p.role_type,photo_url:p.photo_url??null,conhecido_por_id:p.conhecido_por_id??null});setModal(true)} : undefined}
+            acoes={canEdit ? [{ label:'Imprimir ficha de inscrição', icon:'print', onClick:()=>setImprimirFicha(p.id) }] : undefined}
             onExcluir={canEdit ? ()=>excluirPessoa(p) : undefined}
           />
         )
@@ -395,6 +400,12 @@ export default function Cadastros({ profile }: { profile: Profile }) {
       )}
 
       {imprimirCad && <ImprimirCadastros onClose={()=>setImprimirCad(false)} />}
+      {imprimirFicha && (
+        <ImprimirFicha
+          onClose={()=>setImprimirFicha(null)}
+          pessoaId={imprimirFicha === 'todos' ? undefined : imprimirFicha}
+        />
+      )}
       {imprimir && (
         <PrintOverlay titulo="Lista com fotos" onClose={()=>setImprimir(false)}>
           {([['Encontristas','encounterer'],['Encontreiros','worker']] as const).map(([tit,rt])=>{
