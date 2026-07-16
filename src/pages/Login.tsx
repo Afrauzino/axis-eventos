@@ -187,6 +187,17 @@ export default function Login() {
     // Nome sempre gravado na norma do português (MARIA DA SILVA → Maria da Silva)
     const nome = formatName(form.name)
 
+    // TUDO que pode reprovar o cadastro tem que ser checado AQUI, ANTES do signUp.
+    // Depois do signUp a conta já existe (e o trigger trg_handle_new_user já criou o
+    // profile): qualquer return dali pra frente deixa uma CONTA ÓRFÃ — login sem ficha,
+    // que aparece pro admin como "Conta — sem cadastro no evento", sem foto e sem dado.
+    { const faltam = await validarCadastroFaltando(form); if (faltam.length) {
+        const m = 'Preencha: ' + faltam.join(', ') + '.'
+        setErro(m); toast.aviso(m); setLoading(false)
+        try { window.scrollTo({ top: 0, behavior: 'smooth' }) } catch {}
+        return
+    } }
+
     // Anti-duplicidade por NOME COMPLETO (checagem no servidor — sql/49)
     try {
       const { data: existe } = await supabase.rpc('nome_ja_existe', { p_event: eventoAtivo.id, p_nome: nome })
@@ -208,9 +219,11 @@ export default function Login() {
     if (!uid) { setErro('Verifique seu email para confirmar o cadastro, depois faça login.'); setLoading(false); return }
 
     const tel = form.phone.trim()
-    { const faltam = await validarCadastroFaltando(form); if (faltam.length) { setErro('Preencha: ' + faltam.join(', ') + '.'); setLoading(false); return } }
-    // Cria o próprio registro de pessoa (fica pendente de aprovação do admin)
-    const { data: nova, error: pErr } = await supabase.from('people').insert({
+    // Cria o próprio registro de pessoa (fica pendente de aprovação do admin).
+    // O insert é RESILIENTE a coluna que ainda não existe: se o sql/81 não tiver
+    // rodado, grava sem instagram/facebook em vez de perder a inscrição inteira e
+    // deixar a pessoa com conta órfã. Mesmo padrão do conhecido_por_id no Cadastros.
+    const base: any = {
       event_id: eventoAtivo.id, user_id: uid, name: nome, phone: tel,
       // church e role_type sao NOT NULL no banco — nunca mandar null
       contact_phone: form.contact_phone || null, church: (form.church || '').trim(),
@@ -220,11 +233,20 @@ export default function Login() {
       cidade: form.cidade || null, estado: form.estado || null, endereco: form.endereco || null,
       bairro: form.bairro || null, cep: form.cep || null, notes: form.notes || null,
       cargo: form.cargo || null,
-      instagram: form.instagram || null, facebook: form.facebook || null,
       photo_url: form.photo_url || null, team_pref: form.team_pref || null,
-    }).select('id').single()
-    if (pErr) { setErro('Erro ao salvar inscrição: ' + pErr.message + ' (o admin precisa rodar sql/41_inscricao_aberta.sql)'); setLoading(false); return }
-    const personId = nova.id
+    }
+    const inserir = (comRedes: boolean) => supabase.from('people')
+      .insert(comRedes ? { ...base, instagram: form.instagram || null, facebook: form.facebook || null } : base)
+      .select('id').single()
+
+    let ins = await inserir(true)
+    if (ins.error && /instagram|facebook/i.test(ins.error.message)) ins = await inserir(false)
+    if (ins.error || !ins.data) {
+      setErro('Erro ao salvar inscrição: ' + (ins.error?.message ?? 'o banco não gravou a ficha') +
+        ' — sua conta foi criada, mas a ficha não. Fale com a liderança e NÃO se inscreva de novo.')
+      setLoading(false); return
+    }
+    const personId = ins.data.id
 
     const r2 = await supabase.from('profiles').upsert({
       user_id: uid, name: nome, phone: tel, user_role: 'visitante', role_status: 'pending',
