@@ -238,7 +238,30 @@ export default function Admin({ profile }: { profile?: Profile }) {
   const [msgCodigo, setMsgCodigo] = useState('')
   const [msgSalva, setMsgSalva]   = useState('')
   const [salvandoMsg, setSalvandoMsg] = useState(false)
-  // Termos do evento (com aceite na inscrição) — um por tipo
+  // Termos do evento (com aceite na inscrição) — um por tipo.
+  // Texto tirado das fichas de papel que o Anderson já usava (Termos Encontro —
+  // Frente Encontreiro / Verso Encontrista). {{nome}} vira o nome na impressão.
+  const TERMO_ENCONTREIRO_PADRAO = [
+    'Está ciente que como Encontreiro(a) será um servo, apto para:',
+    '',
+    '- Honrar as lideranças;',
+    '- Lavar louça, banheiro, quartos, buscar a organização máxima;',
+    '- Se necessário limpar vômito, restos de comida, excreções;',
+    '- Ministrar e estudar as ministrações;',
+    '- Expulsar demônios e estar em consagração;',
+    '- Ter seu nome em relógios de oração;',
+    '- Estar apto a fazer o que for dirigido, ser comandado;',
+    '- Se manter em silêncio e respeitar as regras;',
+    '- Estar sempre pronto para servir, em todas as circunstâncias;',
+    '- E o que mais lhe for pedido e ordenado;',
+    '',
+    'Você será designado para algum dos setores, sendo liderado e direcionado as suas obrigações como participante do Encontro, contamos com você e toda a sua ajuda, seja ela financeira, braçal, nas consagrações, lutando contra as ciladas do inimigo.',
+  ].join('\n')
+  const TERMO_ENCONTRISTA_PADRAO = [
+    'Eu, {{nome}}, assumo o compromisso de me apresentar para o ‘ENCONTRO COM DEUS’ na data prevista, com o valor do mesmo saldado, se por desistência, e ou, por outros motivos quaisquer venha a me ausentar, fico de prévio-aviso que 50% das importâncias serão para honrar compromissos assumidos pelos organizadores do evento.',
+    '',
+    'Diante de Deus, bem como da Igreja declaro concordar com esse termo e procurar cumpri-lo.',
+  ].join('\n')
   const [termoEncontrista, setTermoEncontrista] = useState('')
   const [termoEncontreiro, setTermoEncontreiro] = useState('')
   const [salvandoTermos, setSalvandoTermos] = useState(false)
@@ -273,9 +296,18 @@ export default function Admin({ profile }: { profile?: Profile }) {
 
   useEffect(() => { carregar() }, [])
   useEffect(() => { carregarConfig('msg_codigo').then(v => { const m = v ?? MSG_CODIGO_PADRAO; setMsgCodigo(m); setMsgSalva(m) }) }, [])
+  // 1ª vez: semeia com o texto das fichas de papel que o Anderson já usa, pra
+  // valer no aceite da inscrição online E na ficha impressa. Só semeia se estiver
+  // VAZIO — nunca sobrescreve texto que ele já escreveu.
   useEffect(() => {
-    carregarConfig('termo_encontrista').then(v => setTermoEncontrista(v ?? ''))
-    carregarConfig('termo_encontreiro').then(v => setTermoEncontreiro(v ?? ''))
+    carregarConfig('termo_encontrista').then(v => {
+      if (v == null || !v.trim()) { setTermoEncontrista(TERMO_ENCONTRISTA_PADRAO); salvarConfig('termo_encontrista', TERMO_ENCONTRISTA_PADRAO) }
+      else setTermoEncontrista(v)
+    })
+    carregarConfig('termo_encontreiro').then(v => {
+      if (v == null || !v.trim()) { setTermoEncontreiro(TERMO_ENCONTREIRO_PADRAO); salvarConfig('termo_encontreiro', TERMO_ENCONTREIRO_PADRAO) }
+      else setTermoEncontreiro(v)
+    })
     carregarConfig('valor_encontrista').then(v => setValorEncontrista(v ?? ''))
     carregarConfig('valor_encontreiro').then(v => setValorEncontreiro(v ?? ''))
   }, [])
@@ -739,6 +771,12 @@ export default function Admin({ profile }: { profile?: Profile }) {
       cargo: editForm.cargo || null,
       instagram: editForm.instagram || null,
       facebook: editForm.facebook || null,
+      rede_outra: editForm.rede_outra || null,
+      estado_civil: editForm.estado_civil || null,
+      phone2: editForm.phone2 || null,
+      contact_phone_dono: editForm.contact_phone_dono || null,
+      contact_phone2: editForm.contact_phone2 || null,
+      contact_phone2_dono: editForm.contact_phone2_dono || null,
       photo_url: editForm.photo_url || null,
       role_type: editForm.role_type,
       team_pref: editForm.team_pref || null,
@@ -2088,8 +2126,9 @@ export default function Admin({ profile }: { profile?: Profile }) {
           <div style={{marginTop:28,paddingTop:20,borderTop:'2px solid var(--border)'}}>
             <p style={{fontSize:16,fontWeight:800,marginBottom:4}}>📜 Termos do evento</p>
             <p style={{fontSize:12,color:'var(--muted)',marginBottom:14,lineHeight:1.6}}>
-              Texto que a pessoa lê e precisa <b>aceitar</b> ao se inscrever. Deixe em branco para não exigir aceite.
-              Cada tipo tem o seu termo.
+              Texto que a pessoa lê e precisa <b>aceitar</b> ao se inscrever, e que sai na <b>ficha impressa</b>
+              (Cadastros → ⚙️). Cada tipo tem o seu termo. Deixe em branco para não exigir aceite.
+              Escreva <code>{'{{nome}}'}</code> onde quiser que apareça o nome da pessoa na impressão.
             </p>
             <label className="form-label">Termo do <b>Encontrista</b></label>
             <textarea className="form-textarea" value={termoEncontrista} onChange={e=>setTermoEncontrista(e.target.value)}

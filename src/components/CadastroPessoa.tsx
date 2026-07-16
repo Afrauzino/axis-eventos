@@ -34,8 +34,14 @@ export type PessoaForm = {
   endereco: string
   bairro: string
   cep: string
+  estado_civil: string
+  phone2: string               // "Tel. p/ contato: (__)___ ou (__)___"
+  contact_phone_dono: string   // "pertence à:" do 1º telefone de recado
+  contact_phone2: string
+  contact_phone2_dono: string
   instagram: string
   facebook: string
+  rede_outra: string
   role_type: string
   status: string
   team_pref: string
@@ -63,7 +69,8 @@ export const FORM_VAZIO: PessoaForm = {
   name:'', phone:'', contact_phone:'', church:'', ano_encontro:'',
   sexo:'', birth_date:'', cpf:'', rg:'',
   cidade:'', estado:'', endereco:'', bairro:'', cep:'',
-  instagram:'', facebook:'',
+  estado_civil:'', phone2:'', contact_phone_dono:'', contact_phone2:'', contact_phone2_dono:'',
+  instagram:'', facebook:'', rede_outra:'',
   role_type:'encounterer', status:'inscrito',
   team_pref:'', referencia_id:'', cargo:'', notes:'',
   responsavel_nome:'', responsavel_tel:'', photo_url:null,
@@ -354,13 +361,40 @@ export default function CadastroPessoa({
           <label className="form-label">Celular <span className="req">*</span></label>
           {inp('phone',{required:true,type:'tel',placeholder:'(11) 99999-9999'})}
         </div>
-        {mostra('contact_phone') && (
+        {mostra('phone2') && (
+        <div className="form-group">
+          <label className="form-label">2º telefone de contato {obg('phone2')}</label>
+          {inp('phone2',{type:'tel',placeholder:'(11) 99999-9999'})}
+        </div>
+        )}
+      </div>
+
+      {/* Recado / emergência: o telefone E de quem ele é (a ficha de papel pede
+          "pertence à:", porque quase sempre é o número de um familiar). */}
+      {mostra('contact_phone') && (
+      <div className="form-grid-2">
         <div className="form-group">
           <label className="form-label">Contato de emergência {obg('contact_phone')}</label>
           {inp('contact_phone',{type:'tel',placeholder:'(11) 99999-9999'})}
         </div>
-        )}
+        <div className="form-group">
+          <label className="form-label">Esse telefone pertence a</label>
+          {inp('contact_phone_dono',{placeholder:'Ex: Maria (mãe)'})}
+        </div>
       </div>
+      )}
+      {mostra('contact_phone2') && (
+      <div className="form-grid-2">
+        <div className="form-group">
+          <label className="form-label">2º contato de emergência {obg('contact_phone2')}</label>
+          {inp('contact_phone2',{type:'tel',placeholder:'(11) 99999-9999'})}
+        </div>
+        <div className="form-group">
+          <label className="form-label">Esse telefone pertence a</label>
+          {inp('contact_phone2_dono',{placeholder:'Ex: João (irmão)'})}
+        </div>
+      </div>
+      )}
 
       <div className="form-grid-2">
         {mostra('sexo') && (
@@ -378,6 +412,21 @@ export default function CadastroPessoa({
         </div>
         )}
       </div>
+
+      {mostra('estado_civil') && (
+      <div className="form-group">
+        <label className="form-label">Estado civil {obg('estado_civil')}</label>
+        <Seletor titulo="Estado civil" placeholder="Selecionar" disabled={modoSoLeitura}
+          value={form.estado_civil} onChange={v=>s('estado_civil',v)}
+          opcoes={[
+            {value:'solteiro',   label:'Solteiro(a)'},
+            {value:'casado',     label:'Casado(a)'},
+            {value:'divorciado', label:'Divorciado(a)'},
+            {value:'viuvo',      label:'Viúvo(a)'},
+            {value:'uniao',      label:'União estável'},
+          ]}/>
+      </div>
+      )}
 
       {form.birth_date && isMenor(form.birth_date) && (
         <div style={{background:'#FFF3E0',borderRadius:10,padding:'12px 14px',marginBottom:12,border:'1px solid #FBD38D'}}>
@@ -432,6 +481,12 @@ export default function CadastroPessoa({
           {inp('facebook',{placeholder:'usuario ou link', autoCapitalize:'none', autoCorrect:'off'})}
         </div>
         )}
+      </div>
+      )}
+      {mostra('rede_outra') && (
+      <div className="form-group">
+        <label className="form-label">Outra rede social {obg('rede_outra')}</label>
+        {inp('rede_outra',{placeholder:'TikTok, X, YouTube...', autoCapitalize:'none', autoCorrect:'off'})}
       </div>
       )}
 

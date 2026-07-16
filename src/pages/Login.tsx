@@ -235,12 +235,22 @@ export default function Login() {
       cargo: form.cargo || null,
       photo_url: form.photo_url || null, team_pref: form.team_pref || null,
     }
-    const inserir = (comRedes: boolean) => supabase.from('people')
-      .insert(comRedes ? { ...base, instagram: form.instagram || null, facebook: form.facebook || null } : base)
+    // Campos que dependem de SQL recente (81 = redes, 83 = ficha impressa). Se a
+    // coluna não existir ainda, grava sem eles em vez de perder a inscrição.
+    const extras = {
+      instagram: form.instagram || null, facebook: form.facebook || null,
+      rede_outra: form.rede_outra || null, estado_civil: form.estado_civil || null,
+      phone2: form.phone2 || null,
+      contact_phone_dono: form.contact_phone_dono || null,
+      contact_phone2: form.contact_phone2 || null,
+      contact_phone2_dono: form.contact_phone2_dono || null,
+    }
+    const inserir = (comExtras: boolean) => supabase.from('people')
+      .insert(comExtras ? { ...base, ...extras } : base)
       .select('id').single()
 
     let ins = await inserir(true)
-    if (ins.error && /instagram|facebook/i.test(ins.error.message)) ins = await inserir(false)
+    if (ins.error && /instagram|facebook|rede_outra|estado_civil|phone2|contact_phone/i.test(ins.error.message)) ins = await inserir(false)
     if (ins.error || !ins.data) {
       setErro('Erro ao salvar inscrição: ' + (ins.error?.message ?? 'o banco não gravou a ficha') +
         ' — sua conta foi criada, mas a ficha não. Fale com a liderança e NÃO se inscreva de novo.')
