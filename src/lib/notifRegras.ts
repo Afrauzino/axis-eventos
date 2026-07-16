@@ -38,6 +38,7 @@ export const AREAS: { id: string; nome: string; emoji: string }[] = [
 export const REGRAS: Regra[] = [
   // A. Inscrição e conta
   { key:'insc_nova',       area:'conta', label:'Nova inscrição aguardando aprovação', desc:'Avisa os admins quando alguém se inscreve.', padrao:true },
+  { key:'senha_pedido',    area:'conta', label:'Pedido de recuperação de senha', desc:'Avisa os admins quando alguém não consegue entrar e pede senha nova.', padrao:true },
   { key:'insc_aprovada',   area:'conta', label:'Inscrição aprovada', desc:'Avisa a pessoa que foi aprovada.', padrao:true },
   { key:'insc_recusada',   area:'conta', label:'Inscrição recusada/bloqueada', desc:'Avisa a pessoa que foi recusada ou bloqueada.', padrao:false },
   { key:'acesso_mudou',    area:'conta', label:'Nível de acesso mudou', desc:'Avisa a pessoa quando ganha ou perde permissões.', padrao:true },

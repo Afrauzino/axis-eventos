@@ -50,6 +50,16 @@ export async function montarNotificacoes(profile: Profile, eventoId: string | nu
       const ids = (pend ?? []).map((p: any) => p.user_id).filter(Boolean).sort()
       if (ids.length > 0) out.push({ id: 'aprov-' + ids.join('_'), emoji: '🙋', titulo: `${ids.length} pessoa(s) aguardando aprovação`, sub: 'Toque para revisar', rota: '/minhas-atividades' })
     } catch {}
+    // Quem pediu senha nova e ainda não foi atendido (some sozinho quando o
+    // admin gera a senha, porque a Edge Function marca como 'atendido').
+    try {
+      const { data: sp } = await supabase.from('senha_solicitacoes')
+        .select('id,email,created_at').eq('status', 'pendente')
+        .order('created_at', { ascending: false }).limit(10)
+      for (const s of sp ?? []) {
+        out.push({ id: 'senha-' + s.id, emoji: '🔑', titulo: `${s.email} pediu senha nova`, sub: 'Toque para gerar a senha', quando: s.created_at, rota: '/admin?aba=usuarios' })
+      }
+    } catch {}
   }
 
   if (!eventoId || !userId) return out

@@ -384,11 +384,44 @@ export default function Login() {
   }
 
   // RECUPERAR SENHA
+  // Dois caminhos ao mesmo tempo, porque muita gente da equipe não usa email:
+  //  1) o link automático do Supabase (resolve sozinho quem tem email na mão);
+  //  2) um PEDIDO registrado que cai no sino/push do admin — aí o Anderson abre
+  //     o cadastro da pessoa e gera a senha na mão (Administração → a pessoa).
+  // O pedido é gravado mesmo se o email falhar: é o que garante que alguém veja.
   async function recuperarSenha(e: React.FormEvent) {
     e.preventDefault(); setErro(''); setLoading(true)
-    const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin })
-    if (error) setErro('Erro ao enviar email.')
-    else setOk('Email enviado. Verifique sua caixa de entrada.')
+    const mail = email.trim().toLowerCase()
+    if (!mail) { setErro('Digite seu email.'); setLoading(false); return }
+
+    // 1) Registra o pedido pro admin ver (a pessoa está DESLOGADA — o insert é
+    //    liberado pra anon no sql/81; ela só escreve, nunca lê).
+    let pedidoOk = false
+    try {
+      const { error: sErr } = await supabase.from('senha_solicitacoes').insert({ email: mail })
+      pedidoOk = !sErr
+      if (sErr) console.warn('pedido de senha não registrado:', sErr.message)
+    } catch (err) { console.warn('pedido de senha não registrado:', err) }
+
+    // 2) Avisa os admins (sino + push com o app fechado)
+    if (pedidoOk) {
+      notificarRegra('senha_pedido', {
+        notify_admins: true,
+        title: 'Pedido de senha',
+        body: `${mail} não está conseguindo entrar — toque para gerar a senha`,
+        url: '/admin',
+        tag: 'senha',
+      })
+    }
+
+    // 3) Link automático por email
+    const { error } = await supabase.auth.resetPasswordForEmail(mail, { redirectTo: window.location.origin })
+
+    if (!error) setOk(pedidoOk
+      ? 'Email enviado — veja sua caixa de entrada (e o spam). Também avisamos a liderança: se o email não chegar, ela gera uma senha nova pra você.'
+      : 'Email enviado. Verifique sua caixa de entrada.')
+    else if (pedidoOk) setOk('Avisamos a liderança que você não está conseguindo entrar. Ela vai te mandar uma senha nova.')
+    else setErro('Não conseguimos enviar o email nem avisar a liderança. Chame alguém da equipe.')
     setLoading(false)
   }
 

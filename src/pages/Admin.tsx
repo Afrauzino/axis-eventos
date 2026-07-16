@@ -8,6 +8,7 @@ import { invalidarEventoAtivo } from '../hooks/useEvento'
 import { registrarLog } from '../lib/audit'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { toast } from '../components/Toast'
+import { confirmar } from '../components/Confirmar'
 import Seletor from '../components/Seletor'
 import DataHora from '../components/DataHora'
 import CardItem from '../components/CardItem'
@@ -168,7 +169,7 @@ export default function Admin({ profile }: { profile?: Profile }) {
   ]
   const [usuarios, setUsuarios]     = useState<Usuario[]>([])
   const [pessoas, setPessoas]       = useState<{
-    id:string; name:string; photo_url:string|null; church:string;
+    id:string; name:string; photo_url:string|null; church:string; phone:string|null;
     role_type:string; invite_code:string|null; user_id:string|null;
     // from profiles join:
     user_role:string|null; role_status:string|null; profile_name:string|null;
@@ -176,6 +177,12 @@ export default function Admin({ profile }: { profile?: Profile }) {
   const [gerandoCodigos, setGerandoCodigos] = useState(false)
   const [pessoaDetalhe, setPessoaDetalhe] = useState<typeof pessoas[0]|null>(null)
   useVoltarFecha(!!pessoaDetalhe, () => setPessoaDetalhe(null))
+  // Email de cada conta. Não mora em `profiles` — só em auth.users, que o app não
+  // acessa. Vem da RPC admin_emails() (SECURITY DEFINER), que devolve VAZIO pra
+  // quem não é admin. Precisa do sql/81.
+  const [emails, setEmails] = useState<Map<string,string>>(new Map())
+  const [novaSenha, setNovaSenha] = useState<{ user_id:string; senha:string } | null>(null)
+  const [gerandoSenha, setGerandoSenha] = useState(false)
   // Reprovar cadastro (mensagem + modelos + WhatsApp)
   const [reprovar, setReprovar] = useState<typeof pessoas[0]|null>(null)
   const [reprovarHtml, setReprovarHtml] = useState('')
@@ -432,6 +439,12 @@ export default function Admin({ profile }: { profile?: Profile }) {
     setUsuarios(u.data??[])
     setEventos(e.data??[])
     setTipos(ti.data??[])
+    // Emails das contas (só admin recebe algo). Se o sql/81 ainda não rodou, a RPC
+    // não existe: cai no catch e a tela segue normal, só sem email.
+    try {
+      const { data: em } = await supabase.rpc('admin_emails')
+      if (Array.isArray(em)) setEmails(new Map(em.map((x:any)=>[x.user_id, x.email])))
+    } catch {}
     // People + profiles join for active event
     const activeId = (e.data??[]).find((ev:any)=>ev.status==='active')?.id
     
@@ -458,7 +471,7 @@ export default function Admin({ profile }: { profile?: Profile }) {
         const ehAdmin = ['admin','coordenador','financeiro'].includes(pr.user_role)
         return {
           id: pr.user_id, // usa user_id como id de fallback (conta sem people)
-          name: pr.name || '(conta sem nome)', photo_url: null,
+          name: pr.name || '(conta sem nome)', photo_url: null, phone: null,
           church: ehAdmin ? 'Administrador do sistema' : 'Conta — sem cadastro no evento',
           role_type: ehAdmin ? 'admin' : 'conta', invite_code: null, user_id: pr.user_id,
           user_role: pr.user_role, role_status: pr.role_status, profile_name: pr.name
@@ -469,7 +482,7 @@ export default function Admin({ profile }: { profile?: Profile }) {
     } else {
       // No active event - just show admin profiles
       const admins = (allProfs??[]).map(pr => ({
-        id: pr.user_id, name: pr.name, photo_url: null, church: '',
+        id: pr.user_id, name: pr.name, photo_url: null, church: '', phone: null,
         role_type: 'admin', invite_code: null, user_id: pr.user_id,
         user_role: pr.user_role, role_status: pr.role_status, profile_name: pr.name
       }))
@@ -1287,7 +1300,7 @@ export default function Admin({ profile }: { profile?: Profile }) {
                   : <span style={{fontWeight:700,fontSize:20,color:pessoaDetalhe.role_type==='worker'?'var(--primary)':'#6B46C1'}}>{pessoaDetalhe.name.slice(0,2).toUpperCase()}</span>
                 }
               </div>
-              <div style={{flex:1}}>
+              <div style={{flex:1,minWidth:0}}>
                 <p style={{fontWeight:800,fontSize:17}}>{pessoaDetalhe.name}</p>
                 <p style={{fontSize:13,color:'var(--muted)'}}>{pessoaDetalhe.church||'Igreja não informada'}</p>
                 <span style={{fontSize:11,fontWeight:700,padding:'2px 8px',borderRadius:99,background:pessoaDetalhe.role_type==='worker'?'var(--primary-light)':'#F3F0FF',color:pessoaDetalhe.role_type==='worker'?'var(--primary)':'#6B46C1'}}>
@@ -1295,6 +1308,77 @@ export default function Admin({ profile }: { profile?: Profile }) {
                 </span>
               </div>
             </div>
+
+            {/* EMAIL DA CONTA — é por ele que a pessoa entra e recupera a senha */}
+            {pessoaDetalhe.user_id && (
+              <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:16,padding:'10px 12px',background:'var(--bg)',borderRadius:10,border:'1px solid var(--border)'}}>
+                <span className="icon" style={{fontSize:18,color:'var(--muted)',flexShrink:0}}>mail</span>
+                <div style={{flex:1,minWidth:0}}>
+                  <p style={{fontSize:10.5,fontWeight:700,color:'var(--muted)',letterSpacing:'.04em'}}>EMAIL DE ACESSO</p>
+                  <p style={{fontSize:13.5,fontWeight:600,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+                    {emails.get(pessoaDetalhe.user_id) ?? '— (rode o sql/81)'}
+                  </p>
+                </div>
+                {emails.get(pessoaDetalhe.user_id) && (
+                  <button type="button" title="Copiar email"
+                    onClick={()=>{ navigator.clipboard?.writeText(emails.get(pessoaDetalhe.user_id!)!); toast.sucesso('Email copiado') }}
+                    style={{background:'none',border:'none',cursor:'pointer',color:'var(--muted)',padding:4,display:'flex'}}>
+                    <span className="icon" style={{fontSize:17}}>content_copy</span>
+                  </button>
+                )}
+              </div>
+            )}
+
+            {/* GERAR NOVA SENHA — a senha é criada no servidor (Edge Function
+                admin-senha) e aparece UMA vez aqui pro Anderson repassar. */}
+            {pessoaDetalhe.user_id && (
+              novaSenha && novaSenha.user_id === pessoaDetalhe.user_id ? (
+                <div style={{marginBottom:16,padding:'12px',borderRadius:10,background:'var(--success-bg)',border:'1px solid var(--success)'}}>
+                  <p style={{fontSize:10.5,fontWeight:700,color:'var(--success)',letterSpacing:'.04em',marginBottom:4}}>NOVA SENHA — ANOTE AGORA</p>
+                  <p style={{fontFamily:'monospace',fontSize:22,fontWeight:800,letterSpacing:'.12em',marginBottom:8}}>{novaSenha.senha}</p>
+                  <p style={{fontSize:11.5,color:'var(--text2)',marginBottom:10,lineHeight:1.4}}>
+                    Ela só aparece esta vez. Mande pra pessoa e peça pra trocar depois de entrar.
+                  </p>
+                  <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+                    <button type="button" className="btn btn-sm"
+                      onClick={()=>{ navigator.clipboard?.writeText(novaSenha.senha); toast.sucesso('Senha copiada') }}>Copiar senha</button>
+                    {pessoaDetalhe.phone && (
+                      <a className="btn btn-sm btn-primary"
+                        href={`https://wa.me/55${(pessoaDetalhe.phone||'').replace(/\D/g,'')}?text=${encodeURIComponent(`Olá ${pessoaDetalhe.name.split(' ')[0]}! Sua nova senha do AXIS é: ${novaSenha.senha}\nEntre com o email ${emails.get(pessoaDetalhe.user_id!) ?? ''} e troque a senha depois de entrar.`)}`}
+                        target="_blank" rel="noreferrer">Enviar no WhatsApp</a>
+                    )}
+                    <button type="button" className="btn btn-sm btn-ghost" onClick={()=>setNovaSenha(null)}>Fechar</button>
+                  </div>
+                </div>
+              ) : (
+                <button type="button" className="btn btn-ghost btn-full btn-sm" style={{marginBottom:16}}
+                  disabled={gerandoSenha}
+                  onClick={async ()=>{
+                    const ok = await confirmar({
+                      titulo:'Gerar nova senha?',
+                      mensagem:`A senha atual de ${pessoaDetalhe.name} deixa de funcionar na hora. Você recebe a nova senha aqui pra repassar.`,
+                      confirmar:'Gerar nova senha',
+                      icone:'key',
+                    })
+                    if (!ok) return
+                    setGerandoSenha(true)
+                    try {
+                      const { data, error } = await supabase.functions.invoke('admin-senha', {
+                        body: { target_user_id: pessoaDetalhe.user_id },
+                      })
+                      if (error || !data?.senha) {
+                        toast.erro('Não gerou: ' + (data?.error || error?.message || 'a função admin-senha ainda não foi publicada'))
+                      } else {
+                        setNovaSenha({ user_id: pessoaDetalhe.user_id!, senha: data.senha })
+                      }
+                    } catch (e:any) { toast.erro('Não gerou: ' + (e?.message ?? e)) }
+                    setGerandoSenha(false)
+                  }}>
+                  <span className="icon" style={{fontSize:17}}>key</span>
+                  {gerandoSenha ? 'Gerando...' : 'Gerar nova senha'}
+                </button>
+              )
+            )}
 
             {/* Status da conta */}
             {/* Abas do detalhe */}
