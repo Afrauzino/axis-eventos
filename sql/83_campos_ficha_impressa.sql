@@ -24,6 +24,63 @@ alter table public.people add column if not exists contact_phone2      text;
 alter table public.people add column if not exists contact_phone2_dono text;
 alter table public.people add column if not exists rede_outra          text;
 
+-- ---------------------------------------------------------------------------
+-- A RPC do "completar meu cadastro" (tela Pending) também precisa conhecer os
+-- campos novos — senão a pessoa preenche e o dado é DESCARTADO em silêncio,
+-- que é exatamente o tipo de perda que já mordeu este app antes.
+-- Mantém tudo que a versão do sql/68 fazia; só acrescenta os campos.
+-- ---------------------------------------------------------------------------
+create or replace function public.atualizar_meu_cadastro(p jsonb)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  uid uuid := auth.uid();
+begin
+  if uid is null then
+    raise exception 'Sem usuário logado';
+  end if;
+
+  update public.people set
+    name            = coalesce(nullif(p->>'name',''), name),
+    phone           = coalesce(p->>'phone', phone),
+    contact_phone   = nullif(p->>'contact_phone',''),
+    church          = coalesce(p->>'church', church),
+    ano_encontro    = nullif(p->>'ano_encontro','')::int,
+    sexo            = nullif(p->>'sexo',''),
+    birth_date      = nullif(p->>'birth_date','')::date,
+    cpf             = nullif(p->>'cpf',''),
+    rg              = nullif(p->>'rg',''),
+    cidade          = nullif(p->>'cidade',''),
+    estado          = nullif(p->>'estado',''),
+    endereco        = nullif(p->>'endereco',''),
+    bairro          = nullif(p->>'bairro',''),
+    cep             = nullif(p->>'cep',''),
+    cargo           = nullif(p->>'cargo',''),
+    notes           = nullif(p->>'notes',''),
+    photo_url       = coalesce(p->>'photo_url', photo_url),
+    -- novos (sql/81 e este arquivo)
+    instagram           = nullif(p->>'instagram',''),
+    facebook            = nullif(p->>'facebook',''),
+    rede_outra          = nullif(p->>'rede_outra',''),
+    estado_civil        = nullif(p->>'estado_civil',''),
+    phone2              = nullif(p->>'phone2',''),
+    contact_phone_dono  = nullif(p->>'contact_phone_dono',''),
+    contact_phone2      = nullif(p->>'contact_phone2',''),
+    contact_phone2_dono = nullif(p->>'contact_phone2_dono','')
+  where user_id = uid;
+
+  update public.profiles set
+    name       = coalesce(nullif(p->>'name',''), name),
+    phone      = coalesce(p->>'phone', phone),
+    church     = coalesce(p->>'church', church),
+    avatar_url = coalesce(p->>'photo_url', avatar_url)
+  where user_id = uid;
+end;
+$$;
+
 notify pgrst, 'reload schema';
 
 -- ============================================================================

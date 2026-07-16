@@ -310,6 +310,15 @@ export default function Login() {
     // Nome sempre gravado na norma do português (MARIA DA SILVA → Maria da Silva)
     const nome = formatName(form.name)
 
+    // Valida ANTES do signUp: depois dele a conta já existe (e o trigger já criou o
+    // profile), então qualquer return dali pra frente deixa CONTA ÓRFÃ.
+    { const faltam = await validarCadastroFaltando(form); if (faltam.length) {
+        const m = 'Preencha: ' + faltam.join(', ') + '.'
+        setErro(m); toast.aviso(m); setLoading(false)
+        try { window.scrollTo({ top: 0, behavior: 'smooth' }) } catch {}
+        return
+    } }
+
     // Anti-duplicidade por NOME COMPLETO (ignora o próprio pré-cadastro) — sql/49
     try {
       const { data: existe } = await supabase.rpc('nome_ja_existe', { p_event: pessoa.event_id, p_nome: nome, p_exceto: pessoa.id })
@@ -345,9 +354,8 @@ export default function Login() {
     // Limpar placeholder "a cadastrar" se ainda estiver no telefone
     const telefoneLimpo = (form.phone && form.phone.toLowerCase()!=='a cadastrar') ? form.phone.trim() : form.phone.trim()
 
-    { const faltam = await validarCadastroFaltando(form); if (faltam.length) { setErro('Preencha: ' + faltam.join(', ') + '.'); setLoading(false); return } }
     // ETAPA 1 — Atualizar people
-    const r1 = await supabase.from('people').update({
+    const baseUpd: any = {
       user_id: uid,
       invite_code: null,
       name: nome,
@@ -369,8 +377,29 @@ export default function Login() {
       photo_url: form.photo_url || null,
       role_type: form.role_type,
       team_pref: form.team_pref || null,
-    }).eq('id', pessoa.id)
-    if (r1.error) { setErro('Erro ao salvar dados pessoais: ' + r1.error.message); setLoading(false); return }
+    }
+    // Campos das colunas novas (sql/81 e 83). O formulário COLETA todos eles —
+    // se não forem gravados aqui, a pessoa preenche e o dado some calado.
+    const extrasUpd = {
+      instagram: form.instagram || null, facebook: form.facebook || null,
+      rede_outra: form.rede_outra || null, estado_civil: form.estado_civil || null,
+      phone2: form.phone2 || null,
+      contact_phone_dono: form.contact_phone_dono || null,
+      contact_phone2: form.contact_phone2 || null,
+      contact_phone2_dono: form.contact_phone2_dono || null,
+    }
+    // .select() é ESSENCIAL: sem ele o update responde "ok" mesmo afetando 0 linhas
+    // (RLS/id errado) e a tela diz "cadastro concluído" sem ter gravado nada.
+    const atualizar = (comExtras: boolean) => supabase.from('people')
+      .update(comExtras ? { ...baseUpd, ...extrasUpd } : baseUpd)
+      .eq('id', pessoa.id).select('id').single()
+
+    let r1 = await atualizar(true)
+    if (r1.error && /instagram|facebook|rede_outra|estado_civil|phone2|contact_phone/i.test(r1.error.message)) r1 = await atualizar(false)
+    if (r1.error || !r1.data) {
+      setErro('Erro ao salvar dados pessoais: ' + (r1.error?.message ?? 'o banco não gravou a ficha (0 linhas). Fale com a liderança.'))
+      setLoading(false); return
+    }
 
     // ETAPA 2 — Profile
     const r2 = await supabase.from('profiles').upsert({

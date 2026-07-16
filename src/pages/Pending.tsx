@@ -56,6 +56,12 @@ export default function Pending({ profile }: { profile: Profile | null }) {
       cidade: cadForm.cidade || '', estado: cadForm.estado || '', endereco: cadForm.endereco || '', bairro: cadForm.bairro || '', cep: cadForm.cep || '',
       cargo: cadForm.cargo || '', responsavel_nome: cadForm.responsavel_nome || '', responsavel_tel: cadForm.responsavel_tel || '',
       notes: cadForm.notes || '', photo_url: cadForm.photo_url || null,
+      // O formulário coleta estes; sem mandar aqui, a pessoa preenche e some (sql/83
+      // ensina a RPC a gravá-los).
+      instagram: cadForm.instagram || '', facebook: cadForm.facebook || '', rede_outra: cadForm.rede_outra || '',
+      estado_civil: cadForm.estado_civil || '', phone2: cadForm.phone2 || '',
+      contact_phone_dono: cadForm.contact_phone_dono || '',
+      contact_phone2: cadForm.contact_phone2 || '', contact_phone2_dono: cadForm.contact_phone2_dono || '',
     }
     const { error } = await supabase.rpc('atualizar_meu_cadastro', { p: payload })
     if (error) { setSalvando(false); toast.falha('Não foi possível salvar. Rode o sql/59/68.', error); return }
