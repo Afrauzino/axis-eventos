@@ -14,11 +14,6 @@ const VARIANTES: BVVariante[] = ['visitante','encontrista','encontreiro']
 const waLink = (num:string) => `https://wa.me/55${(num||'').replace(/\D/g,'')}`
 const temMapa = (d:BVData) => (d.lat && d.lng) || d.endereco
 
-function mapaSrc(d:BVData) {
-  const q = (d.lat && d.lng) ? `${d.lat},${d.lng}` : d.endereco
-  return `https://maps.google.com/maps?q=${encodeURIComponent(q)}&z=15&output=embed`
-}
-
 const CHAVE_ATIVO = 'boasvindas_ativo'
 
 export default function BoasVindas({ variante, admin }: { variante:BVVariante; admin:boolean }) {
@@ -173,17 +168,27 @@ export default function BoasVindas({ variante, admin }: { variante:BVVariante; a
         </div>
       )}
 
-      {/* 3) Mapa */}
-      {temMapa(data) && (
-        <div style={{marginTop:10,borderRadius:12,overflow:'hidden',border:'1px solid var(--border)'}}>
-          <iframe title="mapa" src={mapaSrc(data)} style={{width:'100%',height:200,border:'none'}} loading="lazy"/>
-        </div>
-      )}
-      {(data.lat && data.lng) && (
-        <a href={`https://www.google.com/maps?q=${data.lat},${data.lng}`} target="_blank" rel="noreferrer" className="btn btn-outline btn-sm btn-full" style={{marginTop:8}}>
-          <span className="icon icon-sm">directions</span> Abrir rota no mapa
-        </a>
-      )}
+      {/* 3) Rota: botões pra abrir no Waze ou no Google Maps (sem mapa embutido) */}
+      {temMapa(data) && (() => {
+        const temGps = !!(data.lat && data.lng)
+        const q = temGps ? `${data.lat},${data.lng}` : data.endereco
+        const maps = `https://www.google.com/maps?q=${encodeURIComponent(q)}`
+        const waze = temGps
+          ? `https://waze.com/ul?ll=${encodeURIComponent(q)}&navigate=yes`
+          : `https://waze.com/ul?q=${encodeURIComponent(q)}&navigate=yes`
+        return (
+          <div style={{display:'flex',gap:8,marginTop:12}}>
+            <a href={waze} target="_blank" rel="noreferrer"
+              style={{flex:1,display:'flex',alignItems:'center',justifyContent:'center',gap:8,padding:'12px',borderRadius:10,textDecoration:'none',background:'#33CCFF',color:'#053b52',fontWeight:800,fontSize:14}}>
+              <span className="icon icon-sm">navigation</span> Abrir no Waze
+            </a>
+            <a href={maps} target="_blank" rel="noreferrer"
+              style={{flex:1,display:'flex',alignItems:'center',justifyContent:'center',gap:8,padding:'12px',borderRadius:10,textDecoration:'none',background:'#1A73E8',color:'white',fontWeight:800,fontSize:14}}>
+              <span className="icon icon-sm">map</span> Abrir no Maps
+            </a>
+          </div>
+        )
+      })()}
 
       {/* 4) Contatos */}
       {data.contatos.length>0 && (
