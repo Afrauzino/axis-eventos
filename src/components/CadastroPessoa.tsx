@@ -34,6 +34,8 @@ export type PessoaForm = {
   endereco: string
   bairro: string
   cep: string
+  instagram: string
+  facebook: string
   role_type: string
   status: string
   team_pref: string
@@ -61,6 +63,7 @@ export const FORM_VAZIO: PessoaForm = {
   name:'', phone:'', contact_phone:'', church:'', ano_encontro:'',
   sexo:'', birth_date:'', cpf:'', rg:'',
   cidade:'', estado:'', endereco:'', bairro:'', cep:'',
+  instagram:'', facebook:'',
   role_type:'encounterer', status:'inscrito',
   team_pref:'', referencia_id:'', cargo:'', notes:'',
   responsavel_nome:'', responsavel_tel:'', photo_url:null,
@@ -404,6 +407,29 @@ export default function CadastroPessoa({
         <div className="form-group">
           <label className="form-label">RG {obg('rg')}</label>
           {inp('rg')}
+        </div>
+        )}
+      </div>
+      )}
+
+      {/* REDES SOCIAIS — como todo campo da ficha, dá pra ocultar/obrigar em
+          Administração → Ficha de cadastro. Guardamos o @ / o nome do perfil,
+          não a URL inteira (mais fácil de digitar no celular). */}
+      {(mostra('instagram') || mostra('facebook')) && (
+        <p className="section-label mb-2" style={{marginTop:16}}>Redes sociais</p>
+      )}
+      {(mostra('instagram') || mostra('facebook')) && (
+      <div className="form-grid-2">
+        {mostra('instagram') && (
+        <div className="form-group">
+          <label className="form-label">Instagram {obg('instagram')}</label>
+          {inp('instagram',{placeholder:'@usuario', autoCapitalize:'none', autoCorrect:'off'})}
+        </div>
+        )}
+        {mostra('facebook') && (
+        <div className="form-group">
+          <label className="form-label">Facebook {obg('facebook')}</label>
+          {inp('facebook',{placeholder:'usuario ou link', autoCapitalize:'none', autoCorrect:'off'})}
         </div>
         )}
       </div>

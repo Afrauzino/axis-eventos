@@ -310,6 +310,7 @@ export default function Encontristas({ profile }: { profile: Profile }) {
         </div>
       ) : filtrados.map(p => {
         const ref = getReferencia(p.referencia_id)
+        const ad = adotadas.get(p.id)   // undefined = livre; {mine} = já tem responsável
         return (
           <CardItem
             key={p.id}
@@ -321,6 +322,15 @@ export default function Encontristas({ profile }: { profile: Profile }) {
             subtitulo={p.church + (ref ? ` · Ref: ${ref.name.split(' ')[0]}` : '')}
             onVer={() => setSelecionado(p)}
             onFoto={() => p.photo_url && setFotoAmpliada(p.photo_url)}
+            // Coração = já adotado (bate o olho e sabe). Cheio = fui EU quem adotou.
+            // Só o status vaza aqui, nunca o nome de quem adotou (regra do sql/78).
+            direita={ad
+              ? <span
+                  title={ad.mine ? 'Você adotou esta pessoa' : 'Já adotado'}
+                  aria-label={ad.mine ? 'Você adotou esta pessoa' : 'Já adotado'}
+                  style={{ fontSize: 19, lineHeight: 1 }}
+                >{ad.mine ? '💖' : '❤️'}</span>
+              : undefined}
           />
         )
       })}

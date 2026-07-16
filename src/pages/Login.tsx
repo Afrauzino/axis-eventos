@@ -220,6 +220,7 @@ export default function Login() {
       cidade: form.cidade || null, estado: form.estado || null, endereco: form.endereco || null,
       bairro: form.bairro || null, cep: form.cep || null, notes: form.notes || null,
       cargo: form.cargo || null,
+      instagram: form.instagram || null, facebook: form.facebook || null,
       photo_url: form.photo_url || null, team_pref: form.team_pref || null,
     }).select('id').single()
     if (pErr) { setErro('Erro ao salvar inscrição: ' + pErr.message + ' (o admin precisa rodar sql/41_inscricao_aberta.sql)'); setLoading(false); return }

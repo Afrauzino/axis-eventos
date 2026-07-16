@@ -712,6 +712,8 @@ export default function Admin({ profile }: { profile?: Profile }) {
       cep: editForm.cep || null,
       notes: editForm.notes || null,
       cargo: editForm.cargo || null,
+      instagram: editForm.instagram || null,
+      facebook: editForm.facebook || null,
       photo_url: editForm.photo_url || null,
       role_type: editForm.role_type,
       team_pref: editForm.team_pref || null,

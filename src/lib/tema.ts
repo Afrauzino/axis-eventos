@@ -70,18 +70,19 @@ export async function carregarCorSalva() {
   }
 }
 
-// Salva a nova cor no banco e aplica
+// Salva a nova cor no banco e aplica.
+// ATENÇÃO: o supabase-js NÃO lança erro quando o banco recusa (RLS etc.) — ele
+// devolve { error }. Antes isto retornava true sempre e a cor voltava atrás
+// sozinha no boot seguinte, sem ninguém ver erro. Só grava cache/localStorage
+// DEPOIS que o banco aceitou, senão o aparelho fica com uma cor que não existe.
 export async function salvarCor(hex: string) {
+  const { error } = await supabase.from('configuracoes')
+    .upsert({ chave: 'cor_primaria', valor: hex }, { onConflict: 'chave' })
+  if (error) return false
   cacheCor = hex
   try { localStorage.setItem('axis_cor', hex) } catch {}
   aplicarCor(hex)
-  try {
-    await supabase.from('configuracoes')
-      .upsert({ chave: 'cor_primaria', valor: hex }, { onConflict: 'chave' })
-    return true
-  } catch {
-    return false
-  }
+  return true
 }
 
 // ===== Config genérica (chave/valor em `configuracoes`) — logo, etc. =====
@@ -92,10 +93,12 @@ export async function carregarConfig(chave: string): Promise<string | null> {
   } catch { return null }
 }
 export async function salvarConfig(chave: string, valor: string): Promise<boolean> {
-  try {
-    await supabase.from('configuracoes').upsert({ chave, valor }, { onConflict: 'chave' })
-    return true
-  } catch { return false }
+  // Mesmo caso do salvarCor: o supabase-js devolve { error }, não lança. Sem
+  // olhar o error isto dizia "salvo" com o banco recusando — e é este salvarConfig
+  // que grava a Ficha de cadastro (quais campos aparecem/são obrigatórios).
+  const { error } = await supabase.from('configuracoes')
+    .upsert({ chave, valor }, { onConflict: 'chave' })
+  return !error
 }
 
 // Define o ícone (favicon) do app dinamicamente para a logo

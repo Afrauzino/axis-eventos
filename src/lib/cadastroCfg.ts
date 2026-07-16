@@ -16,6 +16,8 @@ export const CAMPOS: { key: string; label: string }[] = [
   { key: 'rg',            label: 'RG' },
   { key: 'church',        label: 'Igreja' },
   { key: 'ano_encontro',  label: 'Ano que passou pelo encontro' },
+  { key: 'instagram',     label: 'Instagram' },
+  { key: 'facebook',      label: 'Facebook' },
   { key: 'endereco',      label: 'Endereço' },
   { key: 'bairro',        label: 'Bairro' },
   { key: 'cep',           label: 'CEP' },
