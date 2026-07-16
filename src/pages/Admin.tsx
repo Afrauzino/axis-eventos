@@ -1177,7 +1177,9 @@ export default function Admin({ profile }: { profile?: Profile }) {
 
   async function gerarCodigos() {
     setGerandoCodigos(true)
-    const semCodigo = pessoas.filter(p=>!p.invite_code)
+    // Só quem NÃO tem conta precisa de código. Quem já tem conta entra por email/senha
+    // (dar código de novo pra eles era o que "sujava" o cadastro com código inútil).
+    const semCodigo = pessoas.filter(p=>!p.invite_code && !p.user_id)
     for (const p of semCodigo) {
       const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
       let code = ''
