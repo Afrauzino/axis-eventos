@@ -7,6 +7,7 @@ import { useEvento } from '../hooks/useEvento'
 import { formatName } from '../utils'
 import { AVAL_CATS } from './Avaliacao'
 import { AVAL_TIT_PADRAO, AVAL_SUB_PADRAO } from '../components/BannerAvaliacao'
+import { notificarRegra } from '../lib/notifRegras'
 import type { Profile } from '../App'
 
 // Administração → Avaliação pós-evento: liberar, editar textos, ver respostas (só admin).
@@ -41,7 +42,19 @@ export default function AvaliacaoAdmin({ profile: _profile }: { profile?: Profil
   async function toggleLiberar() {
     const novo = !liberada; setLiberada(novo)
     const { error } = await supabase.from('events').update({ avaliacao_liberada: novo }).eq('id', evento!.id)
-    if (error) { setLiberada(!novo); toast.falha('Não foi possível salvar. Rode o sql/65_avaliacao.sql.', error) }
+    if (error) { setLiberada(!novo); toast.falha('Não foi possível salvar. Rode o sql/65_avaliacao.sql.', error); return }
+    // Ao LIBERAR: avisa os encontristas (com conta) por push, pra irem responder.
+    if (novo) {
+      try {
+        const { data: encs } = await supabase.from('people')
+          .select('user_id').eq('event_id', evento!.id).eq('role_type', 'encounterer').not('user_id', 'is', null)
+        const ids = [...new Set((encs ?? []).map((p: any) => p.user_id).filter(Boolean))]
+        if (ids.length) {
+          notificarRegra('avaliacao_liberada', { user_ids: ids, title: (tit || AVAL_TIT_PADRAO), body: 'Toque para responder — leva 2 minutos 🙏', url: '/avaliacao', tag: 'aval' })
+          toast.sucesso(`Avaliação liberada! Avisando ${ids.length} encontrista(s).`)
+        } else toast.sucesso('Avaliação liberada!')
+      } catch { toast.sucesso('Avaliação liberada!') }
+    }
   }
   async function salvarTextos() {
     setSalvandoT(true)

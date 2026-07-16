@@ -82,6 +82,7 @@ export const REGRAS: Regra[] = [
   { key:'aviso_geral',     area:'aviso', label:'Aviso geral publicado', desc:'Manda o aviso pro público escolhido.', padrao:true },
   { key:'alerta_critico',  area:'aviso', label:'Alerta CRÍTICO', desc:'Alerta que trava a tela do público escolhido.', padrao:true },
   { key:'aviso_lideranca', area:'aviso', label:'Aviso da liderança', desc:'Avisa os destinatários de um aviso de líder.', padrao:true },
+  { key:'avaliacao_liberada', area:'aviso', label:'Avaliação liberada', desc:'Avisa os encontristas quando a avaliação do evento abre.', padrao:true },
   // J. Saúde e remédios
   { key:'remedio_hora',    area:'saude', label:'Hora do remédio', desc:'Lembrete antes da dose pra equipe de saúde.', padrao:true, agendado:true },
   { key:'remedio_entregue',area:'saude', label:'Remédio entregue', desc:'Avisa quando uma dose é marcada como entregue.', padrao:false },
