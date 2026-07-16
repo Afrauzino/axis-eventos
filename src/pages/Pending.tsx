@@ -6,6 +6,7 @@ import { validarCadastroFaltando, fotoRequerida, carregarCadastroCfg } from '../
 import { toast } from '../components/Toast'
 import { formatName } from '../utils'
 import { notificarRegra } from '../lib/notifRegras'
+import { ativarPush, pushSuportado } from '../lib/push'
 import type { Profile } from '../App'
 
 export default function Pending({ profile }: { profile: Profile | null }) {
@@ -14,9 +15,29 @@ export default function Pending({ profile }: { profile: Profile | null }) {
   const [refazendo, setRefazendo] = useState(false)
   const [cadForm, setCadForm] = useState<PessoaForm>(FORM_VAZIO)
   const [salvando, setSalvando] = useState(false)
+  const [notifOn, setNotifOn] = useState(false)
+  const [ativandoNotif, setAtivandoNotif] = useState(false)
 
   const st = profile?.role_status
   useEffect(() => { carregarConfig('logo_url').then(setLogoUrl) }, [])
+  // Push na tela de espera: se a pessoa JÁ permitiu notificações, amarra a
+  // assinatura deste aparelho à conta dela agora — assim, quando o admin aprovar,
+  // o aviso "conta aprovada" chega no celular (a regra insc_aprovada já dispara).
+  useEffect(() => {
+    if (!profile?.user_id || !pushSuportado()) return
+    try {
+      if (Notification.permission === 'granted') ativarPush(profile.user_id).then(ok => setNotifOn(!!ok))
+    } catch {}
+  }, [profile?.user_id])
+
+  async function ativarNotif() {
+    if (!profile?.user_id) return
+    setAtivandoNotif(true)
+    const ok = await ativarPush(profile.user_id)
+    setAtivandoNotif(false)
+    if (ok) { setNotifOn(true); toast.sucesso('Notificações ativadas! Você será avisado(a) quando for aprovado(a).') }
+    else toast.aviso('Não consegui ativar. Permita notificações nas configurações do aparelho e tente de novo.')
+  }
   useEffect(() => {
     if (st === 'rejected' && profile?.user_id) {
       supabase.from('profiles').select('rejeicao_msg').eq('user_id', profile.user_id).maybeSingle()
@@ -120,6 +141,18 @@ export default function Pending({ profile }: { profile: Profile | null }) {
           <>
             <div className="info-section"><p style={{ fontSize: 14, color: 'var(--text2)', lineHeight: 1.7 }}>{msgPadrao}</p></div>
             {(!st || st === 'pending') && <div className="alert-box alert-info">Assim que aprovado você terá acesso automaticamente. Tente entrar novamente mais tarde.</div>}
+            {(!st || st === 'pending') && pushSuportado() && profile?.user_id && (
+              <div style={{ background: 'white', borderRadius: 12, boxShadow: 'var(--shadow-sm)', padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <span style={{ fontSize: 22 }}>🔔</span>
+                  <p style={{ fontSize: 14, fontWeight: 700, flex: 1, lineHeight: 1.4 }}>Ative as notificações pra ser avisado(a) na hora que sua conta for aprovada.</p>
+                </div>
+                <button className="btn btn-primary btn-full" disabled={ativandoNotif || notifOn} onClick={ativarNotif}>
+                  <span className="icon icon-sm">{notifOn ? 'check' : 'notifications_active'}</span>
+                  {notifOn ? 'Notificações ativadas' : (ativandoNotif ? 'Ativando...' : 'Ativar notificações')}
+                </button>
+              </div>
+            )}
           </>
         )}
         <button className="btn btn-outline btn-full" onClick={() => supabase.auth.signOut()} style={{ marginTop: 'auto' }}>Sair</button>
