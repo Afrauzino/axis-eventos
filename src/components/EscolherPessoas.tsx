@@ -9,7 +9,7 @@
 import { useMemo, useState } from 'react'
 import { formatName, getInitials } from '../utils'
 
-export type PessoaImp = { id: string; name: string; photo_url: string | null; role_type?: string | null }
+export type PessoaImp = { id: string; name: string; photo_url: string | null; role_type?: string | null; cargo?: string | null }
 type Tipo = 'encounterer' | 'worker' | 'todos'
 
 type Props = {
@@ -32,18 +32,37 @@ export default function EscolherPessoas({
   const [tipo, setTipo] = useState<Tipo>(tipoInicial)
   const [equipe, setEquipe] = useState('')
   const [busca, setBusca] = useState('')
+  const [cargos, setCargos] = useState<Set<string>>(new Set())   // vazio = todos os cargos
 
-  const doTipo = (t: Tipo) => pessoas.filter(p => t === 'todos' || p.role_type === t)
+  // Cargos que existem entre as pessoas (pra montar os chips).
+  const cargosDisp = useMemo(
+    () => Array.from(new Set(pessoas.map(p => (p.cargo ?? '').trim()).filter(Boolean))).sort(),
+    [pessoas])
+
+  /** Base da seleção: pessoas do tipo + (se escolheu) só dos cargos marcados. */
+  const baseSel = (t: Tipo, cs: Set<string>) =>
+    pessoas.filter(p =>
+      (t === 'todos' || p.role_type === t) &&
+      (cs.size === 0 || cs.has((p.cargo ?? '').trim()))
+    ).map(p => p.id)
 
   // Começa com todo mundo do tipo inicial marcado — assim, quem só quer
   // imprimir tudo é só tocar em Imprimir.
-  const [selecionadas, setSelecionadas] = useState<Set<string>>(() => new Set(doTipo(tipoInicial).map(p => p.id)))
+  const [selecionadas, setSelecionadas] = useState<Set<string>>(() => new Set(baseSel(tipoInicial, new Set())))
 
-  /** Trocar o tipo redefine a base: marca todo mundo do tipo novo. */
+  /** Trocar o tipo redefine a base (respeitando os cargos escolhidos). */
   function trocarTipo(t: Tipo) {
     setTipo(t)
     if (t === 'encounterer') setEquipe('')   // encontrista não entra em equipe
-    setSelecionadas(new Set(doTipo(t).map(p => p.id)))
+    setSelecionadas(new Set(baseSel(t, cargos)))
+  }
+  /** Escolher cargo(s): só quem tem aquele cargo aparece e é impresso. */
+  function alternarCargo(c: string) {
+    setCargos(prev => {
+      const n = new Set(prev); n.has(c) ? n.delete(c) : n.add(c)
+      setSelecionadas(new Set(baseSel(tipo, n)))
+      return n
+    })
   }
 
   // Encontrista não tem equipe: o filtro só aparece pra encontreiros (ou "Todos").
@@ -54,11 +73,12 @@ export default function EscolherPessoas({
     const t = busca.trim().toLowerCase()
     return pessoas.filter(p => {
       if (tipo !== 'todos' && p.role_type !== tipo) return false
+      if (cargos.size > 0 && !cargos.has((p.cargo ?? '').trim())) return false
       if (equipe && !(equipeIds[p.id] ?? []).includes(equipe)) return false
       if (t && !formatName(p.name).toLowerCase().includes(t)) return false
       return true
     })
-  }, [pessoas, tipo, equipe, busca, equipeIds])
+  }, [pessoas, tipo, cargos, equipe, busca, equipeIds])
 
   const nomeEquipes = (pid: string) =>
     (equipeIds[pid] ?? []).map(tid => equipes.find(e => e.id === tid)?.name).filter(Boolean).join(', ')
@@ -127,6 +147,28 @@ export default function EscolherPessoas({
             <div className="ed-tira" style={{ display: 'flex', gap: 6, overflowX: 'auto', scrollbarWidth: 'none', marginBottom: 14, paddingBottom: 2 }}>
               {chipEquipe('', 'Todas')}
               {equipes.map(e => chipEquipe(e.id, e.name))}
+            </div>
+          </>
+        )}
+
+        {cargosDisp.length > 0 && (
+          <>
+            <p style={{ fontSize: 12, color: 'var(--text2)', fontWeight: 700, marginBottom: 6 }}>
+              Cargo <span style={{ color: 'var(--muted)', fontWeight: 400 }}>(opcional · pode marcar vários)</span>
+            </p>
+            <div className="ed-tira" style={{ display: 'flex', gap: 6, overflowX: 'auto', scrollbarWidth: 'none', marginBottom: 14, paddingBottom: 2 }}>
+              {cargosDisp.map(c => {
+                const on = cargos.has(c)
+                return (
+                  <button key={c} type="button" onClick={() => alternarCargo(c)}
+                    style={{ flexShrink: 0, padding: '6px 13px', borderRadius: 99, cursor: 'pointer', fontFamily: 'inherit', fontSize: 12, fontWeight: 700,
+                      border: on ? '1px solid var(--primary)' : '1px solid var(--border)',
+                      background: on ? 'var(--primary-light)' : 'white',
+                      color: on ? 'var(--primary)' : 'var(--text2)' }}>
+                    {on ? '✓ ' : ''}{c}
+                  </button>
+                )
+              })}
             </div>
           </>
         )}
