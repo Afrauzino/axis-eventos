@@ -188,6 +188,15 @@ export default function Impressao({ profile }: { profile?: Profile }) {
     toast.info(`Modelo "${m.nome}" aberto.`)
   }
 
+  /** Imprime um modelo DIRETO da galeria, sem abrir no editor. */
+  function imprimirModelo(m: Modelo) {
+    const d = m.doc
+    setGaleria(false)
+    if (d.fonteDados !== 'pessoas') { setIdsImprimir([]); setImprimindo(d); return }
+    if (pessoas.length === 0) { toast.info('Nenhuma pessoa cadastrada neste evento.'); return }
+    setEscolhendo(d)
+  }
+
   /** Joga o documento aberto agora por cima de um modelo salvo.
    *  Usa docRef (o vivo), não docAtual — este só acompanha papel/nome/id. */
   async function substituirModelo(m: Modelo) {
@@ -222,16 +231,21 @@ export default function Impressao({ profile }: { profile?: Profile }) {
 
   if (imprimindo) return <ImprimirView doc={imprimindo} dados={dados} orientacao={orientacao} onVoltar={()=>setImprimindo(null)} />
 
-  // Tocar em "Imprimir" abre a escolha de pessoas antes da folha
-  if (escolhendo) return (
-    <EscolherPessoas
-      pessoas={pessoas} equipes={equipes} equipeIds={equipeIds}
-      nomeModelo={escolhendo.nome || 'Sem título'}
-      folhaLabel={folhaLabel} porFolha={enc.total} cabe={enc.cabe}
-      onCancelar={()=>setEscolhendo(null)}
-      onImprimir={(ids)=>{ setIdsImprimir(ids); setImprimindo(escolhendo); setEscolhendo(null) }}
-    />
-  )
+  // Tocar em "Imprimir" abre a escolha de pessoas antes da folha.
+  // Usa o encaixe do DOC que vai ser impresso (pode ser um modelo direto da galeria).
+  if (escolhendo) {
+    const encE = encaixe(escolhendo.papel, orientacao)
+    const labelE = `A4 ${encE.orientacao === 'retrato' ? 'em pé' : 'deitada'}`
+    return (
+      <EscolherPessoas
+        pessoas={pessoas} equipes={equipes} equipeIds={equipeIds}
+        nomeModelo={escolhendo.nome || 'Sem título'}
+        folhaLabel={labelE} porFolha={encE.total} cabe={encE.cabe}
+        onCancelar={()=>setEscolhendo(null)}
+        onImprimir={(ids)=>{ setIdsImprimir(ids); setImprimindo(escolhendo); setEscolhendo(null) }}
+      />
+    )
+  }
 
   return (
     <div style={{ display:'flex', flexDirection:'column', height:'calc(100dvh - 56px)', minHeight:0 }}>
@@ -252,6 +266,7 @@ export default function Impressao({ profile }: { profile?: Profile }) {
         <GaleriaModelos
           modelos={modelos} docAtual={docAtual} dados={dadosPrevia} podeEditar={canEdit}
           onAbrir={abrirModelo}
+          onImprimir={imprimirModelo}
           onSubstituir={substituirModelo}
           onRenomear={renomearModelo}
           onExcluir={excluirModelo}

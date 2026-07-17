@@ -25,6 +25,7 @@ type Props = {
   dados?: Record<string, any>
   podeEditar: boolean
   onAbrir: (m: Modelo) => void
+  onImprimir: (m: Modelo) => void
   onSubstituir: (m: Modelo) => void
   onRenomear: (m: Modelo, nome: string) => void
   onExcluir: (m: Modelo) => void
@@ -34,7 +35,7 @@ type Props = {
 
 export default function GaleriaModelos({
   modelos, docAtual, dados, podeEditar,
-  onAbrir, onSubstituir, onRenomear, onExcluir, onZero, onFechar,
+  onAbrir, onImprimir, onSubstituir, onRenomear, onExcluir, onZero, onFechar,
 }: Props) {
   const [aberto, setAberto] = useState<Modelo | null>(null)
   const [renomeando, setRenomeando] = useState(false)
@@ -90,17 +91,25 @@ export default function GaleriaModelos({
           {modelos.map(m => {
             const emUso = docAtual.id === m.id
             return (
-              <button key={m.id} type="button" onClick={() => setAberto(m)}
-                style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' }}>
+              <div key={m.id} role="button" tabIndex={0} onClick={() => setAberto(m)}
+                style={{ cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left', position: 'relative' }}>
                 <div style={{
                   aspectRatio: '1', background: 'white', borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center',
                   border: emUso ? '2px solid var(--primary)' : '1px solid var(--border)', overflow: 'hidden',
                 }}>
                   <Miniatura doc={m.doc} dados={dados} lado={112} />
                 </div>
+                {/* Imprimir direto, sem abrir/editar */}
+                <button type="button" title="Imprimir este modelo" aria-label="Imprimir"
+                  onClick={e => { e.stopPropagation(); onImprimir(m) }}
+                  style={{ position: 'absolute', top: 6, right: 6, width: 34, height: 34, borderRadius: 10, cursor: 'pointer',
+                    background: 'var(--primary)', border: 'none', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.25)', fontFamily: 'inherit' }}>
+                  <span className="icon icon-sm">print</span>
+                </button>
                 <p style={{ fontSize: 12.5, fontWeight: 700, marginTop: 6, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.nome}</p>
                 <p style={{ fontSize: 11, color: 'var(--muted)' }}>{medida(m.doc)}{emUso ? ' · em uso' : ''}</p>
-              </button>
+              </div>
             )
           })}
         </div>
@@ -144,7 +153,12 @@ export default function GaleriaModelos({
               </>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {acao(podeEditar?'edit':'visibility', podeEditar?'Abrir para editar':'Abrir para imprimir', () => { onAbrir(aberto); fecharAcoes() })}
+                <button type="button" onClick={() => { onImprimir(aberto); fecharAcoes() }}
+                  style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', textAlign: 'left', border: 'none', borderRadius: 10,
+                    background: 'var(--primary)', color: 'white', padding: '13px 14px', cursor: 'pointer', fontFamily: 'inherit', fontSize: 14, fontWeight: 700 }}>
+                  <span className="icon icon-sm">print</span> Imprimir este modelo
+                </button>
+                {podeEditar && acao('edit', 'Abrir para editar', () => { onAbrir(aberto); fecharAcoes() })}
                 {podeEditar && acao('save_as', 'Substituir por este que estou editando', async () => {
                   if (await confirmar({ titulo: `Substituir "${aberto.nome}"?`, mensagem: 'Você substitui pelo modelo aberto agora. O antigo será perdido.', confirmar: 'Substituir' })) { onSubstituir(aberto); fecharAcoes() }
                 })}
