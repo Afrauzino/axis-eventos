@@ -24,7 +24,7 @@ registrarElemento({
 
   criar: () => ({
     ...ELEMENTO_PADRAO, w: 40, h: 40,
-    props: { url: '', ajuste: 'cover' as 'contain' | 'cover', raio: 0 },
+    props: { url: '', ajuste: 'cover' as 'contain' | 'cover' | 'fill', raio: 0 },
   }),
 
   Render: ({ el }) => {
@@ -71,10 +71,18 @@ function PainelImagem({ el, setProps, subirImagem }: any) {
         <span className="icon icon-sm">photo_camera</span> {subindo ? 'Enviando...' : p.url ? 'Trocar imagem' : 'Escolher imagem'}
       </button>
 
-      <div style={{ display: 'flex', gap: 6 }}>
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
         <button type="button" style={btn(p.ajuste === 'cover')} onClick={() => setProps({ ajuste: 'cover' })}>Preencher</button>
+        <button type="button" style={btn(p.ajuste === 'fill')} onClick={() => setProps({ ajuste: 'fill' })}>Esticar</button>
         <button type="button" style={btn(p.ajuste === 'contain')} onClick={() => setProps({ ajuste: 'contain' })}>Caber inteira</button>
       </div>
+      <p style={{ fontSize: 11, color: 'var(--muted)', marginTop: -4 }}>
+        {p.ajuste === 'cover'
+          ? 'Preenche a folha e corta o que sobra (não distorce).'
+          : p.ajuste === 'fill'
+            ? 'Estica pra preencher tudo, sem bordas (pode distorcer um pouco).'
+            : 'Mostra a imagem inteira — pode sobrar borda.'}
+      </p>
 
       <label style={{ fontSize: 13, color: 'var(--text2)' }}>
         Cantos arredondados ({p.raio}%)
