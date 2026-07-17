@@ -6,7 +6,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useEvento } from '../hooks/useEvento'
 import { usePermissao } from '../hooks/usePermissao'
-import { carregarConfig, salvarConfig } from '../lib/tema'
 import { isAdmin, formatName } from '../utils'
 import { toast } from '../components/Toast'
 import type { Profile } from '../App'
@@ -19,8 +18,6 @@ import { criarElemento } from '../editor/elementos'
 import { novoId, type Documento } from '../editor/tipos'
 
 type Pessoa = { id:string; name:string; photo_url:string|null; role_type?:string|null; church?:string|null; cargo?:string|null; phone?:string|null; contact_phone?:string|null; sexo?:string|null; birth_date?:string|null; cpf?:string|null; rg?:string|null; cidade?:string|null; estado?:string|null; endereco?:string|null; bairro?:string|null; cep?:string|null; ano_encontro?:number|null; invite_code?:string|null }
-
-const CHAVE = 'impressao_modelos_v2'
 
 /** Folha em branco (crachá em pé), sem nenhum elemento. Não mexe nos modelos salvos. */
 function docVazio(): Documento {
@@ -56,6 +53,9 @@ export default function Impressao({ profile }: { profile?: Profile }) {
   const [loading, setLoading] = useState(true)
 
   const [modelos, setModelos] = useState<Modelo[]>([])
+  // Qual modelo salvo está aberto no editor (null = novo/não salvo). Guarda a senha
+  // quando é um modelo COMPARTILHADO de outra pessoa (pra poder salvar por cima).
+  const [modeloAtual, setModeloAtual] = useState<{ id: string; sou_dono: boolean; senha?: string } | null>(null)
   const [doc, setDoc] = useState<Documento>(() => docPadrao())
   /** O documento como está AGORA dentro do editor (o `doc` acima é só o inicial).
    *  `docRef` acompanha CADA mudança; o state só muda no que a tela mostra
@@ -84,12 +84,14 @@ export default function Impressao({ profile }: { profile?: Profile }) {
   const [nomeModelo, setNomeModelo] = useState('')
 
   useEffect(() => { if (evLoading) return; if (!evento) { setLoading(false); return }; carregar() }, [evento, evLoading])
-  useEffect(() => {
-    carregarConfig(CHAVE).then(v => {
-      if (!v) return
-      try { setModelos(JSON.parse(v)) } catch {}
-    })
-  }, [])
+  async function recarregarModelos() {
+    const { data } = await supabase.rpc('modelos_visiveis')
+    setModelos((data ?? []).map((r: any) => ({
+      id: r.id, nome: r.nome, doc: r.doc,
+      compartilhado: r.compartilhado, sou_dono: r.sou_dono, tem_senha: r.tem_senha,
+    })))
+  }
+  useEffect(() => { recarregarModelos() }, [])
 
   async function carregar() {
     if (!evento) return
@@ -157,34 +159,45 @@ export default function Impressao({ profile }: { profile?: Profile }) {
     return data.publicUrl
   }
 
-  async function guardar(novos: Modelo[]) { setModelos(novos); await salvarConfig(CHAVE, JSON.stringify(novos)) }
-
-  /** Salva por NOME: nome novo = modelo novo; nome existente = atualiza aquele.
-   *  Assim dá pra ter quantos modelos quiser (e "salvar como" é só trocar o nome). */
+  /** Salva o documento aberto como modelo. Regras:
+   *  - Editando um COMPARTILHADO de outra pessoa (com a senha) → salva por cima via RPC.
+   *  - Meu modelo com o mesmo NOME → atualiza. Nome novo → cria um modelo MEU. */
   async function confirmarSalvar() {
     const d = salvando
     const nome = nomeModelo.trim()
     if (!d || !nome) return
-    const mesmoNome = modelos.find(m => m.nome.trim().toLowerCase() === nome.toLowerCase())
 
-    if (mesmoNome) {
-      const doc2 = { ...d, id: mesmoNome.id, nome }
-      aplicarDoc(doc2); setSalvando(null)
-      await guardar(modelos.map(m => m.id===mesmoNome.id ? { ...m, nome, doc: doc2 } : m))
-      toast.sucesso(`"${nome}" atualizado!`)
-    } else {
-      // reaproveita o id do documento quando ele ainda não pertence a outro modelo
-      const id = modelos.some(m => m.id === d.id) ? novoId() : d.id
-      const doc2 = { ...d, id, nome }
-      aplicarDoc(doc2); setSalvando(null)
-      await guardar([...modelos, { id, nome, doc: doc2 }])
-      toast.sucesso(`"${nome}" salvo! Agora ele aparece em Modelos.`)
+    if (modeloAtual && !modeloAtual.sou_dono) {
+      const { error } = await supabase.rpc('editar_modelo_compartilhado',
+        { p_id: modeloAtual.id, p_senha: modeloAtual.senha ?? '', p_nome: nome, p_doc: d as any })
+      setSalvando(null)
+      if (error) { toast.falha('Não foi possível salvar o compartilhado.', error); return }
+      toast.sucesso(`"${nome}" salvo.`); await recarregarModelos(); return
     }
+
+    const meu = modelos.find(m => m.sou_dono && m.nome.trim().toLowerCase() === nome.toLowerCase())
+    if (meu) {
+      const { error } = await supabase.from('impressao_modelos')
+        .update({ nome, doc: d as any, updated_at: new Date().toISOString() }).eq('id', meu.id)
+      setSalvando(null)
+      if (error) { toast.falha('Erro ao salvar.', error); return }
+      setModeloAtual({ id: meu.id, sou_dono: true })
+      toast.sucesso(`"${nome}" atualizado!`); await recarregarModelos(); return
+    }
+
+    const { data, error } = await supabase.from('impressao_modelos')
+      .insert({ nome, doc: d as any }).select('id').single()
+    setSalvando(null)
+    if (error || !data) { toast.falha('Erro ao salvar.', error); return }
+    setModeloAtual({ id: (data as any).id, sou_dono: true })
+    toast.sucesso(`"${nome}" salvo! Agora aparece em Modelos.`); await recarregarModelos()
   }
 
-  /** Puxa um modelo salvo pro editor. */
-  function abrirModelo(m: Modelo) {
-    aplicarDoc(m.doc); setGaleria(false)
+  /** Abre um modelo no editor. `senha` = quando é um compartilhado de outra pessoa. */
+  function abrirModelo(m: Modelo, senha?: string) {
+    aplicarDoc(m.doc)
+    setModeloAtual({ id: m.id, sou_dono: !!m.sou_dono, senha })
+    setGaleria(false)
     toast.info(`Modelo "${m.nome}" aberto.`)
   }
 
@@ -197,27 +210,44 @@ export default function Impressao({ profile }: { profile?: Profile }) {
     setEscolhendo(d)
   }
 
-  /** Joga o documento aberto agora por cima de um modelo salvo.
-   *  Usa docRef (o vivo), não docAtual — este só acompanha papel/nome/id. */
+  /** Substitui o modelo salvo pelo documento aberto agora (só nos MEUS). */
   async function substituirModelo(m: Modelo) {
-    const doc2 = { ...docRef.current, id: m.id, nome: m.nome }
-    aplicarDoc(doc2)
-    await guardar(modelos.map(x => x.id===m.id ? { ...x, doc: doc2 } : x))
-    toast.sucesso(`"${m.nome}" substituído!`)
+    const { error } = await supabase.from('impressao_modelos')
+      .update({ doc: { ...docRef.current } as any, updated_at: new Date().toISOString() }).eq('id', m.id)
+    if (error) { toast.falha('Erro ao substituir.', error); return }
+    setModeloAtual({ id: m.id, sou_dono: true })
+    toast.sucesso(`"${m.nome}" substituído!`); await recarregarModelos()
   }
 
   async function renomearModelo(m: Modelo, nome: string) {
-    if (docRef.current.id === m.id) aplicarDoc({ ...docRef.current, nome })
-    await guardar(modelos.map(x => x.id===m.id ? { ...x, nome, doc: { ...x.doc, nome } } : x))
-    toast.sucesso('Nome alterado!')
+    const { error } = await supabase.from('impressao_modelos').update({ nome }).eq('id', m.id)
+    if (error) { toast.falha('Erro ao renomear.', error); return }
+    toast.sucesso('Nome alterado!'); await recarregarModelos()
   }
 
   async function excluirModelo(m: Modelo) {
-    await guardar(modelos.filter(x => x.id !== m.id))
-    toast.info(`"${m.nome}" excluído.`)
+    const { error } = await supabase.from('impressao_modelos').delete().eq('id', m.id)
+    if (error) { toast.falha('Erro ao excluir.', error); return }
+    if (modeloAtual?.id === m.id) setModeloAtual(null)
+    toast.info(`"${m.nome}" excluído.`); await recarregarModelos()
   }
 
-  function comecarDoZero() { aplicarDoc(docVazio()); setGaleria(false) }
+  /** Liga/desliga o compartilhamento e define a senha (só nos MEUS). */
+  async function compartilharModelo(m: Modelo, compartilhado: boolean, senha: string) {
+    const { error } = await supabase.from('impressao_modelos')
+      .update({ compartilhado, senha: senha.trim() || null }).eq('id', m.id)
+    if (error) { toast.falha('Não foi possível salvar.', error); return }
+    toast.sucesso(compartilhado ? 'Modelo compartilhado.' : 'Compartilhamento desligado.')
+    await recarregarModelos()
+  }
+
+  /** Confere a senha de um compartilhado (pra liberar a edição). */
+  async function checarSenha(m: Modelo, senha: string): Promise<boolean> {
+    const { data } = await supabase.rpc('checar_senha_modelo', { p_id: m.id, p_senha: senha })
+    return data === true
+  }
+
+  function comecarDoZero() { setModeloAtual(null); aplicarDoc(docVazio()); setGaleria(false) }
 
   // O que a aba mostra quando a janela está fechada.
   const enc = encaixe(docAtual.papel, orientacao)
@@ -265,11 +295,14 @@ export default function Impressao({ profile }: { profile?: Profile }) {
       {galeria && (
         <GaleriaModelos
           modelos={modelos} docAtual={docAtual} dados={dadosPrevia} podeEditar={canEdit}
+          modeloAtualId={modeloAtual?.id}
           onAbrir={abrirModelo}
           onImprimir={imprimirModelo}
           onSubstituir={substituirModelo}
           onRenomear={renomearModelo}
           onExcluir={excluirModelo}
+          onCompartilhar={compartilharModelo}
+          onChecarSenha={checarSenha}
           onZero={comecarDoZero}
           onFechar={()=>setGaleria(false)}
         />
