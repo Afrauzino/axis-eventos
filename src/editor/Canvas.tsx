@@ -7,11 +7,28 @@
 // No celular: PINÇA (2 dedos) dá zoom; alças grandes pro dedo; e o menu
 // nativo de "segurar" fica desligado (atrapalhava).
 // ─────────────────────────────────────────────────────────────
-import { useEffect, useRef, useState } from 'react'
+import { memo, useEffect, useRef, useState } from 'react'
 import type { Documento, Elemento, Id } from './tipos'
 import { PX_POR_MM } from './tipos'
 import { obterElemento } from './elementos'
 import { estiloBorda, estiloRecorte } from './borda'
+
+// Desenho de UM elemento, MEMOIZADO. O conteúdo (Render) só depende de
+// tipo/props/tamanho/dados — NÃO de posição/rotação (isso fica no wrapper).
+// Assim, arrastar/girar um elemento NÃO redesenha os outros (nem recalcula o
+// QR, que é caro). Era isso que deixava o editor lerdo no celular.
+const ElementoVisual = memo(
+  function ElementoVisual({ el, dados }: { el: Elemento; dados?: Record<string, any> }) {
+    const def = obterElemento(el.tipo)
+    if (!def) return null
+    return <div style={estiloRecorte(el)}>{def.Render({ el, dados, modo: 'tela' })}</div>
+  },
+  (a, b) =>
+    a.el.tipo === b.el.tipo &&
+    a.el.props === b.el.props &&   // ref estável nos gestos (patch de x/y não troca props)
+    a.el.w === b.el.w && a.el.h === b.el.h &&
+    a.dados === b.dados,
+)
 
 type Props = {
   doc: Documento
@@ -47,6 +64,12 @@ export default function Canvas({ doc, paginaAtual, selecao, selecionar, moverSel
   // Pinça (2 dedos)
   const pontos = useRef<Map<number, { x: number; y: number }>>(new Map())
   const pinca = useRef<{ d0: number; z0: number } | null>(null)
+
+  // Throttle do arrastar: junta os vários pointermove num só update por frame
+  // (o iPhone dispara pointermove MUITO rápido; sem isso, um update por evento).
+  const raf = useRef<number | null>(null)
+  const patchPend = useRef<Partial<Elemento> | null>(null)
+  const guiaPend = useRef<{ v: boolean; h: boolean } | null>(null)
 
   const pagina = doc.paginas[paginaAtual] ?? doc.paginas[0]
 
@@ -116,6 +139,22 @@ export default function Canvas({ doc, paginaAtual, selecao, selecionar, moverSel
     arraste.current = { modo: 'girar', id: el.id, cx, cy, ang0, rot0: el.rot }
   }
 
+  // Aplica o que ficou pendente (no máx. uma vez por frame).
+  function flush() {
+    raf.current = null
+    if (guiaPend.current) {
+      const g = guiaPend.current; guiaPend.current = null
+      setGuia(prev => (prev.v === g.v && prev.h === g.h ? prev : g))
+    }
+    if (patchPend.current) {
+      const p = patchPend.current; patchPend.current = null
+      moverSelecao(p)
+    }
+  }
+  function agendarFlush() {
+    if (raf.current == null) raf.current = requestAnimationFrame(flush)
+  }
+
   function pointerMove(e: React.PointerEvent) {
     if (pinca.current) return                      // durante a pinça, não arrasta/redimensiona
     const a = arraste.current
@@ -131,8 +170,8 @@ export default function Canvas({ doc, paginaAtual, selecao, selecionar, moverSel
       const gh = Math.abs(cyEl - cyFolha) < perto
       if (gv) nx = cxFolha - el.w / 2
       if (gh) ny = cyFolha - el.h / 2
-      setGuia(g => (g.v === gv && g.h === gh ? g : { v: gv, h: gh }))
-      moverSelecao({ x: round(nx), y: round(ny) })
+      guiaPend.current = { v: gv, h: gh }
+      patchPend.current = { x: round(nx), y: round(ny) }
     } else if (a.modo === 'redim') {
       const dx = paraMm(e.clientX - a.x0), dy = paraMm(e.clientY - a.y0)
       let { ex: x, ey: y, ew: w, eh: h } = a
@@ -141,21 +180,29 @@ export default function Canvas({ doc, paginaAtual, selecao, selecionar, moverSel
       if (a.canto === 'sw') { w = a.ew - dx; h = a.eh + dy; x = a.ex + dx }
       if (a.canto === 'nw') { w = a.ew - dx; h = a.eh - dy; x = a.ex + dx; y = a.ey + dy }
       if (w < 4 || h < 4) return
-      moverSelecao({ x: round(x), y: round(y), w: round(w), h: round(h) })
+      patchPend.current = { x: round(x), y: round(y), w: round(w), h: round(h) }
     } else if (a.modo === 'girar') {
       const ang = Math.atan2(e.clientY - a.cy, e.clientX - a.cx) * 180 / Math.PI
       let rot = Math.round(a.rot0 + (ang - a.ang0))
       if (e.shiftKey) rot = Math.round(rot / 15) * 15
-      moverSelecao({ rot: ((rot % 360) + 360) % 360 })
+      patchPend.current = { rot: ((rot % 360) + 360) % 360 }
     }
+    agendarFlush()
   }
 
   function pointerUp(e: React.PointerEvent) {
     onUpCapture(e)
+    // Garante que o último movimento é aplicado (não fica preso no frame pendente).
+    if (raf.current != null) { cancelAnimationFrame(raf.current); raf.current = null }
+    if (patchPend.current) { moverSelecao(patchPend.current); patchPend.current = null }
+    guiaPend.current = null
     if (arraste.current) onFimGesto?.()
     arraste.current = null
     setGuia(g => (g.v || g.h ? { v: false, h: false } : g))
   }
+
+  // Cancela um frame pendente se o componente sair.
+  useEffect(() => () => { if (raf.current != null) cancelAnimationFrame(raf.current) }, [])
 
   const larguraPx = doc.papel.largura * PX_POR_MM * esc
   const alturaPx = doc.papel.altura * PX_POR_MM * esc
@@ -198,7 +245,7 @@ export default function Canvas({ doc, paginaAtual, selecao, selecionar, moverSel
                   outline: sel ? `${1.5 / esc}px solid var(--primary)` : undefined,
                   ...estiloBorda(el),
                 }}>
-                <div style={estiloRecorte(el)}>{def.Render({ el, dados, modo: 'tela' })}</div>
+                <ElementoVisual el={el} dados={dados} />
 
                 {sel && !el.bloqueado && !somenteLeitura && (
                   <>
