@@ -86,20 +86,30 @@ export default function ImprimirCadastros({ onClose }: { onClose: () => void }) 
           {filtro === 'todos' ? 'Todos' : filtro === 'encontreiro' ? 'Encontreiros' : 'Encontristas'} · {filtradas.length} pessoa(s)
         </p>
         {formato === 'tirinhas' ? (
-          <div style={{ display: 'grid', gridTemplateColumns: `repeat(${colunas}, 1fr)`, gap: 8 }}>
+          // Cartões em INLINE-BLOCK (não grid): o Chrome quebra CSS grid mal na
+          // impressão (deixa a folha do meio quase vazia). inline-block flui como
+          // texto e pagina certinho. O padding faz o "gap"; o -4 na margem alinha
+          // as bordas; fontSize:0 mata o espaço em branco entre os cartões.
+          <div style={{ fontSize: 0, margin: '0 -4px' }}>
             {filtradas.map(p => (
-              <div key={p.id} style={{ border: '1px solid #d1d5db', borderRadius: 10, padding: '8px 10px', breakInside: 'avoid', display: 'flex', gap: 9, alignItems: 'flex-start' }}>
-                {foto && (
-                  <div style={{ width: 42, height: 42, borderRadius: '50%', overflow: 'hidden', background: '#f3f4f6', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    {p.photo_url ? <img src={p.photo_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontSize: 13, fontWeight: 700, color: '#6b7280' }}>{getInitials(p.name)}</span>}
+              <div key={p.id} style={{
+                display: 'inline-block', verticalAlign: 'top', boxSizing: 'border-box',
+                width: `${100 / colunas}%`, padding: 4,
+                breakInside: 'avoid', pageBreakInside: 'avoid',
+              }}>
+                <div style={{ border: '1px solid #d1d5db', borderRadius: 10, padding: '8px 10px', display: 'flex', gap: 9, alignItems: 'flex-start' }}>
+                  {foto && (
+                    <div style={{ width: 42, height: 42, borderRadius: '50%', overflow: 'hidden', background: '#f3f4f6', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      {p.photo_url ? <img src={p.photo_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontSize: 13, fontWeight: 700, color: '#6b7280' }}>{getInitials(p.name)}</span>}
+                    </div>
+                  )}
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <p style={{ fontSize: 12.5, fontWeight: 800, margin: 0, lineHeight: 1.2 }}>{formatName(p.name)}</p>
+                    {campos.map(c => {
+                      const v = valorCampo(p, c.key as string)
+                      return v ? <p key={c.key as string} style={{ fontSize: 10.5, margin: '2px 0 0', lineHeight: 1.25 }}><span style={{ color: '#6b7280' }}>{c.label}:</span> {v}</p> : null
+                    })}
                   </div>
-                )}
-                <div style={{ minWidth: 0, flex: 1 }}>
-                  <p style={{ fontSize: 12.5, fontWeight: 800, margin: 0, lineHeight: 1.2 }}>{formatName(p.name)}</p>
-                  {campos.map(c => {
-                    const v = valorCampo(p, c.key as string)
-                    return v ? <p key={c.key as string} style={{ fontSize: 10.5, margin: '2px 0 0', lineHeight: 1.25 }}><span style={{ color: '#6b7280' }}>{c.label}:</span> {v}</p> : null
-                  })}
                 </div>
               </div>
             ))}
