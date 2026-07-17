@@ -9,84 +9,92 @@ const PAPEIS: { nome: string; desc: string; l: number; a: number }[] = [
   { nome: 'A4 deitada',     desc: '29,7 × 21 cm',  l: 297, a: 210 },
 ]
 
-// Página: tamanho do papel (presets TRAVADOS + "Personalizar" pra digitar livre), fundo e páginas.
+// IMPORTANTE: o Painel é CHAMADO como função (Editor: ativa.Painel(ctx)), então
+// NÃO pode usar hooks direto nele. O estado do "Personalizar" vive neste
+// componente separado, que é renderizado como JSX (aí os hooks são válidos).
+function SecaoTamanho({ doc, dispatch }: { doc: any; dispatch: (a: any) => void }) {
+  const { largura: L, altura: A } = doc.papel
+  const ehPreset = PAPEIS.some(p => p.l === L && p.a === A)
 
+  const [perso, setPerso] = useState(!ehPreset)
+  const [lStr, setLStr] = useState(String(L))
+  const [aStr, setAStr] = useState(String(A))
+  // Quando o papel muda por fora (tocou num preset, girou), sincroniza os campos.
+  useEffect(() => { setLStr(String(L)); setAStr(String(A)) }, [L, A])
+
+  const aplicar = (ls: string, as: string) => {
+    const nl = Number(ls), na = Number(as)
+    const patch: any = {}
+    if (ls.trim() !== '' && nl >= 10 && nl <= 2000) patch.largura = Math.round(nl)
+    if (as.trim() !== '' && na >= 10 && na <= 2000) patch.altura = Math.round(na)
+    if (Object.keys(patch).length) dispatch({ t: 'papel', patch })
+  }
+  // Campo editável de verdade: texto local (dá pra APAGAR e digitar). Só grava quando é válido.
+  const campo = (val: string, set: (s: string) => void, outra: string, ehLarg: boolean) => (
+    <input type="number" inputMode="numeric" min={10} max={2000} value={val} placeholder="mm"
+      onChange={e => { const s = e.target.value; set(s); aplicar(ehLarg ? s : outra, ehLarg ? outra : s) }}
+      onBlur={() => { if (val.trim() === '' || Number(val) < 10) { ehLarg ? setLStr(String(L)) : setAStr(String(A)) } }}
+      style={{ width: 84, padding: '8px 9px', border: '1px solid var(--border)', borderRadius: 8, fontFamily: 'inherit', fontSize: 14 }} />
+  )
+
+  return (
+    <div>
+      <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--muted)', marginBottom: 6 }}>Tamanho da folha que você desenha</p>
+      <div className="ed-tira" style={{ display: 'flex', gap: 6, overflowX: 'auto', scrollbarWidth: 'none', paddingBottom: 2, marginBottom: 8 }}>
+        {PAPEIS.map(p => {
+          const ativo = !perso && L === p.l && A === p.a
+          return (
+            <button key={p.nome} type="button" onClick={() => { setPerso(false); dispatch({ t: 'papel', patch: { largura: p.l, altura: p.a } }) }}
+              style={{ flex: '0 0 auto', width: 96, padding: '7px 8px', borderRadius: 10, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
+                border: ativo ? '2px solid var(--primary)' : '1px solid var(--border)',
+                background: ativo ? 'var(--primary-light)' : 'white' }}>
+              <span style={{ display: 'block', fontSize: 11.5, fontWeight: 700, color: ativo ? 'var(--primary)' : 'var(--text2)', lineHeight: 1.2 }}>{p.nome}</span>
+              <span style={{ display: 'block', fontSize: 9.5, color: 'var(--muted)', marginTop: 1 }}>{p.desc}</span>
+            </button>
+          )
+        })}
+        <button type="button" onClick={() => setPerso(true)}
+          style={{ flex: '0 0 auto', width: 96, padding: '7px 8px', borderRadius: 10, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
+            border: perso ? '2px solid var(--primary)' : '1px dashed var(--border)',
+            background: perso ? 'var(--primary-light)' : 'white' }}>
+          <span style={{ display: 'block', fontSize: 11.5, fontWeight: 700, color: perso ? 'var(--primary)' : 'var(--text2)', lineHeight: 1.2 }}>Personalizar</span>
+          <span style={{ display: 'block', fontSize: 9.5, color: 'var(--muted)', marginTop: 1 }}>tamanho livre</span>
+        </button>
+      </div>
+
+      {perso && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          <span style={{ fontSize: 12, color: 'var(--muted)' }}>Largura</span>
+          {campo(lStr, setLStr, aStr, true)}
+          <span style={{ fontSize: 12, color: 'var(--muted)' }}>Altura</span>
+          {campo(aStr, setAStr, lStr, false)}
+          <span style={{ fontSize: 12, color: 'var(--muted)' }}>mm</span>
+          <button type="button" title="Girar folha (em pé ↔ deitada)"
+            onClick={() => dispatch({ t: 'papel', patch: { largura: A, altura: L } })}
+            style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 5, padding: '7px 12px', borderRadius: 8,
+              border: '1px solid var(--border)', background: 'white', cursor: 'pointer', fontFamily: 'inherit', fontSize: 12.5, fontWeight: 700, color: 'var(--primary)' }}>
+            <span className="icon icon-sm">screen_rotation</span> Girar
+          </button>
+        </div>
+      )}
+      <p style={{ fontSize: 11, color: 'var(--muted)', marginTop: 6 }}>
+        {L}×{A}mm {L > A ? '(deitada)' : L < A ? '(em pé)' : '(quadrada)'}
+      </p>
+    </div>
+  )
+}
+
+// Página: tamanho do papel (presets + Personalizar), fundo e páginas.
 registrarFerramenta({
   id: 'pagina',
   nome: 'Página',
   icone: 'description',
   Painel: ({ doc, paginaAtual, dispatch, setPaginaAtual }) => {
     const pg = doc.paginas[paginaAtual]
-    const { largura: L, altura: A } = doc.papel
-    const ehPreset = PAPEIS.some(p => p.l === L && p.a === A)
-
-    // Personalizar: só abre os campos quando o usuário pede (ou se já é um tamanho fora dos presets).
-    const [perso, setPerso] = useState(!ehPreset)
-    const [lStr, setLStr] = useState(String(L))
-    const [aStr, setAStr] = useState(String(A))
-    // Quando o papel muda por fora (tocou num preset, girou), sincroniza os campos.
-    useEffect(() => { setLStr(String(L)); setAStr(String(A)) }, [L, A])
-
-    const aplicar = (ls: string, as: string) => {
-      const nl = Number(ls), na = Number(as)
-      const patch: any = {}
-      if (ls.trim() !== '' && nl >= 10 && nl <= 2000) patch.largura = Math.round(nl)
-      if (as.trim() !== '' && na >= 10 && na <= 2000) patch.altura = Math.round(na)
-      if (Object.keys(patch).length) dispatch({ t: 'papel', patch })
-    }
-    // Campo editável de verdade: usa texto local (dá pra APAGAR e digitar). Só grava quando é válido.
-    const campo = (val: string, set: (s: string) => void, outra: string, ehLarg: boolean) => (
-      <input type="number" inputMode="numeric" min={10} max={2000} value={val} placeholder="mm"
-        onChange={e => { const s = e.target.value; set(s); aplicar(ehLarg ? s : outra, ehLarg ? outra : s) }}
-        onBlur={() => { if (val.trim() === '' || Number(val) < 10) { ehLarg ? setLStr(String(L)) : setAStr(String(A)) } }}
-        style={{ width: 84, padding: '8px 9px', border: '1px solid var(--border)', borderRadius: 8, fontFamily: 'inherit', fontSize: 14 }} />
-    )
 
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-        <div>
-          <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--muted)', marginBottom: 6 }}>Tamanho da folha que você desenha</p>
-          <div className="ed-tira" style={{ display: 'flex', gap: 6, overflowX: 'auto', scrollbarWidth: 'none', paddingBottom: 2, marginBottom: 8 }}>
-            {PAPEIS.map(p => {
-              const ativo = !perso && L === p.l && A === p.a
-              return (
-                <button key={p.nome} type="button" onClick={() => { setPerso(false); dispatch({ t: 'papel', patch: { largura: p.l, altura: p.a } }) }}
-                  style={{ flex: '0 0 auto', width: 96, padding: '7px 8px', borderRadius: 10, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
-                    border: ativo ? '2px solid var(--primary)' : '1px solid var(--border)',
-                    background: ativo ? 'var(--primary-light)' : 'white' }}>
-                  <span style={{ display: 'block', fontSize: 11.5, fontWeight: 700, color: ativo ? 'var(--primary)' : 'var(--text2)', lineHeight: 1.2 }}>{p.nome}</span>
-                  <span style={{ display: 'block', fontSize: 9.5, color: 'var(--muted)', marginTop: 1 }}>{p.desc}</span>
-                </button>
-              )
-            })}
-            <button type="button" onClick={() => setPerso(true)}
-              style={{ flex: '0 0 auto', width: 96, padding: '7px 8px', borderRadius: 10, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
-                border: perso ? '2px solid var(--primary)' : '1px dashed var(--border)',
-                background: perso ? 'var(--primary-light)' : 'white' }}>
-              <span style={{ display: 'block', fontSize: 11.5, fontWeight: 700, color: perso ? 'var(--primary)' : 'var(--text2)', lineHeight: 1.2 }}>Personalizar</span>
-              <span style={{ display: 'block', fontSize: 9.5, color: 'var(--muted)', marginTop: 1 }}>tamanho livre</span>
-            </button>
-          </div>
-
-          {perso && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-              <span style={{ fontSize: 12, color: 'var(--muted)' }}>Largura</span>
-              {campo(lStr, setLStr, aStr, true)}
-              <span style={{ fontSize: 12, color: 'var(--muted)' }}>Altura</span>
-              {campo(aStr, setAStr, lStr, false)}
-              <span style={{ fontSize: 12, color: 'var(--muted)' }}>mm</span>
-              <button type="button" title="Girar folha (em pé ↔ deitada)"
-                onClick={() => dispatch({ t: 'papel', patch: { largura: A, altura: L } })}
-                style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 5, padding: '7px 12px', borderRadius: 8,
-                  border: '1px solid var(--border)', background: 'white', cursor: 'pointer', fontFamily: 'inherit', fontSize: 12.5, fontWeight: 700, color: 'var(--primary)' }}>
-                <span className="icon icon-sm">screen_rotation</span> Girar
-              </button>
-            </div>
-          )}
-          <p style={{ fontSize: 11, color: 'var(--muted)', marginTop: 6 }}>
-            {L}×{A}mm {L > A ? '(deitada)' : L < A ? '(em pé)' : '(quadrada)'}
-          </p>
-        </div>
+        <SecaoTamanho doc={doc} dispatch={dispatch} />
 
         <div style={{ height: 1, background: 'var(--border)' }} />
 
