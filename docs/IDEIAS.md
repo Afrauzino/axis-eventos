@@ -187,3 +187,18 @@ Pensadas pro contexto real (evento ao vivo, retiro, público variado). Reaprovei
 - **Fase 4 (a fazer):** exportar PDF do painel, metas por equipe (definir e mostrar progresso até a
   meta), série histórica de acessos por hora/dia (precisa gravar histórico de last_seen), teatro
   (ensaios/atores/personagens preenchidos).
+
+## Editor de Impressão — ferramentas a adicionar (ideias 2026-07-17)
+Ordenado por valor pro caso (crachás/etiquetas do encontro):
+- **QR Code / código de barras (TOP):** elemento que gera QR de um campo (ex.: código da pessoa ou
+  link de check-in). No crachá dá pra ESCANEAR na entrada → futuro check-in/presença por câmera.
+- **Duplicar elemento:** copiar o selecionado (falta óbvia num editor). Ctrl+D / botão.
+- **Ordem/camadas:** trazer pra frente / mandar pra trás (z-index) do elemento selecionado.
+- **Imagem de fundo da folha:** pôr uma ARTE de fundo no crachá (hoje só cor de fundo).
+- **Numeração automática:** nº sequencial por cópia (crachá 001, 002…), útil pra controle.
+- **Frente e verso:** imprimir crachá dos 2 lados (páginas já existem; falta o fluxo "verso").
+- **Linha / divisória:** elemento de linha reta.
+- **Bloquear / esconder elemento (UI):** o tipo já tem `bloqueado`/`visivel`; falta o botão.
+- **Alinhar/distribuir VÁRIOS selecionados** (hoje o alinhar é só ao centro da folha).
+- **Biblioteca de modelos prontos:** crachá/etiqueta/lista já montados pra só usar.
+- App-level: **check-in por QR na entrada** (lê o crachá, marca presença) — casa com o QR acima.
