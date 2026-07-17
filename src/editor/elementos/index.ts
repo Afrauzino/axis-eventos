@@ -4,5 +4,6 @@ import './texto'
 import './foto'
 import './imagem'
 import './forma'
+import './qr'
 
 export * from './registry'
