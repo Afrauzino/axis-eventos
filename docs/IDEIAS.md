@@ -190,8 +190,9 @@ Pensadas pro contexto real (evento ao vivo, retiro, público variado). Reaprovei
 
 ## Editor de Impressão — ferramentas a adicionar (ideias 2026-07-17)
 Ordenado por valor pro caso (crachás/etiquetas do encontro):
-- **QR Code / código de barras (TOP):** elemento que gera QR de um campo (ex.: código da pessoa ou
-  link de check-in). No crachá dá pra ESCANEAR na entrada → futuro check-in/presença por câmera.
+- **[FEITO 2026-07-17] QR Code (TOP):** elemento QR que gera de um campo (padrão = código da pessoa).
+  SVG, imprime nítido, liga em qualquer campo pela ferramenta "Dados". Falta só o app-level (ler na entrada).
+  Ainda a fazer: **código de barras** (mesma ideia, formato de barra).
 - **Duplicar elemento:** copiar o selecionado (falta óbvia num editor). Ctrl+D / botão.
 - **Ordem/camadas:** trazer pra frente / mandar pra trás (z-index) do elemento selecionado.
 - **Imagem de fundo da folha:** pôr uma ARTE de fundo no crachá (hoje só cor de fundo).
