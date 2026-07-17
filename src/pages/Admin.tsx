@@ -275,6 +275,8 @@ export default function Admin({ profile }: { profile?: Profile }) {
   const [equipesPerm, setEquipesPerm]   = useState<any[]>([])
   const [equipePermSel, setEquipePermSel] = useState<any|null>(null)
   const [permsEquipe, setPermsEquipe]   = useState<any[]>([])
+  // Voltar do celular volta pra LISTA de equipes (não sai do Admin) — igual ao editar pessoa.
+  useVoltarFecha(!!equipePermSel, () => { setEquipePermSel(null); setPermsEquipe([]) })
   const [equipeSubAba, setEquipeSubAba] = useState<'acoes'|'menus'>('acoes')
   const [eventos, setEventos]       = useState<Evento[]>([])
   const [tipos, setTipos]           = useState<any[]>([])

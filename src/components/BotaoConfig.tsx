@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import { useChrome } from '../lib/chrome'
+import { useVoltarFecha } from '../hooks/useVoltarFecha'
 
 // ⚙️ do topo (ao lado do sino). Mostra o que a página registrou:
 // busca + filtros + imprimir + configurações da tela. Abre de baixo.
@@ -9,6 +10,7 @@ export default function BotaoConfig() {
   const [aberto, setAberto] = useState(false)
   const loc = useLocation()
   useEffect(() => { setAberto(false) }, [loc.pathname]) // fecha o menu ao trocar de página
+  useVoltarFecha(aberto, () => setAberto(false))        // voltar do celular fecha o menu ⚙️ (volta pra tela)
 
   const temAlgo = !!chrome && ((chrome.railGrupos?.length ?? 0) > 0 || (chrome.navegacao?.length ?? 0) > 0 || !!chrome.busca || (chrome.grupos?.length ?? 0) > 0 || (chrome.impressoes?.length ?? 0) > 0 || (chrome.configs?.length ?? 0) > 0)
   if (!temAlgo || !chrome) return null

@@ -4,6 +4,7 @@ import { supabase } from './lib/supabase'
 import { carregarCorSalva, carregarConfig, aplicarIconesApp } from './lib/tema'
 import { formatName, isAdmin } from './utils'
 import { usePermissao } from './hooks/usePermissao'
+import { useVoltarFecha } from './hooks/useVoltarFecha'
 import Nav from './components/Nav'
 import CriticalAlert from './components/CriticalAlert'
 import NotificacoesCenter, { sincronizarPushLocal } from './components/NotificacoesCenter'
@@ -270,6 +271,9 @@ export default function App() {
   const [notifUnread, setNotifUnread] = useState(0)
   const [versaoFotos, setVersaoFotos] = useState(0)
   const { evento: eventoAtivo } = useEvento()
+
+  // Voltar do celular FECHA a gaveta (menu) em vez de sair da tela — volta pra origem.
+  useVoltarFecha(menuOpen, () => setMenuOpen(false))
 
   // Troca de foto em tempo real: quando qualquer pessoa muda a foto, a tela
   // aberta recarrega. Só reage à FOTO (o banco manda o valor antigo junto —

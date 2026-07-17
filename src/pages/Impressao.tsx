@@ -16,6 +16,7 @@ import GaleriaModelos, { type Modelo } from '../editor/GaleriaModelos'
 import EscolherPessoas from '../components/EscolherPessoas'
 import { criarElemento } from '../editor/elementos'
 import { novoId, type Documento } from '../editor/tipos'
+import { useVoltarFecha } from '../hooks/useVoltarFecha'
 
 type Pessoa = { id:string; name:string; photo_url:string|null; role_type?:string|null; church?:string|null; cargo?:string|null; phone?:string|null; contact_phone?:string|null; sexo?:string|null; birth_date?:string|null; cpf?:string|null; rg?:string|null; cidade?:string|null; estado?:string|null; endereco?:string|null; bairro?:string|null; cep?:string|null; ano_encontro?:number|null; invite_code?:string|null }
 
@@ -82,6 +83,13 @@ export default function Impressao({ profile }: { profile?: Profile }) {
   const [painel, setPainel] = useState(false)   // janela flutuante com os ajustes
   const [salvando, setSalvando] = useState<Documento|null>(null)   // modal "Salvar modelo"
   const [nomeModelo, setNomeModelo] = useState('')
+
+  // Voltar do celular volta UM passo (não sai da tela de impressão): fecha a
+  // galeria / a escolha de pessoas / a pré-visualização / o "Salvar modelo".
+  useVoltarFecha(galeria, () => setGaleria(false))
+  useVoltarFecha(!!escolhendo, () => setEscolhendo(null))
+  useVoltarFecha(!!imprimindo, () => setImprimindo(null))
+  useVoltarFecha(!!salvando, () => setSalvando(null))
 
   useEffect(() => { if (evLoading) return; if (!evento) { setLoading(false); return }; carregar() }, [evento, evLoading])
   async function recarregarModelos() {
