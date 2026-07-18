@@ -285,7 +285,7 @@ export default function PainelAnalises({ profile }: { profile?: Profile }) {
       {/* Cabeçalho */}
       <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:8,marginBottom:16}}>
         <div style={{display:'flex',alignItems:'center',gap:10}}>
-          <button onClick={()=>{ if (document.fullscreenElement) document.exitFullscreen?.(); nav('/') }} aria-label="Voltar ao início"
+          <button onClick={()=>{ if (document.fullscreenElement) document.exitFullscreen?.(); if (window.history.length > 1) nav(-1); else nav('/') }} aria-label="Voltar"
             style={{background:'white',border:'1px solid var(--border)',borderRadius:10,width:38,height:38,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,boxShadow:'var(--shadow-sm)'}}>
             <span className="icon">arrow_back</span>
           </button>
