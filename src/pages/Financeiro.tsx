@@ -46,9 +46,9 @@ export default function Financeiro({ profile }: { profile?: Profile }) {
 
   useEffect(() => { if (evLoading) return; if (!evento) { setLoading(false); return }; carregar() }, [evento, evLoading])
 
-  async function carregar() {
+  async function carregar(silencioso = false) {
     if (!evento) return
-    setLoading(true)
+    if (!silencioso) setLoading(true)   // silencioso = recarrega sem trocar a lista por esqueletos (mantém o scroll)
     const [pa, pe] = await Promise.all([
       supabase.from('financeiro').select('*').eq('event_id',evento.id).order('created_at',{ascending:false}),
       supabase.from('people').select('id,name,role_type,photo_url').eq('event_id',evento.id).order('name'),
@@ -83,13 +83,13 @@ export default function Financeiro({ profile }: { profile?: Profile }) {
       if (form.status === 'pago') notificarRegra('fin_pago', { person_ids: [form.person_id], title: 'Pagamento registrado', body: `Recebemos ${fmtBRL(novoValor)}. Obrigado!`, url: '/' })
     }
     setModal(false); setSalvando(false); setEditando(null); setPersonaSel(null)
-    setForm({person_id:'',valor:'',status:'pago',forma_pagamento:'pix',data_pagamento:'',observacoes:''}); carregar()
+    setForm({person_id:'',valor:'',status:'pago',forma_pagamento:'pix',data_pagamento:'',observacoes:''}); carregar(true)
   }
 
   async function excluir(id:string) {
     if (!confirm('Excluir este pagamento?')) return
     await supabase.from('financeiro').delete().eq('id',id)
-    carregar()
+    carregar(true)
   }
 
   // Deduplica pessoas que aparecem na lista + aplica busca e filtro de situação

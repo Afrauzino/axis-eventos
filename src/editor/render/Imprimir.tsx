@@ -9,6 +9,7 @@
 // orientação e o TAMANHO do crachá (+/−) antes de imprimir.
 // ─────────────────────────────────────────────────────────────
 import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import type { Documento } from '../tipos'
 import { PX_POR_MM } from '../tipos'
 import Folha from './Folha'
@@ -91,6 +92,14 @@ export default function Imprimir({ doc, dados, orientacao: forcar = 'auto', onVo
     return () => window.removeEventListener('keydown', onKey)
   }, [porPessoa])
 
+  // Isola a impressão: marca o body pra, no @media print, ESCONDER o app inteiro
+  // (#root) e imprimir só as folhas (que são portadas pro body). Sem isso, o
+  // layout do app (cabeçalho, main com scroll…) entrava junto e gerava páginas em branco.
+  useEffect(() => {
+    document.body.classList.add('ed-imprimindo')
+    return () => document.body.classList.remove('ed-imprimindo')
+  }, [])
+
   // Ajuste da EXIBIÇÃO: encolhe a folha A4 pra caber na largura da tela (só na
   // tela — na impressão sai em tamanho real). Assim dá pra ver a folha inteira no celular.
   const wrapRef = useRef<HTMLDivElement>(null)
@@ -121,7 +130,10 @@ export default function Imprimir({ doc, dados, orientacao: forcar = 'auto', onVo
       html, body, #root, .app-root, .app-root > main { height:auto !important; max-height:none !important; overflow:visible !important; display:block !important; background:#fff !important; }
       .app-root > header { display:none !important; }
       .no-print { display:none !important; }
-      .ed-print-wrap { padding:0 !important; margin:0 !important; background:#fff !important; min-height:0 !important; }
+      /* isola a impressão: some com o app (que fica em #root) e imprime só as
+         folhas (que estão portadas direto no body). Igual ao PrintOverlay. */
+      body.ed-imprimindo > #root { display:none !important; }
+      .ed-print-wrap { position:static !important; inset:auto !important; overflow:visible !important; height:auto !important; padding:0 !important; margin:0 !important; background:#fff !important; min-height:0 !important; z-index:auto !important; }
       /* cada folha = UMA página A4 exata. overflow:hidden (no inline) garante que
          nada escorra pra uma página extra. Sem height:auto (mantém o A4 fixo). */
       .ed-sheet { box-shadow:none !important; margin:0 !important; }
@@ -143,8 +155,8 @@ export default function Imprimir({ doc, dados, orientacao: forcar = 'auto', onVo
     cursor: 'pointer', fontFamily: 'inherit', fontSize: 18, fontWeight: 800, color: 'var(--primary)', lineHeight: 1,
   }
 
-  return (
-    <div className="ed-print-wrap" style={{ padding: 12, background: '#eceef1', minHeight: '100%' }}>
+  return createPortal(
+    <div className="ed-print-wrap" style={{ position: 'fixed', inset: 0, overflowY: 'auto', padding: 12, background: '#eceef1', zIndex: 1000 }}>
       <style>{css}</style>
 
       <div className="no-print" style={{ display: 'flex', gap: 8, marginBottom: 10, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -214,6 +226,7 @@ export default function Imprimir({ doc, dados, orientacao: forcar = 'auto', onVo
               ))}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }
