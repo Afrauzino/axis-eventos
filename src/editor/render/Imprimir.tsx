@@ -25,8 +25,12 @@ const round1 = (n: number) => Math.round(n * 10) / 10
 /** Quantos cartões cabem numa folha. */
 function cabem(folha: { l: number; a: number }, card: { l: number; a: number }) {
   const util = { l: folha.l - MARGEM * 2, a: folha.a - MARGEM * 2 }
-  const cols = Math.floor((util.l + ESPACO) / (card.l + ESPACO))
-  const rows = Math.floor((util.a + ESPACO) / (card.a + ESPACO))
+  let cols = Math.floor((util.l + ESPACO) / (card.l + ESPACO))
+  let rows = Math.floor((util.a + ESPACO) / (card.a + ESPACO))
+  // Modelo do tamanho da folha (ou quase): imprime 1 por página, SEM margem.
+  // Sem isso, uma folha A4 "não cabia" no A4 — a margem de 8mm derrubava a conta.
+  if (cols < 1 && card.l <= folha.l + 0.5) cols = 1
+  if (rows < 1 && card.a <= folha.a + 0.5) rows = 1
   return { cols: Math.max(0, cols), rows: Math.max(0, rows), total: Math.max(0, cols) * Math.max(0, rows) }
 }
 
@@ -59,9 +63,18 @@ export default function Imprimir({ doc, dados, orientacao: forcar = 'auto', onVo
   const enc = encaixe({ largura: card.l, altura: card.a }, orient)
   const orientacao = enc.orientacao
   const cols = Math.max(1, enc.cols)
+  const rows = Math.max(1, enc.rows)
   const porFolha = Math.max(1, enc.total)
   const cabeu = enc.cabe
   const folhaA4 = orientacao === 'retrato' ? A4.retrato : A4.paisagem
+
+  // Margem da folha: normalmente MARGEM (8mm), mas encolhe quando os cartões
+  // ocupam quase tudo — assim um modelo do tamanho da folha preenche até a borda
+  // (senão o padding cortava a folha cheia). Centraliza o bloco na folha.
+  const contentW = cols * card.l + (cols - 1) * ESPACO
+  const contentH = rows * card.a + (rows - 1) * ESPACO
+  const padL = Math.max(0, Math.min(MARGEM, (folhaA4.l - contentW) / 2))
+  const padT = Math.max(0, Math.min(MARGEM, (folhaA4.a - contentH) / 2))
 
   const mudarTamanho = (delta: number) => setTamanho(t => clamp(round1(t + delta), 0.3, 3))
 
@@ -173,7 +186,7 @@ export default function Imprimir({ doc, dados, orientacao: forcar = 'auto', onVo
           {porPessoa
             ? paginas.map((grupo, gi) => (
                 <div key={gi} className="ed-sheet" style={{
-                  width: `${folhaA4.l}mm`, height: `${folhaA4.a}mm`, padding: `${MARGEM}mm`, boxSizing: 'border-box',
+                  width: `${folhaA4.l}mm`, height: `${folhaA4.a}mm`, padding: `${padT}mm ${padL}mm`, boxSizing: 'border-box',
                   background: 'white', boxShadow: '0 2px 12px rgba(0,0,0,0.18)', margin: '0 auto 14px', overflow: 'hidden',
                 }}>
                   <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols}, ${card.l}mm)`, gap: `${ESPACO}mm`, justifyContent: 'start', alignContent: 'start' }}>
