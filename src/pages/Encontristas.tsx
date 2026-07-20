@@ -54,12 +54,15 @@ export default function Encontristas({ profile }: { profile: Profile }) {
   const [adotadas, setAdotadas] = useState<Map<string, { mine: boolean }>>(new Map())
   const [respMap, setRespMap]   = useState<Map<string, { worker_name: string|null; worker_photo: string|null; worker_phone: string|null }>>(new Map())
   const [adotando, setAdotando] = useState(false)
+  const [pickResp, setPickResp] = useState<string|null>(null)  // admin/líder escolhendo o responsável de um encontrista
+  const [buscaResp, setBuscaResp] = useState('')
   const [imprimirAdoc, setImprimirAdoc] = useState(false)
   // Mensagem do WhatsApp (editável)
   const [msgRef, setMsgRef] = useState(MSG_REF_PADRAO)
   const [msgRefSalva, setMsgRefSalva] = useState(MSG_REF_PADRAO)
   const [modalMsg, setModalMsg] = useState(false)
   useVoltarFecha(modalMsg, () => setModalMsg(false))
+  useVoltarFecha(!!pickResp, () => setPickResp(null))
   const [salvandoMsg, setSalvandoMsg] = useState(false)
   const admin = isAdmin(profile.user_role) || profile.is_admin
   const podeAdocoes = admin || pode('correio', 'adocoes')
@@ -144,6 +147,18 @@ export default function Encontristas({ profile }: { profile: Profile }) {
     if (error) toast.erro('Não foi possível tirar a adoção.')
     else toast.sucesso('Adoção removida.')
     await loadAdocoes()
+    setAdotando(false)
+  }
+
+  // Admin/líder do correio define (ou troca) o responsável, escolhendo um encontreiro.
+  async function definirResponsavel(workerId: string) {
+    if (!pickResp) return
+    setAdotando(true)
+    const { error } = await supabase.rpc('definir_responsavel', { p_encontrista: pickResp, p_worker: workerId })
+    if (error) toast.erro('Não foi possível definir o responsável.')
+    else toast.sucesso('Responsável definido 💌')
+    await loadAdocoes()
+    setPickResp(null)
     setAdotando(false)
   }
 
@@ -453,7 +468,23 @@ export default function Encontristas({ profile }: { profile: Profile }) {
                         </div>
                       </div>
                     )}
-                    {souWorker && (
+                    {podeAdocoes ? (
+                      /* ADMIN / LÍDER DO CORREIO: coloca, troca e tira o responsável */
+                      <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+                        <button onClick={()=>{ setBuscaResp(''); setPickResp(selecionado.id) }} disabled={adotando}
+                          style={{flex:1,minWidth:150,background:'#DB2777',color:'white',border:'none',borderRadius:10,padding:'12px',cursor:'pointer',fontSize:14,fontWeight:700,fontFamily:'inherit',display:'flex',alignItems:'center',justifyContent:'center',gap:8}}>
+                          <span className="icon icon-sm">{st?'swap_horiz':'person_add'}</span>
+                          {st?'Trocar responsável':'Definir responsável'}
+                        </button>
+                        {st && (
+                          <button onClick={tirarAdocao} disabled={adotando}
+                            style={{flex:1,minWidth:120,background:'var(--danger-bg)',color:'var(--danger)',border:'1px solid var(--danger)',borderRadius:10,padding:'12px',cursor:'pointer',fontSize:14,fontWeight:700,fontFamily:'inherit',display:'flex',alignItems:'center',justifyContent:'center',gap:8}}>
+                            <span className="icon icon-sm">heart_minus</span>
+                            {adotando?'...':'Remover'}
+                          </button>
+                        )}
+                      </div>
+                    ) : souWorker ? (
                       st?.mine ? (
                         <button onClick={tirarAdocao} disabled={adotando}
                           style={{width:'100%',background:'var(--danger-bg)',color:'var(--danger)',border:'1px solid var(--danger)',borderRadius:10,padding:'12px',cursor:'pointer',fontSize:14,fontWeight:700,fontFamily:'inherit',display:'flex',alignItems:'center',justifyContent:'center',gap:8,marginBottom:8}}>
@@ -462,7 +493,7 @@ export default function Encontristas({ profile }: { profile: Profile }) {
                         </button>
                       ) : st ? (
                         <div style={{width:'100%',background:'var(--bg)',color:'var(--muted)',border:'1px solid var(--border)',borderRadius:10,padding:'12px',fontSize:13,fontWeight:700,textAlign:'center',marginBottom:8}}>
-                          💌 Já adotado{podeAdocoes && resp ? ` por ${(resp.worker_name||'').split(' ')[0]}` : ' por outra pessoa'}
+                          💌 Já adotado por outra pessoa
                         </div>
                       ) : (
                         <>
@@ -476,7 +507,7 @@ export default function Encontristas({ profile }: { profile: Profile }) {
                           </p>
                         </>
                       )
-                    )}
+                    ) : null}
                   </div>
                 )
               })()}
@@ -492,6 +523,42 @@ export default function Encontristas({ profile }: { profile: Profile }) {
           </div>
         )
       })()}
+
+      {/* Escolher responsável (admin/líder) — folha que sobe com busca */}
+      {pickResp && (
+        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.5)',zIndex:450,display:'flex',flexDirection:'column',justifyContent:'flex-end'}} onClick={e=>e.target===e.currentTarget&&setPickResp(null)}>
+          <div style={{background:'white',borderRadius:'20px 20px 0 0',padding:'8px 20px 28px',maxWidth:480,width:'100%',margin:'0 auto',maxHeight:'85vh',overflowY:'auto'}}>
+            <div style={{width:36,height:4,background:'var(--border)',borderRadius:2,margin:'12px auto 14px'}}/>
+            <p style={{fontSize:17,fontWeight:800,marginBottom:4}}>Escolher responsável</p>
+            <p style={{fontSize:12,color:'var(--muted)',marginBottom:14}}>Quem vai orar e escrever a carta pra <b>{selecionado?formatName(selecionado.name):'esta pessoa'}</b>.</p>
+            <div className="search-bar" style={{marginBottom:12}}>
+              <span className="icon icon-sm" style={{color:'var(--muted-light)'}}>search</span>
+              <input placeholder="Buscar encontreiro..." value={buscaResp} onChange={e=>setBuscaResp(e.target.value)}/>
+              {buscaResp && <button onClick={()=>setBuscaResp('')} style={{background:'none',border:'none',cursor:'pointer',color:'var(--muted-light)',padding:0,fontFamily:'inherit'}}><span className="icon icon-sm">close</span></button>}
+            </div>
+            {(() => {
+              const q = buscaResp.trim().toLowerCase()
+              const lst = encontreiros.filter(e => !q || e.name.toLowerCase().includes(q))
+              if (encontreiros.length === 0) return <p style={{fontSize:13,color:'var(--muted)',padding:'10px 0'}}>Nenhum encontreiro cadastrado.</p>
+              if (lst.length === 0) return <p style={{fontSize:13,color:'var(--muted)',padding:'10px 0'}}>Nenhum encontreiro com esse nome.</p>
+              return lst.map(e => (
+                <button key={e.id} onClick={()=>definirResponsavel(e.id)} disabled={adotando}
+                  style={{width:'100%',display:'flex',alignItems:'center',gap:12,padding:'10px 4px',borderBottom:'1px solid var(--border)',background:'none',border:'none',cursor:adotando?'default':'pointer',fontFamily:'inherit',textAlign:'left',opacity:adotando?0.5:1}}>
+                  <div style={{width:40,height:40,borderRadius:'50%',background:'var(--primary-light)',overflow:'hidden',flexShrink:0,display:'flex',alignItems:'center',justifyContent:'center'}}>
+                    {e.photo_url ? <img src={e.photo_url} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}}/>
+                      : <span style={{fontSize:13,fontWeight:700,color:'var(--primary)'}}>{getInitials(e.name)}</span>}
+                  </div>
+                  <div style={{flex:1,minWidth:0}}>
+                    <p style={{fontWeight:700,fontSize:14}}>{formatName(e.name)}</p>
+                    {e.phone && <p style={{fontSize:12,color:'var(--muted)'}}>{e.phone}</p>}
+                  </div>
+                  <span className="icon icon-sm" style={{color:'var(--primary)'}}>chevron_right</span>
+                </button>
+              ))
+            })()}
+          </div>
+        </div>
+      )}
 
       {/* Foto ampliada em tela cheia */}
       {fotoAmpliada && (
