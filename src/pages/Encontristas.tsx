@@ -187,7 +187,8 @@ export default function Encontristas({ profile }: { profile: Profile }) {
       if (filtroIgreja === OUTROS) { if (igrejasLista.includes(p.church)) return false }
       else if (p.church !== filtroIgreja) return false
     }
-    if (filtroSexo !== 'todos' && p.sexo !== filtroSexo) return false
+    // Sexo: quem NÃO preencheu aparece nos dois (M e F) — só esconde quem tem sexo diferente preenchido.
+    if (filtroSexo !== 'todos' && p.sexo && p.sexo !== filtroSexo) return false
     if (filtroAdocao !== 'todos') {
       const ad = adotadas.get(p.id)
       if (filtroAdocao === 'adotados' && !ad) return false
