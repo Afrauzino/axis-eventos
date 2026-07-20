@@ -99,17 +99,9 @@ export default function Financeiro({ profile }: { profile?: Profile }) {
     return true
   })
 
-  useRegistrarChromeNav('financeiro', {
-    busca: { value: busca, onChange: setBusca, placeholder: 'Buscar por nome...' },
-    grupos: [{ chave: 'sit', label: 'Situação', opcoes: [
-      { value: 'todos', label: 'Todos' },
-      { value: 'inscrito', label: 'Inscrito' },
-      { value: 'pendente', label: 'Pendente' },
-      { value: 'confirmado', label: 'Confirmado' },
-    ] }],
-    valores: { sit: fSit },
-    onFiltro: (chave, value) => { if (chave === 'sit') setFSit(value) },
-  }, [busca, fSit])
+  // Busca e filtro agora ficam NA PÁGINA (abaixo). A engrenagem mantém só a
+  // navegação ("Ir para" outras telas).
+  useRegistrarChromeNav('financeiro')
 
   return (
     <div className="page">
@@ -136,7 +128,19 @@ export default function Financeiro({ profile }: { profile?: Profile }) {
         )
       })()}
 
-
+      {/* Busca + filtro de situação (na própria página) */}
+      <div className="search-bar" style={{marginBottom:10}}>
+        <span className="icon icon-sm" style={{color:'var(--muted-light)'}}>search</span>
+        <input placeholder="Buscar por nome..." value={busca} onChange={e=>setBusca(e.target.value)}/>
+        {busca && <button onClick={()=>setBusca('')} style={{background:'none',border:'none',cursor:'pointer',color:'var(--muted-light)',padding:0,fontFamily:'inherit'}}><span className="icon icon-sm">close</span></button>}
+      </div>
+      <div style={{display:'flex',gap:6,flexWrap:'wrap',marginBottom:14}}>
+        {([['todos','Todos'],['inscrito','Inscrito'],['pendente','Pendente'],['confirmado','Confirmado']] as const).map(([v,l])=>{
+          const sel = fSit===v
+          return <button key={v} onClick={()=>setFSit(v)}
+            style={{padding:'7px 14px',borderRadius:99,cursor:'pointer',fontFamily:'inherit',fontSize:13,fontWeight:700,border:sel?'2px solid var(--primary)':'1px solid var(--border)',background:sel?'var(--primary-light)':'white',color:sel?'var(--primary-dark)':'var(--text2)'}}>{l}</button>
+        })}
+      </div>
 
       {loading ? [1,2,3].map(i=><div key={i} className="skeleton" style={{height:72,marginBottom:8,borderRadius:14}}/>) :
       pessoasUnicas.map(p => {
