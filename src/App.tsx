@@ -348,7 +348,7 @@ export default function App() {
 
   // Contagem de pendentes de aprovação (só para admin) — DEVE vir antes de qualquer return
   useEffect(() => {
-    if (!profile || !profile.is_admin) { setPendingCount(0); return }
+    if (!profile || !(isAdmin(profile.user_role) || profile.is_admin)) { setPendingCount(0); return }  // admin por CARGO ou flag
     let ativo = true
     async function contarPendentes() {
       const { count } = await supabase.from('profiles')
