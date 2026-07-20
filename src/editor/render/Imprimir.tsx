@@ -113,14 +113,18 @@ export default function Imprimir({ doc, dados, orientacao: forcar = 'auto', onVo
   if (porPessoa) for (let i = 0; i < dados.length; i += porFolha) paginas.push(dados.slice(i, i + porFolha))
 
   const css = `
+    /* O "encolher pra caber na tela" é SÓ de tela (via variável --fit). Na
+       impressão o zoom nem existe — se existisse, a paginação furava (1 folha
+       virava 3: vazia/conteúdo/vazia). */
+    @media screen { .ed-stack { zoom: var(--fit, 1); } }
     @media print {
       html, body, #root, .app-root, .app-root > main { height:auto !important; max-height:none !important; overflow:visible !important; display:block !important; background:#fff !important; }
       .app-root > header { display:none !important; }
       .no-print { display:none !important; }
-      /* na impressão: sem folgas de tela, sem sombra, sem encolher (tamanho real) */
-      .ed-print-wrap { padding:0 !important; margin:0 !important; background:#fff !important; }
-      .ed-stack { zoom:1 !important; }
-      .ed-sheet { box-shadow:none !important; margin:0 !important; height:auto !important; }
+      .ed-print-wrap { padding:0 !important; margin:0 !important; background:#fff !important; min-height:0 !important; }
+      /* cada folha = UMA página A4 exata. overflow:hidden (no inline) garante que
+         nada escorra pra uma página extra. Sem height:auto (mantém o A4 fixo). */
+      .ed-sheet { box-shadow:none !important; margin:0 !important; }
       .ed-sheet:not(:last-child) { break-after:page; page-break-after:always; }
       .ed-folha { break-inside:avoid; page-break-inside:avoid; }
       * { -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important; }
@@ -182,7 +186,7 @@ export default function Imprimir({ doc, dados, orientacao: forcar = 'auto', onVo
       )}
 
       <div ref={wrapRef}>
-        <div className="ed-stack" style={{ zoom: fitTela }}>
+        <div className="ed-stack" style={{ ['--fit' as any]: fitTela }}>
           {porPessoa
             ? paginas.map((grupo, gi) => (
                 <div key={gi} className="ed-sheet" style={{
