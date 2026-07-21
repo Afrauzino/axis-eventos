@@ -7,6 +7,7 @@ import CardItem from '../components/CardItem'
 import { useRegistrarChrome } from '../lib/chrome'
 import ImprimirCadastros from '../components/ImprimirCadastros'
 import ImprimirAdocoes from '../components/ImprimirAdocoes'
+import ImprimirQRAcesso from '../components/ImprimirQRAcesso'
 import { useEvento } from '../hooks/useEvento'
 import { usePermissao } from '../hooks/usePermissao'
 import { useIgrejas, OUTROS } from '../lib/igrejas'
@@ -223,8 +224,10 @@ export default function Encontristas({ profile }: { profile: Profile }) {
   }
 
   const [imprimirCad, setImprimirCad] = useState(false)
+  const [imprimirQR, setImprimirQR] = useState(false)
   const impressoes = [
     ...(admin ? [{ label: 'Imprimir cadastros', onClick: () => setImprimirCad(true) }] : []),
+    ...(admin ? [{ label: 'Imprimir QR de primeiro acesso', onClick: () => setImprimirQR(true) }] : []),
     ...(podeAdocoes ? [{ label: 'Imprimir responsáveis (adoções)', onClick: () => setImprimirAdoc(true) }] : []),
   ]
   useRegistrarChrome({
@@ -238,6 +241,7 @@ export default function Encontristas({ profile }: { profile: Profile }) {
   return (
     <div className="page">
       {imprimirCad && <ImprimirCadastros onClose={() => setImprimirCad(false)} />}
+      {imprimirQR && <ImprimirQRAcesso onClose={() => setImprimirQR(false)} />}
       {imprimirAdoc && <ImprimirAdocoes onClose={() => setImprimirAdoc(false)} />}
       {gerenciarIgrejas && <GerenciarIgrejas onClose={() => setGerenciarIgrejas(false)} onSalvo={recarregarIgrejas} />}
 
