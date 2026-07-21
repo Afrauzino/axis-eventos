@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useVoltarFecha } from '../hooks/useVoltarFecha'
-import { getInitials, formatName, isAdmin } from '../utils'
+import { getInitials, formatName, isAdmin, canEditPessoas } from '../utils'
 import CardItem from '../components/CardItem'
 import { useRegistrarChrome } from '../lib/chrome'
 import ImprimirCadastros from '../components/ImprimirCadastros'
@@ -67,6 +67,8 @@ export default function Encontristas({ profile }: { profile: Profile }) {
   const [salvandoMsg, setSalvandoMsg] = useState(false)
   const admin = isAdmin(profile.user_role) || profile.is_admin
   const podeAdocoes = admin || pode('correio', 'adocoes')
+  // Quem tem acesso a EDITAR (encontristas/cadastros) pode imprimir. Igual ao canEdit do Cadastros.
+  const podeEditarCad = admin || canEditPessoas(profile.user_role) || pode('cadastros', 'editar') || pode('encontristas', 'editar')
   useEffect(() => { carregarConfig('msg_referencia').then(v => { const m = v ?? MSG_REF_PADRAO; setMsgRef(m); setMsgRefSalva(m) }) }, [])
 
   useEffect(() => { if (evLoading) return; if (!evento) { setLoading(false); return }; carregar() }, [evento, evLoading])
@@ -226,8 +228,8 @@ export default function Encontristas({ profile }: { profile: Profile }) {
   const [imprimirCad, setImprimirCad] = useState(false)
   const [imprimirQR, setImprimirQR] = useState(false)
   const impressoes = [
-    ...(admin ? [{ label: 'Imprimir cadastros', onClick: () => setImprimirCad(true) }] : []),
-    ...(admin ? [{ label: 'Imprimir QR de primeiro acesso', onClick: () => setImprimirQR(true) }] : []),
+    ...(podeEditarCad ? [{ label: 'Imprimir cadastros', onClick: () => setImprimirCad(true) }] : []),
+    ...(podeEditarCad ? [{ label: 'Imprimir QR de primeiro acesso', onClick: () => setImprimirQR(true) }] : []),
     ...(podeAdocoes ? [{ label: 'Imprimir responsáveis (adoções)', onClick: () => setImprimirAdoc(true) }] : []),
   ]
   useRegistrarChrome({
@@ -236,7 +238,7 @@ export default function Encontristas({ profile }: { profile: Profile }) {
       { label: 'Editar mensagem do WhatsApp', icon: 'edit', onClick: () => setModalMsg(true) },
     ] : undefined,
     impressoes: impressoes.length ? impressoes : undefined,
-  }, [admin, podeAdocoes])
+  }, [admin, podeAdocoes, podeEditarCad])
 
   return (
     <div className="page">
