@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import RecortarFoto from './RecortarFoto'
+import CameraFoto from './CameraFoto'
 import { pathOriginal, imagemCarrega, baixarImagem } from '../lib/foto'
 
 type Props = {
@@ -17,6 +18,7 @@ export default function UploadFoto({ bucket, path, currentUrl, onUpload, label =
   const fileRef  = useRef<HTMLInputElement>(null)
   const [loading, setLoading] = useState(false)
   const [erro, setErro]       = useState('')
+  const [camera, setCamera]   = useState(false)
   const [recorte, setRecorte] = useState<{ src: string; remoto: boolean; novo: boolean } | null>(null)
   const radius = shape === 'circle' ? '50%' : '12px'
 
@@ -82,8 +84,11 @@ export default function UploadFoto({ bucket, path, currentUrl, onUpload, label =
 
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'center' }}>
         <button type="button" className="btn btn-ghost btn-sm" onClick={() => fileRef.current?.click()} disabled={loading}>
-          <span className="icon icon-sm">photo_camera</span>
+          <span className="icon icon-sm">photo_library</span>
           {loading ? 'Enviando...' : label}
+        </button>
+        <button type="button" className="btn btn-ghost btn-sm" onClick={() => setCamera(true)} disabled={loading}>
+          <span className="icon icon-sm">photo_camera</span> Tirar foto
         </button>
         {currentUrl && !loading && (
           <button type="button" className="btn btn-ghost btn-sm" onClick={reenquadrar}>
@@ -106,6 +111,13 @@ export default function UploadFoto({ bucket, path, currentUrl, onUpload, label =
           crossOrigin={recorte.remoto}
           onCancel={fecharRecorte}
           onConfirm={(blob, original) => { const novo = recorte?.novo ?? false; fecharRecorte(); enviar(blob, original, novo) }}
+        />
+      )}
+
+      {camera && (
+        <CameraFoto
+          onCancel={() => setCamera(false)}
+          onCapturar={file => { setCamera(false); aoEscolher(file) }}
         />
       )}
     </div>
