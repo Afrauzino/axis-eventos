@@ -104,8 +104,10 @@ const SITUACOES: { value:string; label:string; emoji:string }[] = [
   { value:'pending',   label:'Aguardando liberação',  emoji:'⏳' },
   { value:'codigo',    label:'Só com código',         emoji:'🔑' },
   { value:'bloqueado', label:'Bloqueados',            emoji:'🚫' },
+  { value:'desistente',label:'Desistentes',           emoji:'🚪' },
 ]
-function situacaoDe(p: { user_id:string|null; role_status:string|null }): string {
+function situacaoDe(p: { user_id:string|null; role_status:string|null; desistente?:boolean }): string {
+  if (p.desistente || p.role_status === 'desistente') return 'desistente'
   if (!p.user_id) return 'codigo'                 // pré-cadastro (só código)
   if (p.role_status === 'blocked') return 'bloqueado'
   if (p.role_status === 'pending') return 'pending'
@@ -170,7 +172,7 @@ export default function Admin({ profile }: { profile?: Profile }) {
   const [usuarios, setUsuarios]     = useState<Usuario[]>([])
   const [pessoas, setPessoas]       = useState<{
     id:string; name:string; photo_url:string|null; church:string; phone:string|null;
-    role_type:string; invite_code:string|null; user_id:string|null;
+    role_type:string; invite_code:string|null; user_id:string|null; desistente:boolean;
     // from profiles join:
     user_role:string|null; role_status:string|null; profile_name:string|null;
   }[]>([])
@@ -502,12 +504,12 @@ export default function Admin({ profile }: { profile?: Profile }) {
     if (activeId) {
       const { data: pe } = await supabase
         .from('people')
-        .select('id,name,photo_url,church,role_type,invite_code,user_id,phone')
+        .select('id,name,photo_url,church,role_type,invite_code,user_id,phone,desistente')
         .eq('event_id', activeId).order('name')
-      
+
       const pessoasComInfo = (pe??[]).map((p:any) => {
         const prof = p.user_id ? profsMap[p.user_id] : null
-        return { ...p, user_role:prof?.user_role??null, role_status:prof?.role_status??null, profile_name:prof?.name??null }
+        return { ...p, desistente:!!p.desistente, user_role:prof?.user_role??null, role_status:prof?.role_status??null, profile_name:prof?.name??null }
       })
 
       // TODAS as contas (profiles) que não têm cadastro de pessoa neste evento — mostrar todas
@@ -520,6 +522,7 @@ export default function Admin({ profile }: { profile?: Profile }) {
           name: pr.name || '(conta sem nome)', photo_url: null, phone: null,
           church: ehAdmin ? 'Administrador do sistema' : 'Conta — sem cadastro no evento',
           role_type: ehAdmin ? 'admin' : 'conta', invite_code: null, user_id: pr.user_id,
+          desistente: pr.role_status === 'desistente',
           user_role: pr.user_role, role_status: pr.role_status, profile_name: pr.name
         }
       })
@@ -529,7 +532,7 @@ export default function Admin({ profile }: { profile?: Profile }) {
       // No active event - just show admin profiles
       const admins = (allProfs??[]).map(pr => ({
         id: pr.user_id, name: pr.name, photo_url: null, church: '', phone: null,
-        role_type: 'admin', invite_code: null, user_id: pr.user_id,
+        role_type: 'admin', invite_code: null, user_id: pr.user_id, desistente: false,
         user_role: pr.user_role, role_status: pr.role_status, profile_name: pr.name
       }))
       setPessoas(admins)
@@ -645,6 +648,34 @@ export default function Admin({ profile }: { profile?: Profile }) {
     setPessoaDetalhe(prev => prev && prev.user_id === p.user_id ? { ...prev, role_status: 'blocked' } : prev)
     registrarLog({ action:'update', entity:'profiles', entityId:p.id, description:`Bloqueou a conta de ${p.name}`, eventId:eventoAtivoId() })
     toast.sucesso('Conta bloqueada. Reverta quando quiser pelo botão "Reativar".')
+  }
+
+  // Desistência — perde acesso + sai do Financeiro, mas FICA no histórico. Reversível.
+  const ehRegistroPessoa = (p: typeof pessoas[0]) => p.role_type !== 'conta' && p.role_type !== 'admin'
+  async function marcarDesistencia(p: typeof pessoas[0]) {
+    if (p.user_role === 'admin' || p.user_role === 'pastor') { toast.aviso('Não dá pra registrar desistência de administrador. Rebaixe o cargo antes, se precisar.'); return }
+    if (!confirm(`Registrar desistência de "${p.name}"?\n\nA pessoa PERDE o acesso ao app e SAI da lista do Financeiro (sem pagamentos a fazer). O cadastro FICA no histórico. Você pode desfazer depois.`)) return
+    if (ehRegistroPessoa(p)) await supabase.from('people').update({ desistente: true }).eq('id', p.id)
+    if (p.user_id) {
+      await supabase.from('profiles').update({ role_status: 'desistente' }).eq('user_id', p.user_id)
+      notificarRegra('insc_recusada', { user_ids: [p.user_id], title: 'Participação encerrada', body: 'Sua participação no evento foi encerrada. Fale com a organização se foi engano.', url: '/' })
+    }
+    const patch = { desistente:true, ...(p.user_id ? { role_status:'desistente' } : {}) }
+    setPessoas(prev => prev.map(x => x.id===p.id ? { ...x, ...patch } : x))
+    setPessoaDetalhe(prev => prev && prev.id===p.id ? { ...prev, ...patch } : prev)
+    registrarLog({ action:'update', entity:'people', entityId:p.id, description:`Registrou desistência de ${p.name}`, eventId:eventoAtivoId() })
+    toast.sucesso('Desistência registrada.')
+  }
+  async function reverterDesistencia(p: typeof pessoas[0]) {
+    if (!confirm(`Desfazer a desistência de "${p.name}"?\n\nEle volta a ter acesso e à lista do Financeiro.`)) return
+    if (ehRegistroPessoa(p)) await supabase.from('people').update({ desistente: false }).eq('id', p.id)
+    const voltaAcesso = !!p.user_id && p.role_status === 'desistente'
+    if (voltaAcesso) await supabase.from('profiles').update({ role_status: 'approved' }).eq('user_id', p.user_id)
+    const patch = { desistente:false, ...(voltaAcesso ? { role_status:'approved' } : {}) }
+    setPessoas(prev => prev.map(x => x.id===p.id ? { ...x, ...patch } : x))
+    setPessoaDetalhe(prev => prev && prev.id===p.id ? { ...prev, ...patch } : prev)
+    registrarLog({ action:'update', entity:'people', entityId:p.id, description:`Desfez a desistência de ${p.name}`, eventId:eventoAtivoId() })
+    toast.sucesso('Desistência desfeita.')
   }
 
   // ===== REPROVAR CADASTRO (mensagem + modelos + WhatsApp) =====
@@ -1596,6 +1627,21 @@ export default function Admin({ profile }: { profile?: Profile }) {
                     </button>
                   )}
                 </>
+              )}
+
+              {/* Desistência — perde acesso, sai do Financeiro, mas FICA no histórico */}
+              {pessoaDetalhe.user_role!=='admin' && pessoaDetalhe.user_role!=='pastor' && (
+                pessoaDetalhe.desistente ? (
+                  <button onClick={()=>reverterDesistencia(pessoaDetalhe)}
+                    style={{width:'100%',marginTop:8,padding:'10px',background:'var(--success)',color:'white',border:'none',borderRadius:10,cursor:'pointer',fontSize:13,fontWeight:700,fontFamily:'inherit',display:'flex',alignItems:'center',justifyContent:'center',gap:6}}>
+                    <span className="icon icon-sm" style={{color:'white'}}>undo</span> Desfazer desistência
+                  </button>
+                ) : (
+                  <button onClick={()=>marcarDesistencia(pessoaDetalhe)}
+                    style={{width:'100%',marginTop:8,padding:'10px',background:'#FEF3C7',color:'#92400E',border:'1px solid #F59E0B',borderRadius:10,cursor:'pointer',fontSize:13,fontWeight:700,fontFamily:'inherit',display:'flex',alignItems:'center',justifyContent:'center',gap:6}}>
+                    <span className="icon icon-sm" style={{color:'#B45309'}}>directions_walk</span> Registrar desistência
+                  </button>
+                )
               )}
               {detMinistracoes.length > 0 && (
                 <div style={{marginTop:12,paddingTop:12,borderTop:'1px solid var(--border)',display:'flex',alignItems:'flex-start',gap:8}}>

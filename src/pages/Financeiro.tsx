@@ -55,7 +55,7 @@ export default function Financeiro({ profile }: { profile?: Profile }) {
     if (!silencioso) setLoading(true)   // silencioso = recarrega sem trocar a lista por esqueletos (mantém o scroll)
     const [pa, pe] = await Promise.all([
       supabase.from('financeiro').select('*').eq('event_id',evento.id).order('created_at',{ascending:false}),
-      supabase.from('people').select('id,name,role_type,photo_url,cidade').eq('event_id',evento.id).order('name'),
+      supabase.from('people').select('id,name,role_type,photo_url,cidade').eq('event_id',evento.id).eq('desistente',false).order('name'),  // desistentes não têm pagamentos a fazer
     ])
     setPagamentos(pa.data??[])
     setPessoas(pe.data??[])

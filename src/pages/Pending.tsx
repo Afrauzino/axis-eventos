@@ -113,9 +113,11 @@ export default function Pending({ profile }: { profile: Profile | null }) {
     )
   }
 
-  const titulo = st === 'blocked' ? 'Conta bloqueada' : st === 'rejected' ? 'Cadastro não aprovado' : st === 'suspended' ? 'Conta suspensa' : 'Aguardando aprovação'
+  const titulo = st === 'blocked' ? 'Conta bloqueada' : st === 'desistente' ? 'Participação encerrada' : st === 'rejected' ? 'Cadastro não aprovado' : st === 'suspended' ? 'Conta suspensa' : 'Aguardando aprovação'
   const msgPadrao = st === 'blocked'
     ? 'Sua conta foi bloqueada pelo administrador. Entre em contato para reativar o seu acesso.'
+    : st === 'desistente'
+    ? 'Sua participação no evento foi encerrada (desistência). Se foi engano, fale com a organização.'
     : st === 'suspended'
     ? 'Sua conta foi suspensa temporariamente. Entre em contato com o administrador.'
     : 'Seu cadastro foi recebido. Um administrador precisa aprovar seu acesso antes de você entrar no sistema.'

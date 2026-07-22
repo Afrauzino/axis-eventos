@@ -413,7 +413,7 @@ export default function App() {
   if (!session) return <Login />
   if (!profile) return <Login />
   // Show pending screen for anyone awaiting admin approval
-  if (profile.role_status === 'pending' || profile.role_status === 'rejected' || profile.role_status === 'blocked' || profile.role_status === 'suspended' || profile.user_role === 'visitante') return <Pending profile={profile}/>
+  if (profile.role_status === 'pending' || profile.role_status === 'rejected' || profile.role_status === 'blocked' || profile.role_status === 'suspended' || profile.role_status === 'desistente' || profile.user_role === 'visitante') return <Pending profile={profile}/>
   // Desbloqueio por digital: se ativo neste aparelho, trava até passar a digital
   const bioDestravado = bioUnlocked || (() => { try { return sessionStorage.getItem('axis_bio_unlocked') === '1' } catch { return false } })()
   if (biometriaAtiva(profile.user_id) && !bioDestravado) return <BloqueioBiometrico profile={profile} onUnlock={()=>{ try { sessionStorage.setItem('axis_bio_unlocked','1') } catch {} ; setBioUnlocked(true) }} />
