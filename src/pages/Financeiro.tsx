@@ -10,7 +10,7 @@ import PersonSelect from '../components/PersonSelect'
 import { notificarRegra } from '../lib/notifRegras'
 import type { Profile } from '../App'
 
-type Pagamento = { id:string; person_id:string; valor:number; status:string; forma_pagamento:string|null; data_pagamento:string|null; observacoes:string|null }
+type Pagamento = { id:string; person_id:string; valor:number; status:string; forma_pagamento:string|null; data_pagamento:string|null; observacoes:string|null; created_by:string|null }
 type Pessoa    = { id:string; name:string; role_type:string; photo_url:string|null; cidade:string|null }
 
 // Situação financeira calculada automaticamente
@@ -32,6 +32,7 @@ export default function Financeiro({ profile }: { profile?: Profile }) {
   const { evento, loading: evLoading } = useEvento()
   const [pagamentos, setPagamentos] = useState<Pagamento[]>([])
   const [pessoas, setPessoas]       = useState<Pessoa[]>([])
+  const [recebedores, setRecebedores] = useState<Record<string,string>>({})  // user_id -> nome de quem registrou
   const [loading, setLoading]       = useState(true)
   const [busca, setBusca]             = useState('')
   const [fSit, setFSit]               = useState('todos')
@@ -58,6 +59,14 @@ export default function Financeiro({ profile }: { profile?: Profile }) {
     ])
     setPagamentos(pa.data??[])
     setPessoas(pe.data??[])
+    // Nomes de quem REGISTROU cada pagamento (created_by -> nome), pra mostrar "quem recebeu"
+    const uids = Array.from(new Set((pa.data??[]).map((x:any)=>x.created_by).filter(Boolean)))
+    if (uids.length) {
+      const { data: profs } = await supabase.from('profiles').select('user_id,name').in('user_id', uids as string[])
+      const m: Record<string,string> = {}
+      ;(profs??[]).forEach((r:any)=>{ if (r.name) m[r.user_id] = r.name })
+      setRecebedores(m)
+    }
     setLoading(false)
   }
 
@@ -81,7 +90,7 @@ export default function Financeiro({ profile }: { profile?: Profile }) {
     const payload = { person_id:form.person_id, valor:novoValor, status:form.status, forma_pagamento:form.forma_pagamento||null, data_pagamento:form.data_pagamento?new Date(form.data_pagamento).toISOString():new Date().toISOString(), observacoes:form.observacoes||null, event_id:evento.id }
     if (editando) await supabase.from('financeiro').update(payload).eq('id',editando.id)
     else {
-      await supabase.from('financeiro').insert(payload)
+      await supabase.from('financeiro').insert({ ...payload, created_by: profile?.user_id ?? null })  // quem recebeu
       // Recibo pra pessoa (só pagamento confirmado)
       if (form.status === 'pago') notificarRegra('fin_pago', { person_ids: [form.person_id], title: 'Pagamento registrado', body: `Recebemos ${fmtBRL(novoValor)}. Obrigado!`, url: '/' })
     }
@@ -273,6 +282,11 @@ export default function Financeiro({ profile }: { profile?: Profile }) {
                     <div>
                       <p style={{fontSize:13,fontWeight:600}}>{fmtBRL(pg.valor)} · {pg.forma_pagamento??'—'}</p>
                       {pg.data_pagamento && <p style={{fontSize:11,color:'var(--muted)'}}>{fmtData(pg.data_pagamento)}</p>}
+                      {pg.created_by && recebedores[pg.created_by] && (
+                        <p style={{fontSize:11,color:'var(--muted)',display:'flex',alignItems:'center',gap:3}}>
+                          <span className="icon" style={{fontSize:13}}>person</span> Recebido por {recebedores[pg.created_by]}
+                        </p>
+                      )}
                     </div>
                     <button onClick={()=>excluir(pg.id)} style={{background:'var(--danger-bg)',color:'var(--danger)',border:'none',borderRadius:6,padding:'4px 8px',cursor:'pointer',fontSize:11,fontWeight:600,fontFamily:'inherit'}}>
                       Excluir
