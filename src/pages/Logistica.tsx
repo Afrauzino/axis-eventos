@@ -11,7 +11,7 @@ import { useEvento } from '../hooks/useEvento'
 import { usePermissao } from '../hooks/usePermissao'
 import type { Profile } from '../App'
 
-type Pessoa   = { id:string; name:string; photo_url:string|null }
+type Pessoa   = { id:string; name:string; apelido:string|null; photo_url:string|null }
 type ItemChk  = { id:string; texto:string; ordem:number }
 type StatusChk= { id:string; encontrista_id:string; item_id:string; marcado:boolean }
 type PessoaLog= { encontrista_id:string; toma_controlado:boolean; ultima_dose:string|null; concluido:boolean }
@@ -76,7 +76,7 @@ export default function Logistica({ profile }: { profile?: Profile }) {
     setLoading(true)
     const eid = evento.id
     const [enc, it, st, pl] = await Promise.all([
-      supabase.from('people').select('id,name,photo_url').eq('event_id',eid).eq('role_type','encounterer').order('name'),
+      supabase.from('people').select('id,name,apelido,photo_url').eq('event_id',eid).eq('role_type','encounterer').order('name'),
       supabase.from('logistica_checklist_itens').select('*').eq('event_id',eid).order('ordem'),
       supabase.from('logistica_checklist_status').select('*').eq('event_id',eid),
       supabase.from('logistica_pessoa').select('encontrista_id,toma_controlado,ultima_dose,concluido').eq('event_id',eid),
@@ -176,7 +176,7 @@ export default function Logistica({ profile }: { profile?: Profile }) {
                 ehPessoa
                 fotoUrl={e.photo_url}
                 iniciais={getInitials(e.name)}
-                titulo={formatName(e.name)}
+                titulo={formatName(e.name)} apelido={e.apelido}
                 direita={<span style={{fontSize:15,fontWeight:800,color:'var(--primary)'}}>{pct}%</span>}
                 progresso={pct}
                 extra={(inf.concluido || inf.toma_controlado) ? (

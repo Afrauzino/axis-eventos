@@ -21,7 +21,7 @@ export default function Cozinha({ profile }: { profile?: Profile }) {
   const { evento, loading:evLoading } = useEvento()
   const [aba, setAba] = useState<'cardapio'|'tipo'|'restricao'|'progresso'>('restricao')
   // Progresso da equipe (líder marca pelos liderados)
-  const [cozMembros, setCozMembros] = useState<{id:string;name:string;photo_url:string|null}[]>([])
+  const [cozMembros, setCozMembros] = useState<{id:string;name:string;apelido:string|null;photo_url:string|null}[]>([])
   const [cozFeitos, setCozFeitos] = useState<Set<string>>(new Set())   // "personId|cardapioId"
   const [cozLoad, setCozLoad] = useState(false)
   const [expandido, setExpandido] = useState<string|null>(null)
@@ -43,7 +43,7 @@ export default function Cozinha({ profile }: { profile?: Profile }) {
     const com = (fichas ?? []).filter((f:any) => f.restricao_alimentar === true)
     if (!com.length) { setRestricoes([]); return }
     const ids = com.map((f:any) => f.person_id)
-    const { data: pes } = await supabase.from('people').select('id,name,photo_url').in('id', ids)
+    const { data: pes } = await supabase.from('people').select('id,name,apelido,photo_url').in('id', ids)
     const pmap = new Map((pes ?? []).map((p:any) => [p.id, p]))
     const out: Restricao[] = com.map((f:any) => {
       const p = pmap.get(f.person_id)
@@ -91,12 +91,12 @@ export default function Cozinha({ profile }: { profile?: Profile }) {
     const minhas = (times ?? []).filter((t:any) => admin || t.leader_id===meuId || t.co_leader_id===meuId)
     const teamIds = minhas.map((t:any)=>t.id)
     const liderIds = new Set(minhas.flatMap((t:any)=>[t.leader_id,t.co_leader_id]).filter(Boolean))
-    let membros: {id:string;name:string;photo_url:string|null}[] = []
+    let membros: {id:string;name:string;apelido:string|null;photo_url:string|null}[] = []
     if (teamIds.length) {
       const { data: pt } = await supabase.from('people_teams').select('person_id').in('team_id', teamIds)
       const ids = [...new Set((pt ?? []).map((x:any)=>x.person_id))].filter(id => !liderIds.has(id))
       if (ids.length) {
-        const { data: pes } = await supabase.from('people').select('id,name,photo_url').in('id', ids).order('name')
+        const { data: pes } = await supabase.from('people').select('id,name,apelido,photo_url').in('id', ids).order('name')
         membros = pes ?? []
       }
     }
@@ -243,7 +243,7 @@ export default function Cozinha({ profile }: { profile?: Profile }) {
                 return (
                   <div key={m.id}>
                     <CardItem cor={pct===100?'#2F855A':'#E8821A'} ehPessoa fotoUrl={m.photo_url} iniciais={getInitials(m.name)}
-                      titulo={formatName(m.name)} progresso={pct} progressoLabel={`${feitos}/${cardapios.length}`}
+                      titulo={formatName(m.name)} apelido={m.apelido} progresso={pct} progressoLabel={`${feitos}/${cardapios.length}`}
                       onVer={()=>setExpandido(aberto?null:m.id)} />
                     {aberto && (
                       <div style={{background:'var(--bg)',borderRadius:12,padding:'10px 12px',margin:'-4px 0 10px'}}>

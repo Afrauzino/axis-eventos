@@ -11,7 +11,7 @@ import type { Profile } from '../App'
 import { usePermissao } from '../hooks/usePermissao'
 
 type Atendimento = { id:string; person_id:string; medicine_name:string; reason:string|null; timestamp:string }
-type Pessoa = { id:string; name:string; photo_url:string|null }
+type Pessoa = { id:string; name:string; apelido:string|null; photo_url:string|null }
 
 const TIPOS = ['Medicamento','Atendimento geral','Pressão arterial','Glicemia','Curativo','Febre','Outro']
 
@@ -32,7 +32,7 @@ export default function Saude({ profile }: { profile?: Profile }) {
     setLoading(true)
     const [at, pe] = await Promise.all([
       supabase.from('medications').select('*').eq('event_id',evento.id).neq('reason','agendado').order('timestamp',{ascending:false}).limit(50),
-      supabase.from('people').select('id,name,photo_url').eq('event_id',evento.id).order('name'),
+      supabase.from('people').select('id,name,apelido,photo_url').eq('event_id',evento.id).order('name'),
     ])
     setAtendimentos(at.data??[])
     setPessoas(pe.data??[])
@@ -77,7 +77,7 @@ export default function Saude({ profile }: { profile?: Profile }) {
             ehPessoa
             fotoUrl={p?.photo_url}
             iniciais={getInitials(p?.name??'?')}
-            titulo={p?.name ?? '—'}
+            titulo={p?.name ?? '—'} apelido={p?.apelido}
             subtitulo={`${a.medicine_name}${a.reason?` · ${a.reason}`:''}`}
             direita={<span style={{fontSize:11,fontWeight:700,color:'var(--primary)',whiteSpace:'nowrap'}}>{fmtDataHora(a.timestamp)}</span>}
           />

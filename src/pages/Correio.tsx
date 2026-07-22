@@ -11,7 +11,7 @@ import { useEvento } from '../hooks/useEvento'
 import { notificarRegra } from '../lib/notifRegras'
 import type { Profile } from '../App'
 
-type Pessoa   = { id:string; name:string; photo_url:string|null; role_type:string; user_id:string|null; referencia_id:string|null }
+type Pessoa   = { id:string; name:string; apelido:string|null; photo_url:string|null; role_type:string; user_id:string|null; referencia_id:string|null }
 type ItemChk  = { id:string; texto:string; ordem:number }
 type Padrinho = { id:string; padrinho_id:string; afiliado_id:string }
 type StatusChk= { id:string; afiliado_id:string; item_id:string; concluido:boolean }
@@ -84,7 +84,7 @@ export default function Correio({ profile }: { profile?: Profile }) {
     let minha: Pessoa|null = null
     if (profile?.user_id) {
       const { data } = await supabase.from('people')
-        .select('id,name,photo_url,role_type,user_id,referencia_id')
+        .select('id,name,apelido,photo_url,role_type,user_id,referencia_id')
         .eq('user_id', profile.user_id).maybeSingle()
       minha = data
       setMinhaPessoa(data)
@@ -114,8 +114,8 @@ export default function Correio({ profile }: { profile?: Profile }) {
     setSouCorreio(correio)
 
     const [enc, todas, chk, pad, st, arq, afs] = await Promise.all([
-      supabase.from('people').select('id,name,photo_url,role_type,user_id,referencia_id').eq('event_id',eid).eq('role_type','encounterer').order('name'),
-      supabase.from('people').select('id,name,photo_url,role_type,user_id,referencia_id').eq('event_id',eid).order('name'),
+      supabase.from('people').select('id,name,apelido,photo_url,role_type,user_id,referencia_id').eq('event_id',eid).eq('role_type','encounterer').order('name'),
+      supabase.from('people').select('id,name,apelido,photo_url,role_type,user_id,referencia_id').eq('event_id',eid).order('name'),
       supabase.from('correio_checklist_itens').select('*').eq('event_id',eid).order('ordem'),
       supabase.from('correio_padrinhos').select('*').eq('event_id',eid),
       supabase.from('correio_checklist_status').select('*').eq('event_id',eid),
@@ -357,7 +357,7 @@ export default function Correio({ profile }: { profile?: Profile }) {
                 ehPessoa
                 fotoUrl={(af as any).photo_url ?? null}
                 iniciais={getInitials(af.name)}
-                titulo={formatName(af.name)}
+                titulo={formatName(af.name)} apelido={af.apelido}
                 subtitulo={qtd>0?`${qtd} padrinho(s)`:'Sem padrinho'}
                 onVer={()=>{setBuscaPadrinho('');setModalPadrinho(af)}}
                 onFoto={()=>(af as any).photo_url && setFotoAmpliada((af as any).photo_url)}
@@ -523,7 +523,7 @@ function CardAfiliado({ af, pct, status, onClick }: { af:any; pct:number; status
       ehPessoa
       fotoUrl={af.photo_url ?? null}
       iniciais={getInitials(af.name)}
-      titulo={formatName(af.name)}
+      titulo={formatName(af.name)} apelido={af.apelido}
       direita={<span style={{fontSize:15,fontWeight:800,color:'var(--primary)'}}>{pct}%</span>}
       progresso={pct}
       extra={<span style={{fontSize:10,fontWeight:700,color:'white',background:st.cor,padding:'2px 8px',borderRadius:99,display:'inline-block'}}>{st.label}</span>}

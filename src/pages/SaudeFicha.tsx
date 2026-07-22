@@ -21,7 +21,7 @@ type Ficha = {
   med_controlado_como:string|null
   med_controlado_horario:string|null
 }
-type Pessoa = { id:string; name:string; photo_url:string|null }
+type Pessoa = { id:string; name:string; apelido:string|null; photo_url:string|null }
 
 export default function SaudeFicha({ profile }: { profile?: Profile }) {
   const { evento, loading: evLoading } = useEvento()
@@ -41,7 +41,7 @@ export default function SaudeFicha({ profile }: { profile?: Profile }) {
     setLoading(true)
     const [fi, pe] = await Promise.all([
       supabase.from('saude_fichas').select('*').eq('event_id',evento.id),
-      supabase.from('people').select('id,name,photo_url').eq('event_id',evento.id).order('name'),
+      supabase.from('people').select('id,name,apelido,photo_url').eq('event_id',evento.id).order('name'),
     ])
     setFichas(fi.data??[])
     setPessoas(pe.data??[])
@@ -97,7 +97,7 @@ export default function SaudeFicha({ profile }: { profile?: Profile }) {
           ehPessoa
           fotoUrl={p.photo_url}
           iniciais={getInitials(p.name)}
-          titulo={p.name}
+          titulo={p.name} apelido={p.apelido}
           subtitulo={!f ? 'Sem ficha' : fl.length ? fl.join(' · ') : 'Sem alertas'}
           direita={badgePessoa(p.id)}
           onVer={()=>setAberta(p)}

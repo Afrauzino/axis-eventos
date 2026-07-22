@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { getInitials } from '../utils'
 
-type Pessoa = { id: string; name: string; photo_url?: string | null }
+type Pessoa = { id: string; name: string; apelido?: string | null; photo_url?: string | null }
 
 type Props = {
   pessoas: Pessoa[]
@@ -138,7 +138,7 @@ export default function PersonSelect({ pessoas, value, onChange, placeholder = '
                   }
                 </div>
                 <span style={{ fontSize: 14, fontWeight: p.id === value ? 700 : 400, color: p.id === value ? 'var(--primary-dark)' : 'var(--text)' }}>
-                  {p.name}
+                  {p.name}{p.apelido && <span style={{ fontWeight: 400, color: 'var(--muted)', marginLeft: 5 }}>“{p.apelido}”</span>}
                 </span>
                 {p.id === value && <span className="icon icon-sm" style={{ color: 'var(--primary)', marginLeft: 'auto' }}>check</span>}
               </button>

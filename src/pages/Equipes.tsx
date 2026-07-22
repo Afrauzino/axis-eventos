@@ -13,7 +13,7 @@ import { notificarRegra } from '../lib/notifRegras'
 import type { Profile } from '../App'
 
 type Equipe  = { id:string; name:string; color:string; leader_id:string|null; co_leader_id:string|null; equipe_saude:boolean; equipe_cardapio?:boolean }
-type Pessoa  = { id:string; name:string; role_type:string; photo_url:string|null; user_id:string|null }
+type Pessoa  = { id:string; name:string; apelido:string|null; role_type:string; photo_url:string|null; user_id:string|null }
 type Vinculo = { person_id:string; team_id:string }
 
 const CORES = ['#00A99D','#E8821A','#6B46C1','#2F855A','#D53F8C','#2B6CB0','#C05621','#1A202C','#C53030','#D69E2E']
@@ -56,7 +56,7 @@ export default function Equipes({ profile }: { profile?: Profile }) {
       supabase.from('teams').select('*').eq('event_id', evento.id).order('name'),
       // Mostra também quem só tem código (user_id null) — dá pra montar a equipe
       // antes da pessoa entrar. Ao fazer o primeiro acesso, ela já cai na equipe.
-      supabase.from('people').select('id,name,role_type,photo_url,user_id').eq('event_id', evento.id).eq('role_type','worker').order('name'),
+      supabase.from('people').select('id,name,apelido,role_type,photo_url,user_id').eq('event_id', evento.id).eq('role_type','worker').order('name'),
       supabase.from('people_teams').select('person_id,team_id'),
     ])
     setEquipes(eq.data ?? [])
@@ -282,7 +282,7 @@ export default function Equipes({ profile }: { profile?: Profile }) {
                             {m.photo_url?<img src={m.photo_url} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}}/>:getInitials(m.name)}
                           </div>
                           <div style={{flex:1,minWidth:0}}>
-                            <p style={{fontSize:13,fontWeight:600}}>{m.name}</p>
+                            <p style={{fontSize:13,fontWeight:600}}>{m.name}{m.apelido && <span style={{fontWeight:400,color:'var(--muted)',marginLeft:5}}>“{m.apelido}”</span>}</p>
                             {outrasEquipes.length>0 && (
                               <p style={{fontSize:11,color:'var(--muted)'}}>Tambem em: {outrasEquipes.map(e=>e.name).join(', ')}</p>
                             )}
@@ -395,7 +395,7 @@ export default function Equipes({ profile }: { profile?: Profile }) {
                       {p.photo_url ? <img src={p.photo_url} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}}/> : getInitials(p.name)}
                     </div>
                     <div style={{flex:1,minWidth:0}}>
-                      <p style={{fontSize:13,fontWeight:equipesDela.length===0&&!jaMembro?700:600,color:equipesDela.length===0&&!jaMembro?'var(--danger)':'var(--text)'}}>{p.name}</p>
+                      <p style={{fontSize:13,fontWeight:equipesDela.length===0&&!jaMembro?700:600,color:equipesDela.length===0&&!jaMembro?'var(--danger)':'var(--text)'}}>{p.name}{p.apelido && <span style={{fontWeight:400,color:'var(--muted)',marginLeft:5}}>“{p.apelido}”</span>}</p>
                       {!p.user_id && <p style={{fontSize:11,color:'var(--warning)',fontWeight:700}}>⏳ Só com código — ainda não entrou</p>}
                       {equipesDela.length===0&&!jaMembro && <p style={{fontSize:11,color:'var(--danger)',fontWeight:700}}>Sem equipe</p>}
                       {equipesDela.length>0 && <p style={{fontSize:11,color:'var(--muted)'}}>{equipesDela.map(e=>e.name).join(', ')}</p>}
@@ -500,7 +500,7 @@ export default function Equipes({ profile }: { profile?: Profile }) {
                             <div key={m.id} style={{display:'flex',alignItems:'center',gap:10,breakInside:'avoid'}}>
                               {av(m,38)}
                               <div style={{minWidth:0}}>
-                                <p style={{fontSize:13,fontWeight:600}}>{formatName(m.name)}{!m.user_id && <span style={{fontSize:10,color:'var(--warning)',fontWeight:700,marginLeft:6}}>⏳ não entrou</span>}</p>
+                                <p style={{fontSize:13,fontWeight:600}}>{formatName(m.name)}{m.apelido && <span style={{fontWeight:400,color:'var(--muted)',marginLeft:5}}>“{m.apelido}”</span>}{!m.user_id && <span style={{fontSize:10,color:'var(--warning)',fontWeight:700,marginLeft:6}}>⏳ não entrou</span>}</p>
                                 {outras.length>0 && <p style={{fontSize:11,color:'#6b7280'}}>Também em: {outras.map(e=>e.name).join(', ')}</p>}
                               </div>
                             </div>

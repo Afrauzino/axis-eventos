@@ -17,7 +17,7 @@ import FotoAmpliada from '../components/FotoAmpliada'
 import type { Profile } from '../App'
 
 type Escala  = { id:string; person_id:string; team_id:string|null; title:string; start_time:string; end_time:string; location:string|null; notes:string|null; status:string; created_by?:string|null }
-type Pessoa  = { id:string; name:string; photo_url:string|null }
+type Pessoa  = { id:string; name:string; apelido:string|null; photo_url:string|null }
 type Solic   = { id:string; escala_id:string; solicitante_user_id:string|null; solicitante_nome:string|null; escala_titulo:string|null; lider_user_id:string|null; mensagem:string|null; status:string; created_at:string }
 type Equipe  = { id:string; name:string; color:string }
 type Local   = { id:string; nome:string }
@@ -78,7 +78,7 @@ export default function Escalas({ profile }: { profile?: Profile }) {
     setLoading(true)
     const [es, pe, eq, vi, lo, cr, mi, te, el] = await Promise.all([
       supabase.from('escalas').select('*').eq('event_id', evento.id).order('start_time'),
-      supabase.from('people').select('id,name,photo_url').eq('event_id', evento.id).order('name'),
+      supabase.from('people').select('id,name,apelido,photo_url').eq('event_id', evento.id).order('name'),
       supabase.from('teams').select('id,name,color,leader_id,co_leader_id').eq('event_id', evento.id).order('name'),
       supabase.from('people_teams').select('person_id,team_id'),
       supabase.from('locais').select('id,nome').eq('event_id', evento.id).order('nome'),
@@ -359,7 +359,7 @@ export default function Escalas({ profile }: { profile?: Profile }) {
             ehPessoa
             fotoUrl={p?.photo_url ?? null}
             iniciais={getInitials(p?.name??'?')}
-            titulo={p?.name ?? '—'}
+            titulo={p?.name ?? '—'} apelido={p?.apelido}
             subtitulo={`${fmtHora(e.start_time)}–${fmtHora(e.end_time)}${eq?` · ${eq.name}`:''}`}
             extra={<p style={{fontSize:12,color:'var(--muted)'}}>{e.title}{e.location?` · ${e.location}`:''}{ehCheck?` · ${itens.filter(i=>i.feito).length}/${itens.length} feito`:''}</p>}
             progresso={pct}

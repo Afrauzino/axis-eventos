@@ -172,7 +172,7 @@ export default function Admin({ profile }: { profile?: Profile }) {
   const [usuarios, setUsuarios]     = useState<Usuario[]>([])
   const [pessoas, setPessoas]       = useState<{
     id:string; name:string; photo_url:string|null; church:string; phone:string|null;
-    role_type:string; invite_code:string|null; user_id:string|null; desistente:boolean;
+    role_type:string; invite_code:string|null; user_id:string|null; desistente:boolean; apelido:string|null;
     // from profiles join:
     user_role:string|null; role_status:string|null; profile_name:string|null;
   }[]>([])
@@ -504,12 +504,12 @@ export default function Admin({ profile }: { profile?: Profile }) {
     if (activeId) {
       const { data: pe } = await supabase
         .from('people')
-        .select('id,name,photo_url,church,role_type,invite_code,user_id,phone,desistente')
+        .select('id,name,apelido,photo_url,church,role_type,invite_code,user_id,phone,desistente')
         .eq('event_id', activeId).order('name')
 
       const pessoasComInfo = (pe??[]).map((p:any) => {
         const prof = p.user_id ? profsMap[p.user_id] : null
-        return { ...p, desistente:!!p.desistente, user_role:prof?.user_role??null, role_status:prof?.role_status??null, profile_name:prof?.name??null }
+        return { ...p, desistente:!!p.desistente, apelido:p.apelido??null, user_role:prof?.user_role??null, role_status:prof?.role_status??null, profile_name:prof?.name??null }
       })
 
       // TODAS as contas (profiles) que não têm cadastro de pessoa neste evento — mostrar todas
@@ -522,7 +522,7 @@ export default function Admin({ profile }: { profile?: Profile }) {
           name: pr.name || '(conta sem nome)', photo_url: null, phone: null,
           church: ehAdmin ? 'Administrador do sistema' : 'Conta — sem cadastro no evento',
           role_type: ehAdmin ? 'admin' : 'conta', invite_code: null, user_id: pr.user_id,
-          desistente: pr.role_status === 'desistente',
+          desistente: pr.role_status === 'desistente', apelido: null,
           user_role: pr.user_role, role_status: pr.role_status, profile_name: pr.name
         }
       })
@@ -532,7 +532,7 @@ export default function Admin({ profile }: { profile?: Profile }) {
       // No active event - just show admin profiles
       const admins = (allProfs??[]).map(pr => ({
         id: pr.user_id, name: pr.name, photo_url: null, church: '', phone: null,
-        role_type: 'admin', invite_code: null, user_id: pr.user_id, desistente: false,
+        role_type: 'admin', invite_code: null, user_id: pr.user_id, desistente: false, apelido: null,
         user_role: pr.user_role, role_status: pr.role_status, profile_name: pr.name
       }))
       setPessoas(admins)
@@ -1357,7 +1357,7 @@ export default function Admin({ profile }: { profile?: Profile }) {
                 ehPessoa
                 fotoUrl={p.photo_url}
                 iniciais={p.name.slice(0,2).toUpperCase()}
-                titulo={p.name}
+                titulo={p.name} apelido={p.apelido}
                 subtitulo={sub}
                 direita={direita}
                 onVer={()=>{setPessoaDetalhe(p);setPermsAba('liberacoes');carregarPermsPessoa(p)}}

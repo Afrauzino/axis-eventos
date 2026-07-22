@@ -14,7 +14,7 @@ import type { Profile } from '../App'
 
 // Doses vêm AUTOMÁTICAS da Ficha Médica (med_agenda). Sem agendamento manual.
 type Dose   = { id:string; med_ctrl_id:string; person_id:string; nome:string; dosagem:string|null; horario:string; entregue:boolean; entregue_por:string|null; entregue_em:string|null }
-type Pessoa = { id:string; name:string; photo_url:string|null }
+type Pessoa = { id:string; name:string; apelido:string|null; photo_url:string|null }
 
 export default function Medicamentos({ profile }: { profile?: Profile }) {
   const { evento, loading: evLoading } = useEvento()
@@ -35,7 +35,7 @@ export default function Medicamentos({ profile }: { profile?: Profile }) {
     setLoading(true)
     const [ag, pe] = await Promise.all([
       supabase.from('med_agenda').select('*').eq('event_id', evento.id).order('horario'),
-      supabase.from('people').select('id,name,photo_url').eq('event_id', evento.id).order('name'),
+      supabase.from('people').select('id,name,apelido,photo_url').eq('event_id', evento.id).order('name'),
     ])
     setDoses((ag.data as Dose[]) ?? [])
     setPessoas(pe.data ?? [])
@@ -166,7 +166,7 @@ export default function Medicamentos({ profile }: { profile?: Profile }) {
               ehPessoa
               fotoUrl={p.photo_url}
               iniciais={getInitials(p.name)}
-              titulo={p.name}
+              titulo={p.name} apelido={p.apelido}
               subtitulo={sub}
               direita={<span style={{fontSize:15,fontWeight:800,color:'var(--primary)'}}>{pctP}%</span>}
               progresso={pctP}
@@ -195,7 +195,7 @@ export default function Medicamentos({ profile }: { profile?: Profile }) {
               ehPessoa
               fotoUrl={p?.photo_url ?? null}
               iniciais={getInitials(p?.name??'?')}
-              titulo={p?.name ?? '—'}
+              titulo={p?.name ?? '—'} apelido={p?.apelido}
               subtitulo={`${d.nome}${d.dosagem?` · ${d.dosagem}`:''}`}
               direita={<span className={`badge ${atraso?'badge-warning':'badge-success'}`} style={{fontSize:9}}>{atraso?'Com atraso':'No horário'}</span>}
               extra={<div style={{background:'var(--bg)',borderRadius:8,padding:'8px 10px',fontSize:11,color:'var(--muted)'}}>Previsto: {fmtHora(d.horario)} · Entregue: {d.entregue_em?fmtDataHora(d.entregue_em):'—'}{quem?` · por ${quem.name.split(' ')[0]}`:''}</div>}

@@ -11,7 +11,7 @@ import { notificarRegra } from '../lib/notifRegras'
 import type { Profile } from '../App'
 
 type Pagamento = { id:string; person_id:string; valor:number; status:string; forma_pagamento:string|null; data_pagamento:string|null; observacoes:string|null; created_by:string|null }
-type Pessoa    = { id:string; name:string; role_type:string; photo_url:string|null; cidade:string|null }
+type Pessoa    = { id:string; name:string; apelido:string|null; role_type:string; photo_url:string|null; cidade:string|null }
 
 // Situação financeira calculada automaticamente
 function calcSituacao(pagamentos: Pagamento[], valorTotal: number): string {
@@ -55,7 +55,7 @@ export default function Financeiro({ profile }: { profile?: Profile }) {
     if (!silencioso) setLoading(true)   // silencioso = recarrega sem trocar a lista por esqueletos (mantém o scroll)
     const [pa, pe] = await Promise.all([
       supabase.from('financeiro').select('*').eq('event_id',evento.id).order('created_at',{ascending:false}),
-      supabase.from('people').select('id,name,role_type,photo_url,cidade').eq('event_id',evento.id).eq('desistente',false).order('name'),  // desistentes não têm pagamentos a fazer
+      supabase.from('people').select('id,name,apelido,role_type,photo_url,cidade').eq('event_id',evento.id).eq('desistente',false).order('name'),  // desistentes não têm pagamentos a fazer
     ])
     setPagamentos(pa.data??[])
     setPessoas(pe.data??[])
@@ -168,7 +168,7 @@ export default function Financeiro({ profile }: { profile?: Profile }) {
               {p.photo_url?<img src={p.photo_url} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}}/>:<span style={{fontSize:16,fontWeight:700,color:'var(--primary)'}}>{getInitials(p.name)}</span>}
             </div>
             <div className="list-card-body">
-              <div className="list-card-title">{p.name}</div>
+              <div className="list-card-title">{p.name}{p.apelido && <span style={{fontWeight:500,color:'var(--muted)',fontSize:'0.9em',marginLeft:6}}>“{p.apelido}”</span>}</div>
               <div style={{display:'flex',alignItems:'center',gap:6,marginTop:3}}>
                 {total>0 && (
                   <div style={{flex:1,height:4,background:'var(--border)',borderRadius:99,overflow:'hidden'}}>

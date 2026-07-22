@@ -13,7 +13,7 @@ import Seletor from '../components/Seletor'
 import type { Profile } from '../App'
 
 type Elenco  = { id:string; theater_id:string; person_id:string; personagem_id:string|null; observacoes:string|null }
-type Pessoa  = { id:string; name:string; photo_url:string|null }
+type Pessoa  = { id:string; name:string; apelido:string|null; photo_url:string|null }
 type Teatro  = { id:string; nome:string }
 type Personagem = { id:string; nome:string }
 
@@ -41,7 +41,7 @@ export default function TeatroAtores({ profile }: { profile?: Profile }) {
     setLoading(true)
     const [el, pe, te, pg] = await Promise.all([
       supabase.from('teatro_elenco').select('*'),
-      supabase.from('people').select('id,name,photo_url').eq('event_id',evento.id).order('name'),
+      supabase.from('people').select('id,name,apelido,photo_url').eq('event_id',evento.id).order('name'),
       supabase.from('theaters').select('id,nome').eq('event_id',evento.id).order('nome'),
       supabase.from('personagens_globais').select('*').order('nome'),
     ])
@@ -96,7 +96,7 @@ export default function TeatroAtores({ profile }: { profile?: Profile }) {
             ehPessoa
             fotoUrl={p?.photo_url ?? null}
             iniciais={getInitials(p?.name??'?')}
-            titulo={p?.name ?? '—'}
+            titulo={p?.name ?? '—'} apelido={p?.apelido}
             subtitulo={`${t?.nome??''}${pg?` · ${pg.nome}`:''}${e.observacoes?` · ${e.observacoes}`:''}`}
             direita={canEdit ? (
               <button onClick={()=>remover(e.id)} aria-label="Remover" title="Remover ator" style={{width:34,height:34,borderRadius:8,background:'var(--danger-bg)',border:'none',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',fontFamily:'inherit'}}>

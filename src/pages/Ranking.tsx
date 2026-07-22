@@ -11,7 +11,7 @@ import { notificarRegra } from '../lib/notifRegras'
 import type { Profile } from '../App'
 
 type Categoria = { id:string; nome:string; descricao:string|null; icone:string; cor:string; ordem:number }
-type Pessoa    = { id:string; name:string; photo_url:string|null; church:string|null; sexo:string|null }
+type Pessoa    = { id:string; name:string; apelido:string|null; photo_url:string|null; church:string|null; sexo:string|null }
 type Voto      = { categoria_id:string; votante_id:string; votado_id:string; estrelas:number }
 
 function MatIcon({ name, size=18, color='currentColor' }: { name:string; size?:number; color?:string }) {
@@ -83,7 +83,7 @@ export default function Ranking({ profile }: { profile?: Profile }) {
 
     const [ca, pe, vo] = await Promise.all([
       supabase.from('ranking_categorias').select('*').eq('event_id',evento.id).order('ordem'),
-      supabase.from('people').select('id,name,photo_url,church,sexo').eq('event_id',evento.id).eq('role_type','encounterer').order('name'),
+      supabase.from('people').select('id,name,apelido,photo_url,church,sexo').eq('event_id',evento.id).eq('role_type','encounterer').order('name'),
       supabase.from('ranking_votos').select('categoria_id,votante_id,votado_id,estrelas').eq('event_id',evento.id),
     ])
 
@@ -334,7 +334,7 @@ export default function Ranking({ profile }: { profile?: Profile }) {
                     {p.photo_url?<img src={p.photo_url} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}}/>
                       :<span style={{fontWeight:700,fontSize:13,color:catSel.cor}}>{getInitials(p.name)}</span>}
                   </div>
-                  <p style={{flex:1,fontWeight:700,fontSize:14}}>{p.name}</p>
+                  <p style={{flex:1,fontWeight:700,fontSize:14}}>{p.name}{p.apelido && <span style={{fontWeight:500,color:'var(--muted)',fontSize:'0.9em',marginLeft:5}}>“{p.apelido}”</span>}</p>
                   <div style={{display:'flex',alignItems:'center',gap:4}}>
                     <MatIcon name="star" size={16} color="#F6AD55"/>
                     <span style={{fontWeight:700,fontSize:14,color:catSel.cor}}>{p.nota.toFixed(1)}</span>
@@ -360,7 +360,7 @@ export default function Ranking({ profile }: { profile?: Profile }) {
                   :<span style={{fontWeight:700,fontSize:16,color:'var(--primary)'}}>{getInitials(p.name)}</span>}
               </div>
               <div style={{flex:1,minWidth:0}}>
-                <p style={{fontWeight:700,fontSize:14,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{p.name}</p>
+                <p style={{fontWeight:700,fontSize:14,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{p.name}{p.apelido && <span style={{fontWeight:500,color:'var(--muted)',fontSize:'0.9em',marginLeft:5}}>“{p.apelido}”</span>}</p>
                 {p.nota>0
                   ? <div style={{display:'flex',alignItems:'center',gap:5,marginTop:2}}>
                       <Estrelas valor={Math.round(p.nota)} size={14}/>
@@ -391,7 +391,7 @@ export default function Ranking({ profile }: { profile?: Profile }) {
                   :<span style={{fontWeight:700,fontSize:20,color:'var(--primary)'}}>{getInitials(pessoaAberta.name)}</span>}
               </div>
               <div style={{flex:1,minWidth:0}}>
-                <p style={{fontWeight:800,fontSize:18}}>{pessoaAberta.name}</p>
+                <p style={{fontWeight:800,fontSize:18}}>{pessoaAberta.name}{pessoaAberta.apelido && <span style={{fontWeight:500,color:'var(--muted)',fontSize:14,marginLeft:6}}>“{pessoaAberta.apelido}”</span>}</p>
                 <p style={{fontSize:12,color:'var(--muted)'}}>{podeVotar?'Toque nas estrelas para votar em cada categoria':'Votos recebidos'}</p>
               </div>
             </div>

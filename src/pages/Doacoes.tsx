@@ -11,7 +11,7 @@ import { notificarRegra } from '../lib/notifRegras'
 import type { Profile } from '../App'
 
 type Doacao = { id:string; person_id:string|null; valor:number; descricao:string|null; forma_pagamento:string|null; data_doacao:string; anonima:boolean; created_at:string }
-type Pessoa = { id:string; name:string; photo_url:string|null }
+type Pessoa = { id:string; name:string; apelido:string|null; photo_url:string|null }
 
 export default function Doacoes({ profile }: { profile?: Profile }) {
   const { evento, loading: evLoading } = useEvento()
@@ -33,7 +33,7 @@ export default function Doacoes({ profile }: { profile?: Profile }) {
     setLoading(true)
     const [do_, pe] = await Promise.all([
       supabase.from('doacoes').select('*').eq('event_id',evento.id).order('created_at',{ascending:false}),
-      supabase.from('people').select('id,name,photo_url').eq('event_id',evento.id).order('name'),
+      supabase.from('people').select('id,name,apelido,photo_url').eq('event_id',evento.id).order('name'),
     ])
     setDoacoes(do_.data??[])
     setPessoas(pe.data??[])
@@ -99,7 +99,7 @@ export default function Doacoes({ profile }: { profile?: Profile }) {
             emoji={d.anonima ? '🎁' : undefined}
             fotoUrl={d.anonima ? null : (p?.photo_url ?? null)}
             iniciais={getInitials(p?.name??'?')}
-            titulo={d.anonima ? 'Doação anônima' : (p?.name ?? 'Pessoa')}
+            titulo={d.anonima ? 'Doação anônima' : (p?.name ?? 'Pessoa')} apelido={d.anonima ? undefined : p?.apelido}
             subtitulo={`${d.forma_pagamento}${d.descricao?` · ${d.descricao}`:''}`}
             extra={<p style={{fontSize:11,color:'var(--muted)'}}>{fmtDataHora(d.data_doacao)}</p>}
             direita={
