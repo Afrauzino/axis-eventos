@@ -35,8 +35,10 @@ export default function Financeiro({ profile }: { profile?: Profile }) {
   const [loading, setLoading]       = useState(true)
   const [busca, setBusca]             = useState('')
   const [fSit, setFSit]               = useState('todos')
+  const [modalFiltros, setModalFiltros] = useState(false)
   const [modal, setModal]             = useState(false)
   useVoltarFecha(modal, () => setModal(false))
+  useVoltarFecha(modalFiltros, () => setModalFiltros(false))
   const [editando, setEditando]       = useState<Pagamento|null>(null)
   const [personaSel, setPersonaSel]   = useState<Pessoa|null>(null)
   const [salvando, setSalvando]       = useState(false)
@@ -105,42 +107,29 @@ export default function Financeiro({ profile }: { profile?: Profile }) {
 
   return (
     <div className="page">
-      {/* Contadores de status - sem valores monetários */}
-      {(() => {
-        const inscritos   = pessoas.filter(p=>getSituacao(p)==='inscrito').length
-        const pendentes   = pessoas.filter(p=>getSituacao(p)==='pendente').length
-        const confirmados = pessoas.filter(p=>getSituacao(p)==='confirmado').length
-        return (
-          <div className="stats-grid mb-3" style={{gridTemplateColumns:'repeat(3,1fr)'}}>
-            <div className="stat-card" style={{cursor:'pointer'}} onClick={()=>setBusca('')}>
-              <div className="stat-label">Inscritos</div>
-              <div className="stat-value" style={{color:'var(--muted)',fontSize:22}}>{inscritos}</div>
-            </div>
-            <div className="stat-card">
-              <div className="stat-label">Pendentes</div>
-              <div className="stat-value" style={{color:'var(--warning)',fontSize:22}}>{pendentes}</div>
-            </div>
-            <div className="stat-card">
-              <div className="stat-label">Confirmados</div>
-              <div className="stat-value" style={{color:'var(--success)',fontSize:22}}>{confirmados}</div>
-            </div>
-          </div>
-        )
-      })()}
+      {/* Busca + botão de filtro (abre modal, igual Encontristas) */}
+      <div style={{display:'flex',gap:8,marginBottom:12}}>
+        <div className="search-bar" style={{flex:1,marginBottom:0}}>
+          <span className="icon icon-sm" style={{color:'var(--muted-light)'}}>search</span>
+          <input placeholder="Buscar por nome..." value={busca} onChange={e=>setBusca(e.target.value)}/>
+          {busca && <button onClick={()=>setBusca('')} style={{background:'none',border:'none',cursor:'pointer',color:'var(--muted-light)',padding:0,fontFamily:'inherit'}}><span className="icon icon-sm">close</span></button>}
+        </div>
+        <button onClick={()=>setModalFiltros(true)} aria-label="Filtros"
+          style={{position:'relative',flexShrink:0,width:44,height:44,borderRadius:12,border:`1px solid ${fSit!=='todos'?'var(--primary)':'var(--border)'}`,background:fSit!=='todos'?'var(--primary-light)':'white',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',fontFamily:'inherit'}}>
+          <span className="icon" style={{color:fSit!=='todos'?'var(--primary)':'var(--text2)'}}>tune</span>
+          {fSit!=='todos' && <span style={{position:'absolute',top:-5,right:-5,minWidth:18,height:18,background:'var(--primary)',borderRadius:99,fontSize:10,fontWeight:800,color:'white',display:'flex',alignItems:'center',justifyContent:'center',padding:'0 4px'}}>1</span>}
+        </button>
+      </div>
 
-      {/* Busca + filtro de situação (na própria página) */}
-      <div className="search-bar" style={{marginBottom:10}}>
-        <span className="icon icon-sm" style={{color:'var(--muted-light)'}}>search</span>
-        <input placeholder="Buscar por nome..." value={busca} onChange={e=>setBusca(e.target.value)}/>
-        {busca && <button onClick={()=>setBusca('')} style={{background:'none',border:'none',cursor:'pointer',color:'var(--muted-light)',padding:0,fontFamily:'inherit'}}><span className="icon icon-sm">close</span></button>}
-      </div>
-      <div style={{display:'flex',gap:6,flexWrap:'wrap',marginBottom:14}}>
-        {([['todos','Todos'],['inscrito','Inscrito'],['pendente','Pendente'],['confirmado','Confirmado']] as const).map(([v,l])=>{
-          const sel = fSit===v
-          return <button key={v} onClick={()=>setFSit(v)}
-            style={{padding:'7px 14px',borderRadius:99,cursor:'pointer',fontFamily:'inherit',fontSize:13,fontWeight:700,border:sel?'2px solid var(--primary)':'1px solid var(--border)',background:sel?'var(--primary-light)':'white',color:sel?'var(--primary-dark)':'var(--text2)'}}>{l}</button>
-        })}
-      </div>
+      {/* Chip do filtro ativo */}
+      {fSit!=='todos' && (
+        <div style={{display:'flex',gap:6,flexWrap:'wrap',marginBottom:12}}>
+          <span style={{display:'inline-flex',alignItems:'center',gap:4,background:'var(--primary-light)',color:'var(--primary-dark)',borderRadius:99,padding:'4px 6px 4px 12px',fontSize:12,fontWeight:700}}>
+            {SIT_CFG[fSit]?.label ?? fSit}
+            <button onClick={()=>setFSit('todos')} style={{background:'none',border:'none',cursor:'pointer',color:'inherit',display:'flex',padding:0}}><span className="icon" style={{fontSize:15}}>close</span></button>
+          </span>
+        </div>
+      )}
 
       {loading ? [1,2,3].map(i=><div key={i} className="skeleton" style={{height:72,marginBottom:8,borderRadius:14}}/>) :
       pessoasUnicas.map(p => {
@@ -173,6 +162,31 @@ export default function Financeiro({ profile }: { profile?: Profile }) {
       })}
 
       <button className="fab" onClick={()=>{setEditando(null);setPersonaSel(null);setForm({person_id:'',valor:'',status:'pago',forma_pagamento:'pix',data_pagamento:'',observacoes:''});setModal(true)}}><span className="icon">add</span></button>
+
+      {/* Modal de filtros (situação) */}
+      {modalFiltros && (
+        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.5)',zIndex:400,display:'flex',flexDirection:'column',justifyContent:'flex-end'}} onClick={e=>e.target===e.currentTarget&&setModalFiltros(false)}>
+          <div style={{background:'white',borderRadius:'20px 20px 0 0',padding:'8px 20px 28px',maxWidth:480,width:'100%',margin:'0 auto',maxHeight:'85vh',overflowY:'auto'}}>
+            <div style={{width:36,height:4,background:'var(--border)',borderRadius:2,margin:'12px auto 14px'}}/>
+            <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:18}}>
+              <span style={{fontSize:17,fontWeight:800}}>Filtros</span>
+              {fSit!=='todos' && <button onClick={()=>setFSit('todos')} style={{background:'none',border:'none',color:'var(--primary)',fontSize:13,fontWeight:700,cursor:'pointer',fontFamily:'inherit'}}>Limpar</button>}
+            </div>
+            <p style={{fontSize:12,color:'var(--muted)',fontWeight:700,marginBottom:8}}>Situação</p>
+            <div style={{display:'flex',flexDirection:'column',gap:8,marginBottom:20}}>
+              {([['todos','Todos'],['inscrito','Inscrito'],['pendente','Pendente'],['confirmado','Confirmado']] as const).map(([v,l])=>{
+                const sel = fSit===v
+                return <button key={v} onClick={()=>setFSit(v)}
+                  style={{display:'flex',alignItems:'center',gap:10,padding:'12px 14px',borderRadius:10,cursor:'pointer',fontFamily:'inherit',textAlign:'left',border:sel?'2px solid var(--primary)':'1px solid var(--border)',background:sel?'var(--primary-light)':'white'}}>
+                  <span style={{flex:1,fontSize:14,fontWeight:sel?800:600,color:sel?'var(--primary-dark)':'var(--text)'}}>{l}</span>
+                  {sel && <span className="icon icon-sm" style={{color:'var(--primary)'}}>check</span>}
+                </button>
+              })}
+            </div>
+            <button className="btn btn-primary btn-full" onClick={()=>setModalFiltros(false)}>Ver resultados</button>
+          </div>
+        </div>
+      )}
 
       {modal && (
         <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.5)',zIndex:300,display:'flex',flexDirection:'column',justifyContent:'flex-end'}} onClick={e=>e.target===e.currentTarget&&setModal(false)}>
