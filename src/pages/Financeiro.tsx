@@ -11,7 +11,7 @@ import { notificarRegra } from '../lib/notifRegras'
 import type { Profile } from '../App'
 
 type Pagamento = { id:string; person_id:string; valor:number; status:string; forma_pagamento:string|null; data_pagamento:string|null; observacoes:string|null }
-type Pessoa    = { id:string; name:string; role_type:string; photo_url:string|null }
+type Pessoa    = { id:string; name:string; role_type:string; photo_url:string|null; cidade:string|null }
 
 // Situação financeira calculada automaticamente
 function calcSituacao(pagamentos: Pagamento[], valorTotal: number): string {
@@ -35,6 +35,7 @@ export default function Financeiro({ profile }: { profile?: Profile }) {
   const [loading, setLoading]       = useState(true)
   const [busca, setBusca]             = useState('')
   const [fSit, setFSit]               = useState('todos')
+  const [fCidade, setFCidade]         = useState('todas')
   const [modalFiltros, setModalFiltros] = useState(false)
   const [modal, setModal]             = useState(false)
   useVoltarFecha(modal, () => setModal(false))
@@ -53,7 +54,7 @@ export default function Financeiro({ profile }: { profile?: Profile }) {
     if (!silencioso) setLoading(true)   // silencioso = recarrega sem trocar a lista por esqueletos (mantém o scroll)
     const [pa, pe] = await Promise.all([
       supabase.from('financeiro').select('*').eq('event_id',evento.id).order('created_at',{ascending:false}),
-      supabase.from('people').select('id,name,role_type,photo_url').eq('event_id',evento.id).order('name'),
+      supabase.from('people').select('id,name,role_type,photo_url,cidade').eq('event_id',evento.id).order('name'),
     ])
     setPagamentos(pa.data??[])
     setPessoas(pe.data??[])
@@ -94,10 +95,15 @@ export default function Financeiro({ profile }: { profile?: Profile }) {
     carregar(true)
   }
 
-  // Deduplica pessoas que aparecem na lista + aplica busca e filtro de situação
+  // Cidades distintas (pra montar o filtro), ordenadas
+  const cidades = Array.from(new Set(pessoas.map(p => (p.cidade ?? '').trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b))
+  const nFiltros = (fSit !== 'todos' ? 1 : 0) + (fCidade !== 'todas' ? 1 : 0)
+
+  // Deduplica pessoas que aparecem na lista + aplica busca e filtros (situação + cidade)
   const pessoasUnicas = pessoas.filter(p => {
     if (busca && !p.name.toLowerCase().includes(busca.toLowerCase())) return false
     if (fSit !== 'todos' && getSituacao(p) !== fSit) return false
+    if (fCidade !== 'todas' && (p.cidade ?? '').trim() !== fCidade) return false
     return true
   })
 
@@ -115,19 +121,27 @@ export default function Financeiro({ profile }: { profile?: Profile }) {
           {busca && <button onClick={()=>setBusca('')} style={{background:'none',border:'none',cursor:'pointer',color:'var(--muted-light)',padding:0,fontFamily:'inherit'}}><span className="icon icon-sm">close</span></button>}
         </div>
         <button onClick={()=>setModalFiltros(true)} aria-label="Filtros"
-          style={{position:'relative',flexShrink:0,width:44,height:44,borderRadius:12,border:`1px solid ${fSit!=='todos'?'var(--primary)':'var(--border)'}`,background:fSit!=='todos'?'var(--primary-light)':'white',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',fontFamily:'inherit'}}>
-          <span className="icon" style={{color:fSit!=='todos'?'var(--primary)':'var(--text2)'}}>tune</span>
-          {fSit!=='todos' && <span style={{position:'absolute',top:-5,right:-5,minWidth:18,height:18,background:'var(--primary)',borderRadius:99,fontSize:10,fontWeight:800,color:'white',display:'flex',alignItems:'center',justifyContent:'center',padding:'0 4px'}}>1</span>}
+          style={{position:'relative',flexShrink:0,width:44,height:44,borderRadius:12,border:`1px solid ${nFiltros>0?'var(--primary)':'var(--border)'}`,background:nFiltros>0?'var(--primary-light)':'white',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',fontFamily:'inherit'}}>
+          <span className="icon" style={{color:nFiltros>0?'var(--primary)':'var(--text2)'}}>tune</span>
+          {nFiltros>0 && <span style={{position:'absolute',top:-5,right:-5,minWidth:18,height:18,background:'var(--primary)',borderRadius:99,fontSize:10,fontWeight:800,color:'white',display:'flex',alignItems:'center',justifyContent:'center',padding:'0 4px'}}>{nFiltros}</span>}
         </button>
       </div>
 
-      {/* Chip do filtro ativo */}
-      {fSit!=='todos' && (
+      {/* Chips dos filtros ativos */}
+      {nFiltros>0 && (
         <div style={{display:'flex',gap:6,flexWrap:'wrap',marginBottom:12}}>
-          <span style={{display:'inline-flex',alignItems:'center',gap:4,background:'var(--primary-light)',color:'var(--primary-dark)',borderRadius:99,padding:'4px 6px 4px 12px',fontSize:12,fontWeight:700}}>
-            {SIT_CFG[fSit]?.label ?? fSit}
-            <button onClick={()=>setFSit('todos')} style={{background:'none',border:'none',cursor:'pointer',color:'inherit',display:'flex',padding:0}}><span className="icon" style={{fontSize:15}}>close</span></button>
-          </span>
+          {fSit!=='todos' && (
+            <span style={{display:'inline-flex',alignItems:'center',gap:4,background:'var(--primary-light)',color:'var(--primary-dark)',borderRadius:99,padding:'4px 6px 4px 12px',fontSize:12,fontWeight:700}}>
+              {SIT_CFG[fSit]?.label ?? fSit}
+              <button onClick={()=>setFSit('todos')} style={{background:'none',border:'none',cursor:'pointer',color:'inherit',display:'flex',padding:0}}><span className="icon" style={{fontSize:15}}>close</span></button>
+            </span>
+          )}
+          {fCidade!=='todas' && (
+            <span style={{display:'inline-flex',alignItems:'center',gap:4,background:'var(--primary-light)',color:'var(--primary-dark)',borderRadius:99,padding:'4px 6px 4px 12px',fontSize:12,fontWeight:700,maxWidth:'100%'}}>
+              <span style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',maxWidth:160}}>{fCidade}</span>
+              <button onClick={()=>setFCidade('todas')} style={{background:'none',border:'none',cursor:'pointer',color:'inherit',display:'flex',padding:0}}><span className="icon" style={{fontSize:15}}>close</span></button>
+            </span>
+          )}
         </div>
       )}
 
@@ -170,7 +184,7 @@ export default function Financeiro({ profile }: { profile?: Profile }) {
             <div style={{width:36,height:4,background:'var(--border)',borderRadius:2,margin:'12px auto 14px'}}/>
             <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:18}}>
               <span style={{fontSize:17,fontWeight:800}}>Filtros</span>
-              {fSit!=='todos' && <button onClick={()=>setFSit('todos')} style={{background:'none',border:'none',color:'var(--primary)',fontSize:13,fontWeight:700,cursor:'pointer',fontFamily:'inherit'}}>Limpar</button>}
+              {nFiltros>0 && <button onClick={()=>{setFSit('todos');setFCidade('todas')}} style={{background:'none',border:'none',color:'var(--primary)',fontSize:13,fontWeight:700,cursor:'pointer',fontFamily:'inherit'}}>Limpar tudo</button>}
             </div>
             <p style={{fontSize:12,color:'var(--muted)',fontWeight:700,marginBottom:8}}>Situação</p>
             <div style={{display:'flex',flexDirection:'column',gap:8,marginBottom:20}}>
@@ -183,6 +197,16 @@ export default function Financeiro({ profile }: { profile?: Profile }) {
                 </button>
               })}
             </div>
+
+            {cidades.length > 0 && (<>
+              <p style={{fontSize:12,color:'var(--muted)',fontWeight:700,marginBottom:8}}>Cidade</p>
+              <select value={fCidade} onChange={e=>setFCidade(e.target.value)}
+                style={{width:'100%',padding:'11px 12px',borderRadius:10,border:'1px solid var(--border)',fontFamily:'inherit',fontSize:14,background:'white',color:'var(--text)',marginBottom:20}}>
+                <option value="todas">Todas as cidades</option>
+                {cidades.map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </>)}
+
             <button className="btn btn-primary btn-full" onClick={()=>setModalFiltros(false)}>Ver resultados</button>
           </div>
         </div>
