@@ -6,6 +6,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import UploadFoto from './UploadFoto'
+import SeletorCidade from './SeletorCidade'
 import Seletor from './Seletor'
 import SeletorIgreja from './SeletorIgreja'
 import DataHora from './DataHora'
@@ -518,21 +519,15 @@ export default function CadastroPessoa({
       </div>
       )}
       {(mostra('cidade') || mostra('estado')) && (
-      <div className="form-grid-2">
-        {mostra('cidade') && (
-        <div className="form-group">
-          <label className="form-label">Cidade {obg('cidade')}</label>
-          {inp('cidade')}
-        </div>
-        )}
-        {mostra('estado') && (
-        <div className="form-group">
-          <label className="form-label">Estado {obg('estado')}</label>
-          <Seletor titulo="Estado (UF)" placeholder="UF" sheet disabled={modoSoLeitura}
-            value={form.estado} onChange={v=>s('estado',v)}
-            opcoes={[{value:'',label:'Nenhum'}, ...['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO'].map(uf=>({value:uf,label:uf}))]}/>
-        </div>
-        )}
+      <div className="form-group">
+        {/* Estado + Cidade padronizados (base IBGE) — escolher da lista evita erro de digitação */}
+        <SeletorCidade
+          estado={form.estado || null}
+          cidade={form.cidade || null}
+          disabled={modoSoLeitura}
+          obrigatorio={campoObrigatorio(cadCfg,'cidade') || campoObrigatorio(cadCfg,'estado')}
+          onChange={(uf, cid) => onChange({ ...form, estado: uf, cidade: cid })}
+        />
       </div>
       )}
 
