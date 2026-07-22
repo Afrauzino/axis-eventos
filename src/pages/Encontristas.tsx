@@ -21,7 +21,7 @@ import type { Profile } from '../App'
 const MSG_REF_PADRAO = 'Olá! Você conhece esta pessoa? Pode me ajudar?\n\n{nome}\n{foto}'
 
 type Pessoa = {
-  id: string; name: string; church: string; photo_url: string | null
+  id: string; name: string; apelido: string | null; church: string; photo_url: string | null
   sexo: string | null; cidade: string | null
   referencia_id: string | null
 }
@@ -169,7 +169,7 @@ export default function Encontristas({ profile }: { profile: Profile }) {
     if (!evento) return
     setLoading(true)
     const [enc, trb] = await Promise.all([
-      supabase.from('people').select('id,name,church,photo_url,sexo,cidade,referencia_id')
+      supabase.from('people').select('id,name,apelido,church,photo_url,sexo,cidade,referencia_id')
         .eq('event_id', evento.id).eq('role_type', 'encounterer').order('name'),
       supabase.from('people').select('id,name,phone,photo_url')
         .eq('event_id', evento.id).eq('role_type', 'worker').order('name'),
@@ -341,6 +341,7 @@ export default function Encontristas({ profile }: { profile: Profile }) {
             iniciais={getInitials(p.name)}
             ehPessoa={true}
             titulo={p.name}
+            apelido={p.apelido}
             subtitulo={p.church + (ref ? ` · Ref: ${ref.name.split(' ')[0]}` : '')}
             onVer={() => setSelecionado(p)}
             onFoto={() => p.photo_url && setFotoAmpliada(p.photo_url)}
@@ -376,7 +377,7 @@ export default function Encontristas({ profile }: { profile: Profile }) {
                     : <span style={{ fontSize: 42, fontWeight: 700, color: 'var(--primary)' }}>{getInitials(selecionado.name)}</span>
                   }
                 </div>
-                <h2 style={{ fontSize: 22, fontWeight: 800, marginBottom: 4 }}>{selecionado.name}</h2>
+                <h2 style={{ fontSize: 22, fontWeight: 800, marginBottom: 4 }}>{selecionado.name}{selecionado.apelido && <span style={{ fontWeight: 500, color: 'var(--muted)', fontSize: 16, marginLeft: 6 }}>“{selecionado.apelido}”</span>}</h2>
                 <p style={{ fontSize: 14, color: 'var(--muted)' }}>
                   {selecionado.church}
                   {selecionado.cidade ? ` · ${selecionado.cidade}` : ''}

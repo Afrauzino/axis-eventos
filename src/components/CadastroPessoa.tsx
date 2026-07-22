@@ -22,6 +22,7 @@ import { isMenor } from '../utils'
 
 export type PessoaForm = {
   name: string
+  apelido: string
   phone: string
   contact_phone: string
   church: string
@@ -67,7 +68,7 @@ export type PessoaForm = {
 }
 
 export const FORM_VAZIO: PessoaForm = {
-  name:'', phone:'', contact_phone:'', church:'', ano_encontro:'',
+  name:'', apelido:'', phone:'', contact_phone:'', church:'', ano_encontro:'',
   sexo:'', birth_date:'', cpf:'', rg:'',
   cidade:'', estado:'', endereco:'', bairro:'', cep:'',
   estado_civil:'', phone2:'', contact_phone_dono:'', contact_phone2:'', contact_phone2_dono:'',
@@ -356,6 +357,13 @@ export default function CadastroPessoa({
         {inp('name',{required:true,placeholder:'Nome como no documento',
           onBlur:(e:React.FocusEvent<HTMLInputElement>)=>s('name', formatName(e.target.value))})}
       </div>
+
+      {mostra('apelido') && (
+      <div className="form-group">
+        <label className="form-label">Apelido {obg('apelido')}</label>
+        {inp('apelido',{placeholder:'Como te chamam (opcional)'})}
+      </div>
+      )}
 
       <div className="form-grid-2">
         <div className="form-group">

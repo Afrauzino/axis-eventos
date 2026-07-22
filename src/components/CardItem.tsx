@@ -18,6 +18,7 @@ type Props = {
   iniciais?: string
   ehPessoa?: boolean          // true = clicar na foto amplia (encontrista/encontreiro)
   titulo: string
+  apelido?: string | null     // mostrado ao lado do nome ("Nome “apelido”")
   subtitulo?: string
   equipes?: EquipeTag[]
   progresso?: number | null
@@ -81,7 +82,10 @@ export default function CardItem(props: Props) {
       </div>
       <div className="card-item-wrap">
         <div className="card-item-main">
-          <div className="card-item-title">{props.titulo}</div>
+          <div className="card-item-title">
+            {props.titulo}
+            {props.apelido && <span style={{ fontWeight: 500, color: 'var(--muted)', fontSize: '0.9em', marginLeft: 6 }}>“{props.apelido}”</span>}
+          </div>
           {props.subtitulo && <div className="card-item-sub">{props.subtitulo}</div>}
           {equipes.length > 0 && (
             <div className="card-item-teams">

@@ -22,7 +22,7 @@ import { usePermissao } from '../hooks/usePermissao'
 import type { Profile } from '../App'
 
 type Pessoa = {
-  id:string; name:string; phone:string|null; church:string|null
+  id:string; name:string; apelido:string|null; phone:string|null; church:string|null
   role_type:string; status:string; photo_url:string|null
   invite_code:string|null; user_id:string|null; conhecido_por_id:string|null
 }
@@ -46,7 +46,7 @@ export default function Cadastros({ profile }: { profile: Profile }) {
   const [modalFiltros, setModalFiltros] = useState(false)
   useVoltarFecha(modalFiltros, () => setModalFiltros(false))
   const nFiltros = (filtroRole!=='todos'?1:0) + (filtroSit!=='todas'?1:0)
-  const [form, setForm]       = useState<{name:string;phone:string;church:string;role_type:string;photo_url:string|null;conhecido_por_id:string|null}>({ name:'', phone:'', church:'', role_type:'encounterer', photo_url:null, conhecido_por_id:null })
+  const [form, setForm]       = useState<{name:string;apelido:string;phone:string;church:string;role_type:string;photo_url:string|null;conhecido_por_id:string|null}>({ name:'', apelido:'', phone:'', church:'', role_type:'encounterer', photo_url:null, conhecido_por_id:null })
   const [editando, setEditando] = useState<Pessoa|null>(null)
   const [copiadoId, setCopiadoId] = useState<string|null>(null)
   const [imprimir, setImprimir] = useState(false)
@@ -71,7 +71,7 @@ export default function Cadastros({ profile }: { profile: Profile }) {
   async function carregar() {
     if (!evento) return
     setLoading(true)
-    const base = 'id,name,phone,church,role_type,status,photo_url,invite_code,user_id'
+    const base = 'id,name,apelido,phone,church,role_type,status,photo_url,invite_code,user_id'
     let res: any = await supabase.from('people').select(base + ',conhecido_por_id').eq('event_id', evento.id).order('name')
     if (res.error) {
       // coluna conhecido_por_id ainda não existe (sql/28 não rodado) — busca sem ela p/ não sumir a lista
@@ -98,6 +98,7 @@ export default function Cadastros({ profile }: { profile: Profile }) {
 
     const dadosBase: any = {
       name: formatName(form.name),
+      apelido: form.apelido || null,
       phone: form.phone || null,
       church: (form.church || '').trim(),  // igreja OPCIONAL — vazio em vez de null (não exige no banco)
       role_type: form.role_type,
@@ -118,7 +119,7 @@ export default function Cadastros({ profile }: { profile: Profile }) {
     if (r.error && /conhecido_por_id/.test(r.error.message)) r = await gravar(false)
     if (r.error || !r.data) { setErro('NÃO SALVOU: ' + (r.error?.message || 'o banco não gravou a linha (algo está descartando o cadastro — provável trigger/regra criado direto no Supabase). Me mande este texto.')); setSalvando(false); return }
     setModal(false); setSalvando(false); setEditando(null)
-    setForm({ name:'', phone:'', church:'', role_type:'encounterer', photo_url:null, conhecido_por_id:null })
+    setForm({ name:'', apelido:'', phone:'', church:'', role_type:'encounterer', photo_url:null, conhecido_por_id:null })
     carregar()
   }
 
@@ -287,10 +288,11 @@ export default function Cadastros({ profile }: { profile: Profile }) {
             fotoUrl={p.photo_url}
             iniciais={getInitials(p.name)}
             titulo={p.name}
+            apelido={p.apelido}
             subtitulo={`${role?.label ?? ''}${p.church ? ' · ' + p.church : ''}`}
             extra={statusRow}
             onFoto={()=>p.photo_url && setFotoAmpliada(p.photo_url)}
-            onEditar={canEdit ? ()=>{setErro('');setEditando(p);setForm({name:p.name,phone:p.phone??'',church:(p as any).church??'',role_type:p.role_type,photo_url:p.photo_url??null,conhecido_por_id:p.conhecido_por_id??null});setModal(true)} : undefined}
+            onEditar={canEdit ? ()=>{setErro('');setEditando(p);setForm({name:p.name,apelido:p.apelido??'',phone:p.phone??'',church:(p as any).church??'',role_type:p.role_type,photo_url:p.photo_url??null,conhecido_por_id:p.conhecido_por_id??null});setModal(true)} : undefined}
             acoes={canEdit ? [{ label:'Imprimir ficha de inscrição', icon:'print', onClick:()=>setImprimirFicha(p.id) }] : undefined}
             onExcluir={canEdit ? ()=>excluirPessoa(p) : undefined}
           />
@@ -300,7 +302,7 @@ export default function Cadastros({ profile }: { profile: Profile }) {
       <FotoAmpliada url={fotoAmpliada} onClose={()=>setFotoAmpliada(null)} />
 
       {/* FAB */}
-      {canEdit && <button className="fab" onClick={()=>{setErro('');setEditando(null);setForm({name:'',phone:'',church:'',role_type:'encounterer',photo_url:null,conhecido_por_id:null});setModal(true)}}><span className="icon">add</span></button>}
+      {canEdit && <button className="fab" onClick={()=>{setErro('');setEditando(null);setForm({name:'',apelido:'',phone:'',church:'',role_type:'encounterer',photo_url:null,conhecido_por_id:null});setModal(true)}}><span className="icon">add</span></button>}
 
       {/* Modal pré-cadastro */}
       {modal && (
@@ -353,6 +355,10 @@ export default function Cadastros({ profile }: { profile: Profile }) {
               <div className="form-group">
                 <label className="form-label">Nome completo <span className="req">*</span></label>
                 <input className="form-input" value={form.name} onChange={e=>setForm(f=>({...f,name:e.target.value}))} required placeholder="Nome como no documento"/>
+              </div>
+              <div className="form-group">
+                <label className="form-label">Apelido</label>
+                <input className="form-input" value={form.apelido} onChange={e=>setForm(f=>({...f,apelido:e.target.value}))} placeholder="Como chamam (opcional)"/>
               </div>
 
               <div className="form-grid-2">

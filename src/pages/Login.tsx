@@ -96,7 +96,7 @@ export default function Login() {
     e.preventDefault(); setErro(''); setLoading(true)
     const { data, error } = await supabase
       .from('people')
-      .select('id,name,user_id,event_id,phone,church,role_type,sexo,birth_date,cpf,rg,cidade,estado,endereco,bairro,cep,contact_phone,photo_url,notes,ano_encontro,cargo')
+      .select('id,name,apelido,user_id,event_id,phone,church,role_type,sexo,birth_date,cpf,rg,cidade,estado,endereco,bairro,cep,contact_phone,photo_url,notes,ano_encontro,cargo')
       .eq('invite_code', codigo.toUpperCase().trim())
       .maybeSingle()
 
@@ -113,6 +113,7 @@ export default function Login() {
     setForm(f => ({
       ...f,
       name:         data.name         ?? '',
+      apelido:      data.apelido      ?? '',
       phone:        (data.phone && data.phone.toLowerCase()!=='a cadastrar') ? data.phone : '',
       contact_phone:data.contact_phone?? '',
       church:       data.church       ?? '',
@@ -224,7 +225,7 @@ export default function Login() {
     // rodado, grava sem instagram/facebook em vez de perder a inscrição inteira e
     // deixar a pessoa com conta órfã. Mesmo padrão do conhecido_por_id no Cadastros.
     const base: any = {
-      event_id: eventoAtivo.id, user_id: uid, name: nome, phone: tel,
+      event_id: eventoAtivo.id, user_id: uid, name: nome, apelido: form.apelido || null, phone: tel,
       // church e role_type sao NOT NULL no banco — nunca mandar null
       contact_phone: form.contact_phone || null, church: (form.church || '').trim(),
       role_type: form.role_type || 'encounterer',
@@ -359,6 +360,7 @@ export default function Login() {
       user_id: uid,
       invite_code: null,
       name: nome,
+      apelido: form.apelido || null,
       phone: telefoneLimpo,
       contact_phone: form.contact_phone || null,
       church: (form.church || '').trim(),  // igreja opcional
