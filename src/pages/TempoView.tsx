@@ -68,19 +68,34 @@ export default function TempoView() {
     return () => { b.style.background = antesB; h.style.background = antesH }
   }, [])
 
-  // poll da RPC (1,2s) — pega iniciar/pausar/±/encerrar/trocar de bloco
+  // poll da RPC (1s) — pega iniciar/pausar/±/encerrar/trocar de bloco.
+  // O navegador CONGELA o setInterval quando a aba/tela sai de foco (por isso antes
+  // só atualizava ao recarregar). Então re-buscamos NA HORA ao voltar o foco/visibilidade.
   useEffect(() => {
     vivoRef.current = true
     const puxar = async () => {
-      const { data } = await supabase.rpc('tempo_atual')
-      if (!vivoRef.current) return
-      setBloco((data as any) ?? null)
-      setCarregou(true)
-      setAgora(Date.now())
+      try {
+        const { data } = await supabase.rpc('tempo_atual')
+        if (!vivoRef.current) return
+        setBloco((data as any) ?? null)
+        setCarregou(true)
+        setAgora(Date.now())
+      } catch {}
     }
     puxar()
-    const t = setInterval(puxar, 1200)
-    return () => { vivoRef.current = false; clearInterval(t) }
+    const t = setInterval(puxar, 1000)
+    const aoVoltar = () => { if (document.visibilityState === 'visible') puxar() }
+    document.addEventListener('visibilitychange', aoVoltar)
+    window.addEventListener('focus', puxar)
+    window.addEventListener('pageshow', puxar)
+    window.addEventListener('online', puxar)
+    return () => {
+      vivoRef.current = false; clearInterval(t)
+      document.removeEventListener('visibilitychange', aoVoltar)
+      window.removeEventListener('focus', puxar)
+      window.removeEventListener('pageshow', puxar)
+      window.removeEventListener('online', puxar)
+    }
   }, [])
 
   // relógio local (250ms) — só corre quando está 'correndo'
