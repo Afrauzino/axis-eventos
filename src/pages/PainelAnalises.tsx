@@ -11,9 +11,9 @@ import { isAdmin, getInitials, formatName, fmtBRL, normalizarNome } from '../uti
 import { toast } from '../components/Toast'
 import type { Profile } from '../App'
 
-type Pessoa = { id:string; name:string; photo_url:string|null; role_type:string|null; user_id:string|null; created_at:string|null; birth_date:string|null }
+type Pessoa = { id:string; name:string; photo_url:string|null; role_type:string|null; user_id:string|null; created_at:string|null; birth_date:string|null; cidade:string|null; church:string|null; cargo:string|null; desistente:boolean|null; invite_code:string|null }
 type Team = { id:string; name:string; color:string }
-type Fin = { person_id:string|null; valor:number; status:string; forma_pagamento:string|null; data_pagamento:string|null }
+type Fin = { person_id:string|null; valor:number; status:string; forma_pagamento:string|null; data_pagamento:string|null; created_by:string|null }
 
 // Cards disponíveis (liga/desliga fica no aparelho). Agrupados por seção.
 const CARDS = [
@@ -34,6 +34,14 @@ const CARDS = [
   { key:'aniver',     nome:'Aniversariantes no evento' },
   { key:'engaj',      nome:'Engajamento (carrossel)' },
   { key:'compare',    nome:'Comparar com evento anterior' },
+  { key:'adocoes',    nome:'Correio — adoções' },
+  { key:'cidades',    nome:'Por cidade' },
+  { key:'igrejas',    nome:'Por igreja' },
+  { key:'cargos',     nome:'Por cargo' },
+  { key:'situacao',   nome:'Situação dos cadastros' },
+  { key:'recebedores',nome:'Financeiro — quem recebeu' },
+  { key:'ministracoes',nome:'Ministrações' },
+  { key:'idade',      nome:'Faixa etária' },
 ]
 const CHAVE_OFF = 'painel_cards_off'
 const MESES = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez']
@@ -93,6 +101,9 @@ export default function PainelAnalises({ profile }: { profile?: Profile }) {
   const [anterior, setAnterior] = useState<{name:string;cadastros:number;arrecadado:number}|null>(null)
   const [loading, setLoading] = useState(true)
   const [acessosDia, setAcessosDia] = useState<{dia:string;pessoas:number;acessos:number}[]>([])
+  const [adotados, setAdotados] = useState<Set<string>>(new Set())        // encontrista_id com responsável
+  const [ministr, setMinistr] = useState<{status:string}[]>([])
+  const [recebedorNome, setRecebedorNome] = useState<Record<string,string>>({})  // user_id -> nome (quem recebeu)
 
   const [off, setOff] = useState<Set<string>>(() => { try { return new Set(JSON.parse(localStorage.getItem(CHAVE_OFF) || '[]')) } catch { return new Set() } })
   const [modalCards, setModalCards] = useState(false)
@@ -121,9 +132,9 @@ export default function PainelAnalises({ profile }: { profile?: Profile }) {
     if (!evento) { setLoading(false); return }
     const eid = evento.id
     const q = (p:any) => p.then((r:any)=>r, ()=>({data:null}))  // nunca quebra por tabela ausente
-    const [pe, fi, dc, es, tm, oc, fc, md, cc, ca, cu, co] = await Promise.all([
-      q(supabase.from('people').select('id,name,photo_url,role_type,user_id,created_at,birth_date').eq('event_id', eid)),
-      q(supabase.from('financeiro').select('person_id,valor,status,forma_pagamento,data_pagamento').eq('event_id', eid)),
+    const [pe, fi, dc, es, tm, oc, fc, md, cc, ca, cu, co, ad, mi] = await Promise.all([
+      q(supabase.from('people').select('id,name,photo_url,role_type,user_id,created_at,birth_date,cidade,church,cargo,desistente,invite_code').eq('event_id', eid)),
+      q(supabase.from('financeiro').select('person_id,valor,status,forma_pagamento,data_pagamento,created_by').eq('event_id', eid)),
       q(supabase.from('doacoes').select('person_id,valor,anonima').eq('event_id', eid)),
       q(supabase.from('escalas').select('team_id,status').eq('event_id', eid)),
       q(supabase.from('teams').select('id,name,color').eq('event_id', eid)),
@@ -134,6 +145,8 @@ export default function PainelAnalises({ profile }: { profile?: Profile }) {
       q(supabase.from('correio_afiliado_status').select('status').eq('event_id', eid)),
       q(supabase.from('home_midias_curtidas').select('midia_id', { count:'exact', head:true })),
       q(supabase.from('home_midias_comentarios').select('id', { count:'exact', head:true })),
+      q(supabase.from('encontrista_adocao').select('encontrista_id').eq('event_id', eid)),
+      q(supabase.from('ministrações').select('status').eq('event_id', eid)),
     ])
     const ps = pe.data ?? []
     setPessoas(ps)
@@ -141,12 +154,19 @@ export default function PainelAnalises({ profile }: { profile?: Profile }) {
     setTeams((tm.data as any) ?? []); setOcorr((oc.data as any) ?? []); setFichas((fc.data as any) ?? [])
     setMed((md.data as any) ?? []); setCorreioChk((cc.data as any) ?? []); setCorreioAfi((ca.data as any) ?? [])
     setCurtidas(cu.count ?? 0); setComentarios(co.count ?? 0)
+    setAdotados(new Set(((ad.data as any) ?? []).map((r:any)=>r.encontrista_id)))
+    setMinistr((mi.data as any) ?? [])
+
+    // Nomes de quem RECEBEU pagamentos (financeiro.created_by) — pro card "Recebedores"
+    const recUids = Array.from(new Set(((fi.data as any) ?? []).map((f:any)=>f.created_by).filter(Boolean))) as string[]
 
     const uids = ps.map((p:Pessoa)=>p.user_id).filter(Boolean) as string[]
-    if (uids.length) {
-      const { data: pr } = await q(supabase.from('profiles').select('user_id,last_seen').in('user_id', uids))
-      const map: Record<string,string|null> = {}; (pr ?? []).forEach((r:any)=>{ map[r.user_id]=r.last_seen })
-      setLastSeen(map)
+    const todosUids = Array.from(new Set([...uids, ...recUids]))
+    if (todosUids.length) {
+      const { data: pr } = await q(supabase.from('profiles').select('user_id,last_seen,name').in('user_id', todosUids))
+      const mapLs: Record<string,string|null> = {}; const mapNome: Record<string,string> = {}
+      ;(pr ?? []).forEach((r:any)=>{ mapLs[r.user_id]=r.last_seen; if (r.name) mapNome[r.user_id]=r.name })
+      setLastSeen(mapLs); setRecebedorNome(mapNome)
     }
 
     // Evento anterior (comparativo): o mais recente que começou antes deste.
@@ -265,12 +285,54 @@ export default function PainelAnalises({ profile }: { profile?: Profile }) {
       }
     }
 
+    // ---- NOVOS ----
+    // Distribuições (só de quem NÃO desistiu)
+    const ativos = pessoas.filter(p=>!p.desistente)
+    const encAtivos = ativos.filter(p=>p.role_type==='encounterer').length
+    const agrupa = (campo:'cidade'|'church'|'cargo') => {
+      const mp: Record<string,number> = {}
+      for (const p of ativos) { const v = (((p as any)[campo])||'').trim(); if (v) mp[v]=(mp[v]||0)+1 }
+      return Object.entries(mp).map(([nome,n])=>({nome,n})).sort((a,b)=>b.n-a.n)
+    }
+    const porCidade = agrupa('cidade')
+    const porIgreja = agrupa('church')
+    const porCargo  = agrupa('cargo')
+
+    // Situação dos cadastros
+    const desistentes = pessoas.filter(p=>p.desistente).length
+    const codigosPendentes = pessoas.filter(p=>p.invite_code && !p.user_id && !p.desistente).length
+
+    // Adoções (correio) — encontristas com responsável
+    const adotadosN = ativos.filter(p=>p.role_type==='encounterer' && adotados.has(p.id)).length
+    const semResp = Math.max(0, encAtivos - adotadosN)
+    const adocaoPct = encAtivos ? Math.round(adotadosN/encAtivos*100) : 0
+
+    // Quem recebeu pagamentos (financeiro.created_by)
+    const recMap: Record<string,{n:number;valor:number}> = {}
+    for (const f of pagos) { const k = f.created_by || '—'; if (!recMap[k]) recMap[k]={n:0,valor:0}; recMap[k].n++; recMap[k].valor+=(f.valor||0) }
+    const recebedores = Object.entries(recMap).map(([uid,v])=>({ nome: uid==='—' ? 'Não registrado' : (recebedorNome[uid]||'Alguém'), n:v.n, valor:v.valor })).sort((a,b)=>b.valor-a.valor)
+
+    // Ministrações
+    const minsTotal = ministr.length
+    const minMap: Record<string,number> = {}
+    for (const x of ministr) { const s=(x.status||'—'); minMap[s]=(minMap[s]||0)+1 }
+    const minsPorStatus = Object.entries(minMap).map(([status,n])=>({status,n})).sort((a,b)=>b.n-a.n)
+
+    // Idade (a partir do nascimento)
+    const hojeD = new Date()
+    const idades = pessoas.filter(p=>p.birth_date).map(p=>{ const b=new Date(p.birth_date!+'T12:00:00'); let a=hojeD.getFullYear()-b.getFullYear(); const mm=hojeD.getMonth()-b.getMonth(); if(mm<0||(mm===0&&hojeD.getDate()<b.getDate()))a--; return a }).filter(a=>a>=0&&a<120)
+    const idadeMedia = idades.length ? Math.round(idades.reduce((s,a)=>s+a,0)/idades.length) : 0
+    const faixas = ([['até 17',0,17],['18–25',18,25],['26–35',26,35],['36–50',36,50],['51+',51,200]] as [string,number,number][]).map(([lbl,mn,mx])=>({ lbl, n: idades.filter(a=>a>=mn&&a<=mx).length }))
+
     return { total, comConta, semConta: total-comConta, encontristas, encontreiros, comFoto, semFoto: total-comFoto,
       online, hoje, arrecadado, aReceber, inadimplentes, formas, finDias, doacoesTotal, maioresDoadores, doacoesAnon,
       escTotal, escConcl, escPct, porEq, correioPct, afiConcl, afiTotal, chkFeito, chkTotal,
       medEntregues, medPendentes, fichasFeitas, fichasFaltando, restricoes, alergias,
-      ocAbertas, ocResolv, ocCriticas, dias, aniversariantes }
-  }, [pessoas, lastSeen, fin, doacoes, escalas, teams, ocorr, fichas, med, correioChk, correioAfi, evento])
+      ocAbertas, ocResolv, ocCriticas, dias, aniversariantes,
+      porCidade, porIgreja, porCargo, desistentes, codigosPendentes,
+      adotadosN, semResp, adocaoPct, encAtivos, recebedores, minsTotal, minsPorStatus,
+      idadeMedia, idades, faixas }
+  }, [pessoas, lastSeen, fin, doacoes, escalas, teams, ocorr, fichas, med, correioChk, correioAfi, evento, adotados, ministr, recebedorNome])
 
   if (evLoading || (loading && podeVer)) return <div className="page">{[1,2].map(i=><div key={i} className="skeleton" style={{height:120,marginBottom:12,borderRadius:14}}/>)}</div>
   if (!carregado) return <div className="page"><div className="skeleton" style={{height:120,borderRadius:14}}/></div>
@@ -569,6 +631,74 @@ export default function PainelAnalises({ profile }: { profile?: Profile }) {
             <Comparar label="Arrecadado" atual={m.arrecadado} antes={anterior.arrecadado} dinheiro/>
           </div>
         )}
+
+        {/* Adoções (correio) */}
+        {mostra('adocoes') && m.encAtivos>0 && (
+          <div style={box}>
+            <p style={titulo}>💌 Adoções (correio)</p>
+            <div style={{display:'flex',justifyContent:'space-between',fontSize:13,marginBottom:6}}>
+              <span style={{fontWeight:600}}>Encontristas com responsável</span>
+              <span style={{fontWeight:800,color:m.adocaoPct===100?'#2F855A':'#DB2777'}}>{m.adocaoPct}% <span style={{color:'var(--muted)',fontWeight:600}}>({m.adotadosN}/{m.encAtivos})</span></span>
+            </div>
+            <div style={{height:10,background:'var(--bg)',borderRadius:99,overflow:'hidden'}}><div style={{height:'100%',width:`${m.adocaoPct}%`,background:'#DB2777',borderRadius:99}}/></div>
+            {m.semResp>0 && <p style={{fontSize:12,color:'var(--muted)',marginTop:8}}>{m.semResp} ainda sem responsável</p>}
+          </div>
+        )}
+
+        {/* Por cidade */}
+        {mostra('cidades') && m.porCidade.length>0 && (
+          <div style={box}><p style={titulo}>🏙️ Por cidade</p><Barras itens={m.porCidade} cor="#2B6CB0"/></div>
+        )}
+        {/* Por igreja */}
+        {mostra('igrejas') && m.porIgreja.length>0 && (
+          <div style={box}><p style={titulo}>⛪ Por igreja</p><Barras itens={m.porIgreja} cor="#6B46C1"/></div>
+        )}
+        {/* Por cargo */}
+        {mostra('cargos') && m.porCargo.length>0 && (
+          <div style={box}><p style={titulo}>🎖️ Por cargo</p><Barras itens={m.porCargo} cor="var(--primary)"/></div>
+        )}
+
+        {/* Situação dos cadastros */}
+        {mostra('situacao') && (m.desistentes+m.codigosPendentes)>0 && (
+          <div style={box}>
+            <p style={titulo}>Situação dos cadastros</p>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
+              <Mini valor={m.codigosPendentes} label="ainda não acessaram" cor="#E8821A"/>
+              <Mini valor={m.desistentes} label="desistências" cor="#C53030"/>
+            </div>
+          </div>
+        )}
+
+        {/* Quem recebeu pagamentos */}
+        {mostra('recebedores') && m.recebedores.length>0 && (
+          <div style={box}>
+            <p style={titulo}>Quem recebeu pagamentos</p>
+            {m.recebedores.slice(0,6).map((r,i)=>(
+              <div key={i} style={{display:'flex',alignItems:'center',gap:10,padding:'6px 0',borderBottom:i<Math.min(6,m.recebedores.length)-1?'1px solid var(--border)':'none'}}>
+                <span style={{flex:1,fontSize:14,fontWeight:600,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{formatName(r.nome)}</span>
+                <span style={{fontSize:12,color:'var(--muted)'}}>{r.n}×</span>
+                <b style={{fontSize:14,color:'#2F855A'}}>{fmtBRL(r.valor)}</b>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Ministrações */}
+        {mostra('ministracoes') && m.minsTotal>0 && (
+          <div style={box}>
+            <p style={titulo}>🎤 Ministrações</p>
+            <p style={{fontSize:32,fontWeight:800,color:'#6B46C1',lineHeight:1}}>{m.minsTotal}</p>
+            <p style={{fontSize:12,color:'var(--muted)',marginBottom:m.minsPorStatus.length>0?10:0}}>no total</p>
+            {m.minsPorStatus.map((s,i)=>(
+              <div key={i} style={{display:'flex',justifyContent:'space-between',fontSize:13,padding:'3px 0'}}><span style={{textTransform:'capitalize'}}>{s.status}</span><b>{s.n}</b></div>
+            ))}
+          </div>
+        )}
+
+        {/* Faixa etária */}
+        {mostra('idade') && m.idades.length>0 && (
+          <div style={box}><p style={titulo}>🎂 Faixa etária · média {m.idadeMedia} anos</p><Barras itens={m.faixas.map(f=>({nome:f.lbl,n:f.n}))} cor="#2F855A"/></div>
+        )}
       </div>
 
       {modalCards && <ModalCards off={off} toggle={toggleCard} fechar={()=>setModalCards(false)} />}
@@ -606,6 +736,25 @@ function Comparar({ label, atual, antes, dinheiro }: { label:string; atual:numbe
         <p style={{fontSize:15,fontWeight:800}}>{fmt(atual)} <span style={{fontSize:12,color:'var(--muted)',fontWeight:600}}>· antes {fmt(antes)}</span></p>
         <p style={{fontSize:12,fontWeight:800,color:cor}}>{diff>=0?'▲':'▼'} {Math.abs(pct)}%</p>
       </div>
+    </div>
+  )
+}
+
+function Barras({ itens, cor }: { itens:{nome:string;n:number}[]; cor:string }) {
+  const top = itens.slice(0,8)
+  const max = Math.max(1, ...top.map(i=>i.n))
+  return (
+    <div>
+      {top.map((it,i)=>(
+        <div key={i} style={{marginBottom:8}}>
+          <div style={{display:'flex',justifyContent:'space-between',fontSize:13,marginBottom:3}}>
+            <span style={{fontWeight:600,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{it.nome}</span>
+            <b style={{flexShrink:0,marginLeft:8}}>{it.n}</b>
+          </div>
+          <div style={{height:7,background:'var(--bg)',borderRadius:99,overflow:'hidden'}}><div style={{height:'100%',width:`${Math.round(it.n/max*100)}%`,background:cor,borderRadius:99}}/></div>
+        </div>
+      ))}
+      {itens.length>8 && <p style={{fontSize:12,color:'var(--muted)',marginTop:4}}>+{itens.length-8} outros</p>}
     </div>
   )
 }
