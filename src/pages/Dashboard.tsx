@@ -297,6 +297,12 @@ export default function Dashboard({ profile }: { profile: Profile }) {
                   {evento.status==='active'?'Em andamento':'Encerrado'}
                 </span>
                 {admin && !reordenando && (
+                  <button onClick={()=>{ const url=window.location.origin+'/tela'; const nav:any=navigator; if(nav.share){nav.share({title:'Tela do evento',url}).catch(()=>{})} else {nav.clipboard?.writeText(url).then(()=>toast.sucesso('Link copiado! Abre sem login.'),()=>{})} }} title="Compartilhar tela do evento (link público, pra transmitir)"
+                    style={{background:'rgba(255,255,255,0.2)',border:'none',borderRadius:8,width:30,height:30,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',color:'white',fontFamily:'inherit'}}>
+                    <span className="icon icon-sm">share</span>
+                  </button>
+                )}
+                {admin && !reordenando && (
                   <button onClick={()=>{ setEventoAspecto(medirAspecto(eventoCardRef.current)); setPersonalizando(true) }} title="Personalizar caixa"
                     style={{background:'rgba(255,255,255,0.2)',border:'none',borderRadius:8,width:30,height:30,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',color:'white',fontFamily:'inherit'}}>
                     <span className="icon icon-sm">palette</span>

@@ -38,6 +38,7 @@ const SaudeSistema     = lazy(() => import('./pages/SaudeSistema'))
 const AlertasLideres   = lazy(() => import('./pages/AlertasLideres'))
 const Cozinha          = lazy(() => import('./pages/Cozinha'))
 const Ministracoes     = lazy(() => import('./pages/Ministracoes'))
+const TelaEvento       = lazy(() => import('./pages/TelaEvento'))   // pública (/tela), sem login
 const Logistica        = lazy(() => import('./pages/Logistica'))
 const Midia            = lazy(() => import('./pages/Midia'))
 const Impressao        = lazy(() => import('./pages/Impressao'))
@@ -404,6 +405,11 @@ export default function App() {
     const t = setInterval(contarAlertas, 10000)
     return () => { ativo = false; clearInterval(t) }
   }, [profile])
+
+  // Rota PÚBLICA (sem login, sem menu do app) — tela do evento pra transmitir/salvar imagem.
+  if (window.location.pathname.startsWith('/tela')) {
+    return <Suspense fallback={<div style={{position:'fixed',inset:0,background:'#0d0d0d'}}/>}><TelaEvento/></Suspense>
+  }
 
   if (loading) return (
     <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'100vh',background:'var(--bg)'}}>
