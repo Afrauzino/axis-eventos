@@ -130,7 +130,7 @@ export default function TempoView() {
     return <div style={wrap}><div style={{ width: 40, height: 40, borderRadius: '50%', border: '3px solid rgba(255,255,255,0.15)', borderTopColor: '#fff', animation: 'tvspin 0.8s linear infinite' }} /><style>{keyframes}</style></div>
   }
 
-  const grande = 'clamp(64px, 22vw, 168px)'
+  const grande = 'clamp(82px, 28vw, 208px)'
 
   return (
     <div style={wrap}>
