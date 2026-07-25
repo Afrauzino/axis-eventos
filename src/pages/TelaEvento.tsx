@@ -34,7 +34,7 @@ const FONTES = [
 ]
 const FONTS_URL = 'https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Cormorant+Garamond:wght@600;700&family=EB+Garamond:wght@600;700&family=Cinzel:wght@600;800&family=Cinzel+Decorative:wght@700;900&family=Marcellus&family=Forum&family=Cardo:wght@700&family=Fraunces:wght@600;900&family=Abril+Fatface&family=Great+Vibes&family=Dancing+Script:wght@700&family=Sacramento&family=Parisienne&family=Allura&family=Pinyon+Script&family=Tangerine:wght@700&family=Bebas+Neue&family=Oswald:wght@600;700&family=Anton&display=swap'
 
-const LARG = 1280, ALT = 720
+const LARG = 1920, ALT = 1080   // Full HD 16:9
 const CHAVE = 'tela_config'
 // alças do quadrado de seleção: cantos (nwse/nesw) = tamanho; lados = largura/altura
 const ALCAS = [
@@ -49,6 +49,14 @@ const ALCAS = [
 ]
 
 export default function TelaEvento() {
+  // ?apresentar=1 (ou ?limpo / ?holyrics / ?tv) já abre no MODO LIMPO — é o link pra colar no Holyrics/projetor
+  const modoLimpo = (() => {
+    try {
+      const p = new URLSearchParams(window.location.search)
+      return p.get('apresentar') === '1' || p.has('limpo') || p.has('holyrics') || p.has('tv')
+    } catch { return false }
+  })()
+
   const [nome, setNome]       = useState('Encontro com Deus 2026')
   const [cor, setCor]         = useState('#ffffff')
   const [fonte, setFonte]     = useState(FONTES[0].css)
@@ -67,7 +75,8 @@ export default function TelaEvento() {
   const [barraLarg, setBarraLarg] = useState(78)   // largura da barra (% da tela)
   const [barraAlt, setBarraAlt]   = useState(36)   // altura da barra (px)
   const [painel, setPainel]   = useState(true)
-  const [apresentar, setApresentar] = useState(false)   // modo transmissão: só o 16:9, sem botões
+  const [apresentar, setApresentar] = useState(modoLimpo)   // modo transmissão: só o 16:9, sem botões
+  const [embutido] = useState(modoLimpo)   // veio pela URL (Holyrics/TV): sem botão de sair, sem fullscreen forçado
   const [salvando, setSalvando] = useState(false)
   const [salvandoCfg, setSalvandoCfg] = useState(false)
   const [souLogado, setSouLogado] = useState(false)
@@ -147,12 +156,17 @@ export default function TelaEvento() {
   // Encolhe a tela 16:9 pra caber (exporta em tamanho real)
   useEffect(() => {
     const el = wrapRef.current; if (!el) return
-    const calc = () => { const w = el.clientWidth, h = el.clientHeight; if (w > 0 && h > 0) setFit(Math.min(1, (w - 24) / LARG, (h - 24) / ALT)) }
+    const calc = () => {
+      const w = el.clientWidth, h = el.clientHeight; if (w <= 0 || h <= 0) return
+      // apresentar (Holyrics/projetor): ENCHE a tela — pode passar de 100% e sem margem.
+      // editando: cabe com uma margem e nunca passa de 100% (pra ver o slide inteiro).
+      setFit(apresentar ? Math.min(w / LARG, h / ALT) : Math.min(1, (w - 24) / LARG, (h - 24) / ALT))
+    }
     calc()
     const ro = new ResizeObserver(calc); ro.observe(el)
     window.addEventListener('resize', calc)
     return () => { ro.disconnect(); window.removeEventListener('resize', calc) }
-  }, [])
+  }, [apresentar])
 
   function escolherFundo(f: File) { setBgFile(f); setBg(URL.createObjectURL(f)) }
 
@@ -264,18 +278,28 @@ export default function TelaEvento() {
     const url = window.location.origin + '/tela'
     const nav: any = navigator
     if (nav.share) nav.share({ title: 'Tela do evento', url }).catch(() => {})
-    else nav.clipboard?.writeText(url).then(() => setMsg('🔗 Link copiado! Abre sem login.'), () => {})
+    else nav.clipboard?.writeText(url).then(() => setMsg('🔗 Link de edição copiado! Abre sem login.'), () => {})
     setTimeout(() => setMsg(''), 4000)
+  }
+  // Link LIMPO pra colar no Holyrics/projetor: abre já em tela cheia, sem barra/edição.
+  function copiarLinkHolyrics() {
+    const url = window.location.origin + '/tela?apresentar=1'
+    const nav: any = navigator
+    nav.clipboard?.writeText(url).then(
+      () => setMsg('📺 Link copiado! Cole no Holyrics → ' + url),
+      () => setMsg('Copie este link: ' + url),
+    )
+    setTimeout(() => setMsg(''), 9000)
   }
   function entrarApresentar() { setApresentar(true); try { (document.documentElement as any).requestFullscreen?.() } catch {} }
   function sairApresentar() { setApresentar(false); try { if (document.fullscreenElement) document.exitFullscreen?.() } catch {} }
   // Esc sai da apresentação
   useEffect(() => {
-    if (!apresentar) return
+    if (!apresentar || embutido) return   // embutido (link do Holyrics): Esc não revela a edição
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setApresentar(false) }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [apresentar])
+  }, [apresentar, embutido])
 
   const bgStyle: React.CSSProperties = bg
     ? { backgroundImage: `url(${bg})`, backgroundSize: 'cover', backgroundPosition: 'center' }
@@ -307,14 +331,15 @@ export default function TelaEvento() {
           </button>
           <button type="button" onClick={() => setPainel(v => !v)} style={botao}>{painel ? 'Esconder edição' : '✏️ Editar'}</button>
           <button type="button" onClick={entrarApresentar} style={{ ...botao, background: '#6B46C1', color: '#fff', border: 'none' }}>▶ Apresentar</button>
-          <button type="button" onClick={copiarLink} style={botao}>🔗 Link</button>
+          <button type="button" onClick={copiarLinkHolyrics} style={{ ...botao, background: '#B7791F', color: '#fff', border: 'none' }}>📺 Link p/ Holyrics</button>
+          <button type="button" onClick={copiarLink} style={botao}>🔗 Link (editar)</button>
           {msg && <span style={{ fontSize: 12, color: '#8fd', fontWeight: 700 }}>{msg}</span>}
           <span style={{ marginLeft: 'auto', fontSize: 12, color: '#777' }}>barra ao vivo · edite e salve</span>
         </div>
       )}
 
       <div ref={wrapRef} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 0, overflow: 'hidden', background: apresentar ? '#000' : undefined }}>
-        <div style={{ width: LARG * fit, height: ALT * fit, flexShrink: 0, boxShadow: '0 6px 30px rgba(0,0,0,0.6)' }}>
+        <div style={{ width: LARG * fit, height: ALT * fit, flexShrink: 0, boxShadow: apresentar ? 'none' : '0 6px 30px rgba(0,0,0,0.6)' }}>
           <div ref={telaRef} onPointerDown={() => { if (!apresentar) setSel(null) }}
             style={{ width: LARG, height: ALT, transform: `scale(${fit})`, transformOrigin: 'top left', position: 'relative', overflow: 'hidden', ...bgStyle }}>
             {bg && <div style={{ position: 'absolute', inset: 0, background: `rgba(0,0,0,${escuro})` }} />}
@@ -352,7 +377,7 @@ export default function TelaEvento() {
         </div>
       </div>
 
-      {apresentar && (
+      {apresentar && !embutido && (
         <button type="button" onClick={sairApresentar}
           style={{ position: 'fixed', top: 14, right: 14, zIndex: 10, width: 40, height: 40, borderRadius: 20, border: 'none', background: 'rgba(0,0,0,0.45)', color: '#fff', fontSize: 20, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
           title="Sair da apresentação (Esc)">✕</button>
