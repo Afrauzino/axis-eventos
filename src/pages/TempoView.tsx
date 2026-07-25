@@ -15,6 +15,7 @@ type Bloco = {
   tipo?: string | null
   ministrante: string | null
   foto: string | null
+  foto_png: string | null
   duracao_minutos: number | null
   hora_inicio: string | null
   hora_fim: string | null
@@ -55,7 +56,6 @@ export default function TempoView() {
   // auto-ajuste do contador: mede a largura e cresce/encolhe pra caber sempre
   const numRef = useRef<HTMLDivElement>(null)
   const [numFs, setNumFs] = useState(150)
-  const avancouRef = useRef<string | null>(null)   // trava: só dispara o "avançar" 1x por bloco
 
   // cor do sistema (só pro acento na zona tranquila)
   useEffect(() => { carregarCorSalva().then(c => c && setAccent(c)).catch(() => {}) }, [])
@@ -89,20 +89,6 @@ export default function TempoView() {
     const t = setInterval(() => setAgora(Date.now()), 250)
     return () => clearInterval(t)
   }, [bloco?.cron_estado, bloco?.id])
-
-  // AUTO-AVANÇAR: quando o tempo do bloco zera, conclui e inicia o próximo (via RPC
-  // guardada). Dispara 1x por bloco; o poll (1,2s) já traz o próximo. É o gatilho
-  // imediato — o pg_cron (1min) é só reforço caso nenhuma tela esteja aberta.
-  useEffect(() => {
-    if (!bloco || bloco.cron_estado !== 'correndo') return
-    const tot = duracaoBaseSeg(bloco) + (bloco.cron_ajuste_segundos ?? 0)
-    let dec = bloco.cron_decorrido_segundos ?? 0
-    if (bloco.cron_iniciado_em) dec += Math.max(0, Math.floor((agora - new Date(bloco.cron_iniciado_em).getTime()) / 1000))
-    if (tot > 0 && dec >= tot && avancouRef.current !== bloco.id) {
-      avancouRef.current = bloco.id
-      ;(async () => { try { await supabase.rpc('avancar_bloco', { p_id: bloco.id }) } catch {} })()
-    }
-  }, [agora, bloco?.id, bloco?.cron_estado, bloco?.cron_iniciado_em, bloco?.cron_ajuste_segundos, bloco?.cron_decorrido_segundos])
 
   // AUTO-AJUSTE do contador: a cada render mede a largura do número e reescala a fonte
   // pra ocupar ~94% da largura disponível. Pouca escrita (mm:ss) → fonte grande;
@@ -183,12 +169,16 @@ export default function TempoView() {
           </span>
         </div>
 
-        {/* foto do ministrante */}
-        <div style={{ width: 132, height: 132, borderRadius: '50%', marginTop: 24, overflow: 'hidden', flexShrink: 0, background: 'rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: `3px solid ${cor}`, boxShadow: `0 0 0 8px ${cor}18, 0 14px 40px rgba(0,0,0,0.5)` }}>
-          {bloco.foto
-            ? <img src={bloco.foto} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-            : <span style={{ fontSize: 44, fontWeight: 800, color: cor }}>{getInitials(bloco.ministrante ?? bloco.titulo ?? '?')}</span>}
-        </div>
+        {/* PNG do pôster (mesma figura do cronograma) — senão, foto redonda/iniciais */}
+        {bloco.foto_png ? (
+          <img src={bloco.foto_png} alt="" style={{ height: 'min(40vh, 320px)', maxWidth: '84vw', objectFit: 'contain', objectPosition: 'bottom center', marginTop: 10, filter: 'drop-shadow(0 16px 34px rgba(0,0,0,0.6))' }} />
+        ) : (
+          <div style={{ width: 132, height: 132, borderRadius: '50%', marginTop: 24, overflow: 'hidden', flexShrink: 0, background: 'rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: `3px solid ${cor}`, boxShadow: `0 0 0 8px ${cor}18, 0 14px 40px rgba(0,0,0,0.5)` }}>
+            {bloco.foto
+              ? <img src={bloco.foto} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              : <span style={{ fontSize: 44, fontWeight: 800, color: cor }}>{getInitials(bloco.ministrante ?? bloco.titulo ?? '?')}</span>}
+          </div>
+        )}
 
         {/* ministrante + tag */}
         {bloco.ministrante && <p style={{ fontSize: 22, fontWeight: 800, marginTop: 18 }}>{bloco.ministrante}</p>}
