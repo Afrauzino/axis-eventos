@@ -39,6 +39,7 @@ const AlertasLideres   = lazy(() => import('./pages/AlertasLideres'))
 const Cozinha          = lazy(() => import('./pages/Cozinha'))
 const Ministracoes     = lazy(() => import('./pages/Ministracoes'))
 const TelaEvento       = lazy(() => import('./pages/TelaEvento'))   // pública (/tela), sem login
+const TempoView        = lazy(() => import('./pages/TempoView'))    // pública (/tempo), sem login
 const Logistica        = lazy(() => import('./pages/Logistica'))
 const Midia            = lazy(() => import('./pages/Midia'))
 const Impressao        = lazy(() => import('./pages/Impressao'))
@@ -409,6 +410,10 @@ export default function App() {
   // Rota PÚBLICA (sem login, sem menu do app) — tela do evento pra transmitir/salvar imagem.
   if (window.location.pathname.startsWith('/tela')) {
     return <Suspense fallback={<div style={{position:'fixed',inset:0,background:'#0d0d0d'}}/>}><TelaEvento/></Suspense>
+  }
+  // Rota PÚBLICA — visualizador de TEMPO do cronograma no celular (foto, restante, %, ao vivo).
+  if (window.location.pathname.startsWith('/tempo')) {
+    return <Suspense fallback={<div style={{position:'fixed',inset:0,background:'#0a0e17'}}/>}><TempoView/></Suspense>
   }
 
   if (loading) return (

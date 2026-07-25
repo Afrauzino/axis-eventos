@@ -457,6 +457,23 @@ export default function Cronograma({ profile }: { profile?: Profile }) {
       {/* Navegacao por data — barra de semana (rola pro lado; so os dias do evento abrem) */}
       <BarraData value={dataSel} onChange={setDataSel} inicio={evento?.start_date} fim={evento?.end_date} hoje={hoje} />
 
+      {/* Link PÚBLICO (sem login) do tempo ao vivo — pra abrir no celular/telão */}
+      {canEdit && (
+        <button
+          onClick={() => {
+            const url = window.location.origin + '/tempo'
+            const nav = navigator as any
+            if (nav.share) nav.share({ title: 'Tempo ao vivo', text: 'Acompanhe o tempo da ministração', url }).catch(() => {})
+            else if (nav.clipboard?.writeText) nav.clipboard.writeText(url).then(() => alert('Link copiado:\n' + url), () => alert(url))
+            else alert(url)
+          }}
+          className="btn btn-ghost"
+          style={{ width: '100%', marginBottom: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+        >
+          <span className="icon icon-sm">smartphone</span> Link do tempo ao vivo (sem login)
+        </button>
+      )}
+
       {/* Lista */}
       {loading ? [1,2,3].map(i=><div key={i} className="skeleton" style={{height:80,marginBottom:8,borderRadius:14}}/>) :
       Object.keys(grupos).length === 0 ? (
