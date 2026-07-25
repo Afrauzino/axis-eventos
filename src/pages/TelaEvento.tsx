@@ -50,6 +50,7 @@ export default function TelaEvento() {
   const [mostrarNome, setMostrarNome] = useState(true)
   const [mostrarBarra, setMostrarBarra] = useState(true)
   const [nomeTam, setNomeTam]     = useState(84)   // tamanho da fonte do nome (px)
+  const [nomeLarg, setNomeLarg]   = useState(100)  // largura da fonte do nome (%) — esticar/alargar
   const [pctTam, setPctTam]       = useState(62)   // tamanho da fonte do número %
   const [barraLarg, setBarraLarg] = useState(78)   // largura da barra (% da tela)
   const [barraAlt, setBarraAlt]   = useState(36)   // altura da barra (px)
@@ -69,6 +70,10 @@ export default function TelaEvento() {
   const [barraPos, setBarraPos] = useState({ x: LARG / 2, y: 500 })
   const [guias, setGuias] = useState({ v: false, h: false })
   const dragRef = useRef<{ alvo: 'nome' | 'barra'; x0: number; y0: number; px: number; py: number } | null>(null)
+  // esticar a largura do nome puxando a alça
+  const nomeSpanRef = useRef<HTMLSpanElement>(null)
+  const [nomeW0, setNomeW0] = useState(300)   // largura natural do nome (100%), em px do 1280
+  const esticarRef = useRef<{ x0: number; start: number; meia: number } | null>(null)
 
   // Fontes (só nesta página)
   useEffect(() => {
@@ -99,6 +104,7 @@ export default function TelaEvento() {
         if (c.nomePos && !dragRef.current) setNomePos(c.nomePos)
         if (c.barraPos && !dragRef.current) setBarraPos(c.barraPos)
         if (typeof c.nomeTam === 'number') setNomeTam(c.nomeTam)
+        if (typeof c.nomeLarg === 'number') setNomeLarg(c.nomeLarg)
         if (typeof c.pctTam === 'number') setPctTam(c.pctTam)
         if (typeof c.barraLarg === 'number') setBarraLarg(c.barraLarg)
         if (typeof c.barraAlt === 'number') setBarraAlt(c.barraAlt)
@@ -157,6 +163,28 @@ export default function TelaEvento() {
   }
   function onUp() { dragRef.current = null; setGuias({ v: false, h: false }) }
 
+  // mede a largura natural do nome (100%) sempre que texto/fonte/tamanho mudam
+  useEffect(() => {
+    if (nomeSpanRef.current) setNomeW0(nomeSpanRef.current.offsetWidth)
+  }, [nome, fonte, nomeTam, mostrarNome])
+
+  // ---- Esticar a largura do nome puxando a alça da direita ----
+  function onEsticarDown(e: React.PointerEvent) {
+    e.stopPropagation(); e.preventDefault()
+    const meia = Math.max(20, (nomeW0 * (nomeLarg / 100)) / 2)   // meia-largura VISÍVEL atual
+    esticarRef.current = { x0: e.clientX, start: nomeLarg, meia }
+    ;(e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId)
+  }
+  function onEsticarMove(e: React.PointerEvent) {
+    const d = esticarRef.current; if (!d) return
+    const delta = (e.clientX - d.x0) / fit          // px no espaço 1280
+    const base = Math.max(20, nomeW0 / 2)
+    let p = d.start + (delta / base) * 100           // mover a borda p/ fora alarga
+    p = Math.max(40, Math.min(320, Math.round(p)))
+    setNomeLarg(p)
+  }
+  function onEsticarUp() { esticarRef.current = null }
+
   // linha de slider (é função, não componente — não remonta a cada render)
   function slider(rot: string, val: number, set: (n: number) => void, min: number, max: number, step = 1, suf = 'px') {
     return (
@@ -194,7 +222,7 @@ export default function TelaEvento() {
         if (eUp) throw eUp
         bgFinal = supabase.storage.from('pessoas').getPublicUrl(path).data.publicUrl
       }
-      const cfg = { nome, cor, fonte, corBarra, bg: bgFinal, bgCor, escuro, mostrarNome, mostrarBarra, nomePos, barraPos, nomeTam, pctTam, barraLarg, barraAlt }
+      const cfg = { nome, cor, fonte, corBarra, bg: bgFinal, bgCor, escuro, mostrarNome, mostrarBarra, nomePos, barraPos, nomeTam, nomeLarg, pctTam, barraLarg, barraAlt }
       const ok = await salvarConfig(CHAVE, JSON.stringify(cfg))
       if (!ok) { setMsg('Só o admin salva pra todos. (Você pode salvar a imagem.)'); }
       else { setBg(bgFinal); setBgFile(null); setMsg('✓ Salvo! Todo mundo que abrir o link vê assim.') }
@@ -257,8 +285,16 @@ export default function TelaEvento() {
 
             {mostrarNome && (
               <div onPointerDown={e => onDown(e, 'nome')} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp}
-                style={{ position: 'absolute', left: nomePos.x, top: nomePos.y, transform: 'translate(-50%,-50%)', maxWidth: LARG * 0.92, cursor: apresentar ? 'default' : 'move', touchAction: 'none',
-                  fontFamily: fonte, fontSize: nomeTam, fontWeight: 700, color: cor, lineHeight: 1.1, textAlign: 'center', textShadow: '0 3px 14px rgba(0,0,0,0.5)', userSelect: 'none' }}>{nome}</div>
+                style={{ position: 'absolute', left: nomePos.x, top: nomePos.y, transform: 'translate(-50%,-50%)', cursor: apresentar ? 'default' : 'move', touchAction: 'none',
+                  fontFamily: fonte, fontSize: nomeTam, fontWeight: 700, color: cor, lineHeight: 1.1, textAlign: 'center', textShadow: '0 3px 14px rgba(0,0,0,0.5)', userSelect: 'none', whiteSpace: 'nowrap' }}>
+                <span ref={nomeSpanRef} style={{ display: 'inline-block', transform: `scaleX(${nomeLarg / 100})`, transformOrigin: 'center' }}>{nome}</span>
+              </div>
+            )}
+            {/* alça de esticar (só editando) — fica na borda direita visível do nome */}
+            {mostrarNome && !apresentar && (
+              <div onPointerDown={onEsticarDown} onPointerMove={onEsticarMove} onPointerUp={onEsticarUp} onPointerCancel={onEsticarUp}
+                title="Arraste para alargar a fonte"
+                style={{ position: 'absolute', left: nomePos.x + (nomeW0 * (nomeLarg / 100)) / 2 + 12, top: nomePos.y, transform: 'translate(-50%,-50%)', width: 22, height: 44, borderRadius: 6, background: 'rgba(107,70,193,0.9)', border: '2px solid #fff', cursor: 'ew-resize', touchAction: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 13, fontWeight: 700, boxShadow: '0 2px 8px rgba(0,0,0,0.4)' }}>↔</div>
             )}
             {mostrarBarra && (
               <div onPointerDown={e => onDown(e, 'barra')} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp}
@@ -289,6 +325,7 @@ export default function TelaEvento() {
             <span style={rotulo}>Nome</span>
             <input style={inputTxt} value={nome} onChange={e => setNome(e.target.value)} placeholder="Nome do evento" />
             {slider('Tamanho da fonte', nomeTam, setNomeTam, 24, 220)}
+            {slider('Largura (esticar)', nomeLarg, setNomeLarg, 40, 320, 5, '%')}
           </div>
           <div style={campo}>
             <span style={rotulo}>Fonte</span>
