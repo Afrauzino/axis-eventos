@@ -74,6 +74,8 @@ export default function TelaEvento() {
   const [pctTam, setPctTam]       = useState(62)   // tamanho da fonte do número %
   const [barraLarg, setBarraLarg] = useState(78)   // largura da barra (% da tela)
   const [barraAlt, setBarraAlt]   = useState(36)   // altura da barra (px)
+  const [encaixe, setEncaixe] = useState<'auto' | 'manual'>('auto')  // como encaixa no projetor/Holyrics
+  const [zoom, setZoom]       = useState(100)      // ajuste manual do tamanho na tela cheia (%)
   const [painel, setPainel]   = useState(true)
   const [apresentar, setApresentar] = useState(modoLimpo)   // modo transmissão: só o 16:9, sem botões
   const [embutido] = useState(modoLimpo)   // veio pela URL (Holyrics/TV): sem botão de sair, sem fullscreen forçado
@@ -132,6 +134,8 @@ export default function TelaEvento() {
         if (typeof c.pctTam === 'number') setPctTam(c.pctTam)
         if (typeof c.barraLarg === 'number') setBarraLarg(c.barraLarg)
         if (typeof c.barraAlt === 'number') setBarraAlt(c.barraAlt)
+        if (c.encaixe === 'auto' || c.encaixe === 'manual') setEncaixe(c.encaixe)
+        if (typeof c.zoom === 'number') setZoom(c.zoom)
         if (!bgFile) setBg(c.bg ?? null)   // não sobrescreve um fundo que a pessoa acabou de escolher
       } catch {}
     }
@@ -158,15 +162,17 @@ export default function TelaEvento() {
     const el = wrapRef.current; if (!el) return
     const calc = () => {
       const w = el.clientWidth, h = el.clientHeight; if (w <= 0 || h <= 0) return
-      // apresentar (Holyrics/projetor): ENCHE a tela — pode passar de 100% e sem margem.
+      // apresentar (Holyrics/projetor): ENCHE a tela — encaixa no 16:9 e, no Manual, aplica o zoom.
+      //   zoom > 100 corta as bordas pra preencher; < 100 diminui. (a moldura corta o que passar)
       // editando: cabe com uma margem e nunca passa de 100% (pra ver o slide inteiro).
-      setFit(apresentar ? Math.min(w / LARG, h / ALT) : Math.min(1, (w - 24) / LARG, (h - 24) / ALT))
+      const base = Math.min(w / LARG, h / ALT)
+      setFit(apresentar ? base * (encaixe === 'manual' ? zoom / 100 : 1) : Math.min(1, (w - 24) / LARG, (h - 24) / ALT))
     }
     calc()
     const ro = new ResizeObserver(calc); ro.observe(el)
     window.addEventListener('resize', calc)
     return () => { ro.disconnect(); window.removeEventListener('resize', calc) }
-  }, [apresentar])
+  }, [apresentar, encaixe, zoom])
 
   function escolherFundo(f: File) { setBgFile(f); setBg(URL.createObjectURL(f)) }
 
@@ -265,7 +271,7 @@ export default function TelaEvento() {
         if (eUp) throw eUp
         bgFinal = supabase.storage.from('pessoas').getPublicUrl(path).data.publicUrl
       }
-      const cfg = { nome, cor, fonte, corBarra, bg: bgFinal, bgCor, escuro, mostrarNome, mostrarBarra, nomePos, barraPos, nomeTam, nomeLarg, nomeAlt, pctTam, barraLarg, barraAlt }
+      const cfg = { nome, cor, fonte, corBarra, bg: bgFinal, bgCor, escuro, mostrarNome, mostrarBarra, nomePos, barraPos, nomeTam, nomeLarg, nomeAlt, pctTam, barraLarg, barraAlt, encaixe, zoom }
       const ok = await salvarConfig(CHAVE, JSON.stringify(cfg))
       if (!ok) { setMsg('Só o admin salva pra todos. (Você pode salvar a imagem.)'); }
       else { setBg(bgFinal); setBgFile(null); setMsg('✓ Salvo! Todo mundo que abrir o link vê assim.') }
@@ -436,6 +442,15 @@ export default function TelaEvento() {
               <button onClick={() => setMostrarNome(v => !v)} style={{ ...botao, borderColor: mostrarNome ? '#2F855A' : '#444' }}>{mostrarNome ? '✓ ' : ''}Nome</button>
               <button onClick={() => setMostrarBarra(v => !v)} style={{ ...botao, borderColor: mostrarBarra ? '#2F855A' : '#444' }}>{mostrarBarra ? '✓ ' : ''}Barra</button>
             </div>
+          </div>
+          <div style={campo}>
+            <span style={rotulo}>Tela cheia (Holyrics/projetor)</span>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <button onClick={() => setEncaixe('auto')} style={{ ...botao, borderColor: encaixe === 'auto' ? '#2F855A' : '#444' }}>{encaixe === 'auto' ? '✓ ' : ''}Automático</button>
+              <button onClick={() => setEncaixe('manual')} style={{ ...botao, borderColor: encaixe === 'manual' ? '#2F855A' : '#444' }}>{encaixe === 'manual' ? '✓ ' : ''}Manual</button>
+            </div>
+            {encaixe === 'manual' && slider('Tamanho na tela', zoom, setZoom, 50, 150, 1, '%')}
+            <span style={{ fontSize: 11, color: '#777' }}>Automático encaixa sozinho. Manual: mude o tamanho e clique ▶ Apresentar pra conferir; +100% corta as bordas pra preencher. Salve pra valer no link.</span>
           </div>
         </div>
       )}
