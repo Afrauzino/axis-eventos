@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { carregarCorSalva, COR_PADRAO } from '../lib/tema'
 import { getInitials } from '../utils'
@@ -52,6 +52,9 @@ export default function TempoView() {
   const [agora, setAgora] = useState(Date.now())
   const [accent, setAccent] = useState(COR_PADRAO)
   const vivoRef = useRef(true)
+  // auto-ajuste do contador: mede a largura e cresce/encolhe pra caber sempre
+  const numRef = useRef<HTMLDivElement>(null)
+  const [numFs, setNumFs] = useState(150)
 
   // cor do sistema (só pro acento na zona tranquila)
   useEffect(() => { carregarCorSalva().then(c => c && setAccent(c)).catch(() => {}) }, [])
@@ -85,6 +88,22 @@ export default function TempoView() {
     const t = setInterval(() => setAgora(Date.now()), 250)
     return () => clearInterval(t)
   }, [bloco?.cron_estado, bloco?.id])
+
+  // AUTO-AJUSTE do contador: a cada render mede a largura do número e reescala a fonte
+  // pra ocupar ~94% da largura disponível. Pouca escrita (mm:ss) → fonte grande;
+  // muita escrita (hh:mm:ss) → menor. Converge num passo (fonte escala linear) e o
+  // guard (>0,6px) evita loop. Como usa dígitos tabulares, só remede quando o
+  // tamanho do texto muda (vira/sai da hora) ou a janela muda.
+  useLayoutEffect(() => {
+    const el = numRef.current, parent = el?.parentElement
+    if (!el || !parent) return
+    const avail = parent.clientWidth * 0.94
+    const w = el.scrollWidth
+    if (avail <= 0 || w <= 0) return
+    let novo = (numFs * avail) / w
+    novo = Math.min(260, Math.max(38, Math.round(novo)))
+    if (Math.abs(novo - numFs) > 0.6) setNumFs(novo)
+  })
 
   const rodando = bloco?.cron_estado === 'correndo'
   const total = bloco ? duracaoBaseSeg(bloco) + (bloco.cron_ajuste_segundos ?? 0) : 0
@@ -134,8 +153,6 @@ export default function TempoView() {
     return <div style={wrap}><div style={{ width: 40, height: 40, borderRadius: '50%', border: '3px solid rgba(255,255,255,0.15)', borderTopColor: '#fff', animation: 'tvspin 0.8s linear infinite' }} /><style>{keyframes}</style></div>
   }
 
-  const grande = 'clamp(82px, 28vw, 208px)'
-
   return (
     <div style={wrap}>
       <div style={{ width: '100%', maxWidth: 560, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
@@ -164,7 +181,7 @@ export default function TempoView() {
 
         {/* tempo restante GIGANTE */}
         <div style={{ marginTop: 26, fontSize: 11, fontWeight: 800, letterSpacing: '0.18em', color: 'rgba(255,255,255,0.5)' }}>QUANTO FALTA</div>
-        <div style={{ fontSize: grande, fontWeight: 800, lineHeight: 1, color: cor, fontVariantNumeric: 'tabular-nums', textShadow: `0 6px 40px ${cor}55`, animation: zerou ? 'tvblink 1s infinite' : 'none' }}>{fmt(restante)}</div>
+        <div ref={numRef} style={{ fontSize: numFs, fontWeight: 800, lineHeight: 1, color: cor, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', textShadow: `0 6px 40px ${cor}55`, animation: zerou ? 'tvblink 1s infinite' : 'none' }}>{fmt(restante)}</div>
 
         {/* previsão de término (hora do relógio) */}
         {!zerou && (
