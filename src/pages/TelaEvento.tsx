@@ -49,6 +49,10 @@ export default function TelaEvento() {
   const [corBarra, setCorBarra] = useState('#ffffff')
   const [mostrarNome, setMostrarNome] = useState(true)
   const [mostrarBarra, setMostrarBarra] = useState(true)
+  const [nomeTam, setNomeTam]     = useState(84)   // tamanho da fonte do nome (px)
+  const [pctTam, setPctTam]       = useState(62)   // tamanho da fonte do número %
+  const [barraLarg, setBarraLarg] = useState(78)   // largura da barra (% da tela)
+  const [barraAlt, setBarraAlt]   = useState(36)   // altura da barra (px)
   const [painel, setPainel]   = useState(true)
   const [apresentar, setApresentar] = useState(false)   // modo transmissão: só o 16:9, sem botões
   const [salvando, setSalvando] = useState(false)
@@ -94,6 +98,10 @@ export default function TelaEvento() {
         if (typeof c.mostrarBarra === 'boolean') setMostrarBarra(c.mostrarBarra)
         if (c.nomePos && !dragRef.current) setNomePos(c.nomePos)
         if (c.barraPos && !dragRef.current) setBarraPos(c.barraPos)
+        if (typeof c.nomeTam === 'number') setNomeTam(c.nomeTam)
+        if (typeof c.pctTam === 'number') setPctTam(c.pctTam)
+        if (typeof c.barraLarg === 'number') setBarraLarg(c.barraLarg)
+        if (typeof c.barraAlt === 'number') setBarraAlt(c.barraAlt)
         if (!bgFile) setBg(c.bg ?? null)   // não sobrescreve um fundo que a pessoa acabou de escolher
       } catch {}
     }
@@ -149,6 +157,20 @@ export default function TelaEvento() {
   }
   function onUp() { dragRef.current = null; setGuias({ v: false, h: false }) }
 
+  // linha de slider (é função, não componente — não remonta a cada render)
+  function slider(rot: string, val: number, set: (n: number) => void, min: number, max: number, step = 1, suf = 'px') {
+    return (
+      <label style={{ fontSize: 11, color: '#aaa', display: 'flex', flexDirection: 'column', gap: 3 }}>
+        <span>{rot} <b style={{ color: '#ddd' }}>{val}{suf}</b></span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <button type="button" onClick={() => set(Math.max(min, val - step))} style={{ ...botao, padding: '2px 9px', fontSize: 15 }}>−</button>
+          <input type="range" min={min} max={max} step={step} value={val} onChange={e => set(Number(e.target.value))} style={{ flex: 1 }} />
+          <button type="button" onClick={() => set(Math.min(max, val + step))} style={{ ...botao, padding: '2px 9px', fontSize: 15 }}>+</button>
+        </div>
+      </label>
+    )
+  }
+
   async function salvarImagem() {
     if (!telaRef.current) return
     setSalvando(true)
@@ -172,7 +194,7 @@ export default function TelaEvento() {
         if (eUp) throw eUp
         bgFinal = supabase.storage.from('pessoas').getPublicUrl(path).data.publicUrl
       }
-      const cfg = { nome, cor, fonte, corBarra, bg: bgFinal, bgCor, escuro, mostrarNome, mostrarBarra, nomePos, barraPos }
+      const cfg = { nome, cor, fonte, corBarra, bg: bgFinal, bgCor, escuro, mostrarNome, mostrarBarra, nomePos, barraPos, nomeTam, pctTam, barraLarg, barraAlt }
       const ok = await salvarConfig(CHAVE, JSON.stringify(cfg))
       if (!ok) { setMsg('Só o admin salva pra todos. (Você pode salvar a imagem.)'); }
       else { setBg(bgFinal); setBgFile(null); setMsg('✓ Salvo! Todo mundo que abrir o link vê assim.') }
@@ -236,15 +258,15 @@ export default function TelaEvento() {
             {mostrarNome && (
               <div onPointerDown={e => onDown(e, 'nome')} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp}
                 style={{ position: 'absolute', left: nomePos.x, top: nomePos.y, transform: 'translate(-50%,-50%)', maxWidth: LARG * 0.92, cursor: apresentar ? 'default' : 'move', touchAction: 'none',
-                  fontFamily: fonte, fontSize: 84, fontWeight: 700, color: cor, lineHeight: 1.1, textAlign: 'center', textShadow: '0 3px 14px rgba(0,0,0,0.5)', userSelect: 'none' }}>{nome}</div>
+                  fontFamily: fonte, fontSize: nomeTam, fontWeight: 700, color: cor, lineHeight: 1.1, textAlign: 'center', textShadow: '0 3px 14px rgba(0,0,0,0.5)', userSelect: 'none' }}>{nome}</div>
             )}
             {mostrarBarra && (
               <div onPointerDown={e => onDown(e, 'barra')} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp}
-                style={{ position: 'absolute', left: barraPos.x, top: barraPos.y, transform: 'translate(-50%,-50%)', width: LARG * 0.78, cursor: apresentar ? 'default' : 'move', touchAction: 'none', display: 'flex', flexDirection: 'column', gap: 20, alignItems: 'center' }}>
-                <div style={{ width: '100%', height: 36, background: 'rgba(255,255,255,0.28)', borderRadius: 99, overflow: 'hidden' }}>
+                style={{ position: 'absolute', left: barraPos.x, top: barraPos.y, transform: 'translate(-50%,-50%)', width: LARG * (barraLarg / 100), cursor: apresentar ? 'default' : 'move', touchAction: 'none', display: 'flex', flexDirection: 'column', gap: 20, alignItems: 'center' }}>
+                <div style={{ width: '100%', height: barraAlt, background: 'rgba(255,255,255,0.28)', borderRadius: 99, overflow: 'hidden' }}>
                   <div style={{ height: '100%', width: `${pct}%`, background: corBarra, borderRadius: 99, transition: 'width 0.6s ease' }} />
                 </div>
-                <div style={{ fontFamily: fonte, fontSize: 62, fontWeight: 700, color: cor, textShadow: '0 3px 14px rgba(0,0,0,0.5)' }}>{pct}%</div>
+                <div style={{ fontFamily: fonte, fontSize: pctTam, fontWeight: 700, color: cor, textShadow: '0 3px 14px rgba(0,0,0,0.5)' }}>{pct}%</div>
               </div>
             )}
 
@@ -266,6 +288,7 @@ export default function TelaEvento() {
           <div style={campo}>
             <span style={rotulo}>Nome</span>
             <input style={inputTxt} value={nome} onChange={e => setNome(e.target.value)} placeholder="Nome do evento" />
+            {slider('Tamanho da fonte', nomeTam, setNomeTam, 24, 220)}
           </div>
           <div style={campo}>
             <span style={rotulo}>Fonte</span>
@@ -287,6 +310,9 @@ export default function TelaEvento() {
               <span style={{ fontSize: 11, color: '#aaa' }}>cor</span>
               <input type="color" style={corInput} value={corBarra} onChange={e => setCorBarra(e.target.value)} />
             </div>
+            {slider('Largura', barraLarg, setBarraLarg, 20, 100, 1, '%')}
+            {slider('Altura', barraAlt, setBarraAlt, 12, 90)}
+            {slider('Tamanho do %', pctTam, setPctTam, 18, 160)}
           </div>
           <div style={campo}>
             <span style={rotulo}>Fundo</span>
