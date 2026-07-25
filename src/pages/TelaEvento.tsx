@@ -50,6 +50,7 @@ export default function TelaEvento() {
   const [mostrarNome, setMostrarNome] = useState(true)
   const [mostrarBarra, setMostrarBarra] = useState(true)
   const [painel, setPainel]   = useState(true)
+  const [apresentar, setApresentar] = useState(false)   // modo transmissão: só o 16:9, sem botões
   const [salvando, setSalvando] = useState(false)
   const [salvandoCfg, setSalvandoCfg] = useState(false)
   const [souLogado, setSouLogado] = useState(false)
@@ -128,6 +129,7 @@ export default function TelaEvento() {
 
   // ---- Arrastar nome/barra dentro da imagem, com encaixe no centro ----
   function onDown(e: React.PointerEvent, alvo: 'nome' | 'barra') {
+    if (apresentar) return
     e.stopPropagation(); e.preventDefault()
     const pos = alvo === 'nome' ? nomePos : barraPos
     dragRef.current = { alvo, x0: e.clientX, y0: e.clientY, px: pos.x, py: pos.y }
@@ -186,7 +188,15 @@ export default function TelaEvento() {
     else nav.clipboard?.writeText(url).then(() => setMsg('🔗 Link copiado! Abre sem login.'), () => {})
     setTimeout(() => setMsg(''), 4000)
   }
-  function telaCheia() { if (document.fullscreenElement) document.exitFullscreen?.(); else (document.documentElement as any).requestFullscreen?.() }
+  function entrarApresentar() { setApresentar(true); try { (document.documentElement as any).requestFullscreen?.() } catch {} }
+  function sairApresentar() { setApresentar(false); try { if (document.fullscreenElement) document.exitFullscreen?.() } catch {} }
+  // Esc sai da apresentação
+  useEffect(() => {
+    if (!apresentar) return
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setApresentar(false) }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [apresentar])
 
   const bgStyle: React.CSSProperties = bg
     ? { backgroundImage: `url(${bg})`, backgroundSize: 'cover', backgroundPosition: 'center' }
@@ -200,35 +210,37 @@ export default function TelaEvento() {
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: '#0d0d0d', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', background: '#161616', flexShrink: 0, flexWrap: 'wrap', borderBottom: '1px solid #262626' }}>
-        {souLogado && (
-          <button onClick={salvarParaTodos} disabled={salvandoCfg} style={{ ...botao, background: '#2B6CB0', color: '#fff', border: 'none', opacity: salvandoCfg ? 0.6 : 1 }}>
-            {salvandoCfg ? 'Salvando...' : '☁️ Salvar pra todos'}
+      {!apresentar && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', background: '#161616', flexShrink: 0, flexWrap: 'wrap', borderBottom: '1px solid #262626' }}>
+          {souLogado && (
+            <button type="button" onClick={salvarParaTodos} disabled={salvandoCfg} style={{ ...botao, background: '#2B6CB0', color: '#fff', border: 'none', opacity: salvandoCfg ? 0.6 : 1 }}>
+              {salvandoCfg ? 'Salvando...' : '☁️ Salvar pra todos'}
+            </button>
+          )}
+          <button type="button" onClick={salvarImagem} disabled={salvando} style={{ ...botao, background: '#2F855A', color: '#fff', border: 'none', opacity: salvando ? 0.6 : 1 }}>
+            {salvando ? 'Gerando...' : '💾 Salvar imagem'}
           </button>
-        )}
-        <button onClick={salvarImagem} disabled={salvando} style={{ ...botao, background: '#2F855A', color: '#fff', border: 'none', opacity: salvando ? 0.6 : 1 }}>
-          {salvando ? 'Gerando...' : '💾 Salvar imagem'}
-        </button>
-        <button onClick={() => setPainel(v => !v)} style={botao}>{painel ? 'Esconder edição' : '✏️ Editar'}</button>
-        <button onClick={telaCheia} style={botao}>⛶ Tela cheia</button>
-        <button onClick={copiarLink} style={botao}>🔗 Link</button>
-        {msg && <span style={{ fontSize: 12, color: '#8fd', fontWeight: 700 }}>{msg}</span>}
-        <span style={{ marginLeft: 'auto', fontSize: 12, color: '#777' }}>barra ao vivo · edite e salve</span>
-      </div>
+          <button type="button" onClick={() => setPainel(v => !v)} style={botao}>{painel ? 'Esconder edição' : '✏️ Editar'}</button>
+          <button type="button" onClick={entrarApresentar} style={{ ...botao, background: '#6B46C1', color: '#fff', border: 'none' }}>▶ Apresentar</button>
+          <button type="button" onClick={copiarLink} style={botao}>🔗 Link</button>
+          {msg && <span style={{ fontSize: 12, color: '#8fd', fontWeight: 700 }}>{msg}</span>}
+          <span style={{ marginLeft: 'auto', fontSize: 12, color: '#777' }}>barra ao vivo · edite e salve</span>
+        </div>
+      )}
 
-      <div ref={wrapRef} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 0, overflow: 'hidden' }}>
+      <div ref={wrapRef} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 0, overflow: 'hidden', background: apresentar ? '#000' : undefined }}>
         <div style={{ width: LARG * fit, height: ALT * fit, flexShrink: 0, boxShadow: '0 6px 30px rgba(0,0,0,0.6)' }}>
           <div ref={telaRef} style={{ width: LARG, height: ALT, transform: `scale(${fit})`, transformOrigin: 'top left', position: 'relative', overflow: 'hidden', ...bgStyle }}>
             {bg && <div style={{ position: 'absolute', inset: 0, background: `rgba(0,0,0,${escuro})` }} />}
 
             {mostrarNome && (
               <div onPointerDown={e => onDown(e, 'nome')} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp}
-                style={{ position: 'absolute', left: nomePos.x, top: nomePos.y, transform: 'translate(-50%,-50%)', maxWidth: LARG * 0.92, cursor: 'move', touchAction: 'none',
+                style={{ position: 'absolute', left: nomePos.x, top: nomePos.y, transform: 'translate(-50%,-50%)', maxWidth: LARG * 0.92, cursor: apresentar ? 'default' : 'move', touchAction: 'none',
                   fontFamily: fonte, fontSize: 84, fontWeight: 700, color: cor, lineHeight: 1.1, textAlign: 'center', textShadow: '0 3px 14px rgba(0,0,0,0.5)', userSelect: 'none' }}>{nome}</div>
             )}
             {mostrarBarra && (
               <div onPointerDown={e => onDown(e, 'barra')} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp}
-                style={{ position: 'absolute', left: barraPos.x, top: barraPos.y, transform: 'translate(-50%,-50%)', width: LARG * 0.78, cursor: 'move', touchAction: 'none', display: 'flex', flexDirection: 'column', gap: 20, alignItems: 'center' }}>
+                style={{ position: 'absolute', left: barraPos.x, top: barraPos.y, transform: 'translate(-50%,-50%)', width: LARG * 0.78, cursor: apresentar ? 'default' : 'move', touchAction: 'none', display: 'flex', flexDirection: 'column', gap: 20, alignItems: 'center' }}>
                 <div style={{ width: '100%', height: 36, background: 'rgba(255,255,255,0.28)', borderRadius: 99, overflow: 'hidden' }}>
                   <div style={{ height: '100%', width: `${pct}%`, background: corBarra, borderRadius: 99, transition: 'width 0.6s ease' }} />
                 </div>
@@ -243,7 +255,13 @@ export default function TelaEvento() {
         </div>
       </div>
 
-      {painel && (
+      {apresentar && (
+        <button type="button" onClick={sairApresentar}
+          style={{ position: 'fixed', top: 14, right: 14, zIndex: 10, width: 40, height: 40, borderRadius: 20, border: 'none', background: 'rgba(0,0,0,0.45)', color: '#fff', fontSize: 20, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          title="Sair da apresentação (Esc)">✕</button>
+      )}
+
+      {painel && !apresentar && (
         <div style={{ background: '#161616', borderTop: '1px solid #262626', padding: '14px 16px', flexShrink: 0, maxHeight: '42vh', overflowY: 'auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(210px,1fr))', gap: 14 }}>
           <div style={campo}>
             <span style={rotulo}>Nome</span>
