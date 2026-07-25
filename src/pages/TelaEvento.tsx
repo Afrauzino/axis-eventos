@@ -118,6 +118,13 @@ export default function TelaEvento() {
       if (!vivo || !raw) return
       try {
         const c = JSON.parse(raw)
+        // MIGRAÇÃO DE RESOLUÇÃO: posições/tamanhos são guardados em pixels do quadro.
+        // Configs antigas foram salvas no quadro 1280×720 (sem baseW/baseH). Sem converter,
+        // o que estava centralizado ia pro canto e ficava menor no 1920×1080. Aqui converto
+        // do quadro em que foi salvo pro quadro atual (idempotente: base=atual → fator 1).
+        const bw = typeof c.baseW === 'number' && c.baseW > 0 ? c.baseW : 1280
+        const bh = typeof c.baseH === 'number' && c.baseH > 0 ? c.baseH : 720
+        const sx = LARG / bw, sy = ALT / bh
         if (c.nome != null) setNome(c.nome)
         if (c.cor) setCor(c.cor)
         if (c.fonte) setFonte(c.fonte)
@@ -126,14 +133,14 @@ export default function TelaEvento() {
         if (typeof c.escuro === 'number') setEscuro(c.escuro)
         if (typeof c.mostrarNome === 'boolean') setMostrarNome(c.mostrarNome)
         if (typeof c.mostrarBarra === 'boolean') setMostrarBarra(c.mostrarBarra)
-        if (c.nomePos && !dragRef.current) setNomePos(c.nomePos)
-        if (c.barraPos && !dragRef.current) setBarraPos(c.barraPos)
-        if (typeof c.nomeTam === 'number') setNomeTam(c.nomeTam)
-        if (typeof c.nomeLarg === 'number') setNomeLarg(c.nomeLarg)
-        if (typeof c.nomeAlt === 'number') setNomeAlt(c.nomeAlt)
-        if (typeof c.pctTam === 'number') setPctTam(c.pctTam)
-        if (typeof c.barraLarg === 'number') setBarraLarg(c.barraLarg)
-        if (typeof c.barraAlt === 'number') setBarraAlt(c.barraAlt)
+        if (c.nomePos && !dragRef.current) setNomePos({ x: c.nomePos.x * sx, y: c.nomePos.y * sy })
+        if (c.barraPos && !dragRef.current) setBarraPos({ x: c.barraPos.x * sx, y: c.barraPos.y * sy })
+        if (typeof c.nomeTam === 'number') setNomeTam(c.nomeTam * sy)
+        if (typeof c.nomeLarg === 'number') setNomeLarg(c.nomeLarg)   // % — não escala
+        if (typeof c.nomeAlt === 'number') setNomeAlt(c.nomeAlt)      // % — não escala
+        if (typeof c.pctTam === 'number') setPctTam(c.pctTam * sy)
+        if (typeof c.barraLarg === 'number') setBarraLarg(c.barraLarg) // % — não escala
+        if (typeof c.barraAlt === 'number') setBarraAlt(c.barraAlt * sy)
         if (c.encaixe === 'auto' || c.encaixe === 'manual') setEncaixe(c.encaixe)
         if (typeof c.zoom === 'number') setZoom(c.zoom)
         if (!bgFile) setBg(c.bg ?? null)   // não sobrescreve um fundo que a pessoa acabou de escolher
@@ -271,7 +278,7 @@ export default function TelaEvento() {
         if (eUp) throw eUp
         bgFinal = supabase.storage.from('pessoas').getPublicUrl(path).data.publicUrl
       }
-      const cfg = { nome, cor, fonte, corBarra, bg: bgFinal, bgCor, escuro, mostrarNome, mostrarBarra, nomePos, barraPos, nomeTam, nomeLarg, nomeAlt, pctTam, barraLarg, barraAlt, encaixe, zoom }
+      const cfg = { nome, cor, fonte, corBarra, bg: bgFinal, bgCor, escuro, mostrarNome, mostrarBarra, nomePos, barraPos, nomeTam, nomeLarg, nomeAlt, pctTam, barraLarg, barraAlt, encaixe, zoom, baseW: LARG, baseH: ALT }
       const ok = await salvarConfig(CHAVE, JSON.stringify(cfg))
       if (!ok) { setMsg('Só o admin salva pra todos. (Você pode salvar a imagem.)'); }
       else { setBg(bgFinal); setBgFile(null); setMsg('✓ Salvo! Todo mundo que abrir o link vê assim.') }
