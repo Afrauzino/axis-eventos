@@ -11,7 +11,7 @@ import Seletor from './Seletor'
 import SeletorIgreja from './SeletorIgreja'
 import DataHora from './DataHora'
 import { formatName } from '../utils'
-import { carregarCadastroCfg, cargoVisivel, campoOculto, campoObrigatorio, fotoRequerida, CADASTRO_CFG_VAZIO, type CadastroCfg } from '../lib/cadastroCfg'
+import { carregarCadastroCfg, cargoVisivel, campoOculto, campoObrigatorio, fotoRequerida, nascimentoRequerido, CADASTRO_CFG_VAZIO, type CadastroCfg } from '../lib/cadastroCfg'
 
 export type MedCtrl = {
   nome:string; tipo:'comprimido'|'gotas'|'outros'
@@ -124,6 +124,8 @@ export default function CadastroPessoa({
   // Config por campo: mostrar? e "*" de obrigatório
   const mostra = (key: string) => !campoOculto(cadCfg, key)
   const obg = (key: string) => campoObrigatorio(cadCfg, key) ? <span className="req">*</span> : null
+  // hoje em YYYY-MM-DD (local) — trava datas de nascimento no FUTURO
+  const hojeISO = (() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}` })()
   const aba: string = 'geral' // Saúde removida do primeiro acesso (preenchida depois no módulo Saúde)
   const [refSearch, setRefSearch] = useState('')
   const [refOpen, setRefOpen]   = useState(false)
@@ -416,8 +418,8 @@ export default function CadastroPessoa({
         )}
         {mostra('birth_date') && (
         <div className="form-group">
-          <label className="form-label">Nascimento {obg('birth_date')}</label>
-          <DataHora modo="date" value={form.birth_date} onChange={v=>s('birth_date',v)} disabled={modoSoLeitura}/>
+          <label className="form-label">Nascimento {nascimentoRequerido(cadCfg) ? <span className="req">*</span> : obg('birth_date')}</label>
+          <DataHora modo="date" value={form.birth_date} onChange={v=>s('birth_date',v)} disabled={modoSoLeitura} max={hojeISO}/>
         </div>
         )}
       </div>
@@ -437,6 +439,11 @@ export default function CadastroPessoa({
       </div>
       )}
 
+      {form.birth_date && Number(form.birth_date.slice(0,4)) === new Date().getFullYear() && (
+        <div style={{background:'#FFF3E0',borderRadius:10,padding:'10px 14px',marginBottom:12,border:'1px solid #FBD38D'}}>
+          <p style={{fontSize:12,fontWeight:700,color:'#C05621'}}>⚠ O ano do nascimento ficou {new Date().getFullYear()} (ano atual). Confira — o calendário abre no ano de hoje; toque no <b>ano</b> para corrigir.</p>
+        </div>
+      )}
       {form.birth_date && isMenor(form.birth_date) && (
         <div style={{background:'#FFF3E0',borderRadius:10,padding:'12px 14px',marginBottom:12,border:'1px solid #FBD38D'}}>
           <p style={{fontSize:12,fontWeight:700,color:'#C05621',marginBottom:8}}>⚠ Menor de idade — dados do responsável:</p>

@@ -82,6 +82,12 @@ export function fotoRequerida(cfg: CadastroCfg): boolean {
   return !campoOculto(cfg, 'foto') && cfg.campos['foto']?.obrigatorio !== false
 }
 
+// Data de nascimento: OBRIGATÓRIA por padrão em todos os cadastros (pedido do dono).
+// Só deixa de exigir se o admin ocultar o campo OU desligar o "obrigatório" explicitamente.
+export function nascimentoRequerido(cfg: CadastroCfg): boolean {
+  return !campoOculto(cfg, 'birth_date') && cfg.campos['birth_date']?.obrigatorio !== false
+}
+
 // Pega o valor "preenchido?" de um campo no form (foto = photo_url).
 function preenchido(form: any, key: string): boolean {
   const v = key === 'foto' ? form.photo_url : form[key]
@@ -97,9 +103,11 @@ export async function validarCadastroFaltando(form: any): Promise<string[]> {
   if (cargoVisivel(cfg) && cfg.obrigatorio && !preenchido({ photo_url: null, cargo: form.cargo }, 'cargo')) faltando.push('Cargo')
   // Foto (obrigatória por padrão)
   if (fotoRequerida(cfg) && !preenchido(form, 'foto')) faltando.push('Foto')
+  // Data de nascimento (obrigatória por padrão)
+  if (nascimentoRequerido(cfg) && !preenchido(form, 'birth_date')) faltando.push('Data de nascimento')
   // Demais campos
   for (const c of CAMPOS) {
-    if (c.key === 'foto') continue  // já tratado acima (padrão diferente)
+    if (c.key === 'foto' || c.key === 'birth_date') continue  // tratados acima (padrão diferente)
     if (campoOculto(cfg, c.key)) continue
     if (campoObrigatorio(cfg, c.key) && !preenchido(form, c.key)) faltando.push(c.label)
   }
