@@ -95,6 +95,10 @@ export default function TempoView() {
   const restante = Math.max(0, total - decorrido)
   const pct = total > 0 ? Math.min(100, Math.round((decorrido / total) * 100)) : 0
   const zerou = decorrido > 0 && restante <= 0
+  // previsão de término em HORA DE RELÓGIO (agora + o que falta). Rodando fica fixa;
+  // pausado, empurra pra frente (se retomar agora, acaba a essa hora).
+  const fimDate = new Date(agora + restante * 1000)
+  const fimHora = `${String(fimDate.getHours()).padStart(2, '0')}:${String(fimDate.getMinutes()).padStart(2, '0')}`
 
   // cor por urgência
   let cor = accent
@@ -162,10 +166,17 @@ export default function TempoView() {
         <div style={{ marginTop: 26, fontSize: 11, fontWeight: 800, letterSpacing: '0.18em', color: 'rgba(255,255,255,0.5)' }}>QUANTO FALTA</div>
         <div style={{ fontSize: grande, fontWeight: 800, lineHeight: 1, color: cor, fontVariantNumeric: 'tabular-nums', textShadow: `0 6px 40px ${cor}55`, animation: zerou ? 'tvblink 1s infinite' : 'none' }}>{fmt(restante)}</div>
 
-        {/* decorrido / total */}
-        <div style={{ display: 'flex', justifyContent: 'center', gap: 26, marginTop: 16, fontSize: 13, color: 'rgba(255,255,255,0.6)' }}>
+        {/* previsão de término (hora do relógio) */}
+        {!zerou && (
+          <div style={{ marginTop: 14, display: 'inline-flex', alignItems: 'center', gap: 8, padding: '8px 18px', borderRadius: 99, background: `${cor}18`, border: `1px solid ${cor}55` }}>
+            <span style={{ fontSize: 15, fontWeight: 700, color: 'rgba(255,255,255,0.8)' }}>🕐 Termina às</span>
+            <b style={{ fontSize: 20, fontWeight: 800, color: cor, fontVariantNumeric: 'tabular-nums' }}>{fimHora}</b>
+          </div>
+        )}
+
+        {/* decorrido (tempo que já passou) */}
+        <div style={{ marginTop: 16, fontSize: 13, color: 'rgba(255,255,255,0.6)' }}>
           <span>Decorrido <b style={{ color: '#fff', fontVariantNumeric: 'tabular-nums' }}>{fmt(decorrido)}</b></span>
-          <span>Total <b style={{ color: '#fff', fontVariantNumeric: 'tabular-nums' }}>{fmt(total)}</b></span>
         </div>
 
         {/* barra + % */}
