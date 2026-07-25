@@ -112,12 +112,15 @@ export default function TempoView() {
   useLayoutEffect(() => {
     const el = numRef.current, parent = el?.parentElement
     if (!el || !parent) return
-    const avail = parent.clientWidth * 0.94
+    const avail = parent.clientWidth
     const w = el.scrollWidth
     if (avail <= 0 || w <= 0) return
-    let novo = (numFs * avail) / w
-    novo = Math.min(260, Math.max(38, Math.round(novo)))
-    if (Math.abs(novo - numFs) > 0.6) setNumFs(novo)
+    // BANDA MORTA: só reajusta se está estourando (>98%) ou sobrando muito (<80%);
+    // mira ~90% da largura. Sem isso, o arredondamento oscilava 1px pra sempre e
+    // derrubava a tela (React #185 "max update depth").
+    if (w > avail * 0.98 || w < avail * 0.80) {
+      setNumFs(n => Math.min(240, Math.max(38, (n * avail * 0.90) / w)))
+    }
   })
 
   const rodando = bloco?.cron_estado === 'correndo'
