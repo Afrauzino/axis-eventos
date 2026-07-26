@@ -58,6 +58,7 @@ export default function TempoView() {
   const stageRef = useRef<HTMLDivElement>(null)
   const [fitStage, setFitStage] = useState(1)
   const [, setResizeTick] = useState(0)
+  const avancouRef = useRef<string | null>(null)   // trava: dispara o "avançar" 1x por bloco
 
   // cor do sistema (só pro acento na zona tranquila)
   useEffect(() => { carregarCorSalva().then(c => c && setAccent(c)).catch(() => {}) }, [])
@@ -106,6 +107,19 @@ export default function TempoView() {
     const t = setInterval(() => setAgora(Date.now()), 250)
     return () => clearInterval(t)
   }, [bloco?.cron_estado, bloco?.id])
+
+  // AUTO-AVANÇAR ao ZERAR: chama a RPC (conclui o atual + inicia o próximo imediato,
+  // respeitando data). Dispara 1x por bloco; o poll já traz o próximo. Só no 0.
+  useEffect(() => {
+    if (!bloco || bloco.cron_estado !== 'correndo') return
+    const tot = duracaoBaseSeg(bloco) + (bloco.cron_ajuste_segundos ?? 0)
+    let dec = bloco.cron_decorrido_segundos ?? 0
+    if (bloco.cron_iniciado_em) dec += Math.max(0, Math.floor((agora - new Date(bloco.cron_iniciado_em).getTime()) / 1000))
+    if (tot > 0 && dec >= tot && avancouRef.current !== bloco.id) {
+      avancouRef.current = bloco.id
+      ;(async () => { try { await supabase.rpc('avancar_bloco', { p_id: bloco.id }) } catch {} })()
+    }
+  }, [agora, bloco?.id, bloco?.cron_estado, bloco?.cron_iniciado_em, bloco?.cron_ajuste_segundos, bloco?.cron_decorrido_segundos])
 
   // AUTO-AJUSTE da tela inteira: mede o tamanho NATURAL do palco (independe do scale
   // aplicado — transform não muda o layout) e calcula o fator pra caber na tela.
