@@ -435,6 +435,18 @@ export default function Cronograma({ profile }: { profile?: Profile }) {
     })
   }, [itens, ministrações, teatros, ministrantes, tiposDB, pessoaFoto, elencoPorTeatro])
 
+  // Conferência de horários: o PRÓXIMO começa antes do anterior TERMINAR (sobreposição = erro)
+  const sobreposicoes = useMemo(() => {
+    const ord = [...itens].sort((a,b)=>a.hora_inicio.localeCompare(b.hora_inicio))
+    const out: { a: Item; b: Item; min: number }[] = []
+    for (let i=0;i<ord.length-1;i++){
+      const fim = new Date(ord[i].hora_fim).getTime()
+      const ini = new Date(ord[i+1].hora_inicio).getTime()
+      if (ini < fim) out.push({ a: ord[i], b: ord[i+1], min: Math.round((fim-ini)/60000) })
+    }
+    return out
+  }, [itens])
+
   // Ministrações/teatros já usados em OUTROS itens do cronograma (não reutilizáveis)
   const minUsadas = new Set(itens.filter(i => i.id !== editando?.id && i.ministracao_id).map(i => i.ministracao_id))
   const teaUsados = new Set(itens.filter(i => i.id !== editando?.id && i.theater_id).map(i => i.theater_id))
@@ -472,6 +484,20 @@ export default function Cronograma({ profile }: { profile?: Profile }) {
         >
           <span className="icon icon-sm">smartphone</span> Link do tempo ao vivo (sem login)
         </button>
+      )}
+
+      {/* Conferência: avisa onde os horários NÃO batem (sobreposição) */}
+      {canEdit && sobreposicoes.length > 0 && (
+        <div style={{ background:'#FFF5F5', border:'1px solid #FEB2B2', borderRadius:12, padding:'12px 14px', marginBottom:12 }}>
+          <p style={{ fontSize:13, fontWeight:800, color:'#C53030', marginBottom:6 }}>⚠ Horários que não batem ({sobreposicoes.length}) — arrume:</p>
+          {sobreposicoes.slice(0,8).map((s,i)=>{
+            const h = (iso:string)=>new Date(iso).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})
+            return <p key={i} style={{ fontSize:12, color:'#742A2A', marginBottom:3, lineHeight:1.4 }}>
+              <b>{s.a.titulo}</b> termina {h(s.a.hora_fim)}, mas <b>{s.b.titulo}</b> começa {h(s.b.hora_inicio)} (sobrepõe {s.min} min)
+            </p>
+          })}
+          {sobreposicoes.length>8 && <p style={{ fontSize:11, color:'#742A2A' }}>+{sobreposicoes.length-8} outros</p>}
+        </div>
       )}
 
       {/* Lista */}

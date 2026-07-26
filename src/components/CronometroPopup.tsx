@@ -37,6 +37,7 @@ export default function CronometroPopup({ item, podeControlar, onClose, onUpdate
   const [acumulado, setAcumulado] = useState(item.cron_decorrido_segundos ?? 0)
   const [agora, setAgora] = useState(Date.now())
   const [addMin, setAddMin] = useState('') // campo para digitar minutos extras
+  const [avisoAjuste, setAvisoAjuste] = useState('') // feedback do "-X no próximo"
 
   const totalSeg = duracaoBaseSeg(item) + ajuste
 
@@ -81,8 +82,27 @@ export default function CronometroPopup({ item, podeControlar, onClose, onUpdate
     await salvar({cron_estado:'parado', cron_decorrido_segundos:novoAcum, cron_iniciado_em:null})
   }
   async function reiniciar(){ setIniciadoEm(null); setAjuste(0); setAcumulado(0); setEstado('parado'); setAgora(Date.now()); await salvar({cron_iniciado_em:null, cron_estado:'parado', cron_ajuste_segundos:0, cron_decorrido_segundos:0}) }
-  async function ajustar(deltaSeg:number){ const novo=ajuste+deltaSeg; setAjuste(novo); await salvar({cron_ajuste_segundos:novo}) }
-  async function adicionarDigitado(){ const m=Number(addMin); if(!m) return; const novo=ajuste+m*60; setAjuste(novo); setAddMin(''); await salvar({cron_ajuste_segundos:novo}) }
+  // +X aqui = -X no PRÓXIMO bloco (o evento termina no mesmo horário). Via RPC atômica.
+  async function ajustar(deltaSeg:number){
+    setAjuste(a => a + deltaSeg)  // resposta imediata na tela
+    try {
+      const { data } = await supabase.rpc('ajustar_tempo', { p_id: item.id, delta_seg: deltaSeg })
+      const r:any = data
+      if (r?.ok) {
+        setAjuste(r.atual_ajuste ?? (ajuste+deltaSeg))
+        if (r.proximo_titulo) {
+          const min = Math.abs(Math.round(deltaSeg/60))
+          setAvisoAjuste(`${deltaSeg>0?'−':'+'}${min} min de "${r.proximo_titulo}"${r.limitou?' · no limite':''}`)
+          setTimeout(()=>setAvisoAjuste(''), 4500)
+        } else {
+          setAvisoAjuste('Sem próximo bloco pra compensar')
+          setTimeout(()=>setAvisoAjuste(''), 4500)
+        }
+        onUpdate?.()
+      }
+    } catch(e){}
+  }
+  async function adicionarDigitado(){ const m=Number(addMin); if(!m) return; setAddMin(''); await ajustar(m*60) }
   async function encerrar(){ setEstado('encerrado'); await salvar({cron_estado:'encerrado', status:'concluido'}); await concluirVinculados(item); onClose() }
 
   let cor = 'var(--primary)'
@@ -115,11 +135,13 @@ export default function CronometroPopup({ item, podeControlar, onClose, onUpdate
 
         {podeControlar ? (
           <>
+            <p style={{fontSize:11,color:'var(--muted)',textAlign:'center',marginBottom:8}}>+ aqui = − no próximo bloco (o evento termina no mesmo horário)</p>
             {/* +2 / -2 minutos */}
             <div style={{display:'flex',gap:8,marginBottom:10}}>
               <button onClick={()=>ajustar(-120)} style={{flex:1,padding:'14px',borderRadius:12,border:'1px solid var(--border)',background:'white',cursor:'pointer',fontSize:16,fontWeight:800,fontFamily:'inherit'}}>− 2 min</button>
               <button onClick={()=>ajustar(120)} style={{flex:1,padding:'14px',borderRadius:12,border:'1px solid var(--border)',background:'white',cursor:'pointer',fontSize:16,fontWeight:800,fontFamily:'inherit'}}>+ 2 min</button>
             </div>
+            {avisoAjuste && <p style={{fontSize:12,fontWeight:800,color:'var(--primary)',textAlign:'center',marginBottom:10}}>⏱ {avisoAjuste}</p>}
 
             {/* digitar minutos */}
             <div style={{display:'flex',gap:8,marginBottom:16}}>
