@@ -252,18 +252,14 @@ export default function Dashboard({ profile }: { profile: Profile }) {
     // Progresso = (peso concluído / peso total) * 93%
     const itens = cron.data ?? []
     if (itens.length > 0) {
-      const ehRefeicao = (tipo:string) => {
-        const t = (tipo||'').toLowerCase()
-        return t.includes('refei') || t.includes('aliment') || t.includes('almoç') || t.includes('almoco')
-            || t.includes('janta') || t.includes('café') || t.includes('cafe') || t.includes('lanche')
-            || t.includes('ceia') || t.includes('comida')
-      }
-      const peso = (tipo:string) => ehRefeicao(tipo) ? 6 : 3
-      const pesoTotal = itens.reduce((s,i)=> s + peso(i.tipo), 0)
-      const pesoFeito = itens.filter(i=>i.status==='concluido').reduce((s,i)=> s + peso(i.tipo), 0)
-      // Normaliza para o teto de 93%
-      const pct = pesoTotal > 0 ? Math.min(93, Math.round((pesoFeito / pesoTotal) * 93)) : 0
-      const feitos = itens.filter(i=>i.status==='concluido').length
+      // Barra do evento: sequência simbólica (nºs terminando em 3/7), sobe com
+      // quedinhas e picos crescentes, terminando em 83% ao concluir o cronograma.
+      // Os 8 últimos estados (por blocos concluídos) vão de 65 a 83. Mesma lógica da
+      // RPC tela_progresso (a tela /tela usa a RPC; aqui é o cálculo local da Início).
+      const SEQ = [65, 67, 73, 67, 77, 73, 77, 83]
+      const feitos = itens.filter(i => i.status === 'concluido').length
+      const base = Math.max(0, itens.length - (SEQ.length - 1))   // 23 blocos → base 16
+      const pct = SEQ[Math.max(0, Math.min(SEQ.length - 1, feitos - base))]
       setProgresso({ pct, total: itens.length, feitos })
     } else {
       setProgresso(null)
