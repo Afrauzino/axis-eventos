@@ -20,6 +20,7 @@ import VersiculoDia from '../components/VersiculoDia'
 import PlaylistHome from '../components/PlaylistHome'
 import BoasVindas, { type BVVariante } from '../components/BoasVindas'
 import { estiloFundo, medirAspecto } from '../lib/blocoFundo'
+import { progressoPct } from '../lib/progresso'
 import BotaoImagemFundo from '../components/BotaoImagemFundo'
 import type { Profile } from '../App'
 
@@ -252,14 +253,11 @@ export default function Dashboard({ profile }: { profile: Profile }) {
     // Progresso = (peso concluído / peso total) * 93%
     const itens = cron.data ?? []
     if (itens.length > 0) {
-      // Barra do evento: sequência simbólica (nºs terminando em 3/7), sobe com
-      // quedinhas e picos crescentes, terminando em 83% ao concluir o cronograma.
-      // Os 8 últimos estados (por blocos concluídos) vão de 65 a 83. Mesma lógica da
-      // RPC tela_progresso (a tela /tela usa a RPC; aqui é o cálculo local da Início).
-      const SEQ = [65, 67, 73, 67, 77, 73, 77, 83]
+      // Barra do evento: sequência simbólica e DINÂMICA (ajusta ao nº de blocos).
+      // Mesma fórmula da RPC tela_progresso (a tela /tela usa a RPC; aqui é o cálculo
+      // local da Início). Ver src/lib/progresso.ts.
       const feitos = itens.filter(i => i.status === 'concluido').length
-      const base = Math.max(0, itens.length - (SEQ.length - 1))   // 23 blocos → base 16
-      const pct = SEQ[Math.max(0, Math.min(SEQ.length - 1, feitos - base))]
+      const pct = progressoPct(feitos, itens.length)
       setProgresso({ pct, total: itens.length, feitos })
     } else {
       setProgresso(null)
