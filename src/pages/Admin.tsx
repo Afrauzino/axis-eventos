@@ -148,6 +148,7 @@ export default function Admin({ profile }: { profile?: Profile }) {
   const [importArquivo, setImportArquivo] = useState<any|null>(null)   // conteúdo do JSON carregado
   const [secoesImport, setSecoesImport] = useState<Record<string,boolean>>({})
   const [importando, setImportando] = useState(false)
+  const [expCompleto, setExpCompleto] = useState(false)   // backup COMPLETO (RPC) rodando
   // Cargos fixos — não editáveis pelo usuário
   const cargos = [
     {role:'admin',              label:'Administrador',                descricao:'Acesso total ao sistema'},
@@ -1108,6 +1109,24 @@ export default function Admin({ profile }: { profile?: Profile }) {
     const a    = document.createElement('a'); a.href=url; a.download=`backup-${evento.name}-${new Date().toISOString().slice(0,10)}.json`; a.click()
     URL.revokeObjectURL(url)
     registrarLog({ action:'export', entity:'backup', description:`Exportou backup do evento ${evento.name} (${backup.secoes.join(', ')})`, eventId:evento.id })
+  }
+
+  // Backup COMPLETO: empacota TUDO do evento (via RPC no banco) num único JSON.
+  async function exportarBackupCompleto() {
+    const evento = eventos.find(e=>e.status==='active')
+    if (!evento) { toast.erro('Nenhum evento ativo.'); return }
+    setExpCompleto(true)
+    try {
+      const { data, error } = await supabase.rpc('exportar_evento_completo', { p_event: evento.id })
+      if (error || !data) { toast.falha('Não consegui gerar o backup completo.', error); setExpCompleto(false); return }
+      const blob = new Blob([JSON.stringify(data,null,2)],{type:'application/json'})
+      const url  = URL.createObjectURL(blob)
+      const a    = document.createElement('a'); a.href=url; a.download=`backup-COMPLETO-${evento.name}-${new Date().toISOString().slice(0,10)}.json`; a.click()
+      URL.revokeObjectURL(url)
+      registrarLog({ action:'export', entity:'backup', description:`Exportou backup COMPLETO do evento ${evento.name}`, eventId:evento.id })
+      toast.sucesso('Backup completo baixado. ✔')
+    } catch(e:any) { toast.falha('Erro ao gerar o backup.', e) }
+    setExpCompleto(false)
   }
 
   // Lê o arquivo JSON escolhido e pré-seleciona as seções que existem nele
@@ -2090,6 +2109,16 @@ export default function Admin({ profile }: { profile?: Profile }) {
         <div>
           {/* EXPORTAR */}
           <div className="section-label mb-2">Exportar backup</div>
+
+          {/* COMPLETO — recomendado antes de excluir o evento */}
+          <button className="btn btn-primary btn-full mb-1" onClick={exportarBackupCompleto} disabled={expCompleto}>
+            <span className="icon icon-sm">cloud_download</span> {expCompleto ? 'Gerando backup…' : 'Backup COMPLETO (tudo)'}
+          </button>
+          <div className="alert-box alert-info mb-4" style={{fontSize:12}}>
+            Salva <strong>TUDO</strong> do evento num arquivo JSON: cadastros, equipes, cronograma, financeiro, ministrações, teatro (elenco/cenas), <strong>saúde</strong>, <strong>medicamentos</strong>, <strong>correio</strong>, <strong>escalas</strong>, logística, doações, cozinha, mural, ranking, crachás, adoções… Faça <strong>este</strong> antes de excluir o evento.
+          </div>
+
+          <div className="section-label mb-2">Ou exportar só partes</div>
           <p style={{fontSize:12,color:'var(--muted)',marginBottom:10}}>Escolha o que exportar do evento ativo. Gera um arquivo JSON.</p>
           <div style={{display:'flex',flexWrap:'wrap',gap:8,marginBottom:12}}>
             {SECOES_BACKUP.map(s => {
