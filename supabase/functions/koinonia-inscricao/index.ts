@@ -11,7 +11,7 @@
 //   eventos                 -> eventos com inscrição aberta no Koinonia
 //   previa   {event_id, role_type, nome}  -> termo, valor, parcelas, Pix, responsáveis
 //   inscrever {dados, assinatura, foto?}  -> cria a ficha + aceite assinado (sql/99)
-//   situacao {person_ids}   -> status de cada inscrição (pendente / inscrito / ...)
+//   situacao {person_ids}   -> status de cada inscrição (pendente / inscrito / ...) + resumo do pagamento
 //
 // A assinatura (PNG) vai pro bucket PRIVADO `assinaturas/{event}/{person}.png`
 // ANTES de gravar — é o que o _inscricao_registrar_aceite (sql/98) confere.
@@ -125,9 +125,16 @@ Deno.serve(async (req) => {
       if (!ids.length) return json({ situacao: [] })
       const { data, error } = await admin.from('people').select('id,status,desistente,user_id,invite_code').in('id', ids)
       if (error) return json({ error: error.message }, 500)
-      return json({ situacao: (data ?? []).map((p: any) => ({
-        person_id: p.id, status: p.desistente ? 'desistente' : p.status, tem_conta: !!p.user_id, invite_code: p.invite_code,
-      })) })
+      // resumo OFICIAL (sql/102): total, pago, falta, plano escolhido, Pix e
+      // responsáveis — o Koinonia mostra exatamente o que o AXIS mostra.
+      const situacao = await Promise.all((data ?? []).map(async (p: any) => {
+        const { data: resumo } = await admin.rpc('_inscricao_resumo', { p_person: p.id })
+        return {
+          person_id: p.id, status: p.desistente ? 'desistente' : p.status, tem_conta: !!p.user_id,
+          invite_code: p.invite_code, resumo: resumo ?? null,
+        }
+      }))
+      return json({ situacao })
     }
 
     if (acao === 'inscrever') {
