@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
-import { isAdmin } from '../utils'
+import { isAdmin, fmtBRL } from '../utils'
 import { useEvento, invalidarEventoAtivo } from '../hooks/useEvento'
 import { usePermissao } from '../hooks/usePermissao'
 import { toast } from '../components/Toast'
@@ -21,6 +21,7 @@ import PlaylistHome from '../components/PlaylistHome'
 import BoasVindas, { type BVVariante } from '../components/BoasVindas'
 import { estiloFundo, medirAspecto } from '../lib/blocoFundo'
 import { progressoPct } from '../lib/progresso'
+import { minhaPessoa } from '../lib/pessoa'
 import BotaoImagemFundo from '../components/BotaoImagemFundo'
 import type { Profile } from '../App'
 
@@ -44,11 +45,6 @@ export default function Dashboard({ profile }: { profile: Profile }) {
   const podePainel = admin || pode('painel','ver')   // atalho do Painel na Início (liberação própria)
   // Tela de boas-vindas para quem entrou SEM LIBERAÇÃO (não vê nenhum menu)
   const [roleType, setRoleType] = useState<string|null>(null)
-  useEffect(() => {
-    if (!profile?.user_id) return
-    supabase.from('people').select('role_type').eq('user_id', profile.user_id).maybeSingle()
-      .then(({ data }) => setRoleType(data?.role_type ?? null))
-  }, [profile?.user_id])
   // #8 — visitante (sem cadastro no evento) tem tela própria; senão encontreiro/encontrista
   const variante: BVVariante = roleType === 'worker' ? 'encontreiro' : roleType === 'encounterer' ? 'encontrista' : 'visitante'
   // mapa rota -> permissao de menu
@@ -60,11 +56,18 @@ export default function Dashboard({ profile }: { profile: Profile }) {
   const { evento, loading: evLoading } = useEvento()
   const [meuPersonId, setMeuPersonId] = useState<string|null>(null)
   const [fichaConcluida, setFichaConcluida] = useState(false)  // encontrista já preencheu a ficha na home?
+  // cadastro da pessoa NO evento ativo (1 por evento; sem evento → o mais recente, só p/ o tipo)
   useEffect(() => {
-    if (!evento?.id || !profile?.user_id) { setMeuPersonId(null); return }
-    supabase.from('people').select('id').eq('event_id', evento.id).eq('user_id', profile.user_id).maybeSingle()
-      .then(({ data }) => setMeuPersonId(data?.id ?? null))
-  }, [evento?.id, profile?.user_id])
+    if (evLoading) return
+    if (!profile?.user_id) { setMeuPersonId(null); return }
+    let vivo = true
+    minhaPessoa<{ id:string; role_type:string|null }>(profile.user_id, evento?.id, 'id,role_type').then(p => {
+      if (!vivo) return
+      setRoleType(p?.role_type ?? null)
+      setMeuPersonId(evento?.id ? (p?.id ?? null) : null)
+    })
+    return () => { vivo = false }
+  }, [evento?.id, evLoading, profile?.user_id])
   useEffect(() => {
     if (!evento?.id || !meuPersonId) { setFichaConcluida(false); return }
     supabase.from('saude_fichas').select('concluida').eq('person_id', meuPersonId).eq('event_id', evento.id).maybeSingle()
@@ -251,14 +254,15 @@ export default function Dashboard({ profile }: { profile: Profile }) {
     // REGRA OFICIAL: máximo 93% (7% reservados, nunca chega a 100%)
     // Pesos fixos: Alimentação/Refeição = 6, Outros/Pausa = 3
     // Progresso = (peso concluído / peso total) * 93%
-    const itens = cron.data ?? []
-    if (itens.length > 0) {
+    // cancelado não conta no total (nunca vira "feito" → a barra travava antes do fim)
+    const validos = (cron.data ?? []).filter(i => i.status !== 'cancelado')
+    if (validos.length > 0) {
       // Barra do evento: sequência simbólica e DINÂMICA (ajusta ao nº de blocos).
       // Mesma fórmula da RPC tela_progresso (a tela /tela usa a RPC; aqui é o cálculo
       // local da Início). Ver src/lib/progresso.ts.
-      const feitos = itens.filter(i => i.status === 'concluido').length
-      const pct = progressoPct(feitos, itens.length)
-      setProgresso({ pct, total: itens.length, feitos })
+      const feitos = validos.filter(i => i.status === 'concluido').length
+      const pct = progressoPct(feitos, validos.length)
+      setProgresso({ pct, total: validos.length, feitos })
     } else {
       setProgresso(null)
     }
@@ -367,6 +371,7 @@ export default function Dashboard({ profile }: { profile: Profile }) {
     <div className="page slide-up">
       <BannerAvaliacao profile={profile} />
       <BannerRanking />
+      {meuPersonId && <BannerInscricao personId={meuPersonId} />}
       {/* Encontrista: preenche a ficha médica aqui; após concluir, some da home
           (um responsável com liberação ainda edita pela Saúde). */}
       {roleType === 'encounterer' && evento && meuPersonId && !fichaConcluida && (
@@ -685,5 +690,31 @@ function RankingMini({ eventoId, navigate, fundo, onEditar }: { eventoId:string;
         </>
       )}
     </div>
+  )
+}
+
+
+// Aviso na home: termo do evento ainda não assinado, ou pagamento pendente → /meu-pagamento
+function BannerInscricao({ personId }: { personId: string }) {
+  const navigate = useNavigate()
+  const [st, setSt] = useState<{ assinou: boolean; falta: number } | null>(null)
+  useEffect(() => {
+    let vivo = true
+    supabase.rpc('inscricao_resumo', { p_person: personId }).then(({ data }) => {
+      if (vivo && data) setSt({ assinou: !!(data as any).aceite, falta: Number((data as any).falta) || 0 })
+    })
+    return () => { vivo = false }
+  }, [personId])
+  if (!st || (st.assinou && st.falta <= 0)) return null
+  return (
+    <button onClick={() => navigate('/meu-pagamento')}
+      style={{ width:'100%', textAlign:'left', background:'white', border:'1.5px solid var(--primary)', borderRadius:14, boxShadow:'var(--shadow-sm)', padding:'14px 16px', marginBottom:16, display:'flex', alignItems:'center', gap:12, cursor:'pointer', fontFamily:'inherit' }}>
+      <span style={{ fontSize:26 }}>{st.assinou ? '💰' : '✍️'}</span>
+      <span style={{ flex:1 }}>
+        <span style={{ display:'block', fontWeight:800, fontSize:14 }}>{st.assinou ? `Falta pagar ${fmtBRL(st.falta)}` : 'Finalize sua inscrição'}</span>
+        <span style={{ display:'block', fontSize:12, color:'var(--muted)', marginTop:2 }}>{st.assinou ? 'Toque para ver o Pix e avisar o responsável' : 'Leia e assine o termo do evento'}</span>
+      </span>
+      <span className="icon" style={{ color:'var(--primary)' }}>chevron_right</span>
+    </button>
   )
 }

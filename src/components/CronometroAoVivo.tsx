@@ -47,9 +47,10 @@ export default function CronometroAoVivo({ eventoId }: { eventoId?: string }) {
     // Bloco com cronômetro correndo (o mais recente, se houver mais de um)
     const { data: rows } = await supabase.from('cronograma_eventos').select('*')
       .eq('event_id', eid).eq('cron_estado', 'correndo')
-      .order('cron_iniciado_em', { ascending: false }).limit(1)
-    const item = (rows ?? [])[0] as ItemCron | undefined
-    if (!item || item.status === 'concluido') { setDados(null); return }
+      .order('cron_iniciado_em', { ascending: false }).limit(5)
+    // concluído/cancelado não é "ao vivo" (mesmo se o relógio ficou 'correndo' por engano)
+    const item = ((rows ?? []) as ItemCron[]).find(r => r.status !== 'concluido' && r.status !== 'cancelado')
+    if (!item) { setDados(null); return }
 
     let titulo = item.titulo
     let ministranteId: string | null = null

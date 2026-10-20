@@ -7,7 +7,8 @@ import { supabase } from '../lib/supabase'
 import { useEvento } from '../hooks/useEvento'
 import { usePermissao } from '../hooks/usePermissao'
 import { useVoltarFecha } from '../hooks/useVoltarFecha'
-import { isAdmin, getInitials, formatName, fmtBRL, normalizarNome } from '../utils'
+import { isAdmin, getInitials, formatName, fmtBRL, normalizarNome, dataLocal, hojeISO } from '../utils'
+import { buscarTodos } from '../lib/paginar'
 import { toast } from '../components/Toast'
 import type { Profile } from '../App'
 
@@ -116,7 +117,7 @@ export default function PainelAnalises({ profile }: { profile?: Profile }) {
   // Histórico real de acessos por dia (tabela acessos_log). Cada linha = 1 conta num dia.
   useEffect(() => {
     if (!evento?.id || !podeVer) return
-    const d = new Date(); d.setDate(d.getDate() - 30); const desde = d.toISOString().slice(0, 10)
+    const d = new Date(); d.setDate(d.getDate() - 30); const desde = hojeISO(d)
     supabase.from('acessos_log').select('dia,qtd').eq('event_id', evento.id).gte('dia', desde).then(({ data }) => {
       const map: Record<string, { pessoas: number; acessos: number }> = {}
       ;(data ?? []).forEach((r: any) => {
@@ -140,8 +141,9 @@ export default function PainelAnalises({ profile }: { profile?: Profile }) {
       q(supabase.from('teams').select('id,name,color').eq('event_id', eid)),
       q(supabase.from('occurrences').select('status,severity').eq('event_id', eid)),
       q(supabase.from('saude_fichas').select('person_id,concluida,restricao_alimentar,alergia_medicamentos').eq('event_id', eid)),
-      q(supabase.from('med_agenda').select('entregue').eq('event_id', eid)),
-      q(supabase.from('correio_checklist_status').select('concluido').eq('event_id', eid)),
+      // estas duas passam fácil de 1000 linhas → paginado
+      q(buscarTodos(() => supabase.from('med_agenda').select('id,entregue').eq('event_id', eid).order('id'))),
+      q(buscarTodos(() => supabase.from('correio_checklist_status').select('id,concluido').eq('event_id', eid).order('id'))),
       q(supabase.from('correio_afiliado_status').select('status').eq('event_id', eid)),
       q(supabase.from('home_midias_curtidas').select('midia_id', { count:'exact', head:true })),
       q(supabase.from('home_midias_comentarios').select('id', { count:'exact', head:true })),
@@ -231,7 +233,7 @@ export default function PainelAnalises({ profile }: { profile?: Profile }) {
     const formas = Object.entries(formasMap).map(([forma,valor])=>({ forma, valor, pct: arrecadado? Math.round(valor/arrecadado*100):0 })).sort((a,b)=>b.valor-a.valor)
     // Por dia (data_pagamento) — últimos dias com movimento
     const diaMap: Record<string,number> = {}
-    for (const f of pagos) { const d = (f.data_pagamento||'').slice(0,10); if (d) diaMap[d] = (diaMap[d]||0) + (f.valor||0) }
+    for (const f of pagos) { const d = f.data_pagamento ? hojeISO(dataLocal(f.data_pagamento)) : ''; if (d) diaMap[d] = (diaMap[d]||0) + (f.valor||0) }
     const finDias = Object.entries(diaMap).sort((a,b)=>a[0]<b[0]?-1:1).slice(-8).map(([d,v])=>({ label:`${d.slice(8,10)}/${d.slice(5,7)}`, v }))
     // Doações
     const doacoesTotal = doacoes.reduce((s,d)=>s+(d.valor||0),0)
@@ -269,11 +271,12 @@ export default function PainelAnalises({ profile }: { profile?: Profile }) {
 
     // Cadastros por dia (7)
     const dias: {label:string;n:number}[] = []
-    for (let i=6;i>=0;i--) { const d = new Date(); d.setHours(0,0,0,0); d.setDate(d.getDate()-i); const key = d.toISOString().slice(0,10); const n = pessoas.filter(p=>(p.created_at||'').slice(0,10)===key).length; dias.push({ label:`${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}`, n }) }
+    for (let i=6;i>=0;i--) { const d = new Date(); d.setHours(0,0,0,0); d.setDate(d.getDate()-i); const key = hojeISO(d); const n = pessoas.filter(p=>p.created_at && hojeISO(new Date(p.created_at))===key).length; dias.push({ label:`${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}`, n }) }
 
     // Aniversariantes durante o evento
-    const ini = (evento as any)?.start_date ? new Date((evento as any).start_date) : null
-    const fim = (evento as any)?.end_date ? new Date((evento as any).end_date) : ini
+    // dataLocal: 'YYYY-MM-DD' vira meio-dia local (new Date() dava meia-noite UTC = dia anterior no Brasil)
+    const ini = (evento as any)?.start_date ? dataLocal((evento as any).start_date) : null
+    const fim = (evento as any)?.end_date ? dataLocal((evento as any).end_date) : ini
     const aniversariantes: {name:string;dia:string}[] = []
     if (ini && fim) {
       for (const p of pessoas) {

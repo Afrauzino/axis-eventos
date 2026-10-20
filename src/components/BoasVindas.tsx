@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import RichEditor from './RichEditor'
 import { carregarConfig, salvarConfig } from '../lib/tema'
 import { toast } from './Toast'
+import { sanitizarHtml } from '../lib/sanitizar'
 
 export type BVVariante = 'visitante' | 'encontrista' | 'encontreiro'
 type Contato = { nome:string; funcao:string; numero:string }
@@ -40,12 +41,15 @@ export default function BoasVindas({ variante, admin }: { variante:BVVariante; a
   }
   async function salvar() {
     setSalvando(true)
-    await salvarConfig(chaveDe(varEdit), JSON.stringify(data))
-    setSalvando(false); setEditando(false); setMsg('✓ Salvo'); setTimeout(()=>setMsg(''),1500)
+    const ok = await salvarConfig(chaveDe(varEdit), JSON.stringify(data))
+    setSalvando(false)
+    if (!ok) { setMsg('✗ Não foi possível salvar'); setTimeout(()=>setMsg(''),3000); return }
+    setEditando(false); setMsg('✓ Salvo'); setTimeout(()=>setMsg(''),1500)
   }
   async function alternarAtivo(v:boolean) {
     setAtivo(v)
-    await salvarConfig(CHAVE_ATIVO, v ? '1' : '0')
+    const ok = await salvarConfig(CHAVE_ATIVO, v ? '1' : '0')
+    if (!ok) { setAtivo(!v); setMsg('✗ Não foi possível salvar'); setTimeout(()=>setMsg(''),3000); return }
     setMsg(v ? '✓ Boas-vindas ligada' : '✓ Boas-vindas desligada'); setTimeout(()=>setMsg(''),1500)
   }
   function usarMinhaLocalizacao() {
@@ -158,7 +162,7 @@ export default function BoasVindas({ variante, admin }: { variante:BVVariante; a
       {vazio && admin && <p style={{fontSize:13,color:'var(--muted)',textAlign:'center',padding:'12px 0'}}>Nada configurado ainda. Toque em "Editar boas-vindas".</p>}
 
       {/* 1) Texto */}
-      {data.texto && <div style={{fontSize:14,lineHeight:1.7,color:'var(--text)'}} dangerouslySetInnerHTML={{__html:data.texto}}/>}
+      {data.texto && <div style={{fontSize:14,lineHeight:1.7,color:'var(--text)'}} dangerouslySetInnerHTML={{__html:sanitizarHtml(data.texto)}}/>}
 
       {/* 2) Localização (endereço) */}
       {data.endereco && (

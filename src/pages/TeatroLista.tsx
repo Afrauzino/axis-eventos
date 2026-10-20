@@ -6,6 +6,7 @@ import { useVoltarFecha } from '../hooks/useVoltarFecha'
 import { useRegistrarChromeNav } from '../lib/chrome'
 import AvatarPicker from '../components/AvatarPicker'
 import UploadFoto from '../components/UploadFoto'
+import { pathNoStorage } from '../components/ArquivosModulo'
 import Seletor from '../components/Seletor'
 import { toast } from '../components/Toast'
 import CardItem from '../components/CardItem'
@@ -71,14 +72,20 @@ export default function TeatroLista({ profile }: { profile?: Profile }) {
   }
 
   async function mudarStatusTeatro(id: string, statusAtual: string) {
+    if (!canEdit) return
     // Concluir teatro é SÓ pela tela de Cronograma. Aqui o clique só avança
     // ensaio (planejamento → ensaio → pronto) e não chega em "concluído".
     if (statusAtual === 'concluido') { toast.info('A conclusão do teatro é feita pela tela de Cronograma.'); return }
     const ordem = ['planejamento','ensaio','pronto']
     const idx   = ordem.indexOf(statusAtual)
     const prox  = ordem[(idx + 1) % ordem.length]
-    await supabase.from('theaters').update({ status: prox }).eq('id', id)
     setLista(prev => prev.map(t => t.id===id ? {...t, status:prox} : t))
+    // .select() → sob RLS um update barrado volta 0 linhas sem erro
+    const { data, error } = await supabase.from('theaters').update({ status: prox }).eq('id', id).select('id')
+    if (error || !data?.length) {
+      setLista(prev => prev.map(t => t.id===id ? {...t, status:statusAtual} : t))
+      toast.falha('Não foi possível mudar o status.', error)
+    }
   }
 
   function abrirEdicao(t: Teatro) {
@@ -108,16 +115,47 @@ export default function TeatroLista({ profile }: { profile?: Profile }) {
 
   async function excluir(id: string) {
     if (!(await confirmar({ titulo: 'Excluir este teatro?', mensagem: 'Todas as cenas e elenco serão removidos.', perigo: true }))) return
-    // Apaga/desvincula tudo que aponta pro teatro (senão o banco bloqueia por FK)
-    await supabase.from('teatro_cenas').delete().eq('theater_id', id)
-    await supabase.from('teatro_elenco').delete().eq('theater_id', id)
-    await supabase.from('teatro_midias').delete().eq('theater_id', id)
-    await supabase.from('arquivos_modulo').delete().eq('modulo','teatro').eq('referencia_id', id)
-    // Cronograma: NÃO apaga o horário, só desvincula o teatro dele
-    await supabase.from('cronograma_eventos').update({ theater_id: null }).eq('theater_id', id)
-    const { error } = await supabase.from('theaters').delete().eq('id', id)
-    if (error) { toast.erro('Não deu pra excluir: '+error.message); return }
-    toast.sucesso('Teatro excluído.')
+    // Anota antes o que precisa limpar depois (cenas → arquivos das cenas; anexos no storage)
+    const { data: cenasDoTeatro } = await supabase.from('teatro_cenas').select('id').eq('theater_id', id)
+    const cenaIds = (cenasDoTeatro ?? []).map((c:any) => c.id as string)
+    // 1) Apaga o TEATRO PRIMEIRO. Sob RLS, sem permissão o delete não dá erro — volta 0 linhas.
+    //    Assim, se a pessoa não puder excluir, NADA do conteúdo é apagado.
+    let r = await supabase.from('theaters').delete().eq('id', id).select('id')
+    if (r.error?.code === '23503') {
+      // FK sem cascade: o RLS já deixou (chegou no FK) → desvincula/apaga os dependentes e tenta de novo.
+      // Cronograma/ministração: NÃO apaga o horário, só desvincula o teatro dele.
+      const deps = await Promise.all([
+        supabase.from('cronograma_eventos').update({ theater_id: null }).eq('theater_id', id),
+        supabase.from('ministrações').update({ theater_id: null }).eq('theater_id', id),
+        supabase.from('teatro_cenas').delete().eq('theater_id', id),
+        supabase.from('teatro_elenco').delete().eq('theater_id', id),
+        supabase.from('teatro_midias').delete().eq('theater_id', id),
+      ])
+      const depErr = deps.find(d => d.error)?.error
+      if (depErr) console.warn('excluir teatro: dependente não limpo', depErr.message)
+      r = await supabase.from('theaters').delete().eq('id', id).select('id')
+    }
+    if (r.error) { toast.falha('Não deu pra excluir o teatro.', r.error); return }
+    if (!r.data?.length) { toast.erro('Você não tem permissão para excluir este teatro.'); return }
+    // 2) Teatro apagado → limpa o que sobrou (se as FKs forem cascade, não acha nada)
+    const { data: arqs } = await supabase.from('arquivos_modulo').select('id,url')
+      .or(`and(modulo.eq.teatro,referencia_id.eq.${id})${cenaIds.length ? `,and(modulo.eq.teatro_cena,referencia_id.in.(${cenaIds.join(',')}))` : ''}`)
+    const limpeza = await Promise.all([
+      supabase.from('teatro_cenas').delete().eq('theater_id', id),
+      supabase.from('teatro_elenco').delete().eq('theater_id', id),
+      supabase.from('teatro_midias').delete().eq('theater_id', id),
+      supabase.from('cronograma_eventos').update({ theater_id: null }).eq('theater_id', id),
+      ...(arqs?.length ? [supabase.from('arquivos_modulo').delete().in('id', arqs.map((a:any) => a.id))] : []),
+    ])
+    // Arquivos anexados: remove também do storage (mesmo bucket/caminho do envio)
+    const paths = (arqs ?? []).map((a:any) => pathNoStorage(a.url)).filter(Boolean) as string[]
+    if (paths.length) {
+      const st = await supabase.storage.from('arquivos').remove(paths)
+      if (st.error) console.warn('excluir teatro: arquivos ficaram no storage', st.error.message)
+    }
+    const errLimpeza = limpeza.find(l => l.error)?.error
+    if (errLimpeza) { console.warn('excluir teatro: limpeza incompleta', errLimpeza.message); toast.aviso('Teatro excluído, mas parte do conteúdo não pôde ser limpa.') }
+    else toast.sucesso('Teatro excluído.')
     setModal(false); carregar()
   }
 
@@ -155,14 +193,16 @@ export default function TeatroLista({ profile }: { profile?: Profile }) {
           fotoUrl={t.foto_url || undefined}
           emoji={t.foto_url ? undefined : (t.emoji || '🎭')}
           titulo={t.nome}
-          direita={
+          direita={canEdit ? (
             <button
               onClick={()=>mudarStatusTeatro(t.id,t.status)}
               className={`badge ${STATUS_BADGE[t.status]??'badge-neutral'}`}
               style={{fontSize:10,border:'none',cursor:'pointer',fontFamily:'inherit'}}
               title="Clique para avançar status"
             >{STATUS_LABEL[t.status]??t.status}</button>
-          }
+          ) : (
+            <span className={`badge ${STATUS_BADGE[t.status]??'badge-neutral'}`} style={{fontSize:10}}>{STATUS_LABEL[t.status]??t.status}</span>
+          )}
           onVer={()=>navigate('/teatro/'+t.id)}
           onEditar={canEdit ? ()=>abrirEdicao(t) : undefined}
           acoes={canEdit && !busca ? [

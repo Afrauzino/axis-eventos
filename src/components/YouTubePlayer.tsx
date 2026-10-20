@@ -4,6 +4,8 @@ import { useEffect, useRef } from 'react'
 // autoplay, mudo, SEM controles/barra/play e sem interface do YouTube.
 // Avança para o próximo item SÓ quando o vídeo termina (onEnded).
 // Item único: dá loop no próprio vídeo.
+// onError: vídeo removido/privado/bloqueado pra embed → avisa pra pular.
+// onPlaying: avisa quando começou a tocar (o carrossel usa pra cancelar o "timeout de segurança").
 
 let apiPromise: Promise<any> | null = null
 function loadYT(): Promise<any> {
@@ -21,11 +23,15 @@ function loadYT(): Promise<any> {
   return apiPromise
 }
 
-export default function YouTubePlayer({ videoId, onEnded, loop = false }: { videoId: string; onEnded: () => void; loop?: boolean }) {
+export default function YouTubePlayer({ videoId, onEnded, onError, onPlaying, loop = false }: { videoId: string; onEnded: () => void; onError?: () => void; onPlaying?: () => void; loop?: boolean }) {
   const hostRef = useRef<HTMLDivElement>(null)
   const playerRef = useRef<any>(null)
   const onEndedRef = useRef(onEnded)
   onEndedRef.current = onEnded
+  const onErrorRef = useRef(onError)
+  onErrorRef.current = onError
+  const onPlayingRef = useRef(onPlaying)
+  onPlayingRef.current = onPlaying
 
   useEffect(() => {
     let cancelled = false
@@ -39,7 +45,9 @@ export default function YouTubePlayer({ videoId, onEnded, loop = false }: { vide
         },
         events: {
           onReady: (e: any) => { try { e.target.mute(); e.target.playVideo() } catch {} },
+          onError: () => { onErrorRef.current?.() },
           onStateChange: (e: any) => {
+            if (e.data === YT.PlayerState.PLAYING) onPlayingRef.current?.()
             if (e.data === YT.PlayerState.ENDED) {
               if (loop) { try { e.target.seekTo(0); e.target.playVideo() } catch {} }
               else onEndedRef.current()

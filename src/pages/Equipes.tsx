@@ -9,6 +9,7 @@ import PrintOverlay from '../components/PrintOverlay'
 import { getInitials, isAdmin, formatName } from '../utils'
 import { useEvento } from '../hooks/useEvento'
 import { usePermissao } from '../hooks/usePermissao'
+import { buscarTodos } from '../lib/paginar'
 import { notificarRegra } from '../lib/notifRegras'
 import type { Profile } from '../App'
 
@@ -52,13 +53,17 @@ export default function Equipes({ profile }: { profile?: Profile }) {
 
   async function carregar() {
     if (!evento) return
-    const [eq, pe, vi] = await Promise.all([
+    const [eq, pe] = await Promise.all([
       supabase.from('teams').select('*').eq('event_id', evento.id).order('name'),
       // Mostra também quem só tem código (user_id null) — dá pra montar a equipe
       // antes da pessoa entrar. Ao fazer o primeiro acesso, ela já cai na equipe.
       supabase.from('people').select('id,name,apelido,role_type,photo_url,user_id').eq('event_id', evento.id).eq('role_type','worker').order('name'),
-      supabase.from('people_teams').select('person_id,team_id'),
     ])
+    // vínculos só das equipes DESTE evento (antes vinha a tabela toda e cortava em 1000)
+    const teamIds = (eq.data ?? []).map((t:any) => t.id)
+    const vi = teamIds.length
+      ? await buscarTodos(() => supabase.from('people_teams').select('person_id,team_id').in('team_id', teamIds).order('person_id').order('team_id'))
+      : { data: [] }
     setEquipes(eq.data ?? [])
     setPessoas(pe.data ?? [])
     setVinculos(vi.data ?? [])

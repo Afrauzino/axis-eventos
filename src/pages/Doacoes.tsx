@@ -8,7 +8,9 @@ import PersonSelect from '../components/PersonSelect'
 import CardItem from '../components/CardItem'
 import FotoAmpliada from '../components/FotoAmpliada'
 import { notificarRegra } from '../lib/notifRegras'
+import { toast } from '../components/Toast'
 import type { Profile } from '../App'
+import { usePermissao } from '../hooks/usePermissao'
 
 type Doacao = { id:string; person_id:string|null; valor:number; descricao:string|null; forma_pagamento:string|null; data_doacao:string; anonima:boolean; created_at:string }
 type Pessoa = { id:string; name:string; apelido:string|null; photo_url:string|null }
@@ -25,6 +27,8 @@ export default function Doacoes({ profile }: { profile?: Profile }) {
   const [form, setForm] = useState({ person_id:'', valor:'', descricao:'', forma_pagamento:'pix', anonima:false })
 
   const admin = profile && isAdmin(profile.user_role)
+  const { pode } = usePermissao(profile ?? null)
+  const podeEditar = !!(admin || profile?.is_admin || pode('doacoes', 'editar'))
 
   useEffect(() => { if (evLoading) return; if (!evento) { setLoading(false); return }; carregar() }, [evento, evLoading])
 
@@ -43,7 +47,7 @@ export default function Doacoes({ profile }: { profile?: Profile }) {
   async function salvar(e:React.FormEvent) {
     e.preventDefault(); setSalvando(true)
     if (!evento||!form.valor) { setSalvando(false); return }
-    await supabase.from('doacoes').insert({
+    const { error } = await supabase.from('doacoes').insert({
       event_id:evento.id,
       person_id:form.anonima?null:(form.person_id||null),
       valor:parseFloat(form.valor),
@@ -52,6 +56,8 @@ export default function Doacoes({ profile }: { profile?: Profile }) {
       anonima:form.anonima,
       data_doacao:new Date().toISOString(),
     })
+    // só avisa e fecha se gravou de verdade
+    if (error) { setSalvando(false); toast.falha('Não foi possível registrar a doação.', error); return }
     notificarRegra('doacao_nova', { notify_admins: true, incluir_autor: true, title: 'Nova doação', body: `${fmtBRL(parseFloat(form.valor))}${form.descricao ? ' · ' + form.descricao : ''}`, url: '/doacoes' })
     setModal(false); setSalvando(false)
     setForm({person_id:'',valor:'',descricao:'',forma_pagamento:'pix',anonima:false}); carregar()
@@ -59,7 +65,8 @@ export default function Doacoes({ profile }: { profile?: Profile }) {
 
   async function excluir(id:string) {
     if (!confirm('Excluir esta doação?')) return
-    await supabase.from('doacoes').delete().eq('id',id)
+    const { error } = await supabase.from('doacoes').delete().eq('id',id)
+    if (error) toast.falha('Não foi possível excluir a doação.', error)
     carregar()
   }
 
@@ -113,7 +120,7 @@ export default function Doacoes({ profile }: { profile?: Profile }) {
         )
       })}
 
-      <button className="fab" onClick={()=>setModal(true)}><span className="icon">add</span></button>
+      {podeEditar && <button className="fab" onClick={()=>setModal(true)}><span className="icon">add</span></button>}
 
       {modal && (
         <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.5)',zIndex:300,display:'flex',flexDirection:'column',justifyContent:'flex-end'}} onClick={e=>e.target===e.currentTarget&&setModal(false)}>

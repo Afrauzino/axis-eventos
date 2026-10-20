@@ -14,6 +14,7 @@ import { useIgrejas, OUTROS } from '../lib/igrejas'
 import GerenciarIgrejas from '../components/GerenciarIgrejas'
 import { carregarConfig, salvarConfig } from '../lib/tema'
 import { toast } from '../components/Toast'
+import { minhaPessoa } from '../lib/pessoa'
 import type { Profile } from '../App'
 
 // Mensagem que vai no WhatsApp ao pedir ajuda pra identificar a encontrista.
@@ -76,9 +77,8 @@ export default function Encontristas({ profile }: { profile: Profile }) {
   // Carrega o cadastro da pessoa logada neste evento (pra saber se é encontreiro e pegar nome/foto/whats)
   useEffect(() => {
     if (!evento?.id || !profile?.user_id) return
-    supabase.from('people').select('id,name,photo_url,phone,role_type')
-      .eq('event_id', evento.id).eq('user_id', profile.user_id).maybeSingle()
-      .then(({ data }) => setMeuP(data as any ?? null))
+    minhaPessoa<{id:string;name:string;photo_url:string|null;phone:string|null;role_type:string}>(profile.user_id, evento.id, 'id,name,photo_url,phone,role_type')
+      .then(data => setMeuP(data))
   }, [evento?.id, profile?.user_id])
 
   useEffect(() => { if (selecionado?.id) carregarConhecidos(selecionado.id); else setConhecidos([]) }, [selecionado?.id])
@@ -146,8 +146,11 @@ export default function Encontristas({ profile }: { profile: Profile }) {
   async function tirarAdocao() {
     if (!selecionado) return
     setAdotando(true)
-    const { error } = await supabase.from('encontrista_adocao').delete().eq('encontrista_id', selecionado.id)
+    // .select() devolve as linhas apagadas: a RLS barra calada (0 linhas, sem erro) —
+    // ex.: permissão só por equipe/cargo, que o banco (sql/78) não reconhece.
+    const { data, error } = await supabase.from('encontrista_adocao').delete().eq('encontrista_id', selecionado.id).select('id')
     if (error) toast.erro('Não foi possível tirar a adoção.')
+    else if (!data || data.length === 0) toast.erro('Não foi possível tirar a adoção: sem permissão no banco (peça a permissão individual "Correio → adoções" ao admin).')
     else toast.sucesso('Adoção removida.')
     await loadAdocoes()
     setAdotando(false)
@@ -158,7 +161,8 @@ export default function Encontristas({ profile }: { profile: Profile }) {
     if (!pickResp) return
     setAdotando(true)
     const { error } = await supabase.rpc('definir_responsavel', { p_encontrista: pickResp, p_worker: workerId })
-    if (error) toast.erro('Não foi possível definir o responsável.')
+    // A RPC (sql/87) levanta erro se não tiver permissão — mostra o motivo
+    if (error) toast.erro('Não foi possível definir o responsável' + (error.message ? ': ' + error.message : '.'))
     else toast.sucesso('Responsável definido 💌')
     await loadAdocoes()
     setPickResp(null)

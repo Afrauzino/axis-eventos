@@ -1,4 +1,5 @@
 import { useRef, useEffect } from 'react'
+import { sanitizarHtml } from '../lib/sanitizar'
 
 type Props = {
   value: string
@@ -16,12 +17,17 @@ export default function RichEditor({ value, onChange, placeholder = 'Digite aqui
   const isUpdating = useRef(false)
   // Save/restore selection so toolbar clicks don't lose cursor position
   const savedRange = useRef<Range|null>(null)
+  // Último HTML (já limpo) que o editor emitiu — evita reescrever o DOM (e perder o cursor)
+  const ultimoEmitido = useRef<string|null>(null)
 
   useEffect(() => {
     if (!editorRef.current) return
     if (isUpdating.current) return
-    if (editorRef.current.innerHTML !== value) {
-      editorRef.current.innerHTML = value || ''
+    if (value === ultimoEmitido.current) return
+    // Conteúdo vindo de fora (banco): limpa antes de jogar no DOM
+    const limpo = sanitizarHtml(value)
+    if (editorRef.current.innerHTML !== limpo) {
+      editorRef.current.innerHTML = limpo
     }
   }, [value])
 
@@ -50,8 +56,20 @@ export default function RichEditor({ value, onChange, placeholder = 'Digite aqui
   function handleChange() {
     isUpdating.current = true
     const html = editorRef.current?.innerHTML ?? ''
-    onChange(html === '<br>' ? '' : html)
+    // Emite sempre HTML limpo (sem scripts/eventos/javascript:)
+    const limpo = html === '<br>' ? '' : sanitizarHtml(html)
+    ultimoEmitido.current = limpo
+    onChange(limpo)
     setTimeout(() => { isUpdating.current = false }, 0)
+  }
+
+  // Colar: insere só HTML limpo (mantém negrito/listas/cores) ou texto puro
+  function handlePaste(e: React.ClipboardEvent<HTMLDivElement>) {
+    e.preventDefault()
+    const html = e.clipboardData.getData('text/html')
+    if (html) document.execCommand('insertHTML', false, sanitizarHtml(html))
+    else document.execCommand('insertText', false, e.clipboardData.getData('text/plain'))
+    handleChange()
   }
 
   function insertLink() {
@@ -123,6 +141,7 @@ export default function RichEditor({ value, onChange, placeholder = 'Digite aqui
         contentEditable
         suppressContentEditableWarning
         onInput={handleChange}
+        onPaste={handlePaste}
         onBlur={saveSelection}
         onKeyUp={saveSelection}
         onMouseUp={saveSelection}

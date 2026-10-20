@@ -38,13 +38,13 @@ export default function ConfigCor() {
     const { error } = await supabase.storage.from('arquivos').upload(path, file, { upsert: true })
     if (!error) {
       const { data:u } = supabase.storage.from('arquivos').getPublicUrl(path)
-      await salvarConfig('logo_url', u.publicUrl)
-      setLogoUrl(u.publicUrl); aplicarFavicon(u.publicUrl)
+      if (await salvarConfig('logo_url', u.publicUrl)) { setLogoUrl(u.publicUrl); aplicarFavicon(u.publicUrl) }
+      else toast.falha('Não foi possível salvar a logo. Tente de novo.')
     } else toast.falha('Não foi possível enviar a logo. Tente de novo.', error)
     setSubindoLogo(false)
   }
   async function removerLogo() {
-    await salvarConfig('logo_url', '')
+    if (!(await salvarConfig('logo_url', ''))) { toast.falha('Não foi possível remover a logo. Tente de novo.'); return }
     setLogoUrl(null)
   }
 
@@ -57,9 +57,11 @@ export default function ConfigCor() {
 
   async function confirmar() {
     setSalvando(true)
-    await salvarCor(corPreview)
-    setCorAtual(corPreview)
+    const ok = await salvarCor(corPreview)
     setSalvando(false)
+    // Banco recusou: NÃO marca como salvo (a prévia continua, dá pra tentar de novo ou cancelar)
+    if (!ok) { toast.falha('Não foi possível salvar a cor. Tente de novo.'); return }
+    setCorAtual(corPreview)
     setSalvo(true)
   }
 

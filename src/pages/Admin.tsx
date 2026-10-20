@@ -22,6 +22,7 @@ import { carregarConfig, salvarConfig } from '../lib/tema'
 import { notificarRegra } from '../lib/notifRegras'
 import { fotoRequerida, carregarCadastroCfg } from '../lib/cadastroCfg'
 import EditorTexto from '../components/EditorTexto'
+import { buscarTodos } from '../lib/paginar'
 
 type LogRow = { id:string; actor_name:string|null; action:string; entity:string; entity_id:string|null; description:string|null; metadata:any; created_at:string }
 const ACAO_LABEL: Record<string,string> = { create:'Criou', update:'Editou', delete:'Excluiu', approve:'Aprovou', reject:'Rejeitou', payment:'Pagamento', medication:'Medicação', login:'Login', export:'Exportou', other:'Ação' }
@@ -532,7 +533,7 @@ export default function Admin({ profile }: { profile?: Profile }) {
     } else {
       // No active event - just show admin profiles
       const admins = (allProfs??[]).map(pr => ({
-        id: pr.user_id, name: pr.name, photo_url: null, church: '', phone: null,
+        id: pr.user_id, name: pr.name || '(conta sem nome)', photo_url: null, church: '', phone: null,
         role_type: 'admin', invite_code: null, user_id: pr.user_id, desistente: false, apelido: null,
         user_role: pr.user_role, role_status: pr.role_status, profile_name: pr.name
       }))
@@ -546,7 +547,9 @@ export default function Admin({ profile }: { profile?: Profile }) {
     if (!cfg) return
     await supabase.from('profiles').update({ user_role: cfg.user_role, role_status: cfg.status }).eq('user_id', userId)
     // Converte o TIPO da pessoa (encontrista/encontreiro) quando o cargo define isso
-    if (cfg.role_type) await supabase.from('people').update({ role_type: cfg.role_type }).eq('user_id', userId)
+    // Só no cadastro do EVENTO ATIVO — eventos passados guardam o tipo que a pessoa teve lá
+    const evAtivo = eventoAtivoId()
+    if (cfg.role_type && evAtivo) await supabase.from('people').update({ role_type: cfg.role_type }).eq('user_id', userId).eq('event_id', evAtivo)
     // Virou encontrista → tira de equipes/liderança (encontrista não fica em equipe)
     if (cfg.role_type === 'encounterer') await aplicarRegrasTipo(userId, 'encounterer')
     setPessoas(prev => prev.map(p => p.user_id === userId ? { ...p, user_role: cfg.user_role, role_status: cfg.status, ...(cfg.role_type ? { role_type: cfg.role_type } : {}) } : p))
@@ -737,8 +740,10 @@ export default function Admin({ profile }: { profile?: Profile }) {
   // sobe o cargo base. Assim "desfazer" é REAL — nada fica pendurado.
   async function aplicarRegrasTipo(userId: string | null, roleType: string, personIdHint?: string) {
     if (roleType === 'encounterer') {
+      // Só o cadastro do EVENTO ATIVO: equipes/liderança de eventos passados são histórico
       let pids: string[] = personIdHint ? [personIdHint] : []
-      if (userId) { const { data } = await supabase.from('people').select('id').eq('user_id', userId); pids = [...new Set([...pids, ...(data ?? []).map((x: any) => x.id)])] }
+      const evAtivo = eventoAtivoId()
+      if (userId && evAtivo) { const { data } = await supabase.from('people').select('id').eq('user_id', userId).eq('event_id', evAtivo); pids = [...new Set([...pids, ...(data ?? []).map((x: any) => x.id)])] }
       if (pids.length) {
         await supabase.from('people_teams').delete().in('person_id', pids)         // sai de todas as equipes
         await supabase.from('teams').update({ leader_id: null }).in('leader_id', pids)      // deixa de liderar
@@ -777,6 +782,11 @@ export default function Admin({ profile }: { profile?: Profile }) {
       cidade: data.cidade ?? '', estado: data.estado ?? '', endereco: data.endereco ?? '',
       bairro: data.bairro ?? '', cep: data.cep ?? '', role_type: data.role_type ?? 'encounterer',
       team_pref: data.team_pref ?? '', cargo: (data as any).cargo ?? '', notes: data.notes ?? '', photo_url: data.photo_url ?? null,
+      // O salvar grava estes também — sem carregar, viravam NULL
+      instagram: data.instagram ?? '', facebook: data.facebook ?? '', rede_outra: data.rede_outra ?? '',
+      estado_civil: data.estado_civil ?? '', phone2: data.phone2 ?? '',
+      contact_phone_dono: data.contact_phone_dono ?? '',
+      contact_phone2: data.contact_phone2 ?? '', contact_phone2_dono: data.contact_phone2_dono ?? '',
     })
     setEditPessoaId(p.id)
   }
@@ -944,13 +954,13 @@ export default function Admin({ profile }: { profile?: Profile }) {
     if (editandoEvento) {
       await supabase.from('events').update(payload).eq('id',editandoEvento.id)
     } else {
-      // Novo evento vira o ativo; os outros ativos passam a inativos (só um ativo por vez)
-      await supabase.from('events').update({ status:'inactive' }).eq('status','active')
-      const { data: novo } = await supabase.from('events').insert({...payload,status:'active'}).select('id,name').single()
-      if (novo) {
-        await seedNovoEvento(novo.id)
-        registrarLog({ action:'create', entity:'events', entityId:novo.id, description:`Criou o evento ${novo.name} (com estrutura padrão)`, eventId:novo.id })
-      }
+      // Novo evento vira o ativo; os outros ativos passam a inativos (só um ativo por vez).
+      // Cria PRIMEIRO e só desativa os outros se deu certo — senão sobrava zero eventos ativos.
+      const { data: novo, error: errNovo } = await supabase.from('events').insert({...payload,status:'active'}).select('id,name').single()
+      if (errNovo || !novo) { setSalvando(false); toast.falha('Não foi possível criar o evento.', errNovo); return }
+      await supabase.from('events').update({ status:'inactive' }).eq('status','active').neq('id', novo.id)
+      await seedNovoEvento(novo.id)
+      registrarLog({ action:'create', entity:'events', entityId:novo.id, description:`Criou o evento ${novo.name} (com estrutura padrão)`, eventId:novo.id })
       invalidarEventoAtivo()
     }
     setModalEvento(false); setSalvando(false); setEditandoEvento(null)
@@ -1005,7 +1015,7 @@ export default function Admin({ profile }: { profile?: Profile }) {
     const eid = modalDuplicar.id
 
     // Criar novo evento
-    const { data: novoEvento } = await supabase.from('events').insert({
+    const { data: novoEvento, error: errNovo } = await supabase.from('events').insert({
       name: nomeDuplicar.trim(),
       location: modalDuplicar.location,
       valor_encontrista: modalDuplicar.valor_encontrista,
@@ -1013,14 +1023,20 @@ export default function Admin({ profile }: { profile?: Profile }) {
       status: 'active',
     }).select().single()
 
-    if (!novoEvento) { setDuplicando(false); return }
+    if (errNovo || !novoEvento) { setDuplicando(false); toast.falha('Não foi possível duplicar o evento.', errNovo); return }
     const nid = novoEvento.id
+    // Só um ativo por vez: o duplicado vira o ativo, os outros saem
+    await supabase.from('events').update({ status:'inactive' }).eq('status','active').neq('id', nid)
+    invalidarEventoAtivo()
 
     // Copiar estrutura selecionada
     if (opcoesDup.equipes) {
       const { data: eqs } = await supabase.from('teams').select('*').eq('event_id',eid)
       for (const eq of eqs??[]) {
-        await supabase.from('teams').insert({ event_id:nid, name:eq.name, color:eq.color, equipe_saude:eq.equipe_saude })
+        // Flags/visual da equipe também (Correio, Cardápio, emoji) — só se a coluna existir na linha
+        const extras: any = {}
+        for (const k of ['equipe_correio','equipe_cardapio','emoji']) if (k in eq) extras[k] = eq[k]
+        await supabase.from('teams').insert({ event_id:nid, name:eq.name, color:eq.color, equipe_saude:eq.equipe_saude, ...extras })
       }
     }
     if (opcoesDup.locais) {
@@ -1084,14 +1100,19 @@ export default function Admin({ profile }: { profile?: Profile }) {
     if (!evento) return
     const eid = evento.id
     const sel = secoesExport
-    const q = (t:string) => supabase.from(t).select('*').eq('event_id',eid)
+    // Paginado (passa de 1000 linhas fácil — antes o backup saía cortado sem aviso)
+    const q = (t:string, ...ordem:string[]) => buscarTodos(() => {
+      let x: any = supabase.from(t).select('*').eq('event_id',eid)
+      for (const o of (ordem.length ? ordem : ['id'])) x = x.order(o)
+      return x
+    })
     const backup: any = { evento, exportado_em:new Date().toISOString(), secoes:Object.keys(sel).filter(k=>sel[k]) }
 
     if (sel.pessoas)      backup.pessoas      = (await q('people')).data
     if (sel.equipes) {
       backup.equipes = (await q('teams')).data
       const ids = (backup.equipes ?? []).map((x:any)=>x.id)
-      backup.people_teams = ids.length ? (await supabase.from('people_teams').select('*').in('team_id',ids)).data : []
+      backup.people_teams = ids.length ? (await buscarTodos(() => supabase.from('people_teams').select('*').in('team_id',ids).order('person_id').order('team_id'))).data : []
     }
     if (sel.ministracoes) backup.ministracoes = (await q('ministrações')).data
     if (sel.teatros)      backup.teatros      = (await q('theaters')).data
@@ -1101,7 +1122,7 @@ export default function Admin({ profile }: { profile?: Profile }) {
     if (sel.cronograma)   backup.cronograma   = (await q('cronograma_eventos')).data
     if (sel.ranking) {
       backup.ranking_categorias = (await q('ranking_categorias')).data
-      backup.ranking_votos      = (await q('ranking_votos')).data
+      backup.ranking_votos      = (await q('ranking_votos','categoria_id','votante_id','votado_id')).data
     }
 
     const blob = new Blob([JSON.stringify(backup,null,2)],{type:'application/json'})
@@ -1375,7 +1396,7 @@ export default function Admin({ profile }: { profile?: Profile }) {
                 cor={corPessoa}
                 ehPessoa
                 fotoUrl={p.photo_url}
-                iniciais={p.name.slice(0,2).toUpperCase()}
+                iniciais={(p.name || '?').slice(0,2).toUpperCase()}
                 titulo={p.name} apelido={p.apelido}
                 subtitulo={sub}
                 direita={direita}
@@ -1401,7 +1422,7 @@ export default function Admin({ profile }: { profile?: Profile }) {
               <div style={{width:56,height:56,borderRadius:'50%',background:pessoaDetalhe.role_type==='worker'?'var(--primary-light)':'#F3F0FF',flexShrink:0,overflow:'hidden',display:'flex',alignItems:'center',justifyContent:'center'}}>
                 {pessoaDetalhe.photo_url
                   ? <img src={pessoaDetalhe.photo_url} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}}/>
-                  : <span style={{fontWeight:700,fontSize:20,color:pessoaDetalhe.role_type==='worker'?'var(--primary)':'#6B46C1'}}>{pessoaDetalhe.name.slice(0,2).toUpperCase()}</span>
+                  : <span style={{fontWeight:700,fontSize:20,color:pessoaDetalhe.role_type==='worker'?'var(--primary)':'#6B46C1'}}>{(pessoaDetalhe.name || '?').slice(0,2).toUpperCase()}</span>
                 }
               </div>
               <div style={{flex:1,minWidth:0}}>
@@ -1448,7 +1469,7 @@ export default function Admin({ profile }: { profile?: Profile }) {
                       onClick={()=>{ navigator.clipboard?.writeText(novaSenha.senha); toast.sucesso('Senha copiada') }}>Copiar senha</button>
                     {pessoaDetalhe.phone && (
                       <a className="btn btn-sm btn-primary"
-                        href={`https://wa.me/55${(pessoaDetalhe.phone||'').replace(/\D/g,'')}?text=${encodeURIComponent(`Olá ${pessoaDetalhe.name.split(' ')[0]}! Sua nova senha do AXIS é: ${novaSenha.senha}\nEntre com o email ${emails.get(pessoaDetalhe.user_id!) ?? ''} e troque a senha depois de entrar.`)}`}
+                        href={`https://wa.me/55${(pessoaDetalhe.phone||'').replace(/\D/g,'')}?text=${encodeURIComponent(`Olá ${(pessoaDetalhe.name || '').split(' ')[0]}! Sua nova senha do AXIS é: ${novaSenha.senha}\nEntre com o email ${emails.get(pessoaDetalhe.user_id!) ?? ''} e troque a senha depois de entrar.`)}`}
                         target="_blank" rel="noreferrer">Enviar no WhatsApp</a>
                     )}
                     <button type="button" className="btn btn-sm btn-ghost" onClick={()=>setNovaSenha(null)}>Fechar</button>

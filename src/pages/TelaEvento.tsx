@@ -87,6 +87,10 @@ export default function TelaEvento() {
   const wrapRef = useRef<HTMLDivElement>(null)
   const telaRef = useRef<HTMLDivElement>(null)
   const fileRef = useRef<HTMLInputElement>(null)
+  // edição local ainda NÃO salva → o recarregar (30s) não pode atropelar
+  const sujoRef = useRef(false)
+  const bgFileRef = useRef<File | null>(null)   // ref (não state) pra o carregar() ver o valor atual
+  useEffect(() => { bgFileRef.current = bgFile }, [bgFile])
   const [fit, setFit] = useState(1)
   // posições (no espaço 1280×720; o ponto é o CENTRO do elemento)
   const [nomePos, setNomePos]   = useState({ x: LARG / 2, y: 300 })
@@ -115,7 +119,7 @@ export default function TelaEvento() {
     let vivo = true
     const carregar = async () => {
       const raw = await carregarConfig(CHAVE)
-      if (!vivo || !raw) return
+      if (!vivo || !raw || sujoRef.current) return   // tem edição não salva → não sobrescreve
       try {
         const c = JSON.parse(raw)
         // MIGRAÇÃO DE RESOLUÇÃO: posições/tamanhos são guardados em pixels do quadro.
@@ -143,7 +147,7 @@ export default function TelaEvento() {
         if (typeof c.barraAlt === 'number') setBarraAlt(c.barraAlt * sy)
         if (c.encaixe === 'auto' || c.encaixe === 'manual') setEncaixe(c.encaixe)
         if (typeof c.zoom === 'number') setZoom(c.zoom)
-        if (!bgFile) setBg(c.bg ?? null)   // não sobrescreve um fundo que a pessoa acabou de escolher
+        if (!bgFileRef.current) setBg(c.bg ?? null)   // não sobrescreve um fundo que a pessoa acabou de escolher
       } catch {}
     }
     carregar()
@@ -181,12 +185,13 @@ export default function TelaEvento() {
     return () => { ro.disconnect(); window.removeEventListener('resize', calc) }
   }, [apresentar, encaixe, zoom])
 
-  function escolherFundo(f: File) { setBgFile(f); setBg(URL.createObjectURL(f)) }
+  function escolherFundo(f: File) { sujoRef.current = true; bgFileRef.current = f; setBgFile(f); setBg(URL.createObjectURL(f)) }
 
   // ---- Arrastar nome/barra dentro da imagem, com encaixe no centro ----
   function onDown(e: React.PointerEvent, alvo: 'nome' | 'barra') {
     if (apresentar) return
     e.stopPropagation(); e.preventDefault()
+    sujoRef.current = true
     setSel(alvo === 'nome' ? 'nome' : null)   // clicar no nome seleciona (mostra o quadrado)
     const pos = alvo === 'nome' ? nomePos : barraPos
     dragRef.current = { alvo, x0: e.clientX, y0: e.clientY, px: pos.x, py: pos.y }
@@ -218,6 +223,7 @@ export default function TelaEvento() {
   // cantos (nw/ne/se/sw) = tamanho da fonte (uniforme); e/w = largura; n/s = altura
   function onResizeDown(e: React.PointerEvent, h: string) {
     e.stopPropagation(); e.preventDefault()
+    sujoRef.current = true
     resizeRef.current = { h, x0: e.clientX, y0: e.clientY, tam: nomeTam, larg: nomeLarg, alt: nomeAlt, w0: nomeW0, h0: nomeH0 }
     ;(e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId)
   }
@@ -281,7 +287,7 @@ export default function TelaEvento() {
       const cfg = { nome, cor, fonte, corBarra, bg: bgFinal, bgCor, escuro, mostrarNome, mostrarBarra, nomePos, barraPos, nomeTam, nomeLarg, nomeAlt, pctTam, barraLarg, barraAlt, encaixe, zoom, baseW: LARG, baseH: ALT }
       const ok = await salvarConfig(CHAVE, JSON.stringify(cfg))
       if (!ok) { setMsg('Só o admin salva pra todos. (Você pode salvar a imagem.)'); }
-      else { setBg(bgFinal); setBgFile(null); setMsg('✓ Salvo! Todo mundo que abrir o link vê assim.') }
+      else { setBg(bgFinal); setBgFile(null); bgFileRef.current = null; sujoRef.current = false; setMsg('✓ Salvo! Todo mundo que abrir o link vê assim.') }
     } catch { setMsg('Não consegui salvar. Tente de novo.') }
     setSalvandoCfg(false)
     setTimeout(() => setMsg(''), 4000)
@@ -397,7 +403,8 @@ export default function TelaEvento() {
       )}
 
       {painel && !apresentar && (
-        <div style={{ background: '#161616', borderTop: '1px solid #262626', padding: '14px 16px', flexShrink: 0, maxHeight: '42vh', overflowY: 'auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(210px,1fr))', gap: 14 }}>
+        <div onChangeCapture={() => { sujoRef.current = true }} onClickCapture={() => { sujoRef.current = true }}
+          style={{ background: '#161616', borderTop: '1px solid #262626', padding: '14px 16px', flexShrink: 0, maxHeight: '42vh', overflowY: 'auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(210px,1fr))', gap: 14 }}>
           <div style={campo}>
             <span style={rotulo}>Nome</span>
             <input style={inputTxt} value={nome} onChange={e => setNome(e.target.value)} placeholder="Nome do evento" />

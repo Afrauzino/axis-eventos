@@ -118,8 +118,12 @@ export default function Imprimir({ doc, dados, orientacao: forcar = 'auto', onVo
     return () => { ro.disconnect(); window.removeEventListener('resize', calc) }
   }, [sheetPxW])
 
-  const paginas: Record<string, any>[][] = []
-  if (porPessoa) for (let i = 0; i < dados.length; i += porFolha) paginas.push(dados.slice(i, i + porFolha))
+  // Por pessoa: TODAS as páginas do modelo, em sequência pra cada pessoa
+  // (frente, verso, frente, verso…). Antes só saía a paginas[0] e o crachá de
+  // dois lados perdia o verso. Lado a lado na folha = é só recortar e dobrar/colar.
+  const itens = porPessoa ? dados.flatMap(d => doc.paginas.map(pg => ({ d, pg }))) : []
+  const paginas: { d: Record<string, any>; pg: Documento['paginas'][number] }[][] = []
+  if (porPessoa) for (let i = 0; i < itens.length; i += porFolha) paginas.push(itens.slice(i, i + porFolha))
 
   const css = `
     /* O "encolher pra caber na tela" é SÓ de tela (via variável --fit). Na
@@ -140,8 +144,11 @@ export default function Imprimir({ doc, dados, orientacao: forcar = 'auto', onVo
       .ed-sheet:not(:last-child) { break-after:page; page-break-after:always; }
       .ed-folha { break-inside:avoid; page-break-inside:avoid; }
       * { -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important; }
-      /* pra pessoas: a margem já está DENTRO da folha (padding), então @page sem margem */
-      @page { size: A4 ${orientacao === 'retrato' ? 'portrait' : 'landscape'}; margin: ${porPessoa ? '0' : MARGEM + 'mm'}; }
+      /* @page SEM margem nos dois modos: pra pessoas a margem já está DENTRO da
+         folha (padding); sem dados as páginas saem em tamanho real — com 8mm de
+         margem um pôster A4 era cortado e escorria pra uma folha extra. */
+      .ed-sheet.ed-folha { outline:none !important; }
+      @page { size: A4 ${orientacao === 'retrato' ? 'portrait' : 'landscape'}; margin: 0; }
     }
   `
 
@@ -186,7 +193,7 @@ export default function Imprimir({ doc, dados, orientacao: forcar = 'auto', onVo
 
         <span style={{ fontSize: 12, color: 'var(--muted)' }}>
           {porPessoa
-            ? `${dados.length} pessoa(s) · ${porFolha} por folha (${enc.cols}×${enc.rows}) · crachá ${card.l}×${card.a}mm · A4 ${orientacao === 'retrato' ? 'em pé' : 'deitada'}`
+            ? `${dados.length} pessoa(s)${doc.paginas.length > 1 ? ` × ${doc.paginas.length} páginas` : ''} · ${porFolha} por folha (${enc.cols}×${enc.rows}) · crachá ${card.l}×${card.a}mm · A4 ${orientacao === 'retrato' ? 'em pé' : 'deitada'}`
             : `${doc.paginas.length} página(s) · A4 ${orientacao === 'retrato' ? 'em pé' : 'deitada'}`}
         </span>
       </div>
@@ -206,10 +213,10 @@ export default function Imprimir({ doc, dados, orientacao: forcar = 'auto', onVo
                   background: 'white', boxShadow: '0 2px 12px rgba(0,0,0,0.18)', margin: '0 auto 14px', overflow: 'hidden',
                 }}>
                   <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols}, ${card.l}mm)`, gap: `${ESPACO}mm`, justifyContent: 'start', alignContent: 'start' }}>
-                    {grupo.map((d, i) => (
+                    {grupo.map(({ d, pg }, i) => (
                       <div key={i} className="ed-folha" style={{ width: `${card.l}mm`, height: `${card.a}mm`, overflow: 'hidden', outline: '0.2mm dashed #d1d5db' }}>
                         <div style={{ width: `${cardBase.l}mm`, height: `${cardBase.a}mm`, transform: `scale(${tamanho})`, transformOrigin: 'top left' }}>
-                          <Folha doc={doc} pagina={doc.paginas[0]} dados={d} modo="papel" />
+                          <Folha doc={doc} pagina={pg} dados={d} modo="papel" />
                         </div>
                       </div>
                     ))}

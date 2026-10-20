@@ -73,8 +73,15 @@ export default function Impressao({ profile }: { profile?: Profile }) {
         ? ant : d)
   }, [])
 
-  /** Troca o documento aberto (carregar modelo, começar do zero, salvar). */
-  const aplicarDoc = useCallback((d: Documento) => { docRef.current = d; setDoc(d); setDocAtual(d) }, [])
+  /** Troca o documento aberto (carregar modelo, começar do zero, salvar).
+   *  `versaoEditor` sobe a CADA troca e é a key do Editor: o useEditor só lê o
+   *  `inicial` na montagem, e todo modelo salvo na mesma sessão tinha o mesmo
+   *  doc.id — abrir outro (ou reabrir o mesmo pra descartar) não remontava e a
+   *  tela mostrava o doc antigo enquanto salvar/imprimir usavam o novo. */
+  const [versaoEditor, setVersaoEditor] = useState(0)
+  const aplicarDoc = useCallback((d: Documento) => {
+    docRef.current = d; setDoc(d); setDocAtual(d); setVersaoEditor(v => v + 1)
+  }, [])
   const [orientacao, setOrientacao] = useState<Orientacao>('auto')
   const [escolhendo, setEscolhendo] = useState<Documento|null>(null)  // tela "quem vai ser impresso"
   const [imprimindo, setImprimindo] = useState<Documento|null>(null)
@@ -319,7 +326,7 @@ export default function Impressao({ profile }: { profile?: Profile }) {
       {/* EDITOR (a janela flutuante desce POR CIMA dele, sem empurrar nada) */}
       <div style={{ flex:1, minHeight:0, position:'relative' }}>
         <Editor
-          key={doc.id}
+          key={versaoEditor}
           inicial={doc}
           dados={dadosPrevia}
           subirImagem={subirImagem}

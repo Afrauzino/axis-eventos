@@ -57,13 +57,14 @@ export default function ConfigNotificacoes({ profile }: { profile?: Profile }) {
 
   async function salvar() {
     setSalvando(true)
-    await Promise.all([
+    const oks = await Promise.all([
       salvarConfig('aniversario_titulo', titulo.trim() || TITULO_PADRAO),
       salvarConfig('aniversario_mensagem', mensagem.trim() || MSG_PADRAO),
       salvarConfig('aniversario_avisar_lideres', avisar ? '1' : '0'),
     ])
     setSalvando(false)
-    toast.sucesso('Configuração salva!')
+    // salvarConfig devolve false quando o banco recusa — não dizer "salvo" à toa
+    oks.every(Boolean) ? toast.sucesso('Configuração salva!') : toast.falha('Não foi possível salvar. Tente de novo.')
   }
 
   function testar() {

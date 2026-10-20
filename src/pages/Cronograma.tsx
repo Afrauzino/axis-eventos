@@ -15,6 +15,7 @@ import { useVoltarFecha } from '../hooks/useVoltarFecha'
 import CronometroPopup from '../components/CronometroPopup'
 import CronometroDisplay from '../components/CronometroDisplay'
 import { notificarRegra } from '../lib/notifRegras'
+import { minhaPessoa } from '../lib/pessoa'
 import type { Profile } from '../App'
 
 type TipoAtividade = { id:string; nome:string; cor:string; icone?:string|null; chave?:string|null; protegido?:boolean }
@@ -169,15 +170,15 @@ export default function Cronograma({ profile }: { profile?: Profile }) {
     let ativo = true
     async function checar() {
       if (isAdmin(profile?.user_role) || profile?.is_admin) { if(ativo) setPodeCronometro(true); return }
-      if (!profile?.user_id) return
-      const { data: p } = await supabase.from('people').select('id').eq('user_id', profile.user_id).maybeSingle()
-      if (!p) return
+      if (!profile?.user_id || evLoading) return
+      const p = await minhaPessoa(profile.user_id, evento?.id)   // cadastro DESTE evento (1 por evento)
+      if (!p) { if (ativo) setPodeCronometro(false); return }
       const { data } = await supabase.from('permissoes').select('id').eq('person_id', p.id).eq('modulo','cronograma_inteligente').eq('permitido', true).limit(1)
       if (ativo) setPodeCronometro((data ?? []).length > 0)
     }
     checar()
     return () => { ativo = false }
-  }, [profile])
+  }, [profile, evento?.id, evLoading])
 
   async function carregar() {
     if (!evento) return
@@ -240,7 +241,6 @@ export default function Cronograma({ profile }: { profile?: Profile }) {
       hora_inicio: new Date(form.hora_inicio).toISOString(),
       hora_fim: new Date(new Date(form.hora_inicio).getTime() + (Number(form.duracao_minutos)||60)*60000).toISOString(),
       duracao_minutos: Number(form.duracao_minutos)||60,
-      status: 'planejado',
       ministracao_id: form.ministracao_id || null,
       theater_id: form.theater_id || null,
       cardapio_id: form.cardapio_id || null,
@@ -250,7 +250,8 @@ export default function Cronograma({ profile }: { profile?: Profile }) {
     if (editando) {
       const r = await supabase.from('cronograma_eventos').update(payload).eq('id', editando.id); err = r.error
     } else {
-      const r = await supabase.from('cronograma_eventos').insert({ ...payload, event_id: evento.id }); err = r.error
+      // status só no INSERT — editar não pode resetar bloco em andamento/concluído
+      const r = await supabase.from('cronograma_eventos').insert({ ...payload, status: 'planejado', event_id: evento.id }); err = r.error
     }
     if (err) { setErro('Erro: ' + err.message); setSalvando(false); return }
     // Avisa todos que o cronograma mudou (novo item ou alteração) — se ligado
@@ -266,8 +267,8 @@ export default function Cronograma({ profile }: { profile?: Profile }) {
     if (status === 'em_andamento') {
       extra.cron_iniciado_em = new Date().toISOString()
       extra.cron_estado = 'correndo'
-    } else if (status === 'concluido') {
-      extra.cron_estado = 'encerrado'
+    } else if (status === 'concluido' || status === 'cancelado') {
+      extra.cron_estado = 'encerrado'   // cancelar também para o relógio (senão o AO VIVO segue contando)
     }
     await supabase.from('cronograma_eventos').update(extra).eq('id', id)
     // Conclusão de teatro/ministração acontece SÓ pelo cronograma → propaga
@@ -303,7 +304,8 @@ export default function Cronograma({ profile }: { profile?: Profile }) {
   // desfaz a conclusão do teatro/ministração vinculados.
   async function reverterStatus(id: string) {
     if (!confirm('Reverter este item para "Planejado"? Isso também reabre o teatro/ministração ligados.')) return
-    const extra: any = { status: 'planejado', cron_estado: null, cron_iniciado_em: null }
+    // zera também decorrido/ajuste (senão o bloco "planejado" mostra a barra pela metade)
+    const extra: any = { status: 'planejado', cron_estado: null, cron_iniciado_em: null, cron_decorrido_segundos: 0, cron_ajuste_segundos: 0 }
     await supabase.from('cronograma_eventos').update(extra).eq('id', id)
     const item = itens.find(i => i.id === id)
     try { if (item?.theater_id)     await supabase.from('theaters').update({ status:'planejado' }).eq('id', item.theater_id) } catch {}

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useVoltarFecha } from '../hooks/useVoltarFecha'
+import { toast } from './Toast'
 
 type Item = {
   id:string; titulo:string; hora_inicio:string; hora_fim:string
@@ -47,16 +48,16 @@ export default function CronometroPopup({ item, podeControlar, onClose, onUpdate
     return () => clearInterval(t)
   }, [estado])
 
-  // #12 — quem só ACOMPANHA sincroniza em tempo real com o item atualizado (Realtime).
-  // Quem controla mantém seu próprio estado (não sofre eco).
+  // #12 — TODOS sincronizam em tempo real com o item atualizado (Realtime/banco),
+  // inclusive quem controla: com 2 controladores, um vê o que o outro fez (sem se atropelar).
+  // O eco da própria gravação chega com os mesmos valores → não muda nada.
   useEffect(() => {
-    if (podeControlar) return
     setEstado(item.cron_estado ?? 'parado')
     setIniciadoEm(item.cron_iniciado_em ?? null)
     setAjuste(item.cron_ajuste_segundos ?? 0)
     setAcumulado(item.cron_decorrido_segundos ?? 0)
     setAgora(Date.now())
-  }, [podeControlar, item.cron_estado, item.cron_iniciado_em, item.cron_ajuste_segundos, item.cron_decorrido_segundos])
+  }, [item.cron_estado, item.cron_iniciado_em, item.cron_ajuste_segundos, item.cron_decorrido_segundos])
 
   // decorrido = tempo já acumulado + (se rodando) tempo desde que retomou
   let decorrido = acumulado
@@ -69,7 +70,18 @@ export default function CronometroPopup({ item, podeControlar, onClose, onUpdate
   const zerou = decorrido>0 && restante<=0
   const jaComecou = iniciadoEm !== null || acumulado > 0
 
-  async function salvar(campos:any){ try { await supabase.from('cronograma_eventos').update(campos).eq('id', item.id); onUpdate?.() } catch(e){} }
+  // grava; se falhar avisa e DESFAZ a mudança otimista da tela (volta ao snapshot)
+  async function salvar(campos:any): Promise<boolean> {
+    const antes = { estado, iniciadoEm, ajuste, acumulado }   // valores deste render = antes do otimista
+    let erro: any = null
+    try { const { error } = await supabase.from('cronograma_eventos').update(campos).eq('id', item.id); erro = error } catch(e){ erro = e }
+    if (erro) {
+      toast.falha('Não foi possível salvar o cronômetro. Tente de novo.', erro)
+      setEstado(antes.estado); setIniciadoEm(antes.iniciadoEm); setAjuste(antes.ajuste); setAcumulado(antes.acumulado); setAgora(Date.now())
+      return false
+    }
+    onUpdate?.(); return true
+  }
   async function iniciar(){
     const ini=new Date().toISOString()
     setIniciadoEm(ini); setEstado('correndo'); setAgora(Date.now())
@@ -86,24 +98,32 @@ export default function CronometroPopup({ item, podeControlar, onClose, onUpdate
   async function ajustar(deltaSeg:number){
     setAjuste(a => a + deltaSeg)  // resposta imediata na tela
     try {
-      const { data } = await supabase.rpc('ajustar_tempo', { p_id: item.id, delta_seg: deltaSeg })
+      const { data, error } = await supabase.rpc('ajustar_tempo', { p_id: item.id, delta_seg: deltaSeg })
       const r:any = data
-      if (r?.ok) {
-        setAjuste(r.atual_ajuste ?? (ajuste+deltaSeg))
-        if (r.proximo_titulo) {
-          const min = Math.abs(Math.round(deltaSeg/60))
-          setAvisoAjuste(`${deltaSeg>0?'−':'+'}${min} min de "${r.proximo_titulo}"${r.limitou?' · no limite':''}`)
-          setTimeout(()=>setAvisoAjuste(''), 4500)
-        } else {
-          setAvisoAjuste('Sem próximo bloco pra compensar')
-          setTimeout(()=>setAvisoAjuste(''), 4500)
-        }
-        onUpdate?.()
+      if (error || !r?.ok) {
+        // falhou → desfaz o ajuste otimista e avisa
+        setAjuste(a => a - deltaSeg)
+        toast.falha('Não foi possível ajustar o tempo. Tente de novo.', error ?? r)
+        return
       }
-    } catch(e){}
+      if (typeof r.atual_ajuste === 'number') setAjuste(r.atual_ajuste)
+      if (r.proximo_titulo) {
+        const min = Math.abs(Math.round(deltaSeg/60))
+        setAvisoAjuste(`${deltaSeg>0?'−':'+'}${min} min de "${r.proximo_titulo}"${r.limitou?' · no limite':''}`)
+        setTimeout(()=>setAvisoAjuste(''), 4500)
+      } else {
+        setAvisoAjuste('Sem próximo bloco pra compensar')
+        setTimeout(()=>setAvisoAjuste(''), 4500)
+      }
+      onUpdate?.()
+    } catch(e){ setAjuste(a => a - deltaSeg); toast.falha('Não foi possível ajustar o tempo. Tente de novo.', e) }
   }
   async function adicionarDigitado(){ const m=Number(addMin); if(!m) return; setAddMin(''); await ajustar(m*60) }
-  async function encerrar(){ setEstado('encerrado'); await salvar({cron_estado:'encerrado', status:'concluido'}); await concluirVinculados(item); onClose() }
+  async function encerrar(){
+    setEstado('encerrado')
+    if (!(await salvar({cron_estado:'encerrado', status:'concluido'}))) return   // falhou → não fecha nem conclui teatro/ministração
+    await concluirVinculados(item); onClose()
+  }
 
   let cor = 'var(--primary)'
   if (pct >= 95) cor = '#C53030'

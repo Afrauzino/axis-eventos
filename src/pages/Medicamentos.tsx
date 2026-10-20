@@ -8,9 +8,12 @@ import CardItem from '../components/CardItem'
 import FotoAmpliada from '../components/FotoAmpliada'
 import { getInitials, fmtHora, fmtDataHora, isAdmin } from '../utils'
 import { useEvento } from '../hooks/useEvento'
+import { buscarTodos } from '../lib/paginar'
+import { minhaPessoa } from '../lib/pessoa'
 import { gerarICS, baixarICS, type EventoICS } from '../lib/ics'
 import { notificarEquipeFlag } from '../lib/notifRegras'
 import type { Profile } from '../App'
+import { usePermissao } from '../hooks/usePermissao'
 
 // Doses vêm AUTOMÁTICAS da Ficha Médica (med_agenda). Sem agendamento manual.
 type Dose   = { id:string; med_ctrl_id:string; person_id:string; nome:string; dosagem:string|null; horario:string; entregue:boolean; entregue_por:string|null; entregue_em:string|null }
@@ -34,7 +37,8 @@ export default function Medicamentos({ profile }: { profile?: Profile }) {
     if (!evento) return
     setLoading(true)
     const [ag, pe] = await Promise.all([
-      supabase.from('med_agenda').select('*').eq('event_id', evento.id).order('horario'),
+      // doses do evento passam fácil de 1000 linhas → paginado
+      buscarTodos<Dose>(() => supabase.from('med_agenda').select('*').eq('event_id', evento.id).order('horario').order('id')),
       supabase.from('people').select('id,name,apelido,photo_url').eq('event_id', evento.id).order('name'),
     ])
     setDoses((ag.data as Dose[]) ?? [])
@@ -65,14 +69,18 @@ export default function Medicamentos({ profile }: { profile?: Profile }) {
   }
 
   const admin = !!profile && (isAdmin(profile.user_role) || !!profile.is_admin)
+  const { pode } = usePermissao(profile ?? null)
+  const podeEntregar = admin || pode('medicamentos', 'editar')
 
   // Admin: exclui o remédio inteiro (o medicamento contínuo + TODAS as doses dele).
   // Útil pra remover testes. As doses já entregues (histórico) também saem.
   async function excluirRemedio(d: Dose) {
     if (!admin) return
     if (!confirm(`Excluir o remédio "${d.nome}"${d.dosagem?` (${d.dosagem})`:''} de ${getPessoa(d.person_id)?.name ?? ''} e todas as suas doses?`)) return
-    await supabase.from('med_agenda').delete().eq('med_ctrl_id', d.med_ctrl_id)
-    await supabase.from('med_controlados').delete().eq('id', d.med_ctrl_id)
+    const a = await supabase.from('med_agenda').delete().eq('med_ctrl_id', d.med_ctrl_id)
+    if (a.error) { toast.falha('Não foi possível excluir as doses.', a.error); return }
+    const b = await supabase.from('med_controlados').delete().eq('id', d.med_ctrl_id)
+    if (b.error) { toast.falha('Não foi possível excluir o remédio.', b.error); carregar(); return }
     setPessoaDoses(null)
     carregar()
   }
@@ -82,11 +90,15 @@ export default function Medicamentos({ profile }: { profile?: Profile }) {
     setEntregando(d.id)
     // quem entregou
     let meu: string|null = null
-    if (evento && profile) {
-      const { data } = await supabase.from('people').select('id').eq('event_id',evento.id).eq('user_id',profile.user_id).maybeSingle()
-      meu = data?.id ?? null
+    if (evento && profile) meu = (await minhaPessoa(profile.user_id, evento.id))?.id ?? null
+    // .select() pra saber se gravou mesmo (erro/RLS/já entregue por outra pessoa → não avisa a equipe)
+    const { data: upd, error } = await supabase.from('med_agenda').update({ entregue:true, entregue_por:meu, entregue_em:new Date().toISOString() }).eq('id', d.id).eq('entregue', false).select('id')
+    if (error || !upd?.length) {
+      setEntregando(null)
+      if (error) toast.falha('Não foi possível registrar a entrega.', error)
+      else toast.aviso('Essa dose já foi entregue (ou você não tem permissão).')
+      carregar(); return
     }
-    await supabase.from('med_agenda').update({ entregue:true, entregue_por:meu, entregue_em:new Date().toISOString() }).eq('id', d.id)
     if (evento) notificarEquipeFlag('remedio_entregue', evento.id, 'equipe_saude', { title: 'Remédio entregue', body: `${getPessoa(d.person_id)?.name ?? 'Alguém'} · ${d.nome}`, url: '/saude/medicamentos' })
     setEntregando(null); carregar()
   }
@@ -233,9 +245,9 @@ export default function Medicamentos({ profile }: { profile?: Profile }) {
                       <p style={{fontSize:11,fontWeight:700,color:atrasado?'var(--danger)':'var(--primary)'}}>{fmtHora(d.horario)} · {atrasado?'ATRASADO':'Pendente'}</p>
                       <p style={{fontSize:13,fontWeight:600}}>{d.nome}{d.dosagem?` · ${d.dosagem}`:''}</p>
                     </div>
-                    <button onClick={()=>entregar(d)} disabled={entregando===d.id} style={{background:'var(--primary)',color:'white',border:'none',borderRadius:8,padding:'8px 12px',cursor:'pointer',fontSize:12,fontWeight:700,fontFamily:'inherit',flexShrink:0,display:'flex',alignItems:'center',gap:4}}>
+                    {podeEntregar && <button onClick={()=>entregar(d)} disabled={entregando===d.id} style={{background:'var(--primary)',color:'white',border:'none',borderRadius:8,padding:'8px 12px',cursor:'pointer',fontSize:12,fontWeight:700,fontFamily:'inherit',flexShrink:0,display:'flex',alignItems:'center',gap:4}}>
                       <span className="icon icon-sm" style={{color:'white'}}>check_circle</span>{entregando===d.id?'...':'Entregar'}
-                    </button>
+                    </button>}
                     {admin && (
                       <button onClick={()=>excluirRemedio(d)} title="Excluir remédio (todas as doses)" style={{background:'var(--danger-bg)',color:'var(--danger)',border:'none',borderRadius:8,width:34,height:34,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',fontFamily:'inherit',flexShrink:0}}>
                         <span className="icon icon-sm" style={{color:'var(--danger)'}}>delete</span>

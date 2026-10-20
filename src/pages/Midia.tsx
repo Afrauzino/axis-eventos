@@ -72,9 +72,13 @@ export default function Midia({ profile }: { profile?: Profile }) {
     if (!evento) return
     const link = driveRascunho.trim()
     if (link && !driveFolderId(link)) { toast.aviso('Link de pasta do Google Drive inválido. Cole o link de uma PASTA.'); return }
-    await salvarConfig('midia_drive:' + evento.id, link)
-    await salvarConfig('google_api_key', driveApiRascunho.trim())
-    setDriveLink(link); setDriveApiKey(driveApiRascunho.trim()); setDriveModal(false)
+    // salvarConfig devolve false quando o banco recusa: só atualiza a tela do que salvou
+    const okPasta = await salvarConfig('midia_drive:' + evento.id, link)
+    const okChave = await salvarConfig('google_api_key', driveApiRascunho.trim())
+    if (okPasta) setDriveLink(link)
+    if (okChave) setDriveApiKey(driveApiRascunho.trim())
+    if (!okPasta || !okChave) { toast.falha('Não foi possível salvar. Tente de novo.'); return }
+    setDriveModal(false)
     toast.sucesso(link ? 'Pasta atualizada!' : 'Pasta removida.')
   }
 

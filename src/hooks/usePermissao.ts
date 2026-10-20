@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { isAdmin } from '../utils'
+import { buscarTodos } from '../lib/paginar'
 import type { Profile } from '../App'
 
 type Perm = {
@@ -38,8 +39,11 @@ export function usePermissao(profile: Profile | null) {
     try {
       // Carregar todas as permissões (cargo, pessoa e equipe)
       if (!cachePerms) {
-        const { data } = await supabase.from('permissoes').select('*')
-        cachePerms = data ?? []
+        // Paginado (passa de 1000 linhas fácil). Se falhar, NÃO guarda no cache —
+        // senão todas as telas ficam "Sem acesso" até recarregar o app.
+        const { data, error } = await buscarTodos<Perm>(() => supabase.from('permissoes').select('*').order('id'))
+        if (error) throw error
+        cachePerms = data
       }
       setPerms(cachePerms)
 
@@ -50,11 +54,18 @@ export function usePermissao(profile: Profile | null) {
           setMyTeams(cacheTeams[profile.user_id] ?? [])
           setMyRoleType(cacheRoleType[profile.user_id] ?? null)
         } else {
-          // user_id -> people.id (TODOS os registros desta pessoa, não importa o evento)
-          const { data: pessoas } = await supabase.from('people')
-            .select('id,role_type').eq('user_id', profile.user_id)
-          const personIds = (pessoas ?? []).map(p => p.id)
-          const rt = (pessoas ?? []).map((p:any) => p.role_type).find(Boolean) ?? null
+          // user_id -> people.id. A pessoa tem 1 cadastro POR EVENTO: tipo (encontrista/
+          // encontreiro) e equipes valem só do EVENTO ATIVO (antes misturava anos anteriores).
+          // Liberação individual continua valendo em qualquer cadastro desta conta.
+          const [{ data: pessoas }, { data: ev }] = await Promise.all([
+            supabase.from('people').select('id,role_type,event_id,created_at').eq('user_id', profile.user_id).order('created_at', { ascending: false }),
+            supabase.from('events').select('id').eq('status', 'active').order('created_at', { ascending: false }).limit(1).maybeSingle(),
+          ])
+          const todas = (pessoas ?? []) as any[]
+          const doEvento = ev?.id ? todas.filter(p => p.event_id === ev.id) : []
+          const base = doEvento.length ? doEvento : todas.slice(0, 1)
+          const personIds = base.map(p => p.id)
+          const rt = base.map((p:any) => p.role_type).find(Boolean) ?? null
           cacheRoleType[profile.user_id] = rt
           setMyRoleType(rt)
           if (personIds.length > 0) {
@@ -76,7 +87,7 @@ export function usePermissao(profile: Profile | null) {
             cacheTeams[profile.user_id] = arr
             setMyTeams(arr)
             // guarda todos os personIds para o "pode" considerar permissão individual em qualquer registro
-            ;(cachePersonId as any)[profile.user_id + ':all'] = personIds as any
+            ;(cachePersonId as any)[profile.user_id + ':all'] = todas.map(p => p.id) as any
           }
         }
       }
@@ -123,9 +134,7 @@ export function usePermissao(profile: Profile | null) {
   }
 
   function recarregar() {
-    cachePerms = null
-    cacheTeams = {}
-    cachePersonId = {}
+    limparCachePermissoes()
     load()
   }
 

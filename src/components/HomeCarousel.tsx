@@ -32,21 +32,31 @@ export default function HomeCarousel({ admin, grupo='principal', podeEditar, tit
   const [coments, setComents] = useState<Coment[]>([])
   const [novoComent, setNovoComent] = useState('')
   const [verComents, setVerComents] = useState(false)
+  // Vídeo que JÁ começou a tocar (id). Enquanto não começa, corre o timeout de segurança.
+  const [tocandoId, setTocandoId] = useState<string|null>(null)
 
   const proximo = () => setIdx(i => (itens.length ? (i + 1) % itens.length : 0))
 
   useEffect(() => { carregar() }, [])
 
+  useEffect(() => { setTocandoId(null) }, [idx])
+
   // #17 — Auto-avanço: IMAGEM por tempo (duração); VÍDEO (arquivo ou YouTube) avança quando termina.
+  // Vídeo quebrado: pula no onError; e se não começar a tocar em 15s (link morto,
+  // bloqueado, rede ruim…) pula também — senão o carrossel congelava ali.
   useEffect(() => {
     clearTimeout(timer.current)
     const it = itens[idx]
     if (!it || itens.length <= 1) return
-    if (it.tipo === 'video') return // vídeos avançam no fim (onEnded / YouTubePlayer)
+    if (it.tipo === 'video') {
+      if (tocandoId === it.id) return // tocando: avança no fim (onEnded / YouTubePlayer)
+      timer.current = setTimeout(proximo, 15000)
+      return () => clearTimeout(timer.current)
+    }
     const ms = Math.max(2, it.duracao || 5) * 1000
     timer.current = setTimeout(proximo, ms)
     return () => clearTimeout(timer.current)
-  }, [itens, idx])
+  }, [itens, idx, tocandoId])
 
   async function carregar() {
     const { data, error } = await supabase.from('home_midias').select('*').order('ordem')
@@ -142,8 +152,8 @@ export default function HomeCarousel({ admin, grupo='principal', podeEditar, tit
       <div style={{position:'relative',width:'100%',aspectRatio: instagram ? '1 / 1' : '16 / 7',borderRadius:14,overflow:'hidden',background:'#000',boxShadow:'var(--shadow-sm)'}}>
         {atual.tipo === 'video'
           ? (ehYoutube(atual.url)
-              ? <YouTubePlayer key={atual.id} videoId={ytId(atual.url)} onEnded={proximo} loop={itens.length<=1}/>
-              : <video key={atual.id} src={atual.url} autoPlay muted playsInline loop={itens.length<=1} onEnded={proximo} style={{width:'100%',height:'100%',objectFit:'cover'}}/>)
+              ? <YouTubePlayer key={atual.id} videoId={ytId(atual.url)} onEnded={proximo} onError={proximo} onPlaying={()=>setTocandoId(atual.id)} loop={itens.length<=1}/>
+              : <video key={atual.id} src={atual.url} autoPlay muted playsInline loop={itens.length<=1} onEnded={proximo} onError={proximo} onPlaying={()=>setTocandoId(atual.id)} style={{width:'100%',height:'100%',objectFit:'cover'}}/>)
           : <img src={atual.url} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}}/>}
 
         {podeMexer && (

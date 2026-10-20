@@ -6,6 +6,7 @@ import PrintOverlay from '../components/PrintOverlay'
 import { getInitials, fmtHora, isAdmin, isLider, nowLocalInput, toLocalInput } from '../utils'
 import { useEvento } from '../hooks/useEvento'
 import { usePermissao } from '../hooks/usePermissao'
+import { buscarTodos } from '../lib/paginar'
 import PersonSelect from '../components/PersonSelect'
 import Seletor from '../components/Seletor'
 import { toast } from '../components/Toast'
@@ -80,7 +81,14 @@ export default function Escalas({ profile }: { profile?: Profile }) {
       supabase.from('escalas').select('*').eq('event_id', evento.id).order('start_time'),
       supabase.from('people').select('id,name,apelido,photo_url').eq('event_id', evento.id).order('name'),
       supabase.from('teams').select('id,name,color,leader_id,co_leader_id').eq('event_id', evento.id).order('name'),
-      supabase.from('people_teams').select('person_id,team_id'),
+      // vínculos só das equipes DESTE evento (antes vinha a tabela toda e cortava em 1000)
+      (async () => {
+        const { data: ts } = await supabase.from('teams').select('id').eq('event_id', evento.id)
+        const ids = (ts ?? []).map((t:any) => t.id)
+        return ids.length
+          ? buscarTodos<{person_id:string;team_id:string}>(() => supabase.from('people_teams').select('person_id,team_id').in('team_id', ids).order('person_id').order('team_id'))
+          : { data: [] as {person_id:string;team_id:string}[], error: null }
+      })(),
       supabase.from('locais').select('id,nome').eq('event_id', evento.id).order('nome'),
       supabase.from('cronograma_eventos').select('id,hora_inicio,hora_fim,ministracao_id,theater_id').eq('event_id', evento.id),
       supabase.from('ministrações').select('id,ministrante_id,titulo').eq('event_id', evento.id),

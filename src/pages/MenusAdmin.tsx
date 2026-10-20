@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase'
 import { useVoltarFecha } from '../hooks/useVoltarFecha'
 import { useRegistrarChromeAdmin } from '../lib/chrome'
 import EmojiGrid from '../components/EmojiGrid'
+import { toast } from '../components/Toast'
 import type { Profile } from '../App'
 
 type MenuItem = { id:string; key:string; label:string; icon:string; emoji?:string|null; rota:string|null; parent_id:string|null; ordem:number; visivel:boolean; roles:string[] }
@@ -52,15 +53,20 @@ export default function MenusAdmin({ profile }: { profile?: Profile }) {
   async function salvar(e: React.FormEvent) {
     e.preventDefault(); setSalvando(true)
     if (!editando) { setSalvando(false); return }
-    await supabase.from('menu_config').update({
+    // .select() pra saber se gravou mesmo: com RLS recusando, o update não dá
+    // erro — só não altera nenhuma linha. Aí mantém o modal aberto e avisa.
+    const { data, error } = await supabase.from('menu_config').update({
       label: form.label, emoji: form.emoji, icon: form.icon,
       rota: form.rota||null, visivel: form.visivel, roles: form.roles
-    }).eq('id', editando.id)
-    setSalvando(false); setEditando(null); carregar()
+    }).eq('id', editando.id).select('id')
+    setSalvando(false)
+    if (error || !data?.length) { toast.falha('Não foi possível salvar o menu.', error); return }
+    setEditando(null); carregar()
   }
 
   async function toggleVisivel(id: string, atual: boolean) {
-    await supabase.from('menu_config').update({ visivel: !atual }).eq('id', id)
+    const { error } = await supabase.from('menu_config').update({ visivel: !atual }).eq('id', id)
+    if (error) toast.falha('Não foi possível alterar o menu.', error)
     carregar()
   }
 
@@ -71,10 +77,12 @@ export default function MenusAdmin({ profile }: { profile?: Profile }) {
     const idx = siblings.findIndex(m=>m.id===id)
     const outro = dir==='up' ? siblings[idx-1] : siblings[idx+1]
     if (!outro) return
-    await Promise.all([
+    const rs = await Promise.all([
       supabase.from('menu_config').update({ordem:outro.ordem}).eq('id',item.id),
       supabase.from('menu_config').update({ordem:item.ordem}).eq('id',outro.id),
     ])
+    const erro = rs.find(r => r.error)?.error
+    if (erro) toast.falha('Não foi possível reordenar.', erro)
     carregar()
   }
 

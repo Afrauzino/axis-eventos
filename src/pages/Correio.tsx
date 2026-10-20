@@ -8,6 +8,7 @@ import FotoAmpliada from '../components/FotoAmpliada'
 import { useRegistrarChrome } from '../lib/chrome'
 import { getInitials, isAdmin, formatName } from '../utils'
 import { useEvento } from '../hooks/useEvento'
+import { minhaPessoa as buscarMinhaPessoa } from '../lib/pessoa'
 import { notificarRegra } from '../lib/notifRegras'
 import type { Profile } from '../App'
 
@@ -83,11 +84,9 @@ export default function Correio({ profile }: { profile?: Profile }) {
     // Minha pessoa (para saber se sou padrinho/líder)
     let minha: Pessoa|null = null
     if (profile?.user_id) {
-      const { data } = await supabase.from('people')
-        .select('id,name,apelido,photo_url,role_type,user_id,referencia_id')
-        .eq('user_id', profile.user_id).maybeSingle()
-      minha = data
-      setMinhaPessoa(data)
+      // cadastro DESTE evento (a mesma conta tem 1 cadastro por evento)
+      minha = await buscarMinhaPessoa<Pessoa>(profile.user_id, eid, 'id,name,apelido,photo_url,role_type,user_id,referencia_id')
+      setMinhaPessoa(minha)
     }
 
     // Equipe(s) Correio do evento + todos os seus integrantes (líder, co-líder e membros).

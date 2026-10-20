@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase'
 import { useVoltarFecha } from '../hooks/useVoltarFecha'
 import { getInitials } from '../utils'
 import { useEvento } from '../hooks/useEvento'
+import { buscarTodos } from '../lib/paginar'
 import { useRegistrarChrome } from '../lib/chrome'
 import { useIgrejas, OUTROS } from '../lib/igrejas'
 import { carregarConfig, salvarConfig } from '../lib/tema'
@@ -84,7 +85,8 @@ export default function Ranking({ profile }: { profile?: Profile }) {
     const [ca, pe, vo] = await Promise.all([
       supabase.from('ranking_categorias').select('*').eq('event_id',evento.id).order('ordem'),
       supabase.from('people').select('id,name,apelido,photo_url,church,sexo').eq('event_id',evento.id).eq('role_type','encounterer').order('name'),
-      supabase.from('ranking_votos').select('categoria_id,votante_id,votado_id,estrelas').eq('event_id',evento.id),
+      // votos passam de 1000 linhas → paginado (ordem pela chave única do voto)
+      buscarTodos(() => supabase.from('ranking_votos').select('categoria_id,votante_id,votado_id,estrelas').eq('event_id',evento.id).order('categoria_id').order('votante_id').order('votado_id')),
     ])
 
     if (ca.error) {

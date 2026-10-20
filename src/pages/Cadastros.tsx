@@ -5,6 +5,7 @@
  */
 import { useEffect, useState } from 'react'
 import { confirmar } from '../components/Confirmar'
+import { toast } from '../components/Toast'
 import { supabase } from '../lib/supabase'
 import { useVoltarFecha } from '../hooks/useVoltarFecha'
 import PrintOverlay from '../components/PrintOverlay'
@@ -134,23 +135,22 @@ export default function Cadastros({ profile }: { profile: Profile }) {
   }
 
   async function excluirPessoa(p: Pessoa) {
-    if (!(await confirmar({ titulo: `Excluir "${p.name}"?`, mensagem: 'Se ela tiver conta, a conta também será removida.', perigo: true }))) return
+    if (!(await confirmar({ titulo: `Excluir "${p.name}"?`, mensagem: p.user_id ? 'A pessoa e a conta (login) serão removidas de todos os eventos. Permanente.' : 'O cadastro será removido. Permanente.', perigo: true }))) return
 
-    // Excluir dados vinculados
-    await supabase.from('saude_fichas').delete().eq('person_id', p.id)
-    await supabase.from('escalas').delete().eq('person_id', p.id)
-    await supabase.from('med_controlados').delete().eq('person_id', p.id)
-    await supabase.from('people_teams').delete().eq('person_id', p.id)
-
-    await supabase.from('people').delete().eq('id', p.id)
-
-    // Apaga a CONTA de verdade (perfil + login auth) via Edge Function — libera o email
-    if (p.user_id) {
-      const { error: fnErr } = await supabase.functions.invoke('admin-delete-user', { body: { target_user_id: p.user_id } })
-      if (fnErr) {
-        await supabase.from('profiles').update({ role_status:'rejected', user_role:'visitante' }).eq('user_id', p.user_id)
-      }
+    // Tudo numa transação só, no banco (sql/51) — igual ao Admin. Os deletes soltos do
+    // navegador falhavam calados (RLS) e a Edge Function 'admin-delete-user' dá 403.
+    const { data, error } = await supabase.rpc('excluir_conta_completa', {
+      p_person_id: p.id, p_user_id: p.user_id ?? null,
+    })
+    if (error) {
+      const naoExiste = error.code === 'PGRST202' || /Could not find the function/i.test(error.message)
+      toast.falha(naoExiste
+        ? 'O admin precisa rodar o sql/51_excluir_conta.sql no Supabase.'
+        : error.message, error)
+      return
     }
+    const email = (data as any)?.email_liberado
+    toast.sucesso(email ? `Conta excluída. O email ${email} está livre para nova inscrição.` : 'Cadastro excluído.')
     carregar()
   }
 

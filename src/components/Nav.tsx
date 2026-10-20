@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import { getInitials, isAdmin } from '../utils'
 import { usePermissao } from '../hooks/usePermissao'
 import { supabase } from '../lib/supabase'
+import { desativarPush } from '../lib/push'
 import { NAV_GROUPS } from '../lib/navGroups'
 import type { Profile } from '../App'
 
@@ -72,6 +73,8 @@ export default function Nav({ profile, onClose }: { profile: Profile; onClose: (
     .sort((a:any, b:any) => (a._ordem ?? 999) - (b._ordem ?? 999))
 
   async function logout() {
+    // desamarra o push deste aparelho (celular compartilhado não recebe do usuário anterior)
+    try { if (profile.user_id) await Promise.race([desativarPush(profile.user_id), new Promise(r => setTimeout(r, 3000))]) } catch {}
     await supabase.auth.signOut()
     window.location.href = '/'
   }
@@ -132,6 +135,10 @@ export default function Nav({ profile, onClose }: { profile: Profile; onClose: (
         <button onClick={()=>navegar('/perfil')} style={{width:'100%',display:'flex',alignItems:'center',gap:12,padding:'12px 20px',background:'none',border:'none',cursor:'pointer',fontFamily:'inherit',textAlign:'left'}}>
           <span style={{fontSize:20,width:24,textAlign:'center'}}>👤</span>
           <span style={{fontSize:14,color:'var(--text)',fontWeight:500}}>Meu Perfil</span>
+        </button>
+        <button onClick={()=>navegar('/meu-pagamento')} style={{width:'100%',display:'flex',alignItems:'center',gap:12,padding:'12px 20px',background:'none',border:'none',cursor:'pointer',fontFamily:'inherit',textAlign:'left'}}>
+          <span style={{fontSize:20,width:24,textAlign:'center'}}>✍️</span>
+          <span style={{fontSize:14,color:'var(--text)',fontWeight:500}}>Minha inscrição e pagamento</span>
         </button>
         <button onClick={logout} style={{width:'100%',display:'flex',alignItems:'center',gap:12,padding:'10px 20px',background:'none',border:'none',cursor:'pointer',fontFamily:'inherit',textAlign:'left'}}>
           <span style={{fontSize:20,width:24,textAlign:'center'}}>🚪</span>

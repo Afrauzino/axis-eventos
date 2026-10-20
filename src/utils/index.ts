@@ -51,8 +51,22 @@ export function fmtHora(iso: string): string {
   return new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
 }
 
+// "YYYY-MM-DD" (só data) vira meio-dia LOCAL. new Date('2026-10-20') é meia-noite UTC,
+// que no Brasil ainda é dia 19 → as datas apareciam um dia antes.
+export function dataLocal(v: string | Date): Date {
+  if (v instanceof Date) return v
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(v)
+  return m ? new Date(+m[1], +m[2] - 1, +m[3], 12) : new Date(v)
+}
+
+// Data de hoje no formato "YYYY-MM-DD" no fuso LOCAL (toISOString() usa UTC).
+export function hojeISO(d: Date = new Date()): string {
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`
+}
+
 export function fmtData(iso: string): string {
-  return new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })
+  return dataLocal(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })
 }
 
 export function fmtDataHora(iso: string): string {
@@ -62,7 +76,7 @@ export function fmtDataHora(iso: string): string {
 }
 
 export function fmtDataLonga(iso: string): string {
-  return new Date(iso).toLocaleDateString('pt-BR', {
+  return dataLocal(iso).toLocaleDateString('pt-BR', {
     weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
   })
 }
@@ -79,13 +93,18 @@ export function nowLocalInput(): string {
 }
 
 // ── Verificar menor de idade ───────────────────────
+export function idadeEm(birthDate: string, ref: Date = new Date()): number | null {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(birthDate || '')
+  if (!m) return null
+  const [a, mes, dia] = [+m[1], +m[2], +m[3]]
+  let idade = ref.getFullYear() - a
+  if (ref.getMonth() + 1 < mes || (ref.getMonth() + 1 === mes && ref.getDate() < dia)) idade--
+  return idade
+}
+
 export function isMenor(birthDate: string): boolean {
-  if (!birthDate) return false
-  const birth = new Date(birthDate)
-  const hoje = new Date()
-  const idade = hoje.getFullYear() - birth.getFullYear()
-  const m = hoje.getMonth() - birth.getMonth()
-  return idade < 18 || (idade === 18 && m < 0)
+  const idade = idadeEm(birthDate)
+  return idade !== null && idade < 18
 }
 
 // ── Hierarquia de permissões ───────────────────────

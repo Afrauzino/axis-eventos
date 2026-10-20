@@ -5,6 +5,9 @@ import { useVoltarFecha } from '../hooks/useVoltarFecha'
 import { fmtHora, fmtDataLonga, getInitials, isAdmin } from '../utils'
 import { useEvento } from '../hooks/useEvento'
 import { toast } from '../components/Toast'
+import { minhaPessoa } from '../lib/pessoa'
+import { notificarRegra } from '../lib/notifRegras'
+import { registrarLog } from '../lib/audit'
 import type { Profile } from '../App'
 
 type Escala = {
@@ -66,11 +69,19 @@ export default function MinhasAtividades({ profile }: { profile: Profile }) {
   }
 
   async function aprovar(u: {user_id:string; name:string; user_role:string|null}) {
-    const cargo = (u.user_role && u.user_role !== 'visitante') ? u.user_role : 'encontreiro'
+    // Igual ao Admin.aprovarPessoa: aprova mantendo o TIPO com que a pessoa se cadastrou
+    // (people.role_type do evento ativo) — encontrista NÃO vira encontreiro por engano.
+    const pe = (await minhaPessoa<{id:string;role_type:string|null}>(u.user_id, evento?.id, 'id,role_type'))
+      ?? (await minhaPessoa<{id:string;role_type:string|null}>(u.user_id, null, 'id,role_type'))
+    const ehEncontreiro = pe?.role_type === 'worker'
+    const cargo = ehEncontreiro ? 'encontreiro' : 'aprovado'
+    const label = ehEncontreiro ? 'Encontreiro' : 'Encontrista'
     const { error } = await supabase.from('profiles').update({ role_status: 'approved', user_role: cargo }).eq('user_id', u.user_id)
     if (error) { toast.erro('Não foi possível aprovar.'); return }
     setAprovacoes(prev => prev.filter(x => x.user_id !== u.user_id))  // some da lista
-    toast.sucesso(`${u.name.split(' ')[0]} aprovado!`)
+    notificarRegra('insc_aprovada', { user_ids: [u.user_id], title: 'Inscrição aprovada!', body: `Bem-vindo(a)! Seu acesso foi liberado como ${label}.`, url: '/' })
+    registrarLog({ action:'approve', entity:'profiles', entityId:pe?.id ?? u.user_id, description:`Aprovou o usuário ${u.name} como ${label}`, eventId:evento?.id ?? null })
+    toast.sucesso(`${(u.name || '').split(' ')[0]} aprovado como ${label}!`)
   }
 
   async function carregar() {
@@ -78,9 +89,7 @@ export default function MinhasAtividades({ profile }: { profile: Profile }) {
     setLoading(true)
 
     // Achar meu person_id
-    const { data: myPerson } = await supabase
-      .from('people').select('id')
-      .eq('event_id', evento.id).eq('user_id', profile.user_id).maybeSingle()
+    const myPerson = await minhaPessoa(profile.user_id, evento.id)
 
     if (!myPerson) {
       // Usuário admin sem registro de pessoa — mostra cronograma geral
@@ -345,7 +354,7 @@ export default function MinhasAtividades({ profile }: { profile: Profile }) {
           <div className="section-label">Alertas recentes</div>
           {alertas.map(a=>(
             <button key={a.id} className="list-card" onClick={()=>navigate('/alertas')}>
-              <div className="list-card-bar" style={{background:a.priority==='critico'||a.priority==='urgente'?'var(--danger)':'var(--accent)'}}/>
+              <div className="list-card-bar" style={{background:a.priority==='critico'||a.priority==='urgente'||a.priority==='urgent'?'var(--danger)':'var(--accent)'}}/>
               <div className="list-card-body">
                 <div className="list-card-title">{a.title}</div>
                 <div className="list-card-desc">{a.priority}</div>

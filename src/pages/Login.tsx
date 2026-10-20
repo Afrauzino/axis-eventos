@@ -94,11 +94,8 @@ export default function Login() {
   // VERIFICAR CÓDIGO
   async function verificarCodigo(e: React.FormEvent) {
     e.preventDefault(); setErro(''); setLoading(true)
-    const { data, error } = await supabase
-      .from('people')
-      .select('id,name,apelido,user_id,event_id,phone,church,role_type,sexo,birth_date,cpf,rg,cidade,estado,endereco,bairro,cep,contact_phone,photo_url,notes,ano_encontro,cargo')
-      .eq('invite_code', codigo.toUpperCase().trim())
-      .maybeSingle()
+    // Busca SÓ o código digitado (sql/96) — visitante sem login não lê mais a tabela inteira.
+    const { data, error } = await supabase.rpc('buscar_convite', { p_codigo: codigo.toUpperCase().trim() }) as { data: any; error: any }
 
     if (error || !data) {
       setErro('Código não encontrado. Confirme o código com a pessoa responsável.')
@@ -178,7 +175,8 @@ export default function Login() {
       !email.trim() ? 'Email é obrigatório.' :
       senha.length < 6 ? 'Senha mínima: 6 caracteres.' :
       senha !== conf ? 'As senhas não coincidem.' :
-      (usaMed && meds.some(m => !m.nome.trim())) ? 'Preencha o nome de todos os medicamentos.' : ''
+      (usaMed && meds.some(m => !m.nome.trim())) ? 'Preencha o nome de todos os medicamentos.' :
+      (termoAtual && !aceito) ? 'Você precisa ler e aceitar os termos do evento.' : ''
     if (erroValid) {
       setErro(erroValid); toast.aviso(erroValid); setLoading(false)
       try { window.scrollTo({ top: 0, behavior: 'smooth' }); document.querySelector('.auth-body,.auth-wrap,main')?.scrollTo({ top: 0, behavior: 'smooth' }) } catch {}
@@ -355,10 +353,8 @@ export default function Login() {
     // Limpar placeholder "a cadastrar" se ainda estiver no telefone
     const telefoneLimpo = (form.phone && form.phone.toLowerCase()!=='a cadastrar') ? form.phone.trim() : form.phone.trim()
 
-    // ETAPA 1 — Atualizar people
+    // ETAPA 1 — Atualizar people (user_id e invite_code o servidor define — sql/100)
     const baseUpd: any = {
-      user_id: uid,
-      invite_code: null,
       name: nome,
       apelido: form.apelido || null,
       phone: telefoneLimpo,
@@ -390,11 +386,12 @@ export default function Login() {
       contact_phone2: form.contact_phone2 || null,
       contact_phone2_dono: form.contact_phone2_dono || null,
     }
-    // .select() é ESSENCIAL: sem ele o update responde "ok" mesmo afetando 0 linhas
-    // (RLS/id errado) e a tela diz "cadastro concluído" sem ter gravado nada.
-    const atualizar = (comExtras: boolean) => supabase.from('people')
-      .update(comExtras ? { ...baseUpd, ...extrasUpd } : baseUpd)
-      .eq('id', pessoa.id).select('id').single()
+    // Assume o cadastro PELO CÓDIGO no servidor (sql/100): só quem sabe o código
+    // vincula a conta. Devolve o id da pessoa; código errado/já usado → erro.
+    const atualizar = (comExtras: boolean) => supabase.rpc('assumir_convite', {
+      p_codigo: codigo.toUpperCase().trim(),
+      p: comExtras ? { ...baseUpd, ...extrasUpd } : baseUpd,
+    })
 
     let r1 = await atualizar(true)
     if (r1.error && /instagram|facebook|rede_outra|estado_civil|phone2|contact_phone/i.test(r1.error.message)) r1 = await atualizar(false)

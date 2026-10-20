@@ -1,6 +1,9 @@
 // Service Worker do AXIS — network-first (nunca serve versão velha quando online).
 // Não intercepta o Supabase (outra origem) nem chamadas não-GET.
-const CACHE = 'axis-runtime-v15'
+// v16: só guarda respostas OK; app shell ('/') pra navegação offline; poda o cache.
+const CACHE = 'axis-runtime-v16'
+const SHELL = ['/', '/index.html']
+const MAX_ITENS = 200   // poda: assets com hash velho iam acumulando pra sempre
 
 // Chave pública VAPID (mesma do app) — pra reassinar sozinho se o navegador trocar.
 const VAPID_PUBLIC = 'BBGfLWywD_AmYo_c2gkEdN9tlZbThxbnJW4ya6zKy5kOkRnZXKOZNDVLVRdzhgdM7uHa5LneNpRW2_YjDHxDlMY'
@@ -13,7 +16,20 @@ function b64ToBytes(base64String) {
   return arr
 }
 
-self.addEventListener('install', () => self.skipWaiting())
+self.addEventListener('install', (event) => {
+  // Guarda o app shell (index.html) pra abrir offline em QUALQUER rota do SPA.
+  // Falha aqui não pode travar a instalação do SW (senão o push para de funcionar).
+  event.waitUntil((async () => {
+    try {
+      const cache = await caches.open(CACHE)
+      await Promise.all(SHELL.map(async (u) => {
+        const res = await fetch(u, { cache: 'reload' })
+        if (res.ok) await cache.put(u, res)
+      }))
+    } catch {}
+    await self.skipWaiting()
+  })())
+})
 
 self.addEventListener('activate', (event) => {
   event.waitUntil((async () => {
@@ -22,6 +38,15 @@ self.addEventListener('activate', (event) => {
     await self.clients.claim()
   })())
 })
+
+async function podar(cache) {
+  const keys = await cache.keys()
+  const sobra = keys.length - MAX_ITENS
+  if (sobra <= 0) return
+  // keys() vem na ordem de inserção → apaga os mais antigos (nunca o shell)
+  const velhos = keys.filter(k => !SHELL.includes(new URL(k.url).pathname)).slice(0, sobra)
+  await Promise.all(velhos.map(k => cache.delete(k)))
+}
 
 self.addEventListener('fetch', (event) => {
   const req = event.request
@@ -33,14 +58,33 @@ self.addEventListener('fetch', (event) => {
   event.respondWith((async () => {
     try {
       const fresh = await fetch(req)
-      const cache = await caches.open(CACHE)
-      cache.put(req, fresh.clone())
+      const tipo = fresh.headers.get('content-type') || ''
+      // /assets/* que volta como HTML = chunk que não existe mais (a Vercel devolve
+      // o index.html). NUNCA guardar isso — e se houver a versão boa no cache, usa ela.
+      const chunkFantasma = url.pathname.startsWith('/assets/') && tipo.includes('text/html')
+      if (chunkFantasma) {
+        const cached = await caches.match(req)
+        return cached || fresh
+      }
+      // Só guarda resposta OK da própria origem (nada de 404/500/redirect opaco)
+      if (fresh.ok && fresh.type === 'basic' && !fresh.redirected) {
+        const copia = fresh.clone()
+        const copiaShell = req.mode === 'navigate' ? fresh.clone() : null
+        event.waitUntil((async () => {
+          const cache = await caches.open(CACHE)
+          await cache.put(req, copia)
+          // navegação OK = index.html atual → atualiza o shell do offline
+          if (copiaShell) await cache.put('/', copiaShell)
+          await podar(cache)
+        })().catch(() => {}))
+      }
       return fresh
     } catch {
       const cached = await caches.match(req)
       if (cached) return cached
       if (req.mode === 'navigate') {
-        const shell = await caches.match('/index.html')
+        // rotas do SPA (/impressao, /admin…) caem no app shell
+        const shell = (await caches.match('/')) || (await caches.match('/index.html'))
         if (shell) return shell
       }
       throw new Error('offline')

@@ -19,14 +19,29 @@ export default function UploadFoto({ bucket, path, currentUrl, onUpload, label =
   const [loading, setLoading] = useState(false)
   const [erro, setErro]       = useState('')
   const [camera, setCamera]   = useState(false)
-  const [recorte, setRecorte] = useState<{ src: string; remoto: boolean; novo: boolean } | null>(null)
+  // alvo: caminho (no bucket) onde gravar — ao reenquadrar, o MESMO da foto atual
+  const [recorte, setRecorte] = useState<{ src: string; remoto: boolean; novo: boolean; alvo?: string } | null>(null)
   const radius = shape === 'circle' ? '50%' : '12px'
+
+  // Caminho da foto ATUAL a partir da URL salva (".../object/public/<bucket>/<path>.jpg?t=…").
+  // O `path` da prop pode mudar a cada render (Date.now() nos chamadores), então a original
+  // (__orig) tem que ser achada pela foto gravada, não pela prop.
+  function pathAtual(): string | null {
+    if (!currentUrl) return null
+    const marca = `/object/public/${bucket}/`
+    const i = currentUrl.indexOf(marca)
+    if (i < 0) return null
+    try {
+      const p = decodeURIComponent(currentUrl.slice(i + marca.length).split('?')[0])
+      return /\.jpg$/i.test(p) ? p : null
+    } catch { return null }
+  }
 
   // Recebe o recorte (exibição) + a original inteira e envia.
   // novaOriginal=true (arquivo novo) grava a original; ao só reposicionar, mantém a original.
-  async function enviar(blob: Blob, original: Blob | null, novaOriginal: boolean) {
+  async function enviar(blob: Blob, original: Blob | null, novaOriginal: boolean, alvo?: string) {
     setLoading(true); setErro('')
-    const fullPath = `${path}.jpg`
+    const fullPath = alvo ?? `${path}.jpg`
     const { error } = await supabase.storage.from(bucket).upload(fullPath, blob, { upsert: true, contentType: 'image/jpeg' })
     if (error) {
       setErro('Erro ao enviar. Verifique se o bucket "' + bucket + '" existe no Supabase Storage.')
@@ -49,13 +64,16 @@ export default function UploadFoto({ bucket, path, currentUrl, onUpload, label =
 
   // Reenquadrar: abre a ORIGINAL (não o recorte). Se não houver original (foto antiga), usa a atual.
   async function reenquadrar() {
-    const origUrl = supabase.storage.from(bucket).getPublicUrl(pathOriginal(`${path}.jpg`)).data.publicUrl + `?t=${Date.now()}`
+    const atual = pathAtual() ?? `${path}.jpg`
+    const origUrl = supabase.storage.from(bucket).getPublicUrl(pathOriginal(atual)).data.publicUrl + `?t=${Date.now()}`
     const temOrig = await imagemCarrega(origUrl)
-    setRecorte({ src: temOrig ? origUrl : (currentUrl as string), remoto: true, novo: !temOrig })
+    // grava no mesmo caminho da foto atual → a __orig continua "irmã" dela
+    setRecorte({ src: temOrig ? origUrl : (currentUrl as string), remoto: true, novo: !temOrig, alvo: pathAtual() ?? undefined })
   }
 
   async function baixarOriginal() {
-    const origUrl = supabase.storage.from(bucket).getPublicUrl(pathOriginal(`${path}.jpg`)).data.publicUrl
+    const atual = pathAtual() ?? `${path}.jpg`
+    const origUrl = supabase.storage.from(bucket).getPublicUrl(pathOriginal(atual)).data.publicUrl
     const temOrig = await imagemCarrega(origUrl)
     await baixarImagem(temOrig ? origUrl : (currentUrl as string), 'foto-original.jpg')
   }
@@ -110,7 +128,7 @@ export default function UploadFoto({ bucket, path, currentUrl, onUpload, label =
           src={recorte.src}
           crossOrigin={recorte.remoto}
           onCancel={fecharRecorte}
-          onConfirm={(blob, original) => { const novo = recorte?.novo ?? false; fecharRecorte(); enviar(blob, original, novo) }}
+          onConfirm={(blob, original) => { const novo = recorte?.novo ?? false; const alvo = recorte?.alvo; fecharRecorte(); enviar(blob, original, novo, alvo) }}
         />
       )}
 

@@ -6,7 +6,7 @@ import { supabase } from '../lib/supabase'
 //  • PC: obriga o app — MENOS no PRIMEIRO ACESSO. Enquanto a pessoa não está
 //    logada (criando/entrando na conta), o navegador é liberado. Assim que ela
 //    salva o cadastro / loga, o PC passa a exigir o app instalado.
-// App instalado (standalone), localhost (dev) e ?web=1 sempre passam.
+// App instalado (standalone), localhost (dev), ?web=1 e /tela, /tempo sempre passam.
 let promptInstalar: any = null
 if (typeof window !== 'undefined') {
   window.addEventListener('beforeinstallprompt', (e: any) => { e.preventDefault(); promptInstalar = e })
@@ -33,6 +33,12 @@ function temBypass(): boolean {
 const botao: React.CSSProperties = { background: 'white', color: '#0b5', border: 'none', borderRadius: 99, padding: '14px 26px', fontSize: 16, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit', display: 'inline-flex', alignItems: 'center', gap: 8, textDecoration: 'none', boxShadow: '0 6px 20px rgba(0,0,0,0.25)', marginBottom: 14 }
 const dica: React.CSSProperties = { fontSize: 13, opacity: 0.9, maxWidth: 340, lineHeight: 1.5 }
 
+// Páginas públicas de transmissão (/tela, /tempo) abrem no navegador do PC/telão sempre
+function ehPublica(): boolean {
+  const p = location.pathname
+  return p === '/tela' || p.startsWith('/tela/') || p === '/tempo' || p.startsWith('/tempo/')
+}
+
 function ehMobile(): boolean {
   return /android|iphone|ipad|ipod/i.test(navigator.userAgent) || window.innerWidth < 820
 }
@@ -42,7 +48,7 @@ export default function PortaoApp() {
   useEffect(() => {
     // Só faz sentido no PC, fora do app, e só depois de logado (cadastro salvo).
     const avaliar = (logado: boolean) =>
-      setBloquear(!ehMobile() && !ehStandalone() && !ehLocal() && !temBypass() && logado)
+      setBloquear(!ehPublica() && !ehMobile() && !ehStandalone() && !ehLocal() && !temBypass() && logado)
     supabase.auth.getSession().then(({ data }) => avaliar(!!data.session))
     const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => avaliar(!!session))
     return () => { try { sub.subscription.unsubscribe() } catch {} }

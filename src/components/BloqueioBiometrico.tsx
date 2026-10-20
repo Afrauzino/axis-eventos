@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { desativarPush } from '../lib/push'
 import { verificarBiometria, desativarBiometria } from '../lib/biometria'
 import type { Profile } from '../App'
 
@@ -24,6 +25,8 @@ export default function BloqueioBiometrico({ profile, onUnlock }: { profile: Pro
   async function usarSenha() {
     // desativa a trava neste aparelho e sai — a pessoa entra com senha e reativa depois
     desativarBiometria(profile.user_id)
+    // desliga as notificações deste aparelho pra esta conta (timeout: sem service worker não responde)
+    try { await Promise.race([desativarPush(profile.user_id), new Promise(r => setTimeout(r, 3000))]) } catch {}
     try { await supabase.auth.signOut() } catch {}
     window.location.href = '/'
   }

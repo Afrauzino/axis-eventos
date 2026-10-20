@@ -11,6 +11,7 @@ import RichEditor from '../components/RichEditor'
 import UploadFoto from '../components/UploadFoto'
 import Seletor from '../components/Seletor'
 import { toast } from '../components/Toast'
+import { sanitizarHtml } from '../lib/sanitizar'
 import { notificarRegra } from '../lib/notifRegras'
 import { usePermissao } from '../hooks/usePermissao'
 import { useRegistrarChrome } from '../lib/chrome'
@@ -235,12 +236,15 @@ export default function TeatroDetalhe({ profile }: { profile?: Profile }) {
     }
 
     let cenaId: string
+    // Se falhar, o modal fica aberto (o texto não se perde) e avisa
     if (editandoCena) {
-      await supabase.from('teatro_cenas').update(payload).eq('id', editandoCena.id)
+      const { data, error } = await supabase.from('teatro_cenas').update(payload).eq('id', editandoCena.id).select('id')
+      if (error || !data?.length) { setSalvandoCena(false); toast.falha('Não foi possível salvar a cena.', error); return }
       cenaId = editandoCena.id
     } else {
-      const { data } = await supabase.from('teatro_cenas').insert(payload).select().single()
-      cenaId = data?.id
+      const { data, error } = await supabase.from('teatro_cenas').insert(payload).select().single()
+      if (error || !data?.id) { setSalvandoCena(false); toast.falha('Não foi possível salvar a cena.', error); return }
+      cenaId = data.id
     }
 
     // Colunas novas (blocos + vários personagens/objetos) — resiliente: avisa se faltar sql/32
@@ -265,14 +269,16 @@ export default function TeatroDetalhe({ profile }: { profile?: Profile }) {
   }
 
   async function moverCena(cenaId: string, dir: 'up'|'down') {
-    const idx   = cenas.findIndex(c=>c.id===cenaId)
-    const outro = dir==='up' ? cenas[idx-1] : cenas[idx+1]
-    if (!outro) return
-    const atual = cenas[idx]
-    await Promise.all([
-      supabase.from('teatro_cenas').update({ordem:outro.ordem}).eq('id',atual.id),
-      supabase.from('teatro_cenas').update({ordem:atual.ordem}).eq('id',outro.id),
-    ])
+    // Troca na lista e renumera TODAS em sequência (1,2,3…) — funciona mesmo com 'ordem' repetida
+    const arr = [...cenas]
+    const i = arr.findIndex(c=>c.id===cenaId)
+    const j = dir==='up' ? i-1 : i+1
+    if (i<0 || j<0 || j>=arr.length) return
+    const tmp = arr[i]; arr[i] = arr[j]; arr[j] = tmp
+    const mudaram = arr.map((c,idx)=>({ c, ordem: idx+1 })).filter(x => x.c.ordem !== x.ordem)
+    setCenas(arr.map((c,idx)=>({ ...c, ordem: idx+1 })))
+    const rs = await Promise.all(mudaram.map(x => supabase.from('teatro_cenas').update({ordem:x.ordem}).eq('id',x.c.id)))
+    if (rs.some(r => r.error)) toast.falha('Não foi possível reordenar as cenas.', rs.find(r => r.error)?.error)
     carregar()
   }
 
@@ -453,7 +459,7 @@ export default function TeatroDetalhe({ profile }: { profile?: Profile }) {
                       return (
                         <div key={bi} style={{background:info.bg,borderRadius:8,padding:'8px 12px',borderLeft:`3px solid ${info.cor}`}}>
                           <p style={{fontSize:10,fontWeight:700,color:info.cor,textTransform:'uppercase',letterSpacing:'0.06em',marginBottom:3}}>{info.label}</p>
-                          <div style={{fontSize:13,lineHeight:1.55,color:'var(--text)'}} dangerouslySetInnerHTML={{__html:b.conteudo}}/>
+                          <div style={{fontSize:13,lineHeight:1.55,color:'var(--text)'}} dangerouslySetInnerHTML={{__html:sanitizarHtml(b.conteudo)}}/>
                         </div>
                       )
                     })}
@@ -573,7 +579,7 @@ export default function TeatroDetalhe({ profile }: { profile?: Profile }) {
 
       {/* ARQUIVOS */}
       {aba==='arquivos' && eventId && id && (
-        <ArquivosModulo eventId={eventId} modulo="teatro" referenciaId={id} pessoaId={null} titulo="Arquivos do teatro" />
+        <ArquivosModulo eventId={eventId} modulo="teatro" referenciaId={id} pessoaId={null} titulo="Arquivos do teatro" podeEditar={canEdit} />
       )}
 
       {/* MODAL MÍDIA */}
@@ -955,7 +961,7 @@ export default function TeatroDetalhe({ profile }: { profile?: Profile }) {
                       return (
                         <div key={bi} style={{background:info.bg,borderRadius:8,padding:'8px 12px',borderLeft:`3px solid ${info.cor}`,WebkitPrintColorAdjust:'exact',printColorAdjust:'exact'} as any}>
                           <p style={{fontSize:10,fontWeight:700,color:info.cor,textTransform:'uppercase',letterSpacing:'0.06em',marginBottom:3}}>{info.label}</p>
-                          <div style={{fontSize:13,lineHeight:1.5}} dangerouslySetInnerHTML={{__html:b.conteudo}}/>
+                          <div style={{fontSize:13,lineHeight:1.5}} dangerouslySetInnerHTML={{__html:sanitizarHtml(b.conteudo)}}/>
                         </div>
                       )
                     })}

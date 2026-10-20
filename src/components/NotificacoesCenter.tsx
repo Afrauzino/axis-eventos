@@ -80,7 +80,7 @@ export async function montarNotificacoes(profile: Profile, eventoId: string | nu
   try {
     const { data } = await supabase.from('alerts').select('id,title,priority,created_at').eq('event_id', eventoId).order('created_at', { ascending: false }).limit(5)
     for (const a of data ?? []) {
-      const urg = a.priority === 'critico' || a.priority === 'urgente'
+      const urg = a.priority === 'critico' || a.priority === 'urgente' || a.priority === 'urgent'
       out.push({ id: 'alert-' + a.id, emoji: urg ? '🚨' : '📢', titulo: a.title, sub: 'Aviso', quando: a.created_at, rota: '/alertas' })
     }
   } catch {}

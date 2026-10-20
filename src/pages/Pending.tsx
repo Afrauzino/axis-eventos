@@ -5,9 +5,11 @@ import CadastroPessoa, { FORM_VAZIO, type PessoaForm } from '../components/Cadas
 import { validarCadastroFaltando, fotoRequerida, carregarCadastroCfg } from '../lib/cadastroCfg'
 import { toast } from '../components/Toast'
 import { formatName } from '../utils'
+import { sanitizarHtml } from '../lib/sanitizar'
 import { notificarRegra } from '../lib/notifRegras'
-import { ativarPush, pushSuportado } from '../lib/push'
+import { ativarPush, desativarPush, pushSuportado } from '../lib/push'
 import type { Profile } from '../App'
+import FinalizarInscricao from '../components/FinalizarInscricao'
 
 export default function Pending({ profile }: { profile: Profile | null }) {
   const [logoUrl, setLogoUrl] = useState<string | null>(null)
@@ -19,6 +21,17 @@ export default function Pending({ profile }: { profile: Profile | null }) {
   const [ativandoNotif, setAtivandoNotif] = useState(false)
 
   const st = profile?.role_status
+  // Cadastro no evento ativo → assinatura do termo + pagamento já na tela de espera
+  const [personIdEvento, setPersonIdEvento] = useState<string | null>(null)
+  useEffect(() => {
+    if (!profile?.user_id || (st && st !== 'pending')) return
+    supabase.from('events').select('id').eq('status', 'active').order('created_at', { ascending: false }).limit(1).maybeSingle()
+      .then(async ({ data: ev }) => {
+        if (!ev?.id) return
+        const { data } = await supabase.from('people').select('id').eq('user_id', profile.user_id).eq('event_id', ev.id).limit(1)
+        setPersonIdEvento((data ?? [])[0]?.id ?? null)
+      })
+  }, [profile?.user_id, st])
   useEffect(() => { carregarConfig('logo_url').then(setLogoUrl) }, [])
   // Push na tela de espera: se a pessoa JÁ permitiu notificações, amarra a
   // assinatura deste aparelho à conta dela agora — assim, quando o admin aprovar,
@@ -58,6 +71,11 @@ export default function Pending({ profile }: { profile: Profile | null }) {
       role_type: d.role_type ?? 'encounterer', cargo: d.cargo ?? '', notes: d.notes ?? '',
       responsavel_nome: d.responsavel_nome ?? '', responsavel_tel: d.responsavel_tel ?? '',
       photo_url: d.photo_url ?? null,
+      // Carregar também estes: o salvar manda todos e a RPC grava '' como NULL
+      instagram: d.instagram ?? '', facebook: d.facebook ?? '', rede_outra: d.rede_outra ?? '',
+      estado_civil: d.estado_civil ?? '', phone2: d.phone2 ?? '',
+      contact_phone_dono: d.contact_phone_dono ?? '',
+      contact_phone2: d.contact_phone2 ?? '', contact_phone2_dono: d.contact_phone2_dono ?? '',
     })
     setRefazendo(true)
   }
@@ -105,7 +123,7 @@ export default function Pending({ profile }: { profile: Profile | null }) {
           <div><p style={{ fontSize: 16, fontWeight: 800, color: 'white' }}>Refazer meu cadastro</p><p style={{ fontSize: 11, color: 'rgba(255,255,255,0.8)' }}>Corrija o que foi pedido e reenvie</p></div>
         </div>
         <div style={{ flex: 1, overflowY: 'auto', padding: 20, maxWidth: 520, margin: '0 auto', width: '100%' }}>
-          {rejMsg && <div style={{ background: 'var(--warning-bg,#FFFBEB)', border: '1px solid #F6E05E', borderRadius: 12, padding: '12px 14px', marginBottom: 16, fontSize: 14, lineHeight: 1.6 }} dangerouslySetInnerHTML={{ __html: rejMsg }} />}
+          {rejMsg && <div style={{ background: 'var(--warning-bg,#FFFBEB)', border: '1px solid #F6E05E', borderRadius: 12, padding: '12px 14px', marginBottom: 16, fontSize: 14, lineHeight: 1.6 }} dangerouslySetInnerHTML={{ __html: sanitizarHtml(rejMsg) }} />}
           <CadastroPessoa form={cadForm} onChange={setCadForm} showRole={false} />
           <button className="btn btn-primary btn-full" style={{ marginTop: 16 }} onClick={salvarRefazer} disabled={salvando}>{salvando ? 'Enviando...' : 'Reenviar cadastro'}</button>
         </div>
@@ -135,7 +153,7 @@ export default function Pending({ profile }: { profile: Profile | null }) {
         {st === 'rejected' ? (
           <>
             {rejMsg
-              ? <div style={{ background: 'white', borderRadius: 12, boxShadow: 'var(--shadow-sm)', padding: '16px 18px', fontSize: 15, lineHeight: 1.7 }} dangerouslySetInnerHTML={{ __html: rejMsg }} />
+              ? <div style={{ background: 'white', borderRadius: 12, boxShadow: 'var(--shadow-sm)', padding: '16px 18px', fontSize: 15, lineHeight: 1.7 }} dangerouslySetInnerHTML={{ __html: sanitizarHtml(rejMsg) }} />
               : <div className="info-section"><p style={{ fontSize: 14, color: 'var(--text2)', lineHeight: 1.7 }}>Seu cadastro precisa de ajustes. Toque abaixo para refazer.</p></div>}
             <button className="btn btn-primary btn-full" onClick={abrirRefazer}><span className="icon icon-sm">refresh</span> Refazer meu cadastro</button>
           </>
@@ -143,6 +161,7 @@ export default function Pending({ profile }: { profile: Profile | null }) {
           <>
             <div className="info-section"><p style={{ fontSize: 14, color: 'var(--text2)', lineHeight: 1.7 }}>{msgPadrao}</p></div>
             {(!st || st === 'pending') && <div className="alert-box alert-info">Assim que aprovado você terá acesso automaticamente. Tente entrar novamente mais tarde.</div>}
+            {(!st || st === 'pending') && personIdEvento && <FinalizarInscricao personId={personIdEvento} />}
             {(!st || st === 'pending') && pushSuportado() && profile?.user_id && (
               <div style={{ background: 'white', borderRadius: 12, boxShadow: 'var(--shadow-sm)', padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -157,7 +176,7 @@ export default function Pending({ profile }: { profile: Profile | null }) {
             )}
           </>
         )}
-        <button className="btn btn-outline btn-full" onClick={() => supabase.auth.signOut()} style={{ marginTop: 'auto' }}>Sair</button>
+        <button className="btn btn-outline btn-full" onClick={async () => { try { if (profile?.user_id) await Promise.race([desativarPush(profile.user_id), new Promise(r => setTimeout(r, 3000))]) } catch {} ; supabase.auth.signOut() }} style={{ marginTop: 'auto' }}>Sair</button>
       </div>
     </div>
   )

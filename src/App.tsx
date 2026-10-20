@@ -25,6 +25,7 @@ import DicaInstalariOS from './components/DicaInstalariOS'
 import AberturaGate from './components/AberturaGate'
 import BloqueioBiometrico from './components/BloqueioBiometrico'
 import { biometriaAtiva } from './lib/biometria'
+import { minhaPessoa } from './lib/pessoa'
 // Registro de acesso — dispara 1x por carregamento do app (flag de módulo).
 let acessoRegistrado = false
 // #perf — telas carregadas SOB DEMANDA (lazy): a inicial abre bem mais rápido, sem perder nada
@@ -68,6 +69,8 @@ const Admin            = lazy(() => import('./pages/Admin'))
 const PainelAnalises   = lazy(() => import('./pages/PainelAnalises'))
 const CadastroConfig   = lazy(() => import('./pages/CadastroConfig'))
 const Perfil           = lazy(() => import('./pages/Perfil'))
+const MeuPagamento     = lazy(() => import('./pages/MeuPagamento'))
+const InscricoesAssinadas = lazy(() => import('./pages/InscricoesAssinadas'))
 
 export type Profile = {
   id: string
@@ -104,6 +107,7 @@ const ROTA_PERM = ([
   ['/saude','menu_saude'],
   ['/financeiro','menu_financeiro'],
   ['/doacoes','menu_financeiro'],
+  ['/inscricoes-assinadas','menu_financeiro'],
   ['/relatorios','menu_admin'],
   ['/ranking','menu_ranking'],
   ['/admin/painel','painel'],   // Painel tem liberação própria — NÃO exige Administração
@@ -111,7 +115,7 @@ const ROTA_PERM = ([
 ] as [string, string][]).sort((a, b) => b[0].length - a[0].length) // mais específico primeiro
 
 function permDaRota(path: string): string | null {
-  if (path === '/' || path === '/perfil') return null
+  if (path === '/' || path === '/perfil' || path === '/meu-pagamento') return null
   // Link direto a UMA ministração (/ministracoes/:id): a própria tela controla o acesso
   // (o ministrante vê a sua com acesso total; quem não é dono só vê a info básica).
   // Assim o ministrante chega pela "Minhas Atividades" sem precisar do menu Ministrações.
@@ -152,7 +156,7 @@ function AppRoutes({ profile, onProfileUpdate, versaoFotos }: { profile: Profile
   }
   return (
     <Suspense fallback={<div className="page">{[1,2,3].map(i=><div key={i} className="skeleton" style={{height:80,marginBottom:10,borderRadius:14}}/>)}</div>}>
-    {/* key muda quando ALGUÉM troca a foto → a tela aberta recarrega sozinha */}
+    {/* key muda quando a pessoa toca em "Fotos atualizadas · Atualizar" → a tela recarrega */}
     <Routes key={versaoFotos}>
       <Route path="/"                      element={<Dashboard profile={profile} />} />
       <Route path="/minhas-atividades"     element={<MinhasAtividades profile={profile} />} />
@@ -195,6 +199,8 @@ function AppRoutes({ profile, onProfileUpdate, versaoFotos }: { profile: Profile
       <Route path="/ranking"               element={<Ranking profile={profile} />} />
       <Route path="/admin"                 element={<Admin profile={profile} />} />
       <Route path="/perfil"                element={<Perfil profile={profile} onUpdate={onProfileUpdate} />} />
+      <Route path="/meu-pagamento"         element={<MeuPagamento profile={profile} />} />
+      <Route path="/inscricoes-assinadas"  element={<InscricoesAssinadas profile={profile} />} />
       <Route path="*"                      element={<Navigate to="/" replace />} />
     </Routes>
     </Suspense>
@@ -225,6 +231,7 @@ const TITULOS_ROTA: Record<string,string> = {
   '/ocorrencias': 'Ocorrências',
   '/financeiro': 'Financeiro',
   '/doacoes': 'Doações',
+  '/inscricoes-assinadas': 'Inscrições assinadas',
   '/relatorios': 'Comparativo',
   '/locais': 'Locais',
   '/admin': 'Administração',
@@ -272,6 +279,9 @@ export default function App() {
   const [bioUnlocked, setBioUnlocked] = useState<boolean>(() => { try { return sessionStorage.getItem('axis_bio_unlocked') === '1' } catch { return false } })  // digital: destrava por sessão (re-trava a cada abertura do app)
   const [notifUnread, setNotifUnread] = useState(0)
   const [versaoFotos, setVersaoFotos] = useState(0)
+  // Fotos trocadas por OUTRA pessoa: não remonta a tela sozinho (apagava o que a pessoa
+  // estava digitando) — mostra um aviso e só recarrega quando ela tocar em "Atualizar".
+  const [fotosPendentes, setFotosPendentes] = useState(0)
   const { evento: eventoAtivo } = useEvento()
 
   // Voltar do celular FECHA a gaveta (menu) em vez de sair da tela — volta pra origem.
@@ -293,10 +303,10 @@ export default function App() {
       // Foto de OUTRA pessoa: recarrega a tela aberta (Equipes, Escalas, Crachá…).
       // A minha própria eu já atualizo na tela de Perfil — remontar aqui apagaria o aviso de sucesso.
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'people' },
-        p => { if (mudouFoto(p) && !meu(p)) setVersaoFotos(v => v + 1) })
+        p => { if (mudouFoto(p) && !meu(p)) setFotosPendentes(v => v + 1) })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles' },
         p => { if (!mudouFoto(p)) return
-               if (meu(p)) loadProfile(session.user.id); else setVersaoFotos(v => v + 1) })
+               if (meu(p)) loadProfile(session.user.id); else setFotosPendentes(v => v + 1) })
       .subscribe()
     return () => { supabase.removeChannel(canal) }
   }, [session])
@@ -396,7 +406,7 @@ export default function App() {
     if (!profile?.user_id) { setAlertCount(0); return }
     let ativo = true
     async function contarAlertas() {
-      const { data: p } = await supabase.from('people').select('id').eq('user_id', profile!.user_id).maybeSingle()
+      const p = await minhaPessoa(profile!.user_id, eventoAtivo?.id)
       if (!p) { if (ativo) setAlertCount(0); return }
       const { data } = await supabase.from('alertas_lideres_dest')
         .select('id').eq('destinatario_id', p.id).eq('lido', false)
@@ -405,7 +415,7 @@ export default function App() {
     contarAlertas()
     const t = setInterval(contarAlertas, 10000)
     return () => { ativo = false; clearInterval(t) }
-  }, [profile])
+  }, [profile, eventoAtivo?.id])
 
   // Rota PÚBLICA (sem login, sem menu do app) — tela do evento pra transmitir/salvar imagem.
   if (window.location.pathname.startsWith('/tela')) {
@@ -463,6 +473,14 @@ export default function App() {
           <ParabensAniversario profile={profile} />
           <div style={{paddingTop:12}}><AtivarNotificacoes profile={profile} /></div>
           <DicaInstalariOS />
+          {fotosPendentes > 0 && (
+            <div style={{position:'sticky',top:8,zIndex:50,display:'flex',justifyContent:'center',pointerEvents:'none'}}>
+              <button onClick={()=>{ setVersaoFotos(v => v + 1); setFotosPendentes(0) }}
+                style={{pointerEvents:'auto',border:'none',borderRadius:99,padding:'8px 16px',background:'var(--primary)',color:'white',fontWeight:700,fontSize:13,boxShadow:'0 4px 14px rgba(0,0,0,0.18)',cursor:'pointer',fontFamily:'inherit'}}>
+                Fotos atualizadas · Atualizar
+              </button>
+            </div>
+          )}
           <AppRoutes profile={profile} onProfileUpdate={()=>loadProfile(profile.user_id)} versaoFotos={versaoFotos} />
           {/* #2 — Botão de instalar SEMPRE no final de tudo (aparece sozinho quando dá pra instalar) */}
           <div style={{padding:'0 16px 24px'}}><InstallPWA autoShow /></div>

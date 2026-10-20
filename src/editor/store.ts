@@ -4,7 +4,7 @@
 // tudo passa por dispatch(acao). Assim histórico, logs e futuros
 // recursos (colaboração, auto-save) entram sem refatorar nada.
 // ─────────────────────────────────────────────────────────────
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { Acao, Documento, Elemento, Id, Pagina } from './tipos'
 import { novoId } from './tipos'
 
@@ -157,6 +157,13 @@ export function useEditor(inicial: Documento) {
     })
   }, [])
 
+  // Página atual SEMPRE dentro do documento. Desfazer/refazer/excluir página/
+  // carregar podem encolher doc.paginas — sem isso ficava "Página 2/1" e
+  // Adicionar/Duplicar quebravam em doc.paginas[paginaAtual].id.
+  const ultimaPagina = Math.max(0, doc.paginas.length - 1)
+  const paginaOk = Math.min(Math.max(0, paginaAtual), ultimaPagina)
+  useEffect(() => { if (paginaOk !== paginaAtual) setPaginaAtual(paginaOk) }, [paginaOk, paginaAtual])
+
   const selecionar = useCallback((ids: Id[]) => setSelecao(ids), [])
 
   /** Elementos selecionados (objetos), na ordem da página. */
@@ -168,7 +175,7 @@ export function useEditor(inicial: Documento) {
   return {
     doc, setDoc,
     selecao, selecionados, selecionar,
-    paginaAtual, setPaginaAtual,
+    paginaAtual: paginaOk, setPaginaAtual,
     dispatch, encerrarInteracao, desfazer, refazer,
     podeDesfazer: passado.current.length > 0,
     podeRefazer: futuro.current.length > 0,

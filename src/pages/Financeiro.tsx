@@ -4,13 +4,17 @@ import { useVoltarFecha } from '../hooks/useVoltarFecha'
 import { useRegistrarChromeNav } from '../lib/chrome'
 import { toast } from '../components/Toast'
 import DataHora from '../components/DataHora'
-import { getInitials, isAdmin, fmtData, fmtBRL } from '../utils'
+import { getInitials, isAdmin, fmtData, fmtBRL, dataLocal } from '../utils'
 import { useEvento } from '../hooks/useEvento'
 import PersonSelect from '../components/PersonSelect'
 import { notificarRegra } from '../lib/notifRegras'
 import type { Profile } from '../App'
+import ConfigPixEvento from '../components/ConfigPixEvento'
+import { usePermissao } from '../hooks/usePermissao'
+import { montarPlano, descreverPlano } from '../lib/pix'
 
 type Pagamento = { id:string; person_id:string; valor:number; status:string; forma_pagamento:string|null; data_pagamento:string|null; observacoes:string|null; created_by:string|null }
+type Aceite    = { person_id:string; parcelas:number; entrada:number; valor_total:number; aceito_em:string; origem:string; assinatura_path:string }
 type Pessoa    = { id:string; name:string; apelido:string|null; role_type:string; photo_url:string|null; cidade:string|null }
 
 // Situação financeira calculada automaticamente
@@ -47,6 +51,12 @@ export default function Financeiro({ profile }: { profile?: Profile }) {
   const [form, setForm] = useState({ person_id:'', valor:'', status:'pago', forma_pagamento:'pix', data_pagamento:'', observacoes:'' })
 
   const admin = profile && isAdmin(profile.user_role)
+  const { pode } = usePermissao(profile ?? null)
+  const podeConfigurar = !!(admin || profile?.is_admin || pode('financeiro', 'editar'))
+  const [modalPix, setModalPix] = useState(false)
+  useVoltarFecha(modalPix, () => setModalPix(false))
+  // Termo assinado (sql/98) — por pessoa
+  const [aceites, setAceites] = useState<Record<string, Aceite>>({})
 
   useEffect(() => { if (evLoading) return; if (!evento) { setLoading(false); return }; carregar() }, [evento, evLoading])
 
@@ -59,6 +69,10 @@ export default function Financeiro({ profile }: { profile?: Profile }) {
     ])
     setPagamentos(pa.data??[])
     setPessoas(pe.data??[])
+    const { data: ac } = await supabase.from('inscricao_aceites').select('person_id,parcelas,entrada,valor_total,aceito_em,origem,assinatura_path').eq('event_id', evento.id)
+    const am: Record<string, Aceite> = {}
+    ;(ac ?? []).forEach((a: any) => { am[a.person_id] = a })
+    setAceites(am)
     // Nomes de quem REGISTROU cada pagamento (created_by -> nome), pra mostrar "quem recebeu"
     const uids = Array.from(new Set((pa.data??[]).map((x:any)=>x.created_by).filter(Boolean)))
     if (uids.length) {
@@ -76,6 +90,12 @@ export default function Financeiro({ profile }: { profile?: Profile }) {
   function getSituacao(p:Pessoa) { return calcSituacao(getPagsDaPessoa(p.id), getValorTotal(p)) }
   function getPessoa(id:string) { return pessoas.find(p=>p.id===id) }
 
+  async function verAssinatura(path: string) {
+    const { data, error } = await supabase.storage.from('assinaturas').createSignedUrl(path, 120)
+    if (error || !data?.signedUrl) { toast.falha('Não foi possível abrir a assinatura.', error); return }
+    window.open(data.signedUrl, '_blank', 'noopener')
+  }
+
   async function salvar(e:React.FormEvent) {
     e.preventDefault(); setSalvando(true)
     if (!evento||!form.person_id||!form.valor) { setSalvando(false); return }
@@ -87,11 +107,15 @@ export default function Financeiro({ profile }: { profile?: Profile }) {
       toast.aviso(`Valor acima do que falta pagar. Já pago: ${fmtBRL(jaP)} · Falta: ${fmtBRL(valorTotal-jaP)}`)
       setSalvando(false); return
     }
-    const payload = { person_id:form.person_id, valor:novoValor, status:form.status, forma_pagamento:form.forma_pagamento||null, data_pagamento:form.data_pagamento?new Date(form.data_pagamento).toISOString():new Date().toISOString(), observacoes:form.observacoes||null, event_id:evento.id }
-    if (editando) await supabase.from('financeiro').update(payload).eq('id',editando.id)
-    else {
-      await supabase.from('financeiro').insert({ ...payload, created_by: profile?.user_id ?? null })  // quem recebeu
-      // Recibo pra pessoa (só pagamento confirmado)
+    // data_pagamento: meio-dia LOCAL (new Date('YYYY-MM-DD') é meia-noite UTC → aparecia 1 dia antes)
+    const payload = { person_id:form.person_id, valor:novoValor, status:form.status, forma_pagamento:form.forma_pagamento||null, data_pagamento:form.data_pagamento?dataLocal(form.data_pagamento).toISOString():new Date().toISOString(), observacoes:form.observacoes||null, event_id:evento.id }
+    if (editando) {
+      const { data: upd, error } = await supabase.from('financeiro').update(payload).eq('id',editando.id).select('id')
+      if (error || !upd?.length) { setSalvando(false); toast.falha('Não foi possível salvar o pagamento.', error); return }
+    } else {
+      const { error } = await supabase.from('financeiro').insert({ ...payload, created_by: profile?.user_id ?? null })  // quem recebeu
+      if (error) { setSalvando(false); toast.falha('Não foi possível registrar o pagamento.', error); return }
+      // Recibo pra pessoa (só pagamento confirmado — e só se gravou)
       if (form.status === 'pago') notificarRegra('fin_pago', { person_ids: [form.person_id], title: 'Pagamento registrado', body: `Recebemos ${fmtBRL(novoValor)}. Obrigado!`, url: '/' })
     }
     setModal(false); setSalvando(false); setEditando(null); setPersonaSel(null)
@@ -100,7 +124,8 @@ export default function Financeiro({ profile }: { profile?: Profile }) {
 
   async function excluir(id:string) {
     if (!confirm('Excluir este pagamento?')) return
-    await supabase.from('financeiro').delete().eq('id',id)
+    const { error } = await supabase.from('financeiro').delete().eq('id',id)
+    if (error) toast.falha('Não foi possível excluir o pagamento.', error)
     carregar(true)
   }
 
@@ -129,6 +154,12 @@ export default function Financeiro({ profile }: { profile?: Profile }) {
           <input placeholder="Buscar por nome..." value={busca} onChange={e=>setBusca(e.target.value)}/>
           {busca && <button onClick={()=>setBusca('')} style={{background:'none',border:'none',cursor:'pointer',color:'var(--muted-light)',padding:0,fontFamily:'inherit'}}><span className="icon icon-sm">close</span></button>}
         </div>
+        {podeConfigurar && evento && (
+          <button onClick={()=>setModalPix(true)} aria-label="Configurar inscrição" title="Inscrição: contrato, Pix, parcelas e responsáveis"
+            style={{flexShrink:0,width:44,height:44,borderRadius:12,border:'1px solid var(--border)',background:'white',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',fontFamily:'inherit'}}>
+            <span className="icon" style={{color:'var(--text2)'}}>qr_code_2</span>
+          </button>
+        )}
         <button onClick={()=>setModalFiltros(true)} aria-label="Filtros"
           style={{position:'relative',flexShrink:0,width:44,height:44,borderRadius:12,border:`1px solid ${nFiltros>0?'var(--primary)':'var(--border)'}`,background:nFiltros>0?'var(--primary-light)':'white',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',fontFamily:'inherit'}}>
           <span className="icon" style={{color:nFiltros>0?'var(--primary)':'var(--text2)'}}>tune</span>
@@ -168,7 +199,9 @@ export default function Financeiro({ profile }: { profile?: Profile }) {
               {p.photo_url?<img src={p.photo_url} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}}/>:<span style={{fontSize:16,fontWeight:700,color:'var(--primary)'}}>{getInitials(p.name)}</span>}
             </div>
             <div className="list-card-body">
-              <div className="list-card-title">{p.name}{p.apelido && <span style={{fontWeight:500,color:'var(--muted)',fontSize:'0.9em',marginLeft:6}}>“{p.apelido}”</span>}</div>
+              <div className="list-card-title">{p.name}{p.apelido && <span style={{fontWeight:500,color:'var(--muted)',fontSize:'0.9em',marginLeft:6}}>“{p.apelido}”</span>}
+                <span title={aceites[p.id] ? 'Termo assinado' : 'Ainda não assinou o termo'} style={{marginLeft:6,fontSize:'0.85em',opacity:aceites[p.id]?1:0.45}}>{aceites[p.id] ? '✍️' : '✍︎'}</span>
+              </div>
               <div style={{display:'flex',alignItems:'center',gap:6,marginTop:3}}>
                 {total>0 && (
                   <div style={{flex:1,height:4,background:'var(--border)',borderRadius:99,overflow:'hidden'}}>
@@ -184,7 +217,9 @@ export default function Financeiro({ profile }: { profile?: Profile }) {
         )
       })}
 
-      <button className="fab" onClick={()=>{setEditando(null);setPersonaSel(null);setForm({person_id:'',valor:'',status:'pago',forma_pagamento:'pix',data_pagamento:'',observacoes:''});setModal(true)}}><span className="icon">add</span></button>
+      {podeConfigurar && <button className="fab" onClick={()=>{setEditando(null);setPersonaSel(null);setForm({person_id:'',valor:'',status:'pago',forma_pagamento:'pix',data_pagamento:'',observacoes:''});setModal(true)}}><span className="icon">add</span></button>}
+
+      {modalPix && evento && <ConfigPixEvento eventoId={evento.id} onFechar={()=>setModalPix(false)} />}
 
       {/* Modal de filtros (situação) */}
       {modalFiltros && (
@@ -241,6 +276,19 @@ export default function Financeiro({ profile }: { profile?: Profile }) {
                 </div>
               </div>
             )}
+            {personaSel && (() => {
+              const a = aceites[personaSel.id]
+              if (!a) return <div className="alert-box alert-warning" style={{marginBottom:16,fontSize:12}}>✍️ Ainda não assinou o termo deste evento.</div>
+              return (
+                <div style={{background:'var(--bg)',borderRadius:10,padding:'10px 14px',marginBottom:16,fontSize:12,display:'flex',alignItems:'center',gap:10}}>
+                  <div style={{flex:1}}>
+                    <p style={{fontWeight:700}}>✍️ Termo assinado em {new Date(a.aceito_em).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'})}{a.origem==='koinonia'?' (Koinonia)':''}</p>
+                    <p style={{color:'var(--muted)',marginTop:2}}>Plano: {descreverPlano(montarPlano(Number(a.valor_total), a.parcelas, Number(a.entrada)), fmtBRL)}</p>
+                  </div>
+                  <button type="button" className="btn btn-outline btn-sm" onClick={()=>verAssinatura(a.assinatura_path)}>Ver assinatura</button>
+                </div>
+              )
+            })()}
 
             <form onSubmit={salvar}>
               {!personaSel && (
@@ -268,9 +316,9 @@ export default function Financeiro({ profile }: { profile?: Profile }) {
               <div className="form-group"><label className="form-label">Observações</label>
                 <input className="form-input" value={form.observacoes} onChange={e=>setForm(f=>({...f,observacoes:e.target.value}))}/>
               </div>
-              <button type="submit" className="btn btn-primary btn-full" disabled={salvando}>
+              {podeConfigurar && <button type="submit" className="btn btn-primary btn-full" disabled={salvando}>
                 {salvando?'Salvando...':'Registrar pagamento'}
-              </button>
+              </button>}
             </form>
 
             {/* Histórico de pagamentos da pessoa */}
@@ -288,9 +336,9 @@ export default function Financeiro({ profile }: { profile?: Profile }) {
                         </p>
                       )}
                     </div>
-                    <button onClick={()=>excluir(pg.id)} style={{background:'var(--danger-bg)',color:'var(--danger)',border:'none',borderRadius:6,padding:'4px 8px',cursor:'pointer',fontSize:11,fontWeight:600,fontFamily:'inherit'}}>
+                    {podeConfigurar && <button onClick={()=>excluir(pg.id)} style={{background:'var(--danger-bg)',color:'var(--danger)',border:'none',borderRadius:6,padding:'4px 8px',cursor:'pointer',fontSize:11,fontWeight:600,fontFamily:'inherit'}}>
                       Excluir
-                    </button>
+                    </button>}
                   </div>
                 ))}
               </div>

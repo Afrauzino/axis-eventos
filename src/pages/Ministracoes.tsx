@@ -7,6 +7,7 @@ import { getInitials, fmtHora, fmtData, isAdmin, toLocalInput } from '../utils'
 import { useEvento } from '../hooks/useEvento'
 import { usePermissao } from '../hooks/usePermissao'
 import { toast } from '../components/Toast'
+import { sanitizarHtml } from '../lib/sanitizar'
 import Seletor from '../components/Seletor'
 import CardItem from '../components/CardItem'
 import FotoAmpliada from '../components/FotoAmpliada'
@@ -67,7 +68,9 @@ export default function Ministracoes({ profile }: { profile?: Profile }) {
   const posterRef = useRef<HTMLInputElement>(null)
   const [posterEnviando, setPosterEnviando] = useState(false)
   const [framing, setFraming] = useState<string | null>(null)   // url sendo enquadrada
-  useVoltarFecha(!!framing, () => setFraming(null))
+  // Fecha o enquadramento e libera a URL temporária (blob:) do arquivo escolhido
+  const fecharFraming = () => setFraming(prev => { if (prev?.startsWith('blob:')) { try { URL.revokeObjectURL(prev) } catch {} } return null })
+  useVoltarFecha(!!framing, fecharFraming)
 
   // Envia o PNG (já enquadrado, fundo transparente) pro pôster do cronograma.
   async function enviarPoster(file: Blob) {
@@ -147,15 +150,21 @@ export default function Ministracoes({ profile }: { profile?: Profile }) {
   }
 
   async function mudarStatusMin(id: string, statusAtual: string) {
+    if (!canEdit) return
     // Concluir ministração é SÓ pela tela de Cronograma. Aqui o clique só alterna
     // planejado → em andamento → cancelado, sem passar por "concluído".
     if (statusAtual === 'concluido') { toast.info('A conclusão da ministração é feita pela tela de Cronograma.'); return }
     const ordem = ['planejado','em_andamento','cancelado']
     const idx   = ordem.indexOf(statusAtual)
     const prox  = ordem[(idx + 1) % ordem.length]
-    await supabase.from('ministrações').update({ status: prox }).eq('id', id)
-    setMins(prev => prev.map(m => m.id===id ? {...m, status:prox} : m))
-    setDetalhe(prev => prev?.id===id ? {...prev, status:prox} : prev)
+    const aplicar = (st: string) => {
+      setMins(prev => prev.map(m => m.id===id ? {...m, status:st} : m))
+      setDetalhe(prev => prev?.id===id ? {...prev, status:st} : prev)
+    }
+    aplicar(prox)
+    // .select() → sob RLS um update barrado volta 0 linhas sem erro
+    const { data, error } = await supabase.from('ministrações').update({ status: prox }).eq('id', id).select('id')
+    if (error || !data?.length) { aplicar(statusAtual); toast.falha('Não foi possível mudar o status.', error) }
   }
 
   function getPessoa(id:string|null) { return id ? pessoas.find(p=>p.id===id) : null }
@@ -200,7 +209,7 @@ export default function Ministracoes({ profile }: { profile?: Profile }) {
       titulo:form.titulo, ministrante_id:form.ministrante_id||null,
       hora_inicio: iso(form.hora_inicio),
       hora_fim: iso(form.hora_fim || form.hora_inicio, 60*60*1000),
-      local:form.local||null, status:'planejado', emoji:form.emoji||null, cor:form.cor||'#6B46C1',
+      local:form.local||null, emoji:form.emoji||null, cor:form.cor||'#6B46C1',
       foto_poster: form.foto_poster || null,
       conteudo_sermao: blocos.length > 0 ? JSON.stringify(blocos) : null,
       conteudo_teatro: blocos.find(b=>b.tipo==='Teatro')?.conteudo||null,
@@ -209,7 +218,7 @@ export default function Ministracoes({ profile }: { profile?: Profile }) {
     let err
     let minId = editando?.id
     if (editando) { const r=await supabase.from('ministrações').update(payload).eq('id',editando.id); err=r.error }
-    else { const r=await supabase.from('ministrações').insert({...payload,event_id:evento.id}).select('id').single(); err=r.error; minId=r.data?.id }
+    else { const r=await supabase.from('ministrações').insert({...payload,status:'planejado',event_id:evento.id}).select('id').single(); err=r.error; minId=r.data?.id }
     if (err) { setErro('Erro: '+err.message); setSalvando(false); return }
     // Avisa no celular o ministrante — só quando é novo ou mudou de pessoa (não a cada edição)
     const minAntigo = editando?.ministrante_id ?? null
@@ -299,14 +308,16 @@ export default function Ministracoes({ profile }: { profile?: Profile }) {
             fotoUrl={min?.photo_url ?? null}
             titulo={m.titulo}
             subtitulo={`${min?.name??'Sem ministrante'}${m.local?` · ${m.local}`:''}`}
-            direita={
+            direita={canEdit ? (
               <button
                 onClick={()=>mudarStatusMin(m.id,m.status)}
                 className={`badge ${STATUS_BADGE[m.status]??'badge-neutral'}`}
                 style={{fontSize:10,border:'none',cursor:'pointer',fontFamily:'inherit'}}
                 title="Clique para avançar status"
               >{STATUS_LABEL[m.status]??m.status}</button>
-            }
+            ) : (
+              <span className={`badge ${STATUS_BADGE[m.status]??'badge-neutral'}`} style={{fontSize:10}}>{STATUS_LABEL[m.status]??m.status}</span>
+            )}
             onVer={()=>{setDetalhe(m);setAbaDetalhe('info')}}
             onFoto={()=>min?.photo_url && setFotoAmpliada(min.photo_url)}
             onEditar={canEdit ? ()=>abrirEdicao(m) : undefined}
@@ -376,12 +387,16 @@ export default function Ministracoes({ profile }: { profile?: Profile }) {
                       </div>}
                                             {!restrito && <div className="info-row">
                       <span className="info-label">Status</span>
-                      <button
-                        onClick={()=>mudarStatusMin(detalhe.id,detalhe.status)}
-                        className={`badge ${STATUS_BADGE[detalhe.status]??'badge-neutral'}`}
-                        style={{border:'none',cursor:'pointer',fontFamily:'inherit'}}
-                        title="Clique para avançar status"
-                      >{STATUS_LABEL[detalhe.status]??detalhe.status} ▶</button>
+                      {canEdit ? (
+                        <button
+                          onClick={()=>mudarStatusMin(detalhe.id,detalhe.status)}
+                          className={`badge ${STATUS_BADGE[detalhe.status]??'badge-neutral'}`}
+                          style={{border:'none',cursor:'pointer',fontFamily:'inherit'}}
+                          title="Clique para avançar status"
+                        >{STATUS_LABEL[detalhe.status]??detalhe.status} ▶</button>
+                      ) : (
+                        <span className={`badge ${STATUS_BADGE[detalhe.status]??'badge-neutral'}`}>{STATUS_LABEL[detalhe.status]??detalhe.status}</span>
+                      )}
                     </div>}
                     </div>
                     {/* Teatro vinculado (ministrante restrito não navega pra fora) */}
@@ -440,7 +455,7 @@ export default function Ministracoes({ profile }: { profile?: Profile }) {
                                     <span style={{flex:1,minWidth:0,fontSize:14,fontWeight:600,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{a.nome}</span>
                                     <span className="icon icon-sm" style={{color:'var(--muted)'}}>{pdf?'open_in_full':'open_in_new'}</span>
                                   </button>) })()
-                              : <div style={{fontSize:14,lineHeight:1.7,color:'var(--text)'}} dangerouslySetInnerHTML={{__html:bl.conteudo}}/>
+                              : <div style={{fontSize:14,lineHeight:1.7,color:'var(--text)'}} dangerouslySetInnerHTML={{__html:sanitizarHtml(bl.conteudo)}}/>
                           }
                           {i<bls.length-1 && <div style={{height:1,background:'var(--border)',marginTop:16}}/>}
                         </div>
@@ -532,7 +547,7 @@ export default function Ministracoes({ profile }: { profile?: Profile }) {
                         </div>
                         <p className="form-hint" style={{marginTop:6}}>Ao enviar você já enquadra a foto (com linhas-guia) pra ficar no padrão de todas. O pôster do cronograma usa essa imagem no lugar da foto de perfil.</p>
                         <input ref={posterRef} type="file" accept="image/png,image/*" style={{display:'none'}} onChange={e=>{ const f=e.target.files?.[0]; if(f) setFraming(URL.createObjectURL(f)); e.target.value='' }}/>
-                        {framing && <EnquadrarPoster src={framing} onClose={()=>setFraming(null)} onAplicar={async(blob)=>{ await enviarPoster(blob); setFraming(null) }} />}
+                        {framing && <EnquadrarPoster src={framing} onClose={fecharFraming} onAplicar={async(blob)=>{ await enviarPoster(blob); fecharFraming() }} />}
                       </div>
                     )}
                     {/* #10 — Ministração não tem mais data/horário/duração. A agenda fica só no Cronograma. */}
@@ -663,7 +678,7 @@ export default function Ministracoes({ profile }: { profile?: Profile }) {
                 <p style={{fontSize:12,fontWeight:800,textTransform:'uppercase',color:'#374151',marginBottom:6}}>{bl.tipo}</p>
                 {bl.tipo==='Imagem' ? <img src={bl.conteudo} alt="" style={{maxWidth:'100%'}}/>
                   : bl.tipo==='Arquivo' ? <p style={{fontSize:14}}>📎 {arqInfo(bl.conteudo).nome}</p>
-                  : <div style={{fontSize:14,lineHeight:1.7}} dangerouslySetInnerHTML={{__html:bl.conteudo}}/>}
+                  : <div style={{fontSize:14,lineHeight:1.7}} dangerouslySetInnerHTML={{__html:sanitizarHtml(bl.conteudo)}}/>}
               </div>
             ))}
           </PrintOverlay>

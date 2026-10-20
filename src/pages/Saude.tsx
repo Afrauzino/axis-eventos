@@ -17,6 +17,8 @@ const TIPOS = ['Medicamento','Atendimento geral','Pressão arterial','Glicemia',
 
 export default function Saude({ profile }: { profile?: Profile }) {
   const { evento, loading: evLoading } = useEvento()
+  const { pode } = usePermissao(profile ?? null)
+  const podeEditar = !!(profile?.is_admin || ['admin','pastor'].includes(profile?.user_role ?? '') || pode('saude', 'editar'))
   const [atendimentos, setAtendimentos] = useState<Atendimento[]>([])
   const [pessoas, setPessoas]           = useState<Pessoa[]>([])
   const [loading, setLoading]           = useState(true)
@@ -84,7 +86,7 @@ export default function Saude({ profile }: { profile?: Profile }) {
         )
       })}
 
-      <button className="fab" onClick={()=>setModal(true)}><span className="icon">add</span></button>
+      {podeEditar && <button className="fab" onClick={()=>setModal(true)}><span className="icon">add</span></button>}
 
       {modal && (
         <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.5)',zIndex:300,display:'flex',flexDirection:'column',justifyContent:'flex-end'}} onClick={e=>e.target===e.currentTarget&&setModal(false)}>

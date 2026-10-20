@@ -9,6 +9,7 @@ import { useRegistrarChrome } from '../lib/chrome'
 import { getInitials, isAdmin, formatName } from '../utils'
 import { useEvento } from '../hooks/useEvento'
 import { usePermissao } from '../hooks/usePermissao'
+import { buscarTodos } from '../lib/paginar'
 import type { Profile } from '../App'
 
 type Pessoa   = { id:string; name:string; apelido:string|null; photo_url:string|null }
@@ -67,7 +68,7 @@ export default function Logistica({ profile }: { profile?: Profile }) {
   // Admin OU liberação "Logística → Criar/editar checklist" (aba Liberações do Admin)
   // Preencher o checklist = quem tem "ver" (é feito na aba Encontristas). Configurar
   // (criar/editar/excluir itens) = só quem tem "editar".
-  const canConfig = isAdmin(profile?.user_role) || pode('logistica','editar')
+  const canConfig = isAdmin(profile?.user_role) || pode('logistica','checklist')
 
   useEffect(() => { if (evLoading) return; if (!evento) { setLoading(false); return }; carregar() }, [evento, evLoading])
 
@@ -78,7 +79,8 @@ export default function Logistica({ profile }: { profile?: Profile }) {
     const [enc, it, st, pl] = await Promise.all([
       supabase.from('people').select('id,name,apelido,photo_url').eq('event_id',eid).eq('role_type','encounterer').order('name'),
       supabase.from('logistica_checklist_itens').select('*').eq('event_id',eid).order('ordem'),
-      supabase.from('logistica_checklist_status').select('*').eq('event_id',eid),
+      // respostas passam fácil de 1000 linhas (encontristas × itens) → paginado
+      buscarTodos(() => supabase.from('logistica_checklist_status').select('*').eq('event_id',eid).order('id')),
       supabase.from('logistica_pessoa').select('encontrista_id,toma_controlado,ultima_dose,concluido').eq('event_id',eid),
     ])
     setEncontristas(enc.data ?? [])
@@ -118,8 +120,9 @@ export default function Logistica({ profile }: { profile?: Profile }) {
       await supabase.from('logistica_checklist_status').update({ marcado:sim }).eq('id',existe.id)
       setStatus(prev=>prev.map(s=>s.id===existe.id?{...s,marcado:sim}:s))
     } else {
-      const { data } = await supabase.from('logistica_checklist_status').insert({ event_id:evento!.id, encontrista_id:encId, item_id:itemId, marcado:sim }).select().single()
-      if (data) setStatus(prev=>[...prev,data])
+      // upsert: se a resposta já existir no banco (UNIQUE encontrista_id,item_id), atualiza em vez de falhar calado
+      const { data } = await supabase.from('logistica_checklist_status').upsert({ event_id:evento!.id, encontrista_id:encId, item_id:itemId, marcado:sim }, { onConflict:'encontrista_id,item_id' }).select().single()
+      if (data) setStatus(prev=>[...prev.filter(s=>!(s.encontrista_id===encId && s.item_id===itemId)),data])
     }
   }
   function info(encId:string): PessoaLog {

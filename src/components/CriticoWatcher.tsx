@@ -1,6 +1,8 @@
 import { useEffect, useState, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { formatName } from '../utils'
+import { minhaPessoa } from '../lib/pessoa'
+import { useEvento } from '../hooks/useEvento'
 import type { Profile } from '../App'
 
 // Vigia alertas CRÍTICOS não lidos e exibe em tela cheia automaticamente (tempo real via polling)
@@ -9,12 +11,15 @@ type Critico = { dest_id:string; remetente_nome:string|null; texto:string|null; 
 export default function CriticoWatcher({ profile }: { profile: Profile }) {
   const [critico, setCritico] = useState<Critico|null>(null)
   const personId = useRef<string|null>(null)
+  const { evento, loading: evLoading } = useEvento()
 
   useEffect(() => {
     let timer: any
     let ativo = true
     async function init() {
-      const { data: p } = await supabase.from('people').select('id').eq('user_id', profile.user_id).maybeSingle()
+      if (evLoading) return   // espera o evento ativo (a pessoa tem 1 cadastro POR evento)
+      const p = await minhaPessoa(profile.user_id, evento?.id)
+      if (!ativo) return
       personId.current = p?.id ?? null
       checar()
       timer = setInterval(checar, 15000) // a cada 15s
@@ -32,7 +37,7 @@ export default function CriticoWatcher({ profile }: { profile: Profile }) {
     }
     init()
     return () => { ativo=false; clearInterval(timer) }
-  }, [profile.user_id, critico])
+  }, [profile.user_id, critico, evento?.id, evLoading])
 
   async function confirmar() {
     if (critico?.dest_id) await supabase.from('alertas_lideres_dest').update({ lido:true, lido_em:new Date().toISOString() }).eq('id', critico.dest_id)

@@ -59,6 +59,10 @@ export default function TempoView() {
   const [fitStage, setFitStage] = useState(1)
   const [, setResizeTick] = useState(0)
   const avancouRef = useRef<string | null>(null)   // trava: dispara o "avançar" 1x por bloco
+  // diferença relógio do SERVIDOR − relógio deste aparelho (tempo_atual devolve `agora` = now()).
+  // Celular adiantado não encerra bloco antes da hora: a contagem usa a hora do servidor.
+  const offsetRef = useRef(0)
+  const agoraSrv = () => Date.now() + offsetRef.current
 
   // cor do sistema (só pro acento na zona tranquila)
   useEffect(() => { carregarCorSalva().then(c => c && setAccent(c)).catch(() => {}) }, [])
@@ -78,11 +82,16 @@ export default function TempoView() {
     vivoRef.current = true
     const puxar = async () => {
       try {
+        const t0 = Date.now()
         const { data } = await supabase.rpc('tempo_atual')
+        const t1 = Date.now()
         if (!vivoRef.current) return
+        // offset corrigido pela metade da ida-e-volta (ignora resposta muito lenta)
+        const srv = (data as any)?.agora ? Date.parse((data as any).agora) : NaN
+        if (!isNaN(srv) && t1 - t0 < 3000) offsetRef.current = srv - (t0 + t1) / 2
         setBloco((data as any) ?? null)
         setCarregou(true)
-        setAgora(Date.now())
+        setAgora(agoraSrv())
       } catch {}
     }
     puxar()
@@ -104,20 +113,29 @@ export default function TempoView() {
   // relógio local (250ms) — só corre quando está 'correndo'
   useEffect(() => {
     if (bloco?.cron_estado !== 'correndo') return
-    const t = setInterval(() => setAgora(Date.now()), 250)
+    const t = setInterval(() => setAgora(agoraSrv()), 250)
     return () => clearInterval(t)
   }, [bloco?.cron_estado, bloco?.id])
 
   // AUTO-AVANÇAR ao ZERAR: chama a RPC (conclui o atual + inicia o próximo imediato,
-  // respeitando data). Dispara 1x por bloco; o poll já traz o próximo. Só no 0.
+  // respeitando data). Só no 0; o poll já traz o próximo. É só um "acelerador" — o
+  // servidor (pg_cron) também avança. Trava 1x por bloco, mas SOLTA se falhar (tenta
+  // de novo em 5s) ou se o bloco continuar parado no 00:00 (tenta de novo em 15s).
   useEffect(() => {
     if (!bloco || bloco.cron_estado !== 'correndo') return
     const tot = duracaoBaseSeg(bloco) + (bloco.cron_ajuste_segundos ?? 0)
     let dec = bloco.cron_decorrido_segundos ?? 0
     if (bloco.cron_iniciado_em) dec += Math.max(0, Math.floor((agora - new Date(bloco.cron_iniciado_em).getTime()) / 1000))
     if (tot > 0 && dec >= tot && avancouRef.current !== bloco.id) {
-      avancouRef.current = bloco.id
-      ;(async () => { try { await supabase.rpc('avancar_bloco', { p_id: bloco.id }) } catch {} })()
+      const id = bloco.id
+      avancouRef.current = id
+      const soltar = (ms: number) => setTimeout(() => { if (avancouRef.current === id) avancouRef.current = null }, ms)
+      ;(async () => {
+        try {
+          const { error } = await supabase.rpc('avancar_bloco', { p_id: id })
+          soltar(error ? 5000 : 15000)
+        } catch { soltar(5000) }
+      })()
     }
   }, [agora, bloco?.id, bloco?.cron_estado, bloco?.cron_iniciado_em, bloco?.cron_ajuste_segundos, bloco?.cron_decorrido_segundos])
 

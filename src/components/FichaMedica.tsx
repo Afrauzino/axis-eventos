@@ -56,9 +56,15 @@ export default function FichaMedica({ personId, eventId, readOnly=false, startOp
 
   function setMed(i:number, patch:Partial<MedRow>) { setMeds(prev=>prev.map((m,idx)=>idx===i?{...m,...patch}:m)) }
   function addMed() { setMeds(prev=>[...prev,{...MED_VAZIO}]) }
-  function removeMed(i:number) {
+  async function removeMed(i:number) {
     const m = meds[i]
-    if (m.id) { supabase.from('med_agenda').delete().eq('med_ctrl_id',m.id); supabase.from('med_controlados').delete().eq('id',m.id) }
+    // Precisa de await: sem isso o supabase-js nem envia o delete (doses/lembretes continuavam)
+    if (m.id) {
+      const a = await supabase.from('med_agenda').delete().eq('med_ctrl_id',m.id)
+      if (a.error) { setMsg('Erro ao remover as doses: ' + a.error.message); return }
+      const b = await supabase.from('med_controlados').delete().eq('id',m.id)
+      if (b.error) { setMsg('Erro ao remover o medicamento: ' + b.error.message); return }
+    }
     setMeds(prev=>prev.filter((_,idx)=>idx!==i))
   }
 
@@ -127,8 +133,11 @@ export default function FichaMedica({ personId, eventId, readOnly=false, startOp
         if (errMed) { setSalvando(false); setMsg('Erro ao salvar o medicamento: ' + errMed.message); return }
         if (medId && med.ultima_dose) await supabase.from('med_controlados').update({ ultima_dose:new Date(med.ultima_dose).toISOString() }).eq('id',medId)
         if (medId) {
+          // Mantém o que já foi entregue e não recria esses horários (senão a dose entregue voltava como ATRASADA)
+          const { data: entregues } = await supabase.from('med_agenda').select('horario').eq('med_ctrl_id',medId).eq('entregue',true)
+          const jaEntregues = new Set((entregues ?? []).map((e:any) => new Date(e.horario).getTime()))
           await supabase.from('med_agenda').delete().eq('med_ctrl_id',medId).eq('entregue',false)
-          const doses = gerarDoses(med, personId, eventId, medId, janela)
+          const doses = gerarDoses(med, personId, eventId, medId, janela).filter(d => !jaEntregues.has(new Date(d.horario).getTime()))
           if (doses.length) {
             const r = await supabase.from('med_agenda').insert(doses)
             if (r.error) { setSalvando(false); setMsg('Erro ao gerar as doses: ' + r.error.message); return }
@@ -137,6 +146,13 @@ export default function FichaMedica({ personId, eventId, readOnly=false, startOp
         }
       }
       setMeds(salvos)
+    } else {
+      // "Toma controlado" = Não → remove os medicamentos e as doses ainda NÃO entregues (para os lembretes)
+      const a = await supabase.from('med_agenda').delete().eq('person_id',personId).eq('event_id',eventId).eq('entregue',false)
+      if (a.error) { setSalvando(false); setMsg('Erro ao remover as doses: ' + a.error.message); return }
+      const b = await supabase.from('med_controlados').delete().eq('person_id',personId).eq('event_id',eventId)
+      if (b.error) { setSalvando(false); setMsg('Erro ao remover os medicamentos: ' + b.error.message); return }
+      setMeds([])
     }
 
     setSalvando(false)

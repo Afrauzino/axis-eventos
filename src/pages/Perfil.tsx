@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
-import { formatName, getInitials, ROLE_LABELS } from '../utils'
+import { formatName, getInitials, ROLE_LABELS, hasRole } from '../utils'
+import { minhaPessoa } from '../lib/pessoa'
 import { useEvento } from '../hooks/useEvento'
 import RecortarFoto from '../components/RecortarFoto'
 import CadastroPessoa, { FORM_VAZIO, type PessoaForm } from '../components/CadastroPessoa'
@@ -24,12 +25,17 @@ export default function Perfil({ profile, onUpdate }: { profile: Profile; onUpda
   useEffect(() => {
     if (!evento || !profile.user_id) { setCarregandoP(false); return }
     setCarregandoP(true)
-    supabase.from('people').select('id,role_type').eq('event_id', evento.id).eq('user_id', profile.user_id).maybeSingle()
-      .then(({ data }) => { setMeuP(data); setCarregandoP(false) })
+    minhaPessoa<{id:string;role_type:string}>(profile.user_id, evento.id, 'id,role_type')
+      .then(data => { setMeuP(data); setCarregandoP(false) })
   }, [evento, profile.user_id])
 
-  async function criarMeuCadastro(role: 'worker'|'encounterer') {
+  // Encontreiro (worker) dá as permissões fixas de encontreiro → só quem o ADMIN já
+  // aprovou como encontreiro (ou acima) pode se cadastrar assim. O resto entra como encontrista.
+  const podeSerEncontreiro = !!profile.is_admin || hasRole(profile.user_role, 'encontreiro')
+
+  async function criarMeuCadastro(escolha: 'worker'|'encounterer') {
     if (!evento || !profile.user_id) return
+    const role = escolha === 'worker' && podeSerEncontreiro ? 'worker' : 'encounterer'
     setCriandoP(true)
     const foto = profile.avatar_url ? String(profile.avatar_url).split('?')[0] : null
     const { data, error } = await supabase.from('people').insert({
@@ -37,7 +43,8 @@ export default function Perfil({ profile, onUpdate }: { profile: Profile; onUpda
       name: formatName(form.name || profile.full_name || ''),
       church: (form.church || (profile as any).church || '').trim(),
       phone: form.phone || (profile as any).phone || null,
-      photo_url: foto, role_type: role, status: 'confirmado',
+      // status 'inscrito' = padrão de cadastro novo (confirmado é decidido no Financeiro/Cadastros)
+      photo_url: foto, role_type: role, status: 'inscrito',
     }).select('id,role_type').single()
     setCriandoP(false)
     if (error) { setErro('Erro ao criar cadastro: ' + error.message); return }
@@ -59,7 +66,9 @@ export default function Perfil({ profile, onUpdate }: { profile: Profile; onUpda
   async function abrirMeuCadastro() {
     if (!meuP) return
     const { data } = await supabase.from('people').select('*').eq('id', meuP.id).maybeSingle()
-    const d: any = data ?? {}
+    // Sem os dados atuais, salvar mandaria tudo vazio e a RPC apagaria o cadastro
+    if (!data) { toast.falha('Não foi possível carregar seus dados. Tente de novo.'); return }
+    const d: any = data
     setCadForm({ ...FORM_VAZIO,
       name: d.name ?? '', phone: d.phone ?? '', contact_phone: d.contact_phone ?? '',
       church: d.church ?? '', ano_encontro: d.ano_encontro ? String(d.ano_encontro) : '',
@@ -69,6 +78,11 @@ export default function Perfil({ profile, onUpdate }: { profile: Profile; onUpda
       team_pref: d.team_pref ?? '', referencia_id: d.referencia_id ?? '', cargo: d.cargo ?? '', notes: d.notes ?? '',
       responsavel_nome: d.responsavel_nome ?? '', responsavel_tel: d.responsavel_tel ?? '',
       photo_url: d.photo_url ?? null,
+      // A RPC grava estes com nullif → se não carregar e devolver, ela APAGA (em todos os eventos)
+      instagram: d.instagram ?? '', facebook: d.facebook ?? '', rede_outra: d.rede_outra ?? '',
+      estado_civil: d.estado_civil ?? '', phone2: d.phone2 ?? '',
+      contact_phone_dono: d.contact_phone_dono ?? '',
+      contact_phone2: d.contact_phone2 ?? '', contact_phone2_dono: d.contact_phone2_dono ?? '',
     })
     setCadAberto(true)
   }
@@ -89,6 +103,11 @@ export default function Perfil({ profile, onUpdate }: { profile: Profile; onUpda
       cargo: cadForm.cargo || '',
       team_pref: cadForm.team_pref || '', responsavel_nome: cadForm.responsavel_nome || '', responsavel_tel: cadForm.responsavel_tel || '',
       notes: cadForm.notes || '', photo_url: cadForm.photo_url || null,
+      // Sempre mandar: a RPC (sql/83) zera qualquer um destes que não vier no payload
+      instagram: cadForm.instagram || '', facebook: cadForm.facebook || '', rede_outra: cadForm.rede_outra || '',
+      estado_civil: cadForm.estado_civil || '', phone2: cadForm.phone2 || '',
+      contact_phone_dono: cadForm.contact_phone_dono || '',
+      contact_phone2: cadForm.contact_phone2 || '', contact_phone2_dono: cadForm.contact_phone2_dono || '',
     }
     const { error } = await supabase.rpc('atualizar_meu_cadastro', { p: payload })
     setSalvandoCad(false)
@@ -308,11 +327,13 @@ export default function Perfil({ profile, onUpdate }: { profile: Profile; onUpda
           <>
             <p style={{fontSize:13,color:'var(--muted)',marginBottom:12,lineHeight:1.5}}>Você tem conta mas ainda <strong>não é uma pessoa do evento</strong>. Crie seu cadastro para ter <strong>crachá</strong>, entrar em <strong>equipe</strong> e ser escalado. (Usa seu nome, foto e igreja do perfil.)</p>
             <div style={{display:'flex',gap:8}}>
-              <button className="btn btn-primary" style={{flex:1}} disabled={criandoP} onClick={()=>criarMeuCadastro('worker')}>
-                {criandoP?'Criando...':'Sou Encontreiro'}
-              </button>
-              <button className="btn btn-outline" style={{flex:1}} disabled={criandoP} onClick={()=>criarMeuCadastro('encounterer')}>
-                Sou Encontrista
+              {podeSerEncontreiro && (
+                <button className="btn btn-primary" style={{flex:1}} disabled={criandoP} onClick={()=>criarMeuCadastro('worker')}>
+                  {criandoP?'Criando...':'Sou Encontreiro'}
+                </button>
+              )}
+              <button className={podeSerEncontreiro?'btn btn-outline':'btn btn-primary'} style={{flex:1}} disabled={criandoP} onClick={()=>criarMeuCadastro('encounterer')}>
+                {criandoP && !podeSerEncontreiro ? 'Criando...' : 'Sou Encontrista'}
               </button>
             </div>
           </>

@@ -113,7 +113,8 @@ export default function Alertas({ profile }: { profile?: Profile }) {
       setSalvando(false); return
     }
     // Notifica no celular (app fechado) o público-alvo — a Edge Function resolve quem recebe
-    const critico = form.priority === 'critico' || form.priority === 'urgente'
+    // o seletor grava 'urgent' (valor do CHECK do banco); 'urgente' fica por compatibilidade
+    const critico = ['critico','urgent','urgente'].includes(form.priority)
     notificarRegra(critico ? 'alerta_critico' : 'aviso_geral', {
       alerta: { event_id: evento.id, target_type: form.target_type, target_team_ids: teamIds },
       title: form.title.trim(),

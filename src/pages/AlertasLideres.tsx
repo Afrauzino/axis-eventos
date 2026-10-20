@@ -4,6 +4,8 @@ import { toast } from '../components/Toast'
 import { getInitials, formatName, isAdmin } from '../utils'
 import { notificarRegra } from '../lib/notifRegras'
 import { useEvento } from '../hooks/useEvento'
+import { minhaPessoa as buscarMinhaPessoa } from '../lib/pessoa'
+import { buscarTodos } from '../lib/paginar'
 import type { Profile } from '../App'
 
 type Pessoa = { id:string; name:string; photo_url:string|null; user_id:string|null }
@@ -49,17 +51,21 @@ export default function AlertasLideres({ profile }: { profile?: Profile }) {
 
   async function carregar() {
     setLoading(true)
+    const eid = evento?.id
     let minha: Pessoa|null = null
     if (profile?.user_id) {
-      const { data } = await supabase.from('people').select('id,name,photo_url,user_id').eq('user_id', profile.user_id).maybeSingle()
-      minha = data; setMinhaPessoa(data)
+      // cadastro DESTE evento (a mesma conta tem 1 cadastro por evento)
+      minha = await buscarMinhaPessoa<Pessoa>(profile.user_id, eid, 'id,name,photo_url,user_id'); setMinhaPessoa(minha)
     }
-    const eid = evento?.id
-    const [psR, eqR, vincsR] = await Promise.all([
+    const [psR, eqR] = await Promise.all([
       supabase.from('people').select('id,name,photo_url,user_id').not('user_id','is',null).order('name'),
       eid ? supabase.from('teams').select('id,name,leader_id,co_leader_id').eq('event_id', eid).order('name') : Promise.resolve({data:[]} as any),
-      supabase.from('people_teams').select('person_id,team_id'),
     ])
+    // vínculos só das equipes DESTE evento (e paginado — passa de 1000 linhas)
+    const teamIds = ((eqR.data ?? []) as Equipe[]).map(t => t.id)
+    const vincsR = teamIds.length
+      ? await buscarTodos<{person_id:string;team_id:string}>(() => supabase.from('people_teams').select('person_id,team_id').in('team_id', teamIds).order('person_id').order('team_id'))
+      : { data: [] as {person_id:string;team_id:string}[], error: null }
     setPessoas(psR.data ?? [])
     setEquipes(eqR.data ?? [])
 
@@ -152,12 +158,18 @@ export default function AlertasLideres({ profile }: { profile?: Profile }) {
       const { error } = await supabase.storage.from('alertas').upload(path, foto, { upsert:true })
       if (!error) { const { data:u } = supabase.storage.from('alertas').getPublicUrl(path); fotoUrl = u.publicUrl }
     }
-    const { data: al } = await supabase.from('alertas_lideres').insert({
+    const { data: al, error: errAl } = await supabase.from('alertas_lideres').insert({
       event_id: evento?.id ?? null, remetente_id: minhaPessoa?.id ?? null,
       remetente_nome: minhaPessoa?.name ?? profile?.full_name ?? null,
       texto: texto.trim() || null, foto_url: fotoUrl, nivel: nivelFinal, destino,
     }).select().single()
-    if (al) await supabase.from('alertas_lideres_dest').insert(destinatarios.map(d => ({ alerta_id: al.id, destinatario_id: d })))
+    if (errAl || !al) { setEnviando(false); toast.falha('Não foi possível enviar o alerta.', errAl); return }
+    const { error: errDest } = await supabase.from('alertas_lideres_dest').insert(destinatarios.map(d => ({ alerta_id: al.id, destinatario_id: d })))
+    if (errDest) {
+      // sem destinatários o alerta não chega a ninguém → desfaz e avisa
+      await supabase.from('alertas_lideres').delete().eq('id', al.id)
+      setEnviando(false); toast.falha('Não foi possível enviar o alerta.', errDest); return
+    }
     // Avisa no celular (app fechado) quem recebeu
     notificarRegra('aviso_lideranca', {
       person_ids: destinatarios,
