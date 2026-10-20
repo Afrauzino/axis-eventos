@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from 'react'
 import { supabase } from '../lib/supabase'
+import InscricaoKoinonia from '../components/InscricaoKoinonia'
 import { useVoltarFecha } from '../hooks/useVoltarFecha'
 import ConfigCor from './ConfigCor'
 import { limparCachePermissoes } from '../hooks/usePermissao'
@@ -2038,6 +2039,7 @@ export default function Admin({ profile }: { profile?: Profile }) {
                   <span className="icon icon-sm">delete</span> Excluir
                 </button>
               </div>
+              <InscricaoKoinonia eventoId={ev.id} encerrado={ev.status==='finished'} />
             </div>
           ))}
           <button className="fab" onClick={()=>{setEditandoEvento(null);setFormEvento({name:'',location:'',valor_encontrista:'',valor_encontreiro:'',start_date:'',end_date:''});setModalEvento(true)}}><span className="icon">add</span></button>
