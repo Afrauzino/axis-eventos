@@ -75,20 +75,24 @@ returns jsonb
 language plpgsql stable security definer
 set search_path = public
 as $$
-declare ev public.events%rowtype; v_total numeric; v_termo text;
+declare ev public.events%rowtype; v_total numeric; v_termo text; v_contrato text; v_hash text;
 begin
   select * into ev from public.events where id = p_event;
   if not found or p_role not in ('encounterer','worker') then return null; end if;
   v_total := coalesce(case when p_role = 'worker' then ev.valor_encontreiro else ev.valor_encontrista end, 0);
   select valor into v_termo from public.configuracoes
    where chave = case when p_role = 'worker' then 'termo_encontreiro' else 'termo_encontrista' end;
-  v_termo := replace(coalesce(v_termo, ''), '{{nome}}', btrim(coalesce(p_nome, '')));
+  v_termo    := replace(coalesce(v_termo, ''), '{{nome}}', btrim(coalesce(p_nome, '')));
+  v_contrato := replace(coalesce(ev.contrato, ''), '{{nome}}', btrim(coalesce(p_nome, '')));
+  v_hash     := md5(v_termo || E'\n\n' || v_contrato);      -- igual ao texto_hash do _inscricao_resumo
   return jsonb_build_object(
     'evento', jsonb_build_object('id', ev.id, 'nome', ev.name, 'inicio', ev.start_date, 'fim', ev.end_date, 'local', ev.location),
     'role_type', p_role,
     'papel', case when p_role = 'worker' then 'Encontreiro' else 'Encontrista' end,
     'termo', v_termo,
-    'termo_hash', md5(v_termo),
+    'contrato', v_contrato,
+    'texto_hash', v_hash,
+    'termo_hash', v_hash,                                      -- nome que o Koinonia usa
     'valor_total', v_total,
     'parcelas_max', greatest(coalesce(ev.parcelas_max, 1), 1),
     'entrada_minima', least(coalesce(ev.entrada_minima, 0), v_total),
@@ -235,9 +239,9 @@ begin
       coalesce(s->>'contato_emergencia_nome', ''), coalesce(s->>'contato_emergencia_telefone', ''))
     on conflict (person_id, event_id) do nothing;
 
-    -- o termo que vale é o do resumo OFICIAL; se mudou desde a leitura, desfaz
+    -- termo+contrato que valem são os do resumo OFICIAL; se mudaram desde a leitura, desfaz
     v_res := public._inscricao_resumo(v_pid);
-    if md5(coalesce(v_res->>'termo', '')) is distinct from (p->>'termo_hash') then
+    if (v_res->>'texto_hash') is distinct from (p->>'termo_hash') then
       raise exception 'TERMO_MUDOU';
     end if;
 
