@@ -27,6 +27,7 @@ function buildMenu(): Item[] {
     { id:'impressao',label:'Impressão',           icon:'print',           emoji:'🖨️', rota:'/impressao',         perm:'menu_impressao' },
     { id:'alertlid',label:'Alertas',                icon:'campaign',       emoji:'📢', rota:'/alertas-lideres',   perm:'menu_alertas_lideres' },
     { id:'cozinha', label:'Cozinha',              icon:'restaurant',     emoji:'🍴', rota:'/cozinha',           perm:'menu_cozinha' },
+    { id:'palco',   label:'Palco ↔ Mesa',         icon:'graphic_eq',     emoji:'🎚️', rota:'/palco',             perm:'menu_palco' },
     { id:'equipes', label:'Equipes',              icon:'shield',          emoji:'🛡️', rota:'/equipes',  perm:'menu_equipes' },
     { id:'escalas', label:'Escalas',              icon:'event_note',      emoji:'🗓️', rota:'/escalas',  perm:'menu_equipes', cfg:'menu_escalas' },
     { id:'teatro',  label:'Teatro',               icon:'theater_comedy',  emoji:'🎭', perm:'menu_teatro',

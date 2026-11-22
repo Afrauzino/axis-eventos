@@ -34,6 +34,7 @@ export const PERM_CATALOGO: PermArea[] = [
   { modulo:'relatorios',   label:'Relatórios',   emoji:'📊', funcoes:[{acao:'ver',label:'Ver / Exportar'}] },
   { modulo:'carrossel_fotos', label:'Carrossel de fotos (Início)', emoji:'🖼️', funcoes:[{acao:'editar',label:'Postar fotos'}] },
   { modulo:'impressao',    label:'Impressão',    emoji:'🖨️', funcoes:[{acao:'ver',label:'Ver / Imprimir'},{acao:'editar',label:'Salvar modelos'}] },
+  { modulo:'palco',        label:'Palco ↔ Mesa', emoji:'🎚️', funcoes:[{acao:'ver',label:'Ver links (abrir mesa/pedal)',dica:'Vê os links e QR codes do monitor da mesa e dos pedais'},{acao:'editar',label:'Configurar botões, pedais e palcos'}] },
 ]
 
 // Menus (visibilidade no menu lateral) — o que aparece pra pessoa/equipe
@@ -55,6 +56,7 @@ export const MENUS_CATALOGO: MenuItemCat[] = [
   { modulo:'menu_evento',          label:'Evento (Locais/Ocorrências)', emoji:'📍' },
   { modulo:'menu_alertas_lideres', label:'Alertas entre Líderes', emoji:'📢' },
   { modulo:'menu_cozinha',         label:'Cozinha / Cardápio',  emoji:'🍴' },
+  { modulo:'menu_palco',           label:'Palco ↔ Mesa de som', emoji:'🎚️' },
   { modulo:'menu_saude',           label:'Saúde',               emoji:'⛑️' },
   { modulo:'menu_financeiro',      label:'Financeiro',          emoji:'💰' },
   { modulo:'menu_admin',           label:'Administração',       emoji:'⚙️' },

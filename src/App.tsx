@@ -71,6 +71,9 @@ const CadastroConfig   = lazy(() => import('./pages/CadastroConfig'))
 const Perfil           = lazy(() => import('./pages/Perfil'))
 const MeuPagamento     = lazy(() => import('./pages/MeuPagamento'))
 const InscricoesAssinadas = lazy(() => import('./pages/InscricoesAssinadas'))
+const Palco            = lazy(() => import('./pages/Palco'))
+const PalcoPedal       = lazy(() => import('./pages/PalcoPedal'))   // pública (/ped/:token), sem login
+const PalcoMesa        = lazy(() => import('./pages/PalcoMesa'))    // pública (/mesa/:token), sem login
 
 export type Profile = {
   id: string
@@ -110,6 +113,7 @@ const ROTA_PERM = ([
   ['/inscricoes-assinadas','menu_financeiro'],
   ['/relatorios','menu_admin'],
   ['/ranking','menu_ranking'],
+  ['/palco','menu_palco'],
   ['/admin/painel','painel'],   // Painel tem liberação própria — NÃO exige Administração
   ['/admin','menu_admin'],
 ] as [string, string][]).sort((a, b) => b[0].length - a[0].length) // mais específico primeiro
@@ -197,6 +201,7 @@ function AppRoutes({ profile, onProfileUpdate, versaoFotos }: { profile: Profile
       <Route path="/admin/painel"          element={<PainelAnalises profile={profile} />} />
       <Route path="/admin/cadastro-config" element={<CadastroConfig profile={profile} />} />
       <Route path="/ranking"               element={<Ranking profile={profile} />} />
+      <Route path="/palco"                 element={<Palco profile={profile} />} />
       <Route path="/admin"                 element={<Admin profile={profile} />} />
       <Route path="/perfil"                element={<Perfil profile={profile} onUpdate={onProfileUpdate} />} />
       <Route path="/meu-pagamento"         element={<MeuPagamento profile={profile} />} />
@@ -248,6 +253,7 @@ const TITULOS_ROTA: Record<string,string> = {
   '/admin/saude-sistema': 'Saúde do Sistema',
   '/alertas-lideres': 'Alertas',
   '/cozinha': 'Cozinha',
+  '/palco': 'Palco ↔ Mesa',
 }
 function HeaderTitle() {
   const loc = useLocation()
@@ -424,6 +430,13 @@ export default function App() {
   // Rota PÚBLICA — visualizador de TEMPO do cronograma no celular (foto, restante, %, ao vivo).
   if (window.location.pathname.startsWith('/tempo')) {
     return <Suspense fallback={<div style={{position:'fixed',inset:0,background:'#0a0e17'}}/>}><TempoView/></Suspense>
+  }
+  // Rotas PÚBLICAS do Palco ↔ Mesa (acesso só pelo link secreto; ver sql/100).
+  if (/^\/ped\/[^/]+\/?$/.test(window.location.pathname)) {
+    return <Suspense fallback={<div style={{position:'fixed',inset:0,background:'#0b0f17'}}/>}><PalcoPedal/></Suspense>
+  }
+  if (/^\/mesa\/[^/]+\/?$/.test(window.location.pathname)) {
+    return <Suspense fallback={<div style={{position:'fixed',inset:0,background:'#0b0f17'}}/>}><PalcoMesa/></Suspense>
   }
 
   if (loading) return (
