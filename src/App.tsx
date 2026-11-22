@@ -74,6 +74,7 @@ const InscricoesAssinadas = lazy(() => import('./pages/InscricoesAssinadas'))
 const Palco            = lazy(() => import('./pages/Palco'))
 const PalcoPedal       = lazy(() => import('./pages/PalcoPedal'))   // pública (/ped/:token), sem login
 const PalcoMesa        = lazy(() => import('./pages/PalcoMesa'))    // pública (/mesa/:token), sem login
+const PalcoCelular     = lazy(() => import('./pages/PalcoCelular')) // pública (/cel/:token), palco + mesa no celular
 
 export type Profile = {
   id: string
@@ -437,6 +438,9 @@ export default function App() {
   }
   if (/^\/mesa\/[^/]+\/?$/.test(window.location.pathname)) {
     return <Suspense fallback={<div style={{position:'fixed',inset:0,background:'#0b0f17'}}/>}><PalcoMesa/></Suspense>
+  }
+  if (/^\/cel\/[^/]+\/?$/.test(window.location.pathname)) {
+    return <Suspense fallback={<div style={{position:'fixed',inset:0,background:'#0b0f17'}}/>}><PalcoCelular/></Suspense>
   }
 
   if (loading) return (

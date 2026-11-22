@@ -7,7 +7,7 @@ import { useVoltarFecha } from '../hooks/useVoltarFecha'
 import { confirmar } from '../components/Confirmar'
 import { toast } from '../components/Toast'
 import { isAdmin } from '../utils'
-import { PALCO_CORES, linkMesa, linkPedal } from '../lib/palco'
+import { PALCO_CORES, linkMesa, linkPedal, linkCelular, type PalcoEtapa } from '../lib/palco'
 import type { Profile } from '../App'
 
 // PALCO ↔ MESA — configuração (dentro do app). Cada "palco" tem 6 botões de recado
@@ -15,8 +15,8 @@ import type { Profile } from '../App'
 // próprio → a mesa sabe quem apertou) e o link do MONITOR da mesa de som.
 // As telas do palco (/ped/…) e da mesa (/mesa/…) abrem sem login, só pelo link.
 
-type Canal  = { id: string; event_id: string; nome: string; token_mesa: string; ativo: boolean; created_at: string }
-type Botao  = { id: string; canal_id: string; posicao: number; nome: string; mensagem: string; cor: string; ativo: boolean }
+type Canal  = { id: string; event_id: string; nome: string; token_mesa: string; token_celular: string; ativo: boolean; created_at: string }
+type Botao  = { id: string; canal_id: string; posicao: number; nome: string; mensagem: string; cor: string; ativo: boolean; etapas: PalcoEtapa[] }
 type Pedal  = { id: string; canal_id: string; nome: string; token: string; ativo: boolean; visto_em: string | null }
 type Resumo = { posicao: number; nome: string; total: number }
 
@@ -104,22 +104,30 @@ export default function Palco({ profile }: { profile: Profile }) {
     toast.sucesso('Palco excluído')
     setSelId(null); carregarCanais()
   }
-  async function novoLinkMesa() {
+  async function novoLinkCanal(tipo: 'mesa' | 'celular') {
     if (!canal) return
-    if (!(await confirmar({ titulo: 'Gerar novo link da mesa?', mensagem: 'O link atual para de funcionar na hora. Use se o link vazou ou o aparelho foi trocado.', confirmar: 'Gerar novo' }))) return
-    const { data, error } = await supabase.rpc('palco_novo_token', { p_tipo: 'mesa', p_id: canal.id })
+    const nome = tipo === 'mesa' ? 'da mesa' : 'do celular'
+    if (!(await confirmar({ titulo: `Gerar novo link ${nome}?`, mensagem: 'O link atual para de funcionar na hora. Use se o link vazou ou o aparelho foi trocado.', confirmar: 'Gerar novo' }))) return
+    const { data, error } = await supabase.rpc('palco_novo_token', { p_tipo: tipo, p_id: canal.id })
     if (error) { toast.falha('Não foi possível gerar', error); return }
-    setCanais(cs => cs.map(c => (c.id === canal.id ? { ...c, token_mesa: data as string } : c)))
-    toast.sucesso('Novo link da mesa gerado')
+    const campo = tipo === 'mesa' ? 'token_mesa' : 'token_celular'
+    setCanais(cs => cs.map(c => (c.id === canal.id ? { ...c, [campo]: data as string } : c)))
+    toast.sucesso(`Novo link ${nome} gerado`)
   }
 
   // ── Botões ──
   async function salvarBotao(b: Botao) {
     const nome = b.nome.trim()
     if (!nome) { toast.aviso('O botão precisa de um nome'); return }
+    // etapas: tira opções vazias/repetidas e etapas sem opção (o banco recusa formato inválido)
+    const etapas = (b.etapas ?? []).map(e => ({
+      titulo: e.titulo.trim().slice(0, 40),
+      opcoes: [...new Set(e.opcoes.map(o => o.trim().slice(0, 30)).filter(Boolean))].slice(0, 6),
+    })).filter(e => e.opcoes.length > 0).slice(0, 2)
     const { error } = await supabase.from('palco_botoes')
-      .update({ nome: nome.slice(0, 24), mensagem: b.mensagem.trim().slice(0, 160), cor: b.cor, ativo: b.ativo }).eq('id', b.id)
+      .update({ nome: nome.slice(0, 24), mensagem: b.mensagem.trim().slice(0, 160), cor: b.cor, ativo: b.ativo, etapas }).eq('id', b.id)
     if (error) { toast.falha('Não foi possível salvar o botão', error); return }
+    setBotoes(bs => bs.map(x => (x.id === b.id ? { ...b, nome, etapas } : x)))
     toast.sucesso(`Botão ${b.posicao} salvo`)
   }
   async function criarSlot(posicao: number) {
@@ -204,7 +212,18 @@ export default function Palco({ profile }: { profile: Profile }) {
               link={linkMesa(canal.token_mesa)}
               onQr={() => setQr({ titulo: `Mesa · ${canal.nome}`, link: linkMesa(canal.token_mesa) })}
               onCopiar={copiar}
-              onNovo={canEdit ? novoLinkMesa : undefined}
+              onNovo={canEdit ? () => novoLinkCanal('mesa') : undefined}
+            />
+          </Secao>
+
+          {/* celular */}
+          <Secao titulo="📱 Link do celular (palco + mesa)" dica="Um link só pro celular, com as duas funções em abas: enviar recados (a pessoa escolhe qual pedal ela é) e o monitor da mesa. Dá o mesmo poder do link da mesa — entregue só pra quem precisa.">
+            <LinhaLink
+              nome="Celular"
+              link={linkCelular(canal.token_celular)}
+              onQr={() => setQr({ titulo: `Celular · ${canal.nome}`, link: linkCelular(canal.token_celular) })}
+              onCopiar={copiar}
+              onNovo={canEdit ? () => novoLinkCanal('celular') : undefined}
             />
           </Secao>
 
@@ -233,7 +252,7 @@ export default function Palco({ profile }: { profile: Profile }) {
           </Secao>
 
           {/* botões */}
-          <Secao titulo="🔘 Botões (recados)" dica="Nome = o que aparece grande no botão e na mesa. Recado = a explicação embaixo.">
+          <Secao titulo="🔘 Botões (recados)" dica="Nome = o que aparece grande no botão e na mesa. Recado = a explicação embaixo. Opcional: “Etapas” abre telas de escolha antes de enviar (ex.: Back → Sem retorno → Ana = 3 toques).">
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 290px), 1fr))', gap: 12 }}>
               {slots.map((b, i) => b
                 ? <EditorBotao key={b.id} botao={b} canEdit={canEdit}
@@ -337,6 +356,7 @@ function EditorBotao({ botao, canEdit, onChange, onSalvar }: {
         <span style={{ position: 'absolute', top: 8, right: 10, fontSize: 12, fontWeight: 800, background: 'rgba(0,0,0,.25)', borderRadius: 6, padding: '1px 7px' }}>tecla {b.posicao}</span>
         <div style={{ fontSize: 22, fontWeight: 900, lineHeight: 1.1, paddingRight: 56 }}>{b.nome || '—'}</div>
         <div style={{ fontSize: 13, opacity: .92 }}>{b.mensagem}</div>
+        {!!b.etapas?.length && <div style={{ fontSize: 12, fontWeight: 800, marginTop: 4 }}>{b.etapas.length + 1} toques: {[b.nome, ...b.etapas.map(e => e.titulo || 'escolha')].join(' → ')}</div>}
       </div>
       {canEdit && (
         <div style={{ padding: 12 }}>
@@ -354,6 +374,12 @@ function EditorBotao({ botao, canEdit, onChange, onSalvar }: {
                 style={{ width: 28, height: 28, borderRadius: 8, background: c, border: 'none', cursor: 'pointer', boxShadow: b.cor === c ? `0 0 0 2px white, 0 0 0 4px ${c}` : 'none' }} />
             ))}
           </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+            <input type="color" value={b.cor} aria-label="Cor personalizada" onChange={e => onChange({ ...b, cor: e.target.value })}
+              style={{ width: 40, height: 32, borderRadius: 8, border: '1px solid var(--border)', cursor: 'pointer', padding: 2 }} />
+            <span className="text-xs text-muted">Qualquer cor — é a cor que pisca na mesa</span>
+          </div>
+          <EditorEtapas etapas={b.etapas ?? []} cor={b.cor} nome={b.nome} onChange={etapas => onChange({ ...b, etapas })} />
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, flex: 1, cursor: 'pointer' }}>
               <input type="checkbox" checked={b.ativo} onChange={e => onChange({ ...b, ativo: e.target.checked })} /> Ativo no palco
@@ -361,6 +387,61 @@ function EditorBotao({ botao, canEdit, onChange, onSalvar }: {
             <button className="btn btn-primary btn-sm" onClick={() => onSalvar(b)}>Salvar</button>
           </div>
         </div>
+      )}
+    </div>
+  )
+}
+
+// Etapas opcionais do botão: até 2 telas de escolha (até 6 opções cada) antes de enviar.
+function EditorEtapas({ etapas, cor, nome, onChange }: { etapas: PalcoEtapa[]; cor: string; nome: string; onChange: (e: PalcoEtapa[]) => void }) {
+  const [nova, setNova] = useState<Record<number, string>>({})
+  function mudar(i: number, e: Partial<PalcoEtapa>) { onChange(etapas.map((x, j) => (j === i ? { ...x, ...e } : x))) }
+  function addOpcao(i: number) {
+    const txt = (nova[i] ?? '').trim().slice(0, 30)
+    if (!txt) return
+    if (etapas[i].opcoes.includes(txt)) { setNova(n => ({ ...n, [i]: '' })); return }
+    if (etapas[i].opcoes.length >= 6) { toast.aviso('Máximo de 6 opções por etapa'); return }
+    mudar(i, { opcoes: [...etapas[i].opcoes, txt] })
+    setNova(n => ({ ...n, [i]: '' }))
+  }
+  return (
+    <div style={{ background: 'var(--bg)', borderRadius: 10, padding: 10, marginBottom: 12 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: etapas.length ? 8 : 0 }}>
+        <span style={{ fontSize: 13, fontWeight: 800 }}>Etapas antes de enviar <span className="text-muted" style={{ fontWeight: 500 }}>(opcional)</span></span>
+        {etapas.length < 2 && (
+          <button type="button" className="btn btn-outline btn-sm" onClick={() => onChange([...etapas, { titulo: etapas.length ? 'Qual?' : 'O que houve?', opcoes: [] }])}>+ Etapa</button>
+        )}
+      </div>
+      {etapas.length === 0 && <p className="text-xs text-muted" style={{ marginTop: 4 }}>Sem etapas: 1 toque envia direto.</p>}
+      {etapas.map((et, i) => (
+        <div key={i} style={{ background: 'white', borderRadius: 10, padding: 10, marginBottom: 8, borderLeft: `4px solid ${cor}` }}>
+          <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 8 }}>
+            <span style={{ fontSize: 12, fontWeight: 800, color: 'var(--muted)' }}>Toque {i + 2}</span>
+            <input className="form-input" style={{ flex: 1 }} maxLength={40} value={et.titulo} placeholder="Pergunta (ex.: Qual back?)" onChange={e => mudar(i, { titulo: e.target.value })} />
+            <button type="button" className="btn btn-ghost btn-sm" style={{ color: 'var(--danger)' }} onClick={() => onChange(etapas.filter((_, j) => j !== i))} aria-label="Remover etapa">✕</button>
+          </div>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
+            {et.opcoes.map((op, k) => (
+              <span key={op} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: cor, color: 'white', borderRadius: 99, padding: '4px 6px 4px 10px', fontSize: 13, fontWeight: 700 }}>
+                <small style={{ opacity: .8 }}>{k + 1}</small> {op}
+                <button type="button" onClick={() => mudar(i, { opcoes: et.opcoes.filter(x => x !== op) })} aria-label={`Remover ${op}`}
+                  style={{ background: 'rgba(0,0,0,.25)', border: 'none', color: 'white', borderRadius: 99, width: 20, height: 20, cursor: 'pointer', fontSize: 11 }}>✕</button>
+              </span>
+            ))}
+            {et.opcoes.length === 0 && <span className="text-xs" style={{ color: 'var(--danger)' }}>Adicione pelo menos 1 opção</span>}
+          </div>
+          {et.opcoes.length < 6 && (
+            <div style={{ display: 'flex', gap: 6 }}>
+              <input className="form-input" style={{ flex: 1 }} maxLength={30} value={nova[i] ?? ''} placeholder={i === 0 ? 'Opção (ex.: Sem retorno)' : 'Opção (ex.: Ana)'}
+                onChange={e => setNova(n => ({ ...n, [i]: e.target.value }))}
+                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addOpcao(i) } }} />
+              <button type="button" className="btn btn-outline btn-sm" onClick={() => addOpcao(i)}>Adicionar</button>
+            </div>
+          )}
+        </div>
+      ))}
+      {etapas.length > 0 && (
+        <p className="text-xs text-muted">No palco: <b>{nome || 'Botão'}</b> → {etapas.map(e => `[${e.opcoes.slice(0, 3).join(' / ') || '…'}${e.opcoes.length > 3 ? ' …' : ''}]`).join(' → ')} → envia. Lembre de salvar.</p>
       )}
     </div>
   )

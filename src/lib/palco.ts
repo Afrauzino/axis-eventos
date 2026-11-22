@@ -3,7 +3,11 @@
 import { useEffect, useRef } from 'react'
 import { supabase } from './supabase'
 
-export type PalcoBotao = { posicao: number; nome: string; mensagem: string; cor: string }
+// Etapa = uma tela de escolha antes de enviar (máx. 2 → até 3 toques). Ver sql/101.
+export type PalcoEtapa = { titulo: string; opcoes: string[] }
+export type PalcoBotao = { posicao: number; nome: string; mensagem: string; cor: string; etapas?: PalcoEtapa[] }
+// Chamado do PRÓPRIO pedal (retorno ENVIADO / MESA VIU / RESOLVIDO no palco)
+export type MeuChamado = { id: string; posicao: number; status: 'aberto' | 'visto' | 'resolvido'; detalhe?: string; repeticoes: number }
 
 export type PalcoChamado = {
   id: string
@@ -13,6 +17,7 @@ export type PalcoChamado = {
   nome: string
   mensagem: string
   cor: string
+  detalhe?: string
   status: 'aberto' | 'visto' | 'resolvido' | 'cancelado'
   repeticoes: number
   criado_em: string
@@ -31,6 +36,7 @@ export function tokenDaUrl(): string | null {
 
 export function linkPedal(token: string) { return `${window.location.origin}/ped/${token}` }
 export function linkMesa(token: string)  { return `${window.location.origin}/mesa/${token}` }
+export function linkCelular(token: string) { return `${window.location.origin}/cel/${token}` }
 
 /**
  * Busca o estado por RPC em intervalo (fonte da verdade) + escuta um "aviso" em
@@ -132,6 +138,36 @@ export function bipe(tipo: 'novo' | 'reforco' | 'ok' = 'novo') {
     o.connect(g).connect(ctx!.destination)
     o.start(ini); o.stop(ini + dur + 0.02)
   })
+}
+
+/**
+ * Detecta recado NOVO ou REFORÇADO (repeticoes subiu) entre um poll e outro.
+ * Na 1ª carga só registra (não alerta o que já estava lá).
+ */
+export function useDeteccaoNovos() {
+  const ref = useRef<Map<string, number> | null>(null)
+  return function detectar(abertos: PalcoChamado[]): { tipo: 'novo' | 'reforco'; chamado: PalcoChamado } | null {
+    const ant = ref.current
+    ref.current = new Map(abertos.map(c => [c.id, c.repeticoes]))
+    if (!ant) return null
+    let achou: { tipo: 'novo' | 'reforco'; chamado: PalcoChamado } | null = null
+    for (const c of abertos) {
+      const r = ant.get(c.id)
+      if (r === undefined) return { tipo: 'novo', chamado: c }
+      if (c.repeticoes > r) achou = { tipo: 'reforco', chamado: c }
+    }
+    return achou
+  }
+}
+
+/** Texto legível de erro das RPCs do palco. */
+export function erroPalco(msg: string | undefined): string {
+  const m = msg ?? ''
+  if (m.includes('pedal_invalido')) return 'Este pedal não vale mais. Peça um novo link ao responsável.'
+  if (m.includes('botao_inativo')) return 'Este botão foi desativado.'
+  if (m.includes('escolha_invalida')) return 'As opções deste botão mudaram. Tente de novo.'
+  if (m.includes('limite_apertos')) return 'Muitos apertos seguidos. Aguarde alguns segundos.'
+  return navigator.onLine ? 'Não foi enviado. Toque de novo.' : 'Sem internet — não foi enviado.'
 }
 
 export function vibrar(ms: number | number[]) { try { navigator.vibrate?.(ms) } catch {} }
