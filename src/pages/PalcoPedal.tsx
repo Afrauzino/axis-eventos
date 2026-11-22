@@ -6,6 +6,8 @@ import {
 } from '../lib/palco'
 import PadPalco from '../components/palco/PadPalco'
 import { Aviso, LinkInvalido, Tela } from '../components/palco/Comum'
+import { FundoVivo, vidroChip, vidroPainel } from '../components/palco/vidro'
+import { BotaoInstalar, useManifestPalco } from '../components/palco/Instalar'
 
 // PEDAL DO PALCO — página pública (/ped/:token), sem login, pro tablet/celular no palco.
 // Até 6 botões (configurados em /palco). Botão simples: 1 toque envia. Botão com etapas:
@@ -28,7 +30,8 @@ export default function PalcoPedal() {
   const avisoTimer = useRef<number | undefined>(undefined)
 
   useTelaAcesa(true)
-  useFundoEscuro('#0b0f17')
+  useFundoEscuro('#05070d')
+  useManifestPalco('ped', token, estado?.pedal.nome)
   useEffect(() => { document.title = estado ? `Pedal · ${estado.pedal.nome}` : 'Pedal do palco' }, [estado?.pedal.nome])
 
   const puxar = useCallback(async () => {
@@ -71,15 +74,16 @@ export default function PalcoPedal() {
   if (!token || !estado) return <Tela><LinkInvalido titulo="Pedal não encontrado" /></Tela>
 
   return (
-    <div style={{ position: 'fixed', inset: 0, display: 'flex', flexDirection: 'column', background: '#0b0f17', color: '#f8fafc', userSelect: 'none', WebkitUserSelect: 'none', touchAction: 'manipulation' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderBottom: '1px solid #1e293b' }}>
+    <div style={{ position: 'fixed', inset: 0, display: 'flex', flexDirection: 'column', color: '#f8fafc', userSelect: 'none', WebkitUserSelect: 'none', touchAction: 'manipulation' }}>
+      <FundoVivo cores={estado.botoes.map(b => b.cor)} />
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', margin: '10px 12px 0', borderRadius: 20, ...vidroPainel(), marginTop: 'max(10px, env(safe-area-inset-top))' }}>
         <span title={online ? 'Conectado' : 'Sem conexão'} style={{ width: 12, height: 12, borderRadius: 99, background: online ? '#22c55e' : '#ef4444', boxShadow: online ? '0 0 8px #22c55e' : 'none', flexShrink: 0 }} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 17, fontWeight: 800, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>🎤 {estado.pedal.nome}</div>
           <div style={{ fontSize: 12, color: '#94a3b8', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{estado.canal.nome} · mesa de som</div>
         </div>
-        <button onClick={alternarTelaCheia} aria-label="Tela cheia"
-          style={{ background: '#1e293b', color: '#e2e8f0', border: 'none', borderRadius: 10, padding: '8px 12px', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>⛶ Tela cheia</button>
+        <BotaoInstalar />
+        <button onClick={alternarTelaCheia} aria-label="Tela cheia" style={vidroChip}>⛶</button>
       </div>
       {!online && <div style={{ background: '#7f1d1d', color: 'white', textAlign: 'center', padding: '6px 10px', fontSize: 14, fontWeight: 700 }}>Sem conexão com a mesa — verifique a internet</div>}
       <PadPalco botoes={estado.botoes} chamados={estado.chamados} onEnviar={enviar} onCancelar={cancelar} />

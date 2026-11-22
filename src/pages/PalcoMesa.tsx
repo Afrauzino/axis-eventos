@@ -7,6 +7,8 @@ import {
 import MesaCards, { FlashTela, MESA_CSS } from '../components/palco/MesaCards'
 import { LinkInvalido, Tela } from '../components/palco/Comum'
 import { useMesa, Recentes, type MesaEstado } from '../components/palco/mesa'
+import { FundoVivo, vidroBotao, vidroChip, vidroPainel } from '../components/palco/vidro'
+import { BotaoInstalar, useManifestPalco } from '../components/palco/Instalar'
 
 // MONITOR DA MESA DE SOM — página pública (/mesa/:token), sem login, pro PC/tablet da mesa.
 // Recados do palco em tempo real (quem apertou, o quê, detalhe das etapas, há quanto
@@ -29,7 +31,8 @@ export default function PalcoMesa() {
   somRef.current = som
 
   useTelaAcesa(true)
-  useFundoEscuro('#0b0f17')
+  useFundoEscuro('#05070d')
+  useManifestPalco('mesa', token, estado?.canal.nome)
   useEffect(() => { try { localStorage.setItem('axis_palco_som', som ? '1' : '0') } catch {} }, [som])
   useEffect(() => { const t = setInterval(() => setAgora(Date.now() + offsetRef.current), 1000); return () => clearInterval(t) }, [])
 
@@ -77,11 +80,12 @@ export default function PalcoMesa() {
   const qtdAbertos = estado.abertos.length
 
   return (
-    <div style={{ position: 'fixed', inset: 0, display: 'flex', flexDirection: 'column', background: '#0b0f17', color: '#f8fafc', fontFamily: 'inherit' }}>
+    <div style={{ position: 'fixed', inset: 0, display: 'flex', flexDirection: 'column', color: '#f8fafc', fontFamily: 'inherit' }}>
+      <FundoVivo cores={[...new Set(estado.abertos.map(c => c.cor))].concat(['#2B6CB0', '#6B46C1'])} />
       <style>{MESA_CSS}</style>
       <FlashTela cor={flashCor} />
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 16px', borderBottom: '1px solid #1e293b', flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 16px', margin: '10px 12px 0', borderRadius: 20, ...vidroPainel(), flexWrap: 'wrap' }}>
         <span title={online ? 'Conectado' : 'Sem conexão'} style={{ width: 12, height: 12, borderRadius: 99, background: online ? '#22c55e' : '#ef4444', boxShadow: online ? '0 0 8px #22c55e' : 'none' }} />
         <div style={{ minWidth: 0 }}>
           <div style={{ fontSize: 18, fontWeight: 900 }}>🎚️ {estado.canal.nome}</div>
@@ -90,15 +94,16 @@ export default function PalcoMesa() {
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', flex: 1, minWidth: 120 }}>
           {estado.pedais.map(p => (
             <span key={p.id} title={p.online ? 'Pedal conectado' : 'Pedal sem contato recente'}
-              style={{ fontSize: 12, fontWeight: 700, borderRadius: 99, padding: '3px 10px', background: p.online ? '#14532d' : '#1e293b', color: p.online ? '#bbf7d0' : '#64748b' }}>
+              style={{ fontSize: 12, fontWeight: 700, borderRadius: 99, padding: '3px 10px', background: p.online ? 'rgba(34,197,94,.22)' : 'rgba(255,255,255,.08)', border: '1px solid rgba(255,255,255,.14)', color: p.online ? '#bbf7d0' : '#94a3b8' }}>
               {p.online ? '●' : '○'} {p.nome}
             </span>
           ))}
         </div>
         <span style={{ fontVariantNumeric: 'tabular-nums', fontSize: 20, fontWeight: 800, color: '#cbd5e1' }}>{hora}</span>
         <button onClick={() => { destravarSom(); setSom(s => !s) }} style={btnTopo}>{som ? '🔔 Som ligado' : '🔕 Sem som'}</button>
+        <BotaoInstalar />
         <button onClick={alternarTelaCheia} style={btnTopo}>⛶</button>
-        {qtdAbertos > 1 && <button onClick={() => marcar(null, 'resolvido')} style={{ ...btnTopo, background: '#166534', color: 'white' }}>✓ Resolver todos ({qtdAbertos})</button>}
+        {qtdAbertos > 1 && <button onClick={() => marcar(null, 'resolvido')} style={{ ...btnTopo, ...vidroBotao('#16a34a') }}>✓ Resolver todos ({qtdAbertos})</button>}
       </div>
 
       {!online && <div style={{ background: '#7f1d1d', color: 'white', textAlign: 'center', padding: '6px 10px', fontSize: 14, fontWeight: 700 }}>Sem conexão — os recados podem estar atrasados</div>}
@@ -110,11 +115,11 @@ export default function PalcoMesa() {
       <Recentes recentes={estado.recentes} agora={agora} />
 
       {!iniciado && (
-        <div onClick={() => { destravarSom(); if (som) bipe('ok'); setIniciado(true) }} style={{ position: 'fixed', inset: 0, zIndex: 70, background: 'rgba(11,15,23,.94)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', textAlign: 'center', padding: 24 }}>
+        <div onClick={() => { destravarSom(); if (som) bipe('ok'); setIniciado(true) }} style={{ position: 'fixed', inset: 0, zIndex: 70, background: 'rgba(5,7,13,.72)', backdropFilter: 'blur(18px)', WebkitBackdropFilter: 'blur(18px)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', textAlign: 'center', padding: 24 }}>
           <div style={{ fontSize: 64 }}>🎚️</div>
           <div style={{ fontSize: 28, fontWeight: 900, marginTop: 8 }}>{estado.canal.nome}</div>
           <div style={{ fontSize: 16, color: '#94a3b8', margin: '8px 0 22px' }}>Toque em qualquer lugar para iniciar o monitor e ativar o som de alerta</div>
-          <span style={{ background: '#22c55e', color: '#052e16', fontWeight: 900, fontSize: 18, borderRadius: 14, padding: '14px 28px' }}>▶ Iniciar monitor</span>
+          <span style={{ ...vidroBotao('#22c55e'), color: 'white', fontWeight: 900, fontSize: 18, borderRadius: 18, padding: '14px 28px' }}>▶ Iniciar monitor</span>
           <div style={{ fontSize: 12, color: '#475569', marginTop: 18 }}>Atalhos: Espaço = resolve o mais antigo · V = marca como visto</div>
         </div>
       )}
@@ -122,4 +127,4 @@ export default function PalcoMesa() {
   )
 }
 
-const btnTopo: React.CSSProperties = { background: '#1e293b', color: '#e2e8f0', border: 'none', borderRadius: 10, padding: '8px 12px', fontSize: 13, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit' }
+const btnTopo: React.CSSProperties = vidroChip

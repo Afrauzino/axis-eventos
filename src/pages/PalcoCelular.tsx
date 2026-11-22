@@ -8,6 +8,8 @@ import PadPalco from '../components/palco/PadPalco'
 import MesaCards, { FlashTela, MESA_CSS } from '../components/palco/MesaCards'
 import { useMesa, Recentes, type MesaEstado } from '../components/palco/mesa'
 import { Aviso, LinkInvalido, Tela } from '../components/palco/Comum'
+import { Brilho, FundoVivo, vidroBotao, vidroChip, vidroPainel } from '../components/palco/vidro'
+import { BotaoInstalar, useManifestPalco } from '../components/palco/Instalar'
 
 // LINK DO CELULAR — página pública (/cel/:token), sem login. Um link só com as DUAS
 // funções, em abas embaixo: 🎤 PALCO (envia como um dos pedais — a pessoa escolhe
@@ -38,7 +40,8 @@ export default function PalcoCelular() {
   const pedalRef = useRef(pedalId); pedalRef.current = pedalId
 
   useTelaAcesa(true)
-  useFundoEscuro('#0b0f17')
+  useFundoEscuro('#05070d')
+  useManifestPalco('cel', token, estado?.canal.nome)
   useEffect(() => { try { localStorage.setItem(chave + '_aba', aba) } catch {} }, [aba, chave])
   useEffect(() => { try { pedalId ? localStorage.setItem(chave + '_pedal', pedalId) : localStorage.removeItem(chave + '_pedal') } catch {} }, [pedalId, chave])
   useEffect(() => { try { localStorage.setItem('axis_palco_som', som ? '1' : '0') } catch {} }, [som])
@@ -106,12 +109,13 @@ export default function PalcoCelular() {
 
   return (
     <div onPointerDown={() => destravarSom()}
-      style={{ position: 'fixed', inset: 0, display: 'flex', flexDirection: 'column', background: '#0b0f17', color: '#f8fafc', userSelect: 'none', WebkitUserSelect: 'none', touchAction: 'manipulation' }}>
+      style={{ position: 'fixed', inset: 0, display: 'flex', flexDirection: 'column', color: '#f8fafc', userSelect: 'none', WebkitUserSelect: 'none', touchAction: 'manipulation' }}>
       <style>{MESA_CSS}</style>
       <FlashTela cor={flashCor} />
+      <FundoVivo cores={estado.botoes.map(b => b.cor)} />
 
       {/* topo */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderBottom: '1px solid #1e293b', paddingTop: 'max(10px, env(safe-area-inset-top))' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', margin: '0 10px', marginTop: 'max(10px, env(safe-area-inset-top))', borderRadius: 20, ...vidroPainel() }}>
         <span style={{ width: 12, height: 12, borderRadius: 99, background: online ? '#22c55e' : '#ef4444', flexShrink: 0 }} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 16, fontWeight: 900, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
@@ -119,9 +123,10 @@ export default function PalcoCelular() {
           </div>
           <div style={{ fontSize: 12, color: '#94a3b8', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{estado.canal.nome}</div>
         </div>
+        <BotaoInstalar />
         {aba === 'palco' && pedal && <button onClick={() => setPedalId(null)} style={btnTopo}>Trocar</button>}
         {aba === 'mesa' && <button onClick={() => { destravarSom(); setSom(s => !s) }} style={btnTopo}>{som ? '🔔' : '🔕'}</button>}
-        {aba === 'mesa' && estado.abertos.length > 1 && <button onClick={() => marcar(null, 'resolvido')} style={{ ...btnTopo, background: '#166534', color: 'white' }}>✓ Todos</button>}
+        {aba === 'mesa' && estado.abertos.length > 1 && <button onClick={() => marcar(null, 'resolvido')} style={{ ...btnTopo, ...vidroBotao('#16a34a') }}>✓ Todos</button>}
       </div>
       {!online && <div style={{ background: '#7f1d1d', color: 'white', textAlign: 'center', padding: '6px 10px', fontSize: 13, fontWeight: 700 }}>Sem conexão</div>}
 
@@ -137,8 +142,8 @@ export default function PalcoCelular() {
             <div style={{ display: 'grid', gap: 10 }}>
               {estado.pedais.map(p => (
                 <button key={p.id} onClick={() => setPedalId(p.id)}
-                  style={{ background: '#1e293b', color: 'white', border: 'none', borderRadius: 16, padding: '18px 16px', fontSize: 20, fontWeight: 800, textAlign: 'left', cursor: 'pointer', fontFamily: 'inherit' }}>
-                  🎤 {p.nome}
+                  style={{ ...vidroPainel(.35), position: 'relative', color: 'white', borderRadius: 20, padding: '18px 16px', fontSize: 20, fontWeight: 800, textAlign: 'left', cursor: 'pointer', fontFamily: 'inherit' }}>
+                  <Brilho raio={20} />🎤 {p.nome}
                 </button>
               ))}
             </div>
@@ -154,11 +159,11 @@ export default function PalcoCelular() {
       )}
 
       {/* abas */}
-      <div style={{ display: 'flex', borderTop: '1px solid #1e293b', background: '#0f172a', paddingBottom: 'env(safe-area-inset-bottom)' }}>
+      <div style={{ display: 'flex', margin: '0 10px', marginBottom: 'max(10px, env(safe-area-inset-bottom))', borderRadius: 24, overflow: 'hidden', ...vidroPainel(.5) }}>
         {([['palco', '🎤', 'Palco'], ['mesa', '🎚️', 'Mesa']] as const).map(([id, em, label]) => (
           <button key={id} onClick={() => setAba(id)}
-            style={{ flex: 1, background: 'none', border: 'none', color: aba === id ? '#f8fafc' : '#64748b', padding: '10px 0 12px', fontFamily: 'inherit', cursor: 'pointer', position: 'relative',
-                     borderTop: `3px solid ${aba === id ? '#22c55e' : 'transparent'}` }}>
+            style={{ flex: 1, border: 'none', color: aba === id ? '#f8fafc' : '#94a3b8', padding: '10px 0 12px', fontFamily: 'inherit', cursor: 'pointer', position: 'relative',
+                     background: aba === id ? 'rgba(255,255,255,.12)' : 'none' }}>
             <div style={{ fontSize: 22 }}>{em}</div>
             <div style={{ fontSize: 13, fontWeight: 800 }}>{label}</div>
             {id === 'mesa' && naoVistos > 0 && (
@@ -173,4 +178,4 @@ export default function PalcoCelular() {
   )
 }
 
-const btnTopo: React.CSSProperties = { background: '#1e293b', color: '#e2e8f0', border: 'none', borderRadius: 10, padding: '8px 12px', fontSize: 14, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0 }
+const btnTopo: React.CSSProperties = vidroChip

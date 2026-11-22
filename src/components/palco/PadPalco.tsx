@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { posicaoDaTecla, vibrar, type MeuChamado, type PalcoBotao } from '../../lib/palco'
+import { Brilho, vidroBotao, vidroChip } from './vidro'
 
 // Grade de botões do PALCO (usada no /ped e na aba Palco do /cel).
 // Botão simples → 1 toque envia. Botão com ETAPAS → abre 1 ou 2 telas de escolha
@@ -116,24 +117,27 @@ export default function PadPalco({ botoes, chamados, onEnviar, onCancelar }: Pro
     const cols = paisagem ? Math.min(3, n) : (n <= 3 ? 1 : 2)
     return (
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', background: b.cor }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', margin: '12px 12px 0', borderRadius: 20, position: 'relative', ...vidroBotao(b.cor) }}>
+          <Brilho raio={20} />
           <button onClick={voltar} style={btnEtapa}>← Voltar</button>
-          <div style={{ flex: 1, minWidth: 0, textAlign: 'center' }}>
+          <div style={{ flex: 1, minWidth: 0, textAlign: 'center', position: 'relative' }}>
             <div style={{ fontSize: 13, fontWeight: 800, opacity: .9 }}>{[b.nome, ...fluxo.escolhas].join(' › ')}</div>
             <div style={{ fontSize: 'clamp(20px, 4vmin, 30px)', fontWeight: 900, lineHeight: 1.1 }}>{etapa.titulo || 'Escolha'}</div>
           </div>
-          <span style={{ fontSize: 13, fontWeight: 900, background: 'rgba(0,0,0,.25)', borderRadius: 99, padding: '4px 10px' }}>{passo + 2}/{total + 1}</span>
+          <span style={{ fontSize: 13, fontWeight: 900, background: 'rgba(255,255,255,.16)', borderRadius: 99, padding: '4px 10px', position: 'relative' }}>{passo + 2}/{total + 1}</span>
           <button onClick={() => setFluxo(null)} style={btnEtapa} aria-label="Cancelar">✕</button>
         </div>
         <div style={{ flex: 1, display: 'grid', gridTemplateColumns: `repeat(${cols}, 1fr)`, gridAutoRows: '1fr', gap: 12, padding: 12, minHeight: 0 }}>
           {etapa.opcoes.map((op, i) => (
             <button key={op} onClick={() => escolher(op)}
               style={{
-                position: 'relative', border: `4px solid ${b.cor}`, borderRadius: 22, cursor: 'pointer', fontFamily: 'inherit',
-                background: flash === `o${op}` ? b.cor : '#111827', color: 'white', padding: 12, minHeight: 0,
-                display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'background .12s',
+                position: 'relative', borderRadius: 24, cursor: 'pointer', fontFamily: 'inherit', color: 'white', padding: 12, minHeight: 0,
+                display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'transform .12s, filter .12s',
+                ...vidroBotao(b.cor, flash !== `o${op}`),
+                transform: flash === `o${op}` ? 'scale(.97)' : 'none',
               }}>
-              <span style={{ position: 'absolute', top: 10, left: 12, fontSize: 14, fontWeight: 800, background: b.cor, borderRadius: 8, padding: '2px 8px' }}>{i + 1}</span>
+              <Brilho raio={24} />
+              <span style={{ position: 'absolute', top: 10, left: 12, fontSize: 14, fontWeight: 800, background: 'rgba(255,255,255,.16)', border: '1px solid rgba(255,255,255,.25)', borderRadius: 10, padding: '2px 9px' }}>{i + 1}</span>
               <span style={{ fontSize: tamTexto(op, cols), fontWeight: 900, lineHeight: 1.1, textAlign: 'center', overflowWrap: 'break-word', maxWidth: '100%' }}>{op}</span>
             </button>
           ))}
@@ -150,7 +154,7 @@ export default function PadPalco({ botoes, chamados, onEnviar, onCancelar }: Pro
   return (
     <div style={{ flex: 1, display: 'grid', gridTemplateColumns: `repeat(${cols}, 1fr)`, gridAutoRows: '1fr', gap: 12, padding: 12, minHeight: 0, position: 'relative' }}>
       <style>{`
-        @keyframes palcoPulse { 0%,100% { box-shadow: inset 0 0 0 4px #fbbf24 } 50% { box-shadow: 0 0 28px 4px rgba(251,191,36,.45), inset 0 0 0 4px #fbbf24 } }
+        @keyframes palcoPulse { 0%,100% { box-shadow: inset 0 1px 1px rgba(255,255,255,.7), inset 0 0 0 4px #fbbf24 } 50% { box-shadow: inset 0 1px 1px rgba(255,255,255,.7), 0 0 34px 6px rgba(251,191,36,.55), inset 0 0 0 4px #fbbf24 } }
       `}</style>
       {botoes.map(b => {
         const meus = chamados.filter(c => c.posicao === b.posicao).sort((x, y) => ordem[x.status] - ordem[y.status])
@@ -161,17 +165,18 @@ export default function PadPalco({ botoes, chamados, onEnviar, onCancelar }: Pro
           <button key={b.posicao} onClick={() => tocarBotao(b)} disabled={enviando}
             aria-label={`${b.nome}: ${b.mensagem}`}
             style={{
-              position: 'relative', border: 'none', borderRadius: 22, cursor: 'pointer', fontFamily: 'inherit',
-              background: b.cor, color: 'white', padding: '14px 12px', minHeight: 0, overflow: 'hidden',
+              position: 'relative', borderRadius: 26, cursor: 'pointer', fontFamily: 'inherit',
+              ...vidroBotao(b.cor), color: 'white', padding: '14px 12px', minHeight: 0, overflow: 'hidden',
               display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6,
               filter: flash === `b${b.posicao}` ? 'brightness(1.35)' : 'none',
               transform: flash === `b${b.posicao}` ? 'scale(.97)' : 'none',
               transition: 'transform .12s, filter .12s',
               animation: st === 'aberto' ? 'palcoPulse 1.2s ease-in-out infinite' : 'none',
-              boxShadow: st === 'visto' ? 'inset 0 0 0 4px #38bdf8' : st === 'resolvido' ? 'inset 0 0 0 4px #4ade80' : 'none',
+              ...(st === 'visto' ? { boxShadow: `${vidroBotao(b.cor).boxShadow}, inset 0 0 0 4px #38bdf8` } : st === 'resolvido' ? { boxShadow: `${vidroBotao(b.cor).boxShadow}, inset 0 0 0 4px #4ade80` } : {}),
             }}>
-            <span style={{ position: 'absolute', top: 10, left: 12, fontSize: 14, fontWeight: 800, background: 'rgba(0,0,0,.28)', borderRadius: 8, padding: '2px 8px' }}>{b.posicao}</span>
-            {temEtapas && <span style={{ position: 'absolute', bottom: 10, right: 12, fontSize: 12, fontWeight: 800, background: 'rgba(0,0,0,.28)', borderRadius: 8, padding: '2px 8px' }}>{b.etapas!.length + 1} toques ›</span>}
+            <Brilho raio={26} />
+            <span style={{ position: 'absolute', top: 10, left: 12, fontSize: 14, fontWeight: 800, background: 'rgba(255,255,255,.16)', border: '1px solid rgba(255,255,255,.25)', borderRadius: 10, padding: '2px 9px' }}>{b.posicao}</span>
+            {temEtapas && <span style={{ position: 'absolute', bottom: 10, right: 12, fontSize: 12, fontWeight: 800, background: 'rgba(255,255,255,.16)', border: '1px solid rgba(255,255,255,.25)', borderRadius: 10, padding: '2px 9px' }}>{b.etapas!.length + 1} toques ›</span>}
             <span style={{ fontSize: tamTexto(b.nome, cols), fontWeight: 900, lineHeight: 1.05, textAlign: 'center', textShadow: '0 2px 6px rgba(0,0,0,.25)', overflowWrap: 'break-word', maxWidth: '100%' }}>{b.nome}</span>
             {b.mensagem && <span style={{ fontSize: 'clamp(13px, 2.4vmin, 20px)', fontWeight: 600, opacity: .92, textAlign: 'center', lineHeight: 1.2 }}>{b.mensagem}</span>}
             {st && (
@@ -192,14 +197,15 @@ export default function PadPalco({ botoes, chamados, onEnviar, onCancelar }: Pro
             {abertos.length > 0 && (
               <span role="button" aria-label="Cancelar pedido"
                 onClick={e => { e.stopPropagation(); abertos.forEach(onCancelar) }}
-                style={{ position: 'absolute', top: 8, right: 8, width: 40, height: 40, borderRadius: 99, background: 'rgba(0,0,0,.35)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, fontWeight: 800 }}>✕</span>
+                style={{ position: 'absolute', top: 8, right: 8, width: 40, height: 40, borderRadius: 99, background: 'rgba(255,255,255,.18)', border: '1px solid rgba(255,255,255,.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, fontWeight: 800 }}>✕</span>
             )}
           </button>
         )
       })}
 
       {enviado && (
-        <div style={{ position: 'absolute', inset: 12, borderRadius: 22, background: enviado.cor, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: 20, pointerEvents: 'none', boxShadow: '0 0 0 4px #fbbf24' }}>
+        <div style={{ position: 'absolute', inset: 12, borderRadius: 28, ...vidroBotao(enviado.cor), display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: 20, pointerEvents: 'none' }}>
+          <Brilho raio={28} />
           <div style={{ fontSize: 'clamp(40px, 10vmin, 90px)' }}>📨</div>
           <div style={{ fontSize: 'clamp(22px, 5vmin, 44px)', fontWeight: 900 }}>Enviado pra mesa</div>
           <div style={{ fontSize: 'clamp(16px, 3.4vmin, 28px)', fontWeight: 700, marginTop: 6 }}>{enviado.texto}</div>
@@ -209,7 +215,7 @@ export default function PadPalco({ botoes, chamados, onEnviar, onCancelar }: Pro
   )
 }
 
-const btnEtapa: React.CSSProperties = { background: 'rgba(0,0,0,.3)', color: 'white', border: 'none', borderRadius: 12, padding: '10px 14px', fontSize: 16, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0 }
+const btnEtapa: React.CSSProperties = { ...vidroChip, padding: '10px 14px', fontSize: 16, position: 'relative' }
 
 // Fonte cabe na largura do botão sem quebrar a palavra no meio
 // (largura ≈ 100vw/colunas; cada letra ≈ 0,62em; a palavra mais longa manda).

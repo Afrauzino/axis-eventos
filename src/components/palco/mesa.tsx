@@ -45,10 +45,10 @@ export function useMesa(estado: MesaEstado | null, setEstado: React.Dispatch<Rea
 export function Recentes({ recentes, agora }: { recentes: PalcoChamado[]; agora: number }) {
   if (!recentes.length) return null
   return (
-    <div style={{ borderTop: '1px solid #1e293b', padding: '8px 14px', display: 'flex', gap: 8, overflowX: 'auto', whiteSpace: 'nowrap', flexShrink: 0 }}>
+    <div style={{ padding: '8px 14px', display: 'flex', gap: 8, overflowX: 'auto', whiteSpace: 'nowrap', flexShrink: 0 }}>
       <span style={{ fontSize: 12, color: '#64748b', fontWeight: 800, alignSelf: 'center' }}>RECENTES</span>
       {recentes.map(r => (
-        <span key={r.id} style={{ fontSize: 12, borderRadius: 99, padding: '4px 10px', background: '#111827', color: '#94a3b8', border: '1px solid #1e293b' }}>
+        <span key={r.id} style={{ fontSize: 12, borderRadius: 99, padding: '4px 10px', background: 'rgba(15,23,42,.5)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', color: '#cbd5e1', border: '1px solid rgba(255,255,255,.1)' }}>
           <b style={{ color: r.cor }}>■</b> {r.nome}{r.detalhe ? ` (${r.detalhe})` : ''} · {r.pedal_nome} · {r.status === 'cancelado' ? 'cancelado pelo palco' : 'resolvido'} {haQuanto(r.atualizado_em, agora)}
         </span>
       ))}
