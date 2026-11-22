@@ -22,11 +22,29 @@
         } catch(e){}
       })();
     </script>
-    <link rel="manifest" href="/manifest.webmanifest" />
+    <!-- Manifesto e metas do "Adicionar à Tela de Início" escritos JÁ NO CARREGAMENTO:
+         nos links do Palco ↔ Mesa (/ped, /mesa, /cel) o app instalado tem que abrir
+         naquele link, não no AXIS (o iPhone lê o manifesto antes do React rodar — se
+         visse o padrão, o ícone abria no "/" e pedia login). -->
+    <script>
+      (function(){
+        var m = /^\/(ped|mesa|cel)\/([0-9a-fA-F]{32})\/?$/.exec(location.pathname);
+        if (m) {
+          var titulo = { ped: 'Pedal', mesa: 'Mesa', cel: 'Palco' }[m[1]];
+          document.write(
+            '<link rel="manifest" href="/api/palco-manifest?tipo=' + m[1] + '&t=' + m[2].toLowerCase() + '" />' +
+            '<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />' +
+            '<meta name="apple-mobile-web-app-title" content="' + titulo + '" />');
+        } else {
+          document.write(
+            '<link rel="manifest" href="/manifest.webmanifest" />' +
+            '<meta name="apple-mobile-web-app-status-bar-style" content="default" />' +
+            '<meta name="apple-mobile-web-app-title" content="AXIS" />');
+        }
+      })();
+    </script>
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-    <meta name="apple-mobile-web-app-title" content="AXIS" />
     <link rel="icon" type="image/png" href="/axis-192.png" />
     <link rel="apple-touch-icon" href="/axis-apple.png" />
     <meta name="description" content="AXIS Eventos - Gestao de Eventos" />
