@@ -5,6 +5,9 @@ import {
   erroPalco, useDeteccaoNovos, type PalcoBotao, type MeuChamado,
 } from '../lib/palco'
 import PadPalco from '../components/palco/PadPalco'
+import AvisoDaMesa, { type AvisoPalco } from '../components/palco/AvisoDaMesa'
+import FalarPalco from '../components/palco/FalarPalco'
+import ConfigMesa from '../components/palco/ConfigMesa'
 import MesaCards, { FlashTela, MESA_CSS } from '../components/palco/MesaCards'
 import { useMesa, Recentes, type MesaEstado } from '../components/palco/mesa'
 import { Aviso, LinkInvalido, Tela } from '../components/palco/Comum'
@@ -17,7 +20,7 @@ import { BotaoInstalar, useManifestPalco } from '../components/palco/Instalar'
 // Recado novo: a aba Mesa ganha contador e o celular vibra; com a aba Mesa aberta,
 // também toca o som e a tela pisca na cor do botão.
 
-type CelEstado = MesaEstado & { botoes: PalcoBotao[]; meus: MeuChamado[] }
+type CelEstado = MesaEstado & { botoes: PalcoBotao[]; meus: MeuChamado[]; meus_avisos?: AvisoPalco[] }
 type Aba = 'palco' | 'mesa'
 
 export default function PalcoCelular() {
@@ -30,6 +33,7 @@ export default function PalcoCelular() {
   const [pedalId, setPedalId] = useState<string | null>(() => { try { return localStorage.getItem(chave + '_pedal') } catch { return null } })
   const [som, setSom] = useState(() => { try { return localStorage.getItem('axis_palco_som') !== '0' } catch { return true } })
   const [flashCor, setFlashCor] = useState<string | null>(null)
+  const [painel, setPainel] = useState<'falar' | 'config' | null>(null)
   const [aviso, setAviso] = useState<string | null>(null)
   const [agora, setAgora] = useState(Date.now())
   const offsetRef = useRef(0)
@@ -101,6 +105,13 @@ export default function PalcoCelular() {
     avisar()
   }, [token, avisar, puxar])
 
+  const ciente = useCallback(async (id: string) => {
+    if (!token || !pedalId) return
+    setEstado(e => e && ({ ...e, meus_avisos: (e.meus_avisos ?? []).filter(a => a.id !== id) }))
+    await supabase.rpc('palco_cel_aviso_ciente', { p_token: token, p_pedal: pedalId, p_aviso: id })
+    avisar()
+  }, [token, pedalId, avisar])
+
   if (!carregou) return <Tela><span style={{ color: '#64748b', fontSize: 18 }}>Carregando…</span></Tela>
   if (!token || !estado) return <Tela><LinkInvalido titulo="Link do celular não encontrado" /></Tela>
 
@@ -151,12 +162,23 @@ export default function PalcoCelular() {
         )
       ) : (
         <>
+          <div style={{ display: 'flex', gap: 8, padding: '10px 10px 0' }}>
+            <button onClick={() => setPainel('falar')} style={{ ...btnTopo, ...vidroBotao('#0ea5e9'), color: 'white', flex: 2, padding: '12px 10px', fontSize: 15 }}>📣 Falar com o palco</button>
+            <button onClick={() => setPainel('config')} style={{ ...btnTopo, flex: 1, padding: '12px 10px', fontSize: 15 }}>⚙️ Configurar</button>
+          </div>
           <div style={{ flex: 1, overflowY: 'auto', padding: 12 }}>
             <MesaCards abertos={estado.abertos} agora={agora} onMarcar={marcar} compacto />
           </div>
           <Recentes recentes={estado.recentes} agora={agora} />
         </>
       )}
+
+      {aba === 'palco' && pedal && <AvisoDaMesa avisos={estado.meus_avisos ?? []} onCiente={ciente} />}
+      {painel === 'falar' && (
+        <FalarPalco token={token} pedais={estado.pedais} recados={estado.canal.recados_mesa ?? []} avisos={estado.avisos ?? []}
+          agora={agora} onEnviado={() => { avisar(); puxar() }} onFechar={() => setPainel(null)} />
+      )}
+      {painel === 'config' && <ConfigMesa token={token} onFechar={() => { setPainel(null); puxar() }} onMudou={avisar} />}
 
       {/* abas */}
       <div style={{ display: 'flex', margin: '0 10px', marginBottom: 'max(10px, env(safe-area-inset-bottom))', borderRadius: 24, overflow: 'hidden', ...vidroPainel(.5) }}>

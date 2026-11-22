@@ -9,6 +9,8 @@ import { LinkInvalido, Tela } from '../components/palco/Comum'
 import { useMesa, Recentes, type MesaEstado } from '../components/palco/mesa'
 import { FundoVivo, vidroBotao, vidroChip, vidroPainel } from '../components/palco/vidro'
 import { BotaoInstalar, useManifestPalco } from '../components/palco/Instalar'
+import FalarPalco from '../components/palco/FalarPalco'
+import ConfigMesa from '../components/palco/ConfigMesa'
 
 // MONITOR DA MESA DE SOM — página pública (/mesa/:token), sem login, pro PC/tablet da mesa.
 // Recados do palco em tempo real (quem apertou, o quê, detalhe das etapas, há quanto
@@ -24,6 +26,7 @@ export default function PalcoMesa() {
   const [iniciado, setIniciado] = useState(false)     // toque inicial (destrava o som)
   const [som, setSom] = useState(() => { try { return localStorage.getItem('axis_palco_som') !== '0' } catch { return true } })
   const [flashCor, setFlashCor] = useState<string | null>(null)
+  const [painel, setPainel] = useState<'falar' | 'config' | null>(null)
   const [agora, setAgora] = useState(Date.now())
   const offsetRef = useRef(0)
   const detectar = useDeteccaoNovos()
@@ -63,7 +66,7 @@ export default function PalcoMesa() {
   // atalhos: Espaço/Enter = resolve o mais antigo · V = marca o mais antigo como visto
   useEffect(() => {
     const onKey = (ev: KeyboardEvent) => {
-      if (!iniciado || !estado?.abertos.length || ev.repeat) return
+      if (!iniciado || painel || !estado?.abertos.length || ev.repeat) return
       if (ev.key === ' ' || ev.key === 'Enter') { ev.preventDefault(); marcar(estado.abertos[0].id, 'resolvido') }
       else if (ev.key.toLowerCase() === 'v') {
         const a = estado.abertos.find(c => c.status === 'aberto'); if (a) marcar(a.id, 'visto')
@@ -71,7 +74,7 @@ export default function PalcoMesa() {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [iniciado, estado, marcar])
+  }, [iniciado, painel, estado, marcar])
 
   if (!carregou) return <Tela><span style={{ color: '#64748b', fontSize: 18 }}>Carregando…</span></Tela>
   if (!token || !estado) return <Tela><LinkInvalido titulo="Monitor não encontrado" /></Tela>
@@ -101,6 +104,8 @@ export default function PalcoMesa() {
         </div>
         <span style={{ fontVariantNumeric: 'tabular-nums', fontSize: 20, fontWeight: 800, color: '#cbd5e1' }}>{hora}</span>
         <button onClick={() => { destravarSom(); setSom(s => !s) }} style={btnTopo}>{som ? '🔔 Som ligado' : '🔕 Sem som'}</button>
+        <button onClick={() => setPainel('falar')} style={{ ...btnTopo, ...vidroBotao('#0ea5e9'), color: 'white' }}>📣 Falar com o palco</button>
+        <button onClick={() => setPainel('config')} style={btnTopo}>⚙️ Configurar</button>
         <BotaoInstalar />
         <button onClick={alternarTelaCheia} style={btnTopo}>⛶</button>
         {qtdAbertos > 1 && <button onClick={() => marcar(null, 'resolvido')} style={{ ...btnTopo, ...vidroBotao('#16a34a') }}>✓ Resolver todos ({qtdAbertos})</button>}
@@ -113,6 +118,12 @@ export default function PalcoMesa() {
       </div>
 
       <Recentes recentes={estado.recentes} agora={agora} />
+
+      {painel === 'falar' && (
+        <FalarPalco token={token} pedais={estado.pedais} recados={estado.canal.recados_mesa ?? []} avisos={estado.avisos ?? []}
+          agora={agora} onEnviado={() => { avisar(); puxar() }} onFechar={() => setPainel(null)} />
+      )}
+      {painel === 'config' && <ConfigMesa token={token} onFechar={() => { setPainel(null); puxar() }} onMudou={avisar} />}
 
       {!iniciado && (
         <div onClick={() => { destravarSom(); if (som) bipe('ok'); setIniciado(true) }} style={{ position: 'fixed', inset: 0, zIndex: 70, background: 'rgba(5,7,13,.72)', backdropFilter: 'blur(18px)', WebkitBackdropFilter: 'blur(18px)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', textAlign: 'center', padding: 24 }}>

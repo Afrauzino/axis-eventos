@@ -1,14 +1,16 @@
 import { useCallback, useEffect, useRef } from 'react'
 import { supabase } from '../../lib/supabase'
 import { bipe, haQuanto, type PalcoChamado } from '../../lib/palco'
+import type { AvisoEnviado } from './FalarPalco'
 
 // Lógica e peças da MESA compartilhadas entre /mesa e a aba Mesa do /cel.
 
 export type MesaEstado = {
-  canal: { id: string; nome: string; sinal: string }
+  canal: { id: string; nome: string; sinal: string; recados_mesa?: string[] }
   pedais: { id: string; nome: string; online: boolean }[]
   abertos: PalcoChamado[]
   recentes: PalcoChamado[]
+  avisos?: AvisoEnviado[]
   agora: string
 }
 
