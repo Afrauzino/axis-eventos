@@ -16,7 +16,7 @@ export default function handler(req, res) {
   const manifest = {
     id: caminho,
     name: extra ? `${padrao} · ${extra}` : padrao,
-    short_name: (extra && tipo !== 'mesa' ? extra : curto).slice(0, 12),
+    short_name: (extra && tipo === 'ped' ? extra : curto).slice(0, 12),
     description: 'Comunicação entre o palco e a mesa de som — AXIS Eventos',
     start_url: caminho,
     scope: caminho,
