@@ -1,11 +1,11 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { toast } from '../Toast'
-import { PALCO_CORES, teclaDe, type PalcoEtapa } from '../../lib/palco'
+import { PALCO_CORES, TECLAS_RESERVADAS, nomeTecla, teclaDe, teclaDoBotao, type PalcoEtapa } from '../../lib/palco'
 
 // Editor de UM botão do palco (nome, recado, cor, ativo, etapas). Usado na
 // configuração dentro do app (/palco) e no painel ⚙️ da mesa (/mesa, /cel).
 
-export type BotaoCfg = { posicao: number; nome: string; mensagem: string; cor: string; ativo: boolean; etapas: PalcoEtapa[] }
+export type BotaoCfg = { posicao: number; nome: string; mensagem: string; cor: string; ativo: boolean; etapas: PalcoEtapa[]; tecla?: string | null }
 
 /** Tira opções vazias/repetidas e etapas sem opção (o banco recusa formato inválido). */
 export function limparEtapas(etapas: PalcoEtapa[] | undefined): PalcoEtapa[] {
@@ -15,15 +15,16 @@ export function limparEtapas(etapas: PalcoEtapa[] | undefined): PalcoEtapa[] {
   })).filter(e => e.opcoes.length > 0).slice(0, 2)
 }
 
-export function EditorBotao({ botao, canEdit, onChange, onSalvar, onExcluir }: {
+export function EditorBotao({ botao, canEdit, onChange, onSalvar, onExcluir, outros = [] }: {
   botao: BotaoCfg; canEdit: boolean; onChange: (b: BotaoCfg) => void; onSalvar: (b: BotaoCfg) => void; onExcluir?: () => void
+  outros?: BotaoCfg[]   // os outros botões do mesmo conjunto (pra avisar tecla repetida)
 }) {
   const b = botao
   return (
     <div style={{ border: '1px solid var(--border)', borderRadius: 14, overflow: 'hidden', opacity: b.ativo ? 1 : .6 }}>
       {/* prévia */}
       <div style={{ background: b.cor, color: 'white', padding: '12px 14px', position: 'relative', minHeight: 74 }}>
-        <span style={{ position: 'absolute', top: 8, right: 10, fontSize: 12, fontWeight: 800, background: 'rgba(0,0,0,.25)', borderRadius: 6, padding: '1px 7px' }}>botão {b.posicao} · tecla {teclaDe(b.posicao)}</span>
+        <span style={{ position: 'absolute', top: 8, right: 10, fontSize: 12, fontWeight: 800, background: 'rgba(0,0,0,.25)', borderRadius: 6, padding: '1px 7px' }}>botão {b.posicao} · tecla {teclaDoBotao(b)}</span>
         <div style={{ fontSize: 22, fontWeight: 900, lineHeight: 1.1, paddingRight: 120 }}>{b.nome || '—'}</div>
         <div style={{ fontSize: 13, opacity: .92 }}>{b.mensagem}</div>
         {!!b.etapas?.length && <div style={{ fontSize: 12, fontWeight: 800, marginTop: 4 }}>{b.etapas.length + 1} toques: {[b.nome, ...b.etapas.map(e => e.titulo || 'escolha')].join(' → ')}</div>}
@@ -49,6 +50,7 @@ export function EditorBotao({ botao, canEdit, onChange, onSalvar, onExcluir }: {
               style={{ width: 40, height: 32, borderRadius: 8, border: '1px solid var(--border)', cursor: 'pointer', padding: 2 }} />
             <span className="text-xs text-muted">Qualquer cor — é a cor que pisca na mesa</span>
           </div>
+          <CampoTecla botao={b} outros={outros} onChange={tecla => onChange({ ...b, tecla })} />
           <EditorEtapas etapas={b.etapas ?? []} cor={b.cor} nome={b.nome} onChange={etapas => onChange({ ...b, etapas })} />
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, flex: 1, cursor: 'pointer' }}>
@@ -114,6 +116,45 @@ function EditorEtapas({ etapas, cor, nome, onChange }: { etapas: PalcoEtapa[]; c
       {etapas.length > 0 && (
         <p className="text-xs text-muted">No palco: <b>{nome || 'Botão'}</b> → {etapas.map(e => `[${e.opcoes.slice(0, 3).join(' / ') || '…'}${e.opcoes.length > 3 ? ' …' : ''}]`).join(' → ')} → envia. Lembre de salvar.</p>
       )}
+    </div>
+  )
+}
+
+// Tecla de atalho do botão: toca em "Definir tecla" e aperta a tecla no teclado do PC
+// ou no pedal USB/Bluetooth. Vazio = automática pela posição (1–9, 0, A–L).
+function CampoTecla({ botao, outros, onChange }: { botao: BotaoCfg; outros: BotaoCfg[]; onChange: (t: string | null) => void }) {
+  const [ouvindo, setOuvindo] = useState(false)
+  useEffect(() => {
+    if (!ouvindo) return
+    const onKey = (e: KeyboardEvent) => {
+      e.preventDefault(); e.stopImmediatePropagation()
+      const k = (e.key ?? '').toLowerCase()
+      if (k === 'escape') { setOuvindo(false); return }
+      if (TECLAS_RESERVADAS.includes(k)) { toast.aviso('Essa tecla não pode ser atalho. Escolha outra.'); return }
+      onChange(k); setOuvindo(false)
+    }
+    window.addEventListener('keydown', onKey, { capture: true })
+    return () => window.removeEventListener('keydown', onKey, { capture: true })
+  }, [ouvindo])
+
+  const efetiva = (x: BotaoCfg) => x.tecla || teclaDe(x.posicao).toLowerCase()
+  const repetida = outros.find(o => o.posicao !== botao.posicao && efetiva(o) === efetiva(botao))
+  return (
+    <div style={{ background: 'var(--bg)', borderRadius: 10, padding: 10, marginBottom: 12 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+        <span style={{ fontSize: 13, fontWeight: 800, flex: 1 }}>⌨️ Tecla de atalho</span>
+        <span style={{ fontSize: 15, fontWeight: 900, minWidth: 44, textAlign: 'center', background: 'white', border: '1px solid var(--border)', borderRadius: 8, padding: '4px 10px' }}>
+          {botao.tecla ? nomeTecla(botao.tecla) : teclaDe(botao.posicao)}
+        </span>
+        <button type="button" className={`btn btn-sm ${ouvindo ? 'btn-primary' : 'btn-outline'}`} onClick={() => setOuvindo(o => !o)}>
+          {ouvindo ? 'Aperte a tecla… (Esc cancela)' : 'Definir tecla'}
+        </button>
+        {botao.tecla && <button type="button" className="btn btn-ghost btn-sm" onClick={() => onChange(null)}>Automática</button>}
+      </div>
+      <p className="text-xs text-muted" style={{ marginTop: 6 }}>
+        {botao.tecla ? 'Tecla escolhida por você.' : `Automática pela posição (${teclaDe(botao.posicao)}).`} Funciona no teclado do PC e em pedal USB/Bluetooth. Lembre de salvar.
+      </p>
+      {repetida && <p className="text-xs" style={{ color: 'var(--danger)', marginTop: 4, fontWeight: 700 }}>⚠️ A mesma tecla está no botão “{repetida.nome || repetida.posicao}”. A tecla escolhida por você tem prioridade.</p>}
     </div>
   )
 }

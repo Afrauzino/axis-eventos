@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { posicaoDaTecla, teclaDe, vibrar, type MeuChamado, type PalcoBotao } from '../../lib/palco'
+import { botaoDaTecla, posicaoDaTecla, teclaDoBotao, vibrar, type MeuChamado, type PalcoBotao } from '../../lib/palco'
 import { Brilho, vidroBotao, vidroChip } from './vidro'
 
 // Grade de botões do PALCO (usada no /ped e na aba Palco do /cel).
@@ -85,16 +85,15 @@ export default function PadPalco({ botoes, chamados, onEnviar, onCancelar }: Pro
     const onKey = (e: KeyboardEvent) => {
       if (e.repeat || e.ctrlKey || e.metaKey || e.altKey) return
       if (fluxo && (e.key === 'Escape' || e.key === 'Backspace' || e.key === '0')) { e.preventDefault(); voltar(); return }
-      const p = posicaoDaTecla(e)
-      if (!p) return
-      e.preventDefault()
       if (fluxo) {
-        const etapa = fluxo.botao.etapas![fluxo.escolhas.length]
-        const op = etapa?.opcoes[p - 1]
-        if (op) escolher(op)
+        // nas etapas as opções são sempre 1–6 (ou A–F)
+        const p = posicaoDaTecla(e)
+        const op = p ? fluxo.botao.etapas![fluxo.escolhas.length]?.opcoes[p - 1] : undefined
+        if (op) { e.preventDefault(); escolher(op) }
       } else {
-        const b = botoes.find(x => x.posicao === p)
-        if (b) tocarBotao(b)
+        // tecla configurada no botão (ex.: F1 = Back) ou a automática da posição
+        const b = botaoDaTecla(botoes, e)
+        if (b) { e.preventDefault(); tocarBotao(b) }
       }
     }
     window.addEventListener('keydown', onKey)
@@ -178,7 +177,7 @@ export default function PadPalco({ botoes, chamados, onEnviar, onCancelar }: Pro
               ...(st === 'visto' ? { boxShadow: `${vidroBotao(b.cor).boxShadow}, inset 0 0 0 4px #38bdf8` } : st === 'resolvido' ? { boxShadow: `${vidroBotao(b.cor).boxShadow}, inset 0 0 0 4px #4ade80` } : {}),
             }}>
             <Brilho raio={26} />
-            <span style={{ position: 'absolute', top: 10, left: 12, fontSize: 14, fontWeight: 800, background: 'rgba(255,255,255,.16)', border: '1px solid rgba(255,255,255,.25)', borderRadius: 10, padding: '2px 9px' }}>{teclaDe(b.posicao)}</span>
+            <span style={{ position: 'absolute', top: 10, left: 12, fontSize: 14, fontWeight: 800, background: 'rgba(255,255,255,.16)', border: '1px solid rgba(255,255,255,.25)', borderRadius: 10, padding: '2px 9px' }}>{teclaDoBotao(b)}</span>
             {temEtapas && <span style={{ position: 'absolute', bottom: 10, right: 12, fontSize: 12, fontWeight: 800, background: 'rgba(255,255,255,.16)', border: '1px solid rgba(255,255,255,.25)', borderRadius: 10, padding: '2px 9px' }}>{b.etapas!.length + 1} toques ›</span>}
             <span style={{ fontSize: tamTexto(b.nome, cols), fontWeight: 900, lineHeight: 1.05, textAlign: 'center', textShadow: '0 2px 6px rgba(0,0,0,.25)', overflowWrap: 'break-word', maxWidth: '100%' }}>{b.nome}</span>
             {b.mensagem && <span style={{ fontSize: 'clamp(13px, 2.4vmin, 20px)', fontWeight: 600, opacity: .92, textAlign: 'center', lineHeight: 1.2 }}>{b.mensagem}</span>}
