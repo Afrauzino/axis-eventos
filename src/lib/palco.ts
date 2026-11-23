@@ -5,7 +5,7 @@ import { supabase } from './supabase'
 
 // Etapa = uma tela de escolha antes de enviar (máx. 2 → até 3 toques). Ver sql/101.
 export type PalcoEtapa = { titulo: string; opcoes: string[] }
-export type PalcoBotao = { posicao: number; nome: string; mensagem: string; cor: string; etapas?: PalcoEtapa[] }
+export type PalcoBotao = { posicao: number; nome: string; mensagem: string; cor: string; etapas?: PalcoEtapa[]; tecla?: string | null }
 // Chamado do PRÓPRIO pedal (retorno ENVIADO / MESA VIU / RESOLVIDO no palco)
 export type MeuChamado = { id: string; posicao: number; status: 'aberto' | 'visto' | 'resolvido'; detalhe?: string; repeticoes: number }
 
@@ -193,6 +193,40 @@ export function posicaoDaTecla(e: KeyboardEvent): number | null {
   const letra = 'abcdefghijkl'.indexOf(k)
   if (k?.length === 1 && letra >= 0) return letra + 1
   return null
+}
+
+/** Tecla do evento no formato salvo no banco (KeyboardEvent.key em minúsculas). */
+export function normalizarTecla(e: KeyboardEvent): string {
+  return (e.key ?? '').toLowerCase()
+}
+
+const NOMES_TECLA: Record<string, string> = {
+  ' ': 'Espaço', arrowup: '↑', arrowdown: '↓', arrowleft: '←', arrowright: '→',
+  pageup: 'PgUp', pagedown: 'PgDn', enter: 'Enter', tab: 'Tab', home: 'Home', end: 'End',
+  insert: 'Ins', delete: 'Del', backspace: '⌫', escape: 'Esc',
+}
+/** Nome amigável da tecla salva ("f1" → "F1", "a" → "A", " " → "Espaço"). */
+export function nomeTecla(k: string): string {
+  return NOMES_TECLA[k] ?? (k.length === 1 ? k.toUpperCase() : k.charAt(0).toUpperCase() + k.slice(1))
+}
+
+/** Teclas que o palco usa pra outras coisas e não podem ser atalho de botão. */
+export const TECLAS_RESERVADAS = ['escape', 'backspace', 'control', 'alt', 'shift', 'meta', 'capslock']
+
+/** Tecla que aciona o botão: a configurada ou a automática da posição. */
+export function teclaDoBotao(b: { posicao: number; tecla?: string | null }): string {
+  return b.tecla ? nomeTecla(b.tecla) : teclaDe(b.posicao)
+}
+
+/** Qual botão a tecla aperta: 1º a tecla configurada; senão a automática (1–9, 0, A–L)
+ *  — mas só pra botão que NÃO tem tecla própria. */
+export function botaoDaTecla<T extends { posicao: number; tecla?: string | null }>(botoes: T[], e: KeyboardEvent): T | null {
+  const k = normalizarTecla(e)
+  const proprio = botoes.find(b => b.tecla && b.tecla === k)
+  if (proprio) return proprio
+  const p = posicaoDaTecla(e)
+  if (!p) return null
+  return botoes.find(b => b.posicao === p && !b.tecla) ?? null
 }
 
 /** Rótulo da tecla de uma posição (1–9, 0, depois só a letra). */

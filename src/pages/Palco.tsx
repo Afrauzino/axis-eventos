@@ -17,7 +17,7 @@ import type { Profile } from '../App'
 // As telas do palco (/ped/…) e da mesa (/mesa/…) abrem sem login, só pelo link.
 
 type Canal  = { id: string; event_id: string; nome: string; token_mesa: string; token_celular: string; ativo: boolean; created_at: string }
-type Botao  = { id: string; canal_id: string; posicao: number; nome: string; mensagem: string; cor: string; ativo: boolean; etapas: PalcoEtapa[] }
+type Botao  = { id: string; canal_id: string; posicao: number; nome: string; mensagem: string; cor: string; ativo: boolean; etapas: PalcoEtapa[]; tecla?: string | null }
 type Pedal  = { id: string; canal_id: string; nome: string; token: string; ativo: boolean; visto_em: string | null }
 type Resumo = { posicao: number; nome: string; total: number }
 
@@ -123,7 +123,7 @@ export default function Palco({ profile }: { profile: Profile }) {
     // etapas: tira opções vazias/repetidas e etapas sem opção (o banco recusa formato inválido)
     const etapas = limparEtapas(b.etapas)
     const { error } = await supabase.from('palco_botoes')
-      .update({ nome: nome.slice(0, 24), mensagem: b.mensagem.trim().slice(0, 160), cor: b.cor, ativo: b.ativo, etapas }).eq('id', b.id)
+      .update({ nome: nome.slice(0, 24), mensagem: b.mensagem.trim().slice(0, 160), cor: b.cor, ativo: b.ativo, etapas, tecla: b.tecla ? b.tecla.toLowerCase() : null }).eq('id', b.id)
     if (error) { toast.falha('Não foi possível salvar o botão', error); return }
     setBotoes(bs => bs.map(x => (x.id === b.id ? { ...b, nome, etapas } : x)))
     toast.sucesso(`Botão ${b.posicao} salvo`)
@@ -264,7 +264,8 @@ export default function Palco({ profile }: { profile: Profile }) {
                 <EditorBotao key={b.id} botao={b} canEdit={canEdit}
                   onChange={nb => setBotoes(bs => bs.map(x => (x.id === b.id ? { ...x, ...nb } : x)))}
                   onSalvar={nb => salvarBotao({ ...b, ...nb })}
-                  onExcluir={canEdit ? () => excluirBotao(b) : undefined} />
+                  onExcluir={canEdit ? () => excluirBotao(b) : undefined}
+                  outros={botoes} />
               ))}
               {canEdit && botoes.length < MAX_BOTOES && (
                 <button onClick={adicionarBotao} className="btn btn-outline" style={{ minHeight: 120 }}>+ Adicionar botão</button>

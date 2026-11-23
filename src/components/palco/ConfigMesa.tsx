@@ -62,7 +62,7 @@ export default function ConfigMesa({ token, onFechar, onMudou }: { token: string
     const etapas = limparEtapas(b.etapas)
     const { error } = await supabase.rpc('palco_mesa_salvar_botao', {
       p_token: token, p_posicao: b.posicao, p_nome: nome.slice(0, 24), p_mensagem: b.mensagem.trim().slice(0, 160),
-      p_cor: b.cor, p_ativo: b.ativo, p_etapas: etapas, p_pedal: conjunto,
+      p_cor: b.cor, p_ativo: b.ativo, p_etapas: etapas, p_pedal: conjunto, p_tecla: b.tecla ?? null,
     })
     if (error) { toast.erro(msgErro(error)); return }
     setBotoesSel(bs => bs.map(x => (x.posicao === b.posicao ? { ...b, nome, etapas } : x)))
@@ -202,7 +202,8 @@ export default function ConfigMesa({ token, onFechar, onMudou }: { token: string
                       <EditorBotao botao={b} canEdit
                         onChange={nb => setBotoesSel(bs => bs.map(x => (x.posicao === b.posicao ? nb : x)))}
                         onSalvar={salvarBotao}
-                        onExcluir={() => excluirBotao(b)} />
+                        onExcluir={() => excluirBotao(b)}
+                        outros={botoesSel} />
                     </div>
                   ))}
                 </div>
