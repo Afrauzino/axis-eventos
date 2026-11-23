@@ -93,7 +93,7 @@ begin
     (new.id, 5, 'Mic falhando','Microfone falhando / sem som',       '#C53030'),
     (new.id, 6, 'Técnico',     'Preciso do técnico no palco',        '#6B46C1')
   on conflict (canal_id, posicao) do nothing;
-  insert into public.palco_pedais (canal_id, nome) values (new.id, 'Palco');
+  insert into public.palco_pedais (canal_id, nome) values (new.id, 'Pedal 1');
   return new;
 end;
 $function$;
