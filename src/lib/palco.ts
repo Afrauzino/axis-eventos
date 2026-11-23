@@ -182,12 +182,22 @@ export function haQuanto(iso: string, agoraMs: number): string {
   return `há ${Math.floor(m / 60)}h${String(m % 60).padStart(2, '0')}`
 }
 
-/** Teclas aceitas no palco: 1–6 (teclado/numérico) e A–F. Pedais USB/Bluetooth
- *  programáveis normalmente enviam teclas — basta programar cada pedal numa delas. */
+export const MAX_BOTOES = 12
+
+/** Teclas aceitas no palco (até 12 botões): 1–9 e 0 (= 10), ou letras A–L (= 1–12).
+ *  Pedais USB/Bluetooth programáveis enviam teclas — programe cada pedal numa delas. */
 export function posicaoDaTecla(e: KeyboardEvent): number | null {
   const k = e.key?.toLowerCase()
-  if (/^[1-6]$/.test(k)) return Number(k)
-  const letra = 'abcdef'.indexOf(k)
+  if (/^[1-9]$/.test(k)) return Number(k)
+  if (k === '0') return 10
+  const letra = 'abcdefghijkl'.indexOf(k)
   if (k?.length === 1 && letra >= 0) return letra + 1
   return null
+}
+
+/** Rótulo da tecla de uma posição (1–9, 0, depois só a letra). */
+export function teclaDe(posicao: number): string {
+  if (posicao <= 9) return String(posicao)
+  if (posicao === 10) return '0'
+  return 'abcdefghijkl'[posicao - 1].toUpperCase()
 }

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { QRCodeSVG } from 'qrcode.react'
 import { supabase } from '../lib/supabase'
 import { useEvento } from '../hooks/useEvento'
@@ -7,7 +7,7 @@ import { useVoltarFecha } from '../hooks/useVoltarFecha'
 import { confirmar } from '../components/Confirmar'
 import { toast } from '../components/Toast'
 import { isAdmin } from '../utils'
-import { linkMesa, linkPedal, linkCelular, type PalcoEtapa } from '../lib/palco'
+import { linkMesa, linkPedal, linkCelular, MAX_BOTOES, PALCO_CORES, type PalcoEtapa } from '../lib/palco'
 import { EditorBotao, limparEtapas } from '../components/palco/EditorBotao'
 import type { Profile } from '../App'
 
@@ -63,7 +63,7 @@ export default function Palco({ profile }: { profile: Profile }) {
   async function carregarCanal(id: string) {
     const inicioDia = new Date(); inicioDia.setHours(0, 0, 0, 0)
     const [b, , ch] = await Promise.all([
-      supabase.from('palco_botoes').select('*').eq('canal_id', id).order('posicao'),
+      supabase.from('palco_botoes').select('*').eq('canal_id', id).is('pedal_id', null).order('posicao'),   // só os PADRÃO (os próprios de cada pedal ficam no ⚙️ da mesa)
       carregarPedais(id),
       supabase.from('palco_chamados').select('posicao,nome,repeticoes').eq('canal_id', id).gte('criado_em', inicioDia.toISOString()).limit(2000),
     ])
@@ -128,11 +128,20 @@ export default function Palco({ profile }: { profile: Profile }) {
     setBotoes(bs => bs.map(x => (x.id === b.id ? { ...b, nome, etapas } : x)))
     toast.sucesso(`Botão ${b.posicao} salvo`)
   }
-  async function criarSlot(posicao: number) {
+  async function adicionarBotao() {
     if (!canal) return
-    const { error } = await supabase.from('palco_botoes').insert({ canal_id: canal.id, posicao, nome: `Botão ${posicao}`, mensagem: '' })
+    const usadas = new Set(botoes.map(b => b.posicao))
+    const posicao = Array.from({ length: MAX_BOTOES }, (_, i) => i + 1).find(p => !usadas.has(p))
+    if (!posicao) { toast.aviso(`Máximo de ${MAX_BOTOES} botões`); return }
+    const { error } = await supabase.from('palco_botoes').insert({ canal_id: canal.id, posicao, nome: `Botão ${posicao}`, mensagem: '', cor: PALCO_CORES[(posicao - 1) % PALCO_CORES.length] })
     if (error) { toast.falha('Não foi possível criar o botão', error); return }
     carregarCanal(canal.id)
+  }
+  async function excluirBotao(b: Botao) {
+    if (!(await confirmar({ titulo: `Excluir o botão “${b.nome}”?`, mensagem: 'Some do palco na hora. O histórico de recados é mantido.', perigo: true }))) return
+    const { error } = await supabase.from('palco_botoes').delete().eq('id', b.id)
+    if (error) { toast.falha('Não foi possível excluir', error); return }
+    setBotoes(bs => bs.filter(x => x.id !== b.id))
   }
 
   // ── Pedais ──
@@ -175,7 +184,6 @@ export default function Palco({ profile }: { profile: Profile }) {
     catch { window.prompt('Copie o link:', link) }
   }
 
-  const slots = useMemo(() => [1, 2, 3, 4, 5, 6].map(pos => botoes.find(b => b.posicao === pos) ?? null), [botoes])
 
   if (loading) return <div className="page">{[1, 2, 3].map(i => <div key={i} className="skeleton" style={{ height: 80, marginBottom: 10, borderRadius: 14 }} />)}</div>
   if (!evento) return <div className="page"><div className="empty"><p className="empty-title">Nenhum evento ativo</p></div></div>
@@ -250,15 +258,17 @@ export default function Palco({ profile }: { profile: Profile }) {
           </Secao>
 
           {/* botões */}
-          <Secao titulo="🔘 Botões (recados)" dica="Nome = o que aparece grande no botão e na mesa. Recado = a explicação embaixo. Opcional: “Etapas” abre telas de escolha antes de enviar (ex.: Back → Sem retorno → Ana = 3 toques).">
+          <Secao titulo="🔘 Botões (recados)" dica="Nome = o que aparece grande no botão e na mesa. Recado = a explicação embaixo. Opcional: “Etapas” abre telas de escolha antes de enviar (ex.: Back → Sem retorno → Ana = 3 toques). Até 12 botões. Estes são os PADRÃO; botões diferentes por pessoa se configuram no ⚙️ do monitor da mesa.">
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 290px), 1fr))', gap: 12 }}>
-              {slots.map((b, i) => b
-                ? <EditorBotao key={b.id} botao={b} canEdit={canEdit}
-                    onChange={nb => setBotoes(bs => bs.map(x => (x.id === b.id ? { ...x, ...nb } : x)))}
-                    onSalvar={nb => salvarBotao({ ...b, ...nb })} />
-                : canEdit && (
-                  <button key={`vazio-${i}`} onClick={() => criarSlot(i + 1)} className="btn btn-outline" style={{ minHeight: 120 }}>+ Criar botão {i + 1}</button>
-                ))}
+              {botoes.map(b => (
+                <EditorBotao key={b.id} botao={b} canEdit={canEdit}
+                  onChange={nb => setBotoes(bs => bs.map(x => (x.id === b.id ? { ...x, ...nb } : x)))}
+                  onSalvar={nb => salvarBotao({ ...b, ...nb })}
+                  onExcluir={canEdit ? () => excluirBotao(b) : undefined} />
+              ))}
+              {canEdit && botoes.length < MAX_BOTOES && (
+                <button onClick={adicionarBotao} className="btn btn-outline" style={{ minHeight: 120 }}>+ Adicionar botão</button>
+              )}
             </div>
           </Secao>
 
