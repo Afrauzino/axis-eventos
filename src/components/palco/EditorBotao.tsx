@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { toast } from '../Toast'
-import { PALCO_CORES, type PalcoEtapa } from '../../lib/palco'
+import { PALCO_CORES, teclaDe, type PalcoEtapa } from '../../lib/palco'
 
 // Editor de UM botão do palco (nome, recado, cor, ativo, etapas). Usado na
 // configuração dentro do app (/palco) e no painel ⚙️ da mesa (/mesa, /cel).
@@ -15,16 +15,16 @@ export function limparEtapas(etapas: PalcoEtapa[] | undefined): PalcoEtapa[] {
   })).filter(e => e.opcoes.length > 0).slice(0, 2)
 }
 
-export function EditorBotao({ botao, canEdit, onChange, onSalvar }: {
-  botao: BotaoCfg; canEdit: boolean; onChange: (b: BotaoCfg) => void; onSalvar: (b: BotaoCfg) => void
+export function EditorBotao({ botao, canEdit, onChange, onSalvar, onExcluir }: {
+  botao: BotaoCfg; canEdit: boolean; onChange: (b: BotaoCfg) => void; onSalvar: (b: BotaoCfg) => void; onExcluir?: () => void
 }) {
   const b = botao
   return (
     <div style={{ border: '1px solid var(--border)', borderRadius: 14, overflow: 'hidden', opacity: b.ativo ? 1 : .6 }}>
       {/* prévia */}
       <div style={{ background: b.cor, color: 'white', padding: '12px 14px', position: 'relative', minHeight: 74 }}>
-        <span style={{ position: 'absolute', top: 8, right: 10, fontSize: 12, fontWeight: 800, background: 'rgba(0,0,0,.25)', borderRadius: 6, padding: '1px 7px' }}>tecla {b.posicao}</span>
-        <div style={{ fontSize: 22, fontWeight: 900, lineHeight: 1.1, paddingRight: 56 }}>{b.nome || '—'}</div>
+        <span style={{ position: 'absolute', top: 8, right: 10, fontSize: 12, fontWeight: 800, background: 'rgba(0,0,0,.25)', borderRadius: 6, padding: '1px 7px' }}>botão {b.posicao} · tecla {teclaDe(b.posicao)}</span>
+        <div style={{ fontSize: 22, fontWeight: 900, lineHeight: 1.1, paddingRight: 120 }}>{b.nome || '—'}</div>
         <div style={{ fontSize: 13, opacity: .92 }}>{b.mensagem}</div>
         {!!b.etapas?.length && <div style={{ fontSize: 12, fontWeight: 800, marginTop: 4 }}>{b.etapas.length + 1} toques: {[b.nome, ...b.etapas.map(e => e.titulo || 'escolha')].join(' → ')}</div>}
       </div>
@@ -54,6 +54,7 @@ export function EditorBotao({ botao, canEdit, onChange, onSalvar }: {
             <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, flex: 1, cursor: 'pointer' }}>
               <input type="checkbox" checked={b.ativo} onChange={e => onChange({ ...b, ativo: e.target.checked })} /> Ativo no palco
             </label>
+            {onExcluir && <button className="btn btn-ghost btn-sm" style={{ color: 'var(--danger)' }} onClick={onExcluir}>Excluir</button>}
             <button className="btn btn-primary btn-sm" onClick={() => onSalvar(b)}>Salvar</button>
           </div>
         </div>
