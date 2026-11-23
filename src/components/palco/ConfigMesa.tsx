@@ -169,7 +169,7 @@ export default function ConfigMesa({ token, onFechar, onMudou }: { token: string
             {/* de quem são os botões */}
             <div style={{ fontSize: 12, fontWeight: 800, color: 'var(--muted)', marginBottom: 6 }}>BOTÕES DE</div>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 14 }}>
-              <button className={`btn btn-sm ${conjunto === null ? 'btn-primary' : 'btn-outline'}`} onClick={() => setConjunto(null)}>⭐ Padrão do palco</button>
+              <button className={`btn btn-sm ${conjunto === null ? 'btn-primary' : 'btn-outline'}`} onClick={() => setConjunto(null)}>⭐ Padrão (todos)</button>
               {cfg.pedais.map(p => (
                 <button key={p.id} className={`btn btn-sm ${conjunto === p.id ? 'btn-primary' : 'btn-outline'}`} onClick={() => setConjunto(p.id)}>
                   🎤 {p.nome}{p.botoes_proprios ? ' · próprios' : ''}
